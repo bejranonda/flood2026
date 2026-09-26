@@ -8,19 +8,18 @@
 | Public site | **https://flood.bejranonda.com**: Thai MVP (map, station list, status vs bank, 12 h trend, recovery range, chart with forecast band, "สถานีใกล้ฉัน") |
 | API | `https://flood.bejranonda.com/api/…` (`/health`, `/stations`, `/stations/{code}`, `/near`, `/reports`, `/rain`, docs at `/api/docs`) |
 | Server | This single host (`HZ-Agent`, 178.104.238.220, Hetzner DE, 4 vCPU / 7.7 GB RAM, ~13 GB free disk). **No other environment exists** (owner, 2026-09-26) |
-| Stack | `docker compose` project `floodwatch` in `/root/flood2026`: `db` (postgres:16-alpine), `worker`, `app` (FastAPI :3000 on 127.0.0.1), `caddy` (profile `origin`, host network, :80/:443, **Cloudflare IPs only**) |
-| Public path | Cloudflare proxy (A record → 178.104.238.220) → Caddy (self-signed origin cert in `certs/`) → app. Direct IP access is refused |
+| Stack | `docker compose` project `floodwatch` in `/root/flood2026`: `db` (postgres:16-alpine), `worker`, `app` (FastAPI :3000), `cloudflared` (profile `public`, outbound-only tunnel to Cloudflare Edge) |
+| Public path | Cloudflare Tunnel (`flood.bejranonda.com` CNAME → `<id>.cfargotunnel.com`) → `cloudflared` container → `http://app:3000`. No inbound ports open |
 | Repo | https://github.com/bejranonda/flood2026 (**private**) |
 
 ## 2. Operate
 ```bash
 cd /root/flood2026
-docker compose --profile origin up -d --build     # start/update everything (db, worker, app, caddy)
+docker compose --profile public up -d --build     # start/update everything (db, worker, app, cloudflared)
 docker compose ps
 docker compose logs -f worker                     # collectors + forecasts
 curl -s localhost:3000/api/health | python3 -m json.tool
 docker compose run --rm --no-deps worker pytest -q   # tests (8 passing at handoff)
-infra/update-cloudflare-ips.sh                    # refresh the Cloudflare allowlist in Caddy
 ```
 - Secrets: `.env` (git-ignored; backup `.env.backup-20260926`). `POSTGRES_PASSWORD` was generated for the DB. **Never commit `.env` or `certs/`.**
 - Data: `data/pg` (Postgres) and `data/raw_archive` (immutable gzip payloads + `.meta.json`, dedup by SHA-256). Both git-ignored.
@@ -39,7 +38,7 @@ infra/update-cloudflare-ips.sh                    # refresh the Cloudflare allow
 | [docker-compose.yml](docker-compose.yml), [Dockerfile](Dockerfile), [infra/Caddyfile](infra/Caddyfile) | Deployment |
 
 ## 4. Known gaps — next steps in priority order
-1. **Cloudflare Tunnel (KI-501):** the API token in `.env` can read tunnels but **cannot create them** (403). To switch to the tunnel (no open ports): add *Account → Cloudflare Tunnel: Edit* to the token, create a tunnel with ingress `flood.bejranonda.com → http://app:3000`, replace the A record with a CNAME to `<id>.cfargotunnel.com`, put the token in `CLOUDFLARE_TUNNEL_TOKEN`, run `docker compose --profile public up -d cloudflared`, and stop `caddy`. (The old 33-character `CLOUDFLARE_TUNNEL_TOKEN` value is not a valid tunnel token.)
+1. **Cloudflare Tunnel (KI-501) — ✅ Completed:** Tunnel is live (`cloudflared` container with `--url http://app:3000`), DNS CNAME is updated, and `caddy` is stopped. No inbound ports are open on the VPS.
 2. **Off-site backup (R2):** no R2 credentials yet → the raw archive and DB exist **only on this disk**. Add `R2_*` to `.env` and implement replication plus a nightly `pg_dump` (ARCHITECTURE §9).
 3. **BMA DDS (KI-101/103):** blocked from this German IP. Set `THAI_EGRESS_PROXY=socks5h://127.0.0.1:1080` after opening an SSH SOCKS tunnel to **any Thai host you control** (`ssh -N -D 1080 user@thai-host`) or a paid VPN with a Thai exit. The `bma_dds` collector then archives raw pages; a parser is still to be written once the format is visible. Don't use free public proxies (tampering and abuse risk).
 4. **Bang Sai C.29A, Memorial Bridge, Fort Chula tide (KI-109):** not in HII. Find RID feeds; tide stays on our own fits until then.
