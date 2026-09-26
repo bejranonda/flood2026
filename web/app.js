@@ -528,14 +528,6 @@ let pinMarker = null;
 
 function pointHTML(d, src, place = "") {
   const a = d.area, ev = d.evidence;
-  const area = a.category && a.confidence === "very_low"
-    ? `<div class="box">ข้อมูลรอบจุดนี้<b>น้อยหรือขัดกัน</b> จึงไม่สรุปสภาพพื้นที่ · สถานีในรัศมี 8 กม. (${a.n} สถานี, ใกล้สุด ${a.nearest_km} กม.)
-        อยู่ระหว่าง “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” — ดูรายสถานีด้านล่างและรายงานจากประชาชนประกอบ</div>`
-    : a.category
-    ? `<div class="box">สภาพน้ำในคลอง/แม่น้ำ<b>รอบ</b>จุดนี้: <b style="color:${STATUS[a.category].color}">${esc(STATUS[a.category].long)}</b>
-        <br><span class="muted">จาก ${a.n} สถานีในรัศมี 8 กม. (ใกล้สุด ${a.nearest_km} กม.) · สถานีรอบ ๆ อยู่ระหว่าง
-        “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” · ความเชื่อมั่น: ${esc(CONF[a.confidence])}</span></div>`
-    : `<div class="box">ไม่มีสถานีที่ส่งข้อมูลล่าสุดในรัศมี 8 กม. — <b>ประเมินสภาพน้ำรอบจุดนี้ไม่ได้</b></div>`;
   const depths = Object.entries(ev.user_depth_reports_1km_24h || {}).map(([k, n]) => `${esc(DEPTH[k] || k)} ${Number(n)}`).join(" · ");
 
   // Separate dynamic warnings (street flood alerts) from static educational disclaimers
@@ -546,9 +538,28 @@ function pointHTML(d, src, place = "") {
     ? `<div class="urgent">🚗 ${WARN.street_flooding_despite_channels}</div>`
     : "";
 
+  // Concise canal status summary for the area
+  let canalSummary = "";
+  if (a.category && a.confidence === "very_low") {
+    canalSummary = `มีทั้ง “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” <span class="muted">(${a.n} สถานีใน 8 กม., ใกล้สุด ${a.nearest_km} กม.)</span>`;
+  } else if (a.category) {
+    canalSummary = `<b style="color:${STATUS[a.category].color}">${esc(STATUS[a.category].long)}</b> <span class="muted">(${a.n} สถานีใน 8 กม., ใกล้สุด ${a.nearest_km} กม.)</span>`;
+  } else {
+    canalSummary = `<span class="muted">ไม่มีสถานีในระยะ 8 กม.</span>`;
+  }
+
+  // Unified, clean overview card (no long academic walls of text)
+  const overviewCard = `
+    <div class="overview-box">
+      <div class="ov-item">🌊 <b>คลองรอบจุด</b>: ${canalSummary}</div>
+      <div class="ov-item">🌧️ <b>ฝน 24 ชม.</b>: ~${d.rain_next24_mm != null ? Math.round(d.rain_next24_mm) : 0} มม. <span class="muted">(Open-Meteo)</span></div>
+      <div class="ov-item">👥 <b>น้ำท่วมถนน (Traffy 1 กม.)</b>: ${ev.traffy_flood_reports_1km_6h ? `<b>${Number(ev.traffy_flood_reports_1km_6h)}</b> เรื่องใน 6 ชม.` : "ไม่มีรายงานใน 6 ชม."}${depths ? ` · แจ้งระดับ: ${depths}` : ""}</div>
+      <div class="ov-item">🚗 <b>จุดน้ำท่วมบนถนน</b>: <a href="https://dds.bangkok.go.th/" target="_blank" rel="noopener">ประกาศเตือน กทม. ↗</a></div>
+    </div>`;
+
   const disclaimerBox = staticWarnings.length
     ? `<details class="point-disclaimer">
-        <summary>ℹ️ ข้อจำกัดของข้อมูล (สถานีคลอง ≠ ระดับถนนหรือในบ้าน)</summary>
+        <summary>ℹ️ ข้อจำกัดของข้อมูล (ระดับน้ำคลอง ≠ ระดับถนนหรือในบ้าน)</summary>
         <div class="disclaimer-body">
           ${staticWarnings.map((w) => `<p>• ${WARN[w] || esc(w)}</p>`).join("")}
         </div>
@@ -575,13 +586,8 @@ function pointHTML(d, src, place = "") {
 
   return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : place ? `📌 ${esc(place)}` : "📌 จุดที่เลือก"} <span class="muted">${d.lat}, ${d.lon}</span></h2>
     ${urgentBanner}
-    ${area}
+    ${overviewCard}
     ${disclaimerBox}
-    <div class="point-context">
-      <div class="ctx-item">🌧️ <b>ฝนคาดการณ์ 24 ชม.</b>: ~${d.rain_next24_mm != null ? Math.round(d.rain_next24_mm) : 0} มม. <span class="muted">(Open-Meteo)</span></div>
-      <div class="ctx-item">👥 <b>รายงานน้ำท่วม Traffy (~1 กม.)</b>: ${Number(ev.traffy_flood_reports_1km_6h)} เรื่องใน 6 ชม.${depths ? ` · ผู้ใช้แจ้ง: ${depths}` : " · ยังไม่มีผู้ใช้แจ้ง 24 ชม."}</div>
-      <div class="ctx-item">🚗 <b>ถนนที่ กทม. แจ้งให้เลี่ยง</b>: <a href="https://dds.bangkok.go.th/" target="_blank" rel="noopener">ศูนย์ป้องกันน้ำท่วม กทม.</a> · <a href="https://claude.ai/artifact/N6umcENfSgoY6GMkhVKwZs" target="_blank" rel="noopener">สรุปจุดเสี่ยง กทม.</a></div>
-    </div>
     ${stationListHTML}
     ${feedbackForm(null, { lat: d.lat, lon: d.lon, src })}`;
 }

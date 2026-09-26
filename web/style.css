@@ -142,7 +142,7 @@ a { color: var(--accent); }
 .point-disclaimer[open] summary::before { content: "▾ "; }
 .point-disclaimer .disclaimer-body { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); line-height: 1.5; color: #444c56; }
 .point-disclaimer .disclaimer-body p { margin: 4px 0; }
-.point-context { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0; font-size: 14px; }
-.point-context .ctx-item { margin: 4px 0; }
+.overview-box { background: #f8fafc; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
+.overview-box .ov-item { padding: 4px 0; line-height: 1.5; }
 .sec-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 6px; font-size: 15px; font-weight: 700; color: var(--ink); }
 .sec-heading .sub { font-size: 12px; font-weight: normal; color: var(--muted); }

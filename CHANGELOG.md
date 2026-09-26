@@ -12,7 +12,8 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
   - **Stale gauge suppression:** Gauges with no data for > 24 hours (such as `WL.JKK.01`) are automatically excluded from the point check recommendations, eliminating dead clutter.
   - **Traffy flood hotspot visibility:** Increased fill opacity from 0.14 to 0.30–0.55 and added a distinct 1px purple stroke (`#6a1b9a`), making citizen-validated street flood reports immediately visible over map tiles.
   - API `/api/point` now returns `stations_forecast` and `stations_nearby` alongside the backward-compatible `stations` list.
-  - Cache-busters bumped to `style.css?v=10` and `app.js?v=19`. All 47 tests pass.
+  - **Streamlined area overview:** Replaced wordy, defensive area paragraphs ("ข้อมูลรอบจุดนี้น้อยหรือขัดกัน...") and fragmented links with a unified, compact overview card: canal range (e.g. "มีทั้ง ยังรับน้ำได้ ถึง ล้นตลิ่ง (38 สถานีใน 8 กม., ใกล้สุด 0.9 กม.)"), 24h rain forecast, 1km Traffy street flooding counts, and a direct BMA road alert link ("จุดน้ำท่วมบนถนน: ประกาศเตือน กทม. ↗").
+  - Cache-busters bumped to `style.css?v=11` and `app.js?v=20`. All 47 tests pass.
 
 ## v0.5.1 — 2026-09-26
 - **Favicon & brand icon modernized for browser tab recognizability** (D-039, KI-221):
