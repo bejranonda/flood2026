@@ -32,11 +32,14 @@ services:
     command: ["python", "-m", "floodwatch.worker"]
     environment:
       <<: *appenv
-      # Optional Workers AI (D-022), worker only: the web app never calls AI. Prefer a token scoped to
-      # "Workers AI: Read" (CF_AI_TOKEN); falls back to the general API token.
+      # Optional AI feedback triage (D-022, D-030), worker only: the web app never calls AI.
+      # Supported providers: glm (Zhipu AI) or cloudflare (Workers AI).
+      AI_ENABLED: ${AI_ENABLED:-1}
+      AI_PROVIDER: ${AI_PROVIDER:-glm}
+      GLM_API_KEY: ${GLM_API_KEY:-}
+      GLM_MODEL: ${GLM_MODEL:-glm-4-flash}
       CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
       CF_AI_TOKEN: ${CF_AI_TOKEN:-${CLOUDFLARE_API_TOKEN:-}}
-      AI_ENABLED: ${AI_ENABLED:-1}
       AI_MODEL: ${AI_MODEL:-@cf/aisingapore/gemma-sea-lion-v4-27b-it}
       AI_DAILY_NEURON_BUDGET: ${AI_DAILY_NEURON_BUDGET:-3000}
     volumes:

@@ -17,7 +17,24 @@ def test_parse_label_accepts_only_known_schema():
 
 def test_ai_is_unavailable_without_credentials(monkeypatch):
     monkeypatch.delenv("CF_AI_TOKEN", raising=False)
+    monkeypatch.delenv("CLOUDFLARE_API_TOKEN", raising=False)
+    monkeypatch.delenv("GLM_API_KEY", raising=False)
+    monkeypatch.setenv("AI_PROVIDER", "glm")
     assert ai._credentials() is None and ai.run([{"role": "user", "content": "x"}]) is None
+    monkeypatch.setenv("AI_PROVIDER", "cloudflare")
+    assert ai._credentials() is None and ai.run([{"role": "user", "content": "x"}]) is None
+
+
+def test_glm_credentials_when_set(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "glm")
+    monkeypatch.setenv("GLM_API_KEY", "test-key-123")
+    monkeypatch.setenv("GLM_MODEL", "glm-4-flash")
+    cred = ai._credentials()
+    assert cred is not None
+    assert cred["provider"] == "glm"
+    assert cred["api_key"] == "test-key-123"
+    assert cred["model"] == "glm-4-flash"
+
 
 
 def test_summary_is_deterministic_template():

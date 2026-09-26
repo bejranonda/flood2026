@@ -9,10 +9,8 @@
 | # | Question | Why it matters | Priority |
 |---|---|---|---|
 | **Q18** | **`autobahn.bot` bot challenge** (`cf-mitigated: challenge`, evidence points to Bot Fight Mode, which WAF rules can't skip): turn Bot Fight Mode off for the zone, upgrade to Pro (Super Bot Fight Mode + Skip), or keep sharing the alias? Then: may we 301 the old domain (`REDIRECT_LEGACY_HOST=1`, built and tested, off)? ([KI-506](../KNOWN_ISSUES.md)) | LINE/Facebook previews, monitors, API users | **1** |
-| **Q15b / Q16** | **Enable R2** (the API says "Please enable R2 through the Cloudflare Dashboard"), create a bucket and an R2 S3 token, and put `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT` in `.env`. Free tier covers ~2 months, then well under $1/month | Off-site backup; today everything is on one disk ([KI-504](../KNOWN_ISSUES.md)) | **2** |
-| Q21 | A Cloudflare token limited to **Workers AI** as `CF_AI_TOKEN` (the worker uses the general token today) | Least privilege ([KI-508](../KNOWN_ISSUES.md)) | 3 |
-| RID | **Gate coordinates** (`code,lat,lon`) for the 15 unplaced and 14 approximate stations | Exact map positions, point checks ([KI-207](../KNOWN_ISSUES.md)) | 4 |
-| Q10 | **Repository license.** Visibility was answered by the owner's action (**public**, 2026-09-26; scanned, [D-028](DECISIONS.md)); there is still **no LICENSE**, so all rights are reserved | Legal; whether others may reuse the code | 5 |
+| RID | **Gate coordinates** (`code,lat,lon`) for the 15 unplaced and 14 approximate stations | Exact map positions, point checks ([KI-207](../KNOWN_ISSUES.md)) | 2 |
+| Q23 | **GLM API Key** (`GLM_API_KEY` in `.env`) when ready for AI triage of citizen feedback notes | Enables background AI classification of feedback notes | 3 |
 | Q19 | Who reads **feedback notes**, how often; a review page or SQL? (first real report arrived 10:17 UTC) | Feedback is only useful if someone acts on it ([D-020](DECISIONS.md)) | — |
 | Q17 | A **Thai server/home connection** as an SSH SOCKS exit for BMA sites? | BMA khlong data; the VPN relay is flaky | — |
 | Q22 | Workers AI for **Traffy text labelling** or **voice reports**? ($5/month Workers Paid if over the free quota) | Cost vs value ([APPROACH §3.6](../APPROACH_AND_METHODS.md)) | — |
@@ -46,4 +44,7 @@
 | A16 | Q20 (old tunnel `ecd8a7b9…`) | Deleted by the owner; verified 11:15 UTC | [KI-504](../KNOWN_ISSUES.md) |
 | A17 | Release cadence / version on screen | Versioned releases with the version in the UI (2026-09-26) | [D-025](DECISIONS.md) |
 | A18 | Q1, Q3, Q13, Q14 | Answered earlier as A6–A9 (single server; don't wait for agencies; ship now; OpenVPN added). Removed from the open list on 2026-09-26 | D-012…D-016 |
-| A19 | Q10 (visibility) | The owner made the repository public (seen 2026-09-26 15:20 UTC) | [D-028](DECISIONS.md) |
+| A19 | Q10 (visibility & license) | Repository made public; owner decided to keep all rights reserved (no LICENSE file) (2026-09-26) | [D-028](DECISIONS.md) |
+| A20 | Q15b / Q16 (R2 off-site backups) | Owner decided to keep R2 disabled; telemetry and DB remain local to VPS disk (2026-09-26) | [D-029](DECISIONS.md) |
+| A21 | Q21 / Q23 (AI provider switch) | Switch to GLM (Zhipu AI `glm-4-flash`) for feedback triage; `.env` prepared for GLM key (2026-09-26) | [D-030](DECISIONS.md) |
+

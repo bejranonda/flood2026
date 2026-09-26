@@ -8,10 +8,10 @@
 | # | Item | Status | Priority |
 |---|---|---|---|
 | **Q18** | `flood.autobahn.bot` challenges non-browser clients (`cf-mitigated: challenge`) | ⬜ **open** | **1** |
-| **Q15b/Q16** | **R2 is not enabled** on the account, so there are no off-site backups | ⬜ **open** | **2** |
-| **Q21** | Workers-AI-only token (`CF_AI_TOKEN`) | ⬜ open (works today with the general token) | 3 |
-| **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 4 |
-| **Q10** | Repository **license** (visibility is now **public**, set by the owner) | ⬜ open: no LICENSE, so all rights are reserved | 5 |
+| **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
+| **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage (fill in when ready) | ⬜ open | 3 |
+| Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
+| Q10 | Repository license | ✅ **closed** (all rights reserved, no LICENSE added; D-028) | — |
 | Q19 / Q17 / Q22 / Q7 / Q8 / Q11 / Q12 | Decisions and answers (no work) | 🖐️ open | see §3 |
 | Q15a | Tunnel rights on the API token | ✅ works (verified 11:15 UTC) | |
 | Q20 | Old tunnel `ecd8a7b9…` | ✅ deleted (verified) | |

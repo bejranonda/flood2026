@@ -57,12 +57,41 @@ def parse_label(text: str) -> dict | None:
     return {"category": d["category"], "urgent": d["urgent"]}
 
 
-def _credentials() -> tuple[str, str] | None:
+def _provider() -> str:
+    p = os.environ.get("AI_PROVIDER", "").strip().lower()
+    if p in ("glm", "zhipu"):
+        return "glm"
+    if p == "cloudflare":
+        return "cloudflare"
+    if os.environ.get("GLM_API_KEY", "").strip():
+        return "glm"
+    return "cloudflare"
+
+
+def _credentials() -> dict | None:
+    if os.environ.get("AI_ENABLED", "1") != "1":
+        return None
+    p = _provider()
+    if p == "glm":
+        key = os.environ.get("GLM_API_KEY", "").strip()
+        if not key:
+            return None
+        return {
+            "provider": "glm",
+            "api_key": key,
+            "model": os.environ.get("GLM_MODEL", "glm-4-flash").strip() or "glm-4-flash",
+            "endpoint": os.environ.get("GLM_ENDPOINT", "https://open.bigmodel.cn/api/paas/v4/chat/completions").strip(),
+        }
     acct = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
     tok = os.environ.get("CF_AI_TOKEN", "").strip()
-    if os.environ.get("AI_ENABLED", "1") != "1" or not acct or not tok:
+    if not acct or not tok:
         return None
-    return acct, tok
+    return {
+        "provider": "cloudflare",
+        "account_id": acct,
+        "token": tok,
+        "model": os.environ.get("AI_MODEL", MODEL),
+    }
 
 
 def _state(c) -> dict:
@@ -74,33 +103,60 @@ def _state(c) -> dict:
 
 
 def available() -> bool:
-    if _credentials() is None:
+    cred = _credentials()
+    if cred is None:
         return False
     with db.connect() as c:
         st = _state(c)
     now = dt.datetime.now(dt.timezone.utc).isoformat()
-    return st["neurons"] < BUDGET and not (st.get("paused_until") and st["paused_until"] > now)
+    if st.get("paused_until") and st["paused_until"] > now:
+        return False
+    if cred["provider"] == "cloudflare" and st["neurons"] >= BUDGET:
+        return False
+    return True
 
 
 def run(messages: list[dict], max_tokens: int = 60) -> str | None:
-    """One Workers AI call with budget accounting. Returns None on any problem; never raises."""
+    """One AI triage call (GLM or Cloudflare Workers AI) with error handling. Returns None on any problem; never raises."""
     cred = _credentials()
     if cred is None or not available():
         return None
-    acct, tok = cred
     ok, text, neurons, err = False, None, 0.0, ""
     try:
-        r = requests.post(f"https://api.cloudflare.com/client/v4/accounts/{acct}/ai/run/{MODEL}",
-                          headers={"Authorization": f"Bearer {tok}"}, timeout=20,
-                          json={"messages": messages, "max_tokens": max_tokens, "temperature": 0.1})
-        d = r.json()
-        if r.ok and d.get("success"):
-            res = d["result"]
-            text = res.get("response") or res["choices"][0]["message"]["content"]
-            neurons = float((res.get("usage") or {}).get("neurons") or 0)
-            ok = True
+        if cred["provider"] == "glm":
+            r = requests.post(
+                cred["endpoint"],
+                headers={"Authorization": f"Bearer {cred['api_key']}", "Content-Type": "application/json"},
+                timeout=20,
+                json={
+                    "model": cred["model"],
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": 0.1,
+                },
+            )
+            d = r.json()
+            if r.ok and "choices" in d and d["choices"]:
+                text = d["choices"][0]["message"]["content"]
+                ok = True
+            else:
+                err = (json.dumps(d.get("error")) if "error" in d else r.text)[:200]
         else:
-            err = json.dumps(d.get("errors"))[:200]
+            acct, tok, model = cred["account_id"], cred["token"], cred["model"]
+            r = requests.post(
+                f"https://api.cloudflare.com/client/v4/accounts/{acct}/ai/run/{model}",
+                headers={"Authorization": f"Bearer {tok}"},
+                timeout=20,
+                json={"messages": messages, "max_tokens": max_tokens, "temperature": 0.1},
+            )
+            d = r.json()
+            if r.ok and d.get("success"):
+                res = d["result"]
+                text = res.get("response") or res["choices"][0]["message"]["content"]
+                neurons = float((res.get("usage") or {}).get("neurons") or 0)
+                ok = True
+            else:
+                err = json.dumps(d.get("errors"))[:200]
     except Exception as e:  # network, JSON, schema
         err = f"{type(e).__name__}: {e}"[:200]
     with db.connect() as c:
@@ -116,7 +172,7 @@ def run(messages: list[dict], max_tokens: int = 60) -> str | None:
                 st["paused_until"] = (now + dt.timedelta(days=1)).replace(hour=0, minute=5, second=0).isoformat()
             elif st["failures"] >= 3:
                 st["paused_until"] = (now + dt.timedelta(hours=1)).isoformat()
-            log.warning("workers ai failed (%s)", err)
+            log.warning("ai triage failed (%s)", err)
         db.set_state(c, "ai_usage", st)
         c.commit()
     return text
@@ -124,6 +180,8 @@ def run(messages: list[dict], max_tokens: int = 60) -> str | None:
 
 def triage_pending(limit: int = 20) -> int:
     """Refine rule labels of new feedback notes with AI (background task). Returns how many were labelled."""
+    cred = _credentials()
+    model_tag = cred["model"] if cred else MODEL
     with db.connect() as c:
         rows = c.execute("""SELECT id, note FROM user_feedback WHERE note IS NOT NULL AND ai_label IS NULL
                             ORDER BY id LIMIT %s""", (limit,)).fetchall()
@@ -137,7 +195,7 @@ def triage_pending(limit: int = 20) -> int:
         if label is None:
             label = {"category": "unparsed", "urgent": rules["urgent"]}
         label["urgent"] = label["urgent"] or rules["urgent"]  # AI may add urgency, never remove it
-        label.update(by=MODEL, at=dt.datetime.now(dt.timezone.utc).isoformat())
+        label.update(by=model_tag, at=dt.datetime.now(dt.timezone.utc).isoformat())
         with db.connect() as c:
             c.execute("UPDATE user_feedback SET ai_label=%s WHERE id=%s", (db.Jsonb(label), r["id"]))
             c.commit()

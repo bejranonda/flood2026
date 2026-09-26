@@ -74,7 +74,7 @@ def main() -> None:
         ok_tun, msg_tun = cf_ok(f"/accounts/{acct}/cfd_tunnel?per_page=50", tok)
         ok_r2, msg_r2 = cf_ok(f"/accounts/{acct}/r2/buckets", tok)
         rows.append(("Q15a", "API token can list/manage Tunnels", "done" if ok_tun else "open", msg_tun))
-        rows.append(("Q15b", "API token can list R2 buckets", "done" if ok_r2 else "open", msg_r2))
+        rows.append(("Q15b", "R2 off-site backups", "manual", "disabled by owner choice (D-029); data stays on local VPS"))
         old = "unknown (needs Q15a)"
         if ok_tun:
             _, body = http(f"{CF}/accounts/{acct}/cfd_tunnel?per_page=50", tok)
@@ -97,17 +97,12 @@ def main() -> None:
     else:
         rows.append(("Q15", "Cloudflare token/account in .env", "open", "CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID missing"))
 
-    r2 = [k for k in ("R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT", "R2_BUCKET") if not e.get(k)]
-    rows.append(("Q16", "R2 S3 credentials + bucket in .env", "done" if not r2 else "open", "all four set" if not r2 else "missing: " + ", ".join(r2)))
+    glm_key = e.get("GLM_API_KEY", "").strip()
+    rows.append(("GLM", "GLM API key for AI feedback triage (GLM_API_KEY in .env)", "done" if glm_key else "open",
+                 "key configured" if glm_key else "empty (fill in later in .env, D-030)"))
 
-    ai = e.get("CF_AI_TOKEN", "")
-    rows.append(("Q21", "Dedicated Workers-AI-only token (CF_AI_TOKEN)", "done" if ai and ai != tok else "open",
-                 "set and different from the general token" if ai and ai != tok else "empty or same as the general token"))
-
-    lic = any((ROOT / n).exists() for n in ("LICENSE", "LICENSE.md", "LICENSE.txt"))
-    vis = subprocess.run(["gh", "repo", "view", "--json", "visibility", "-q", ".visibility"], capture_output=True, text=True, cwd=ROOT)
-    rows.append(("Q10", "Repository license chosen (the repo is public: without one, all rights are reserved)", "done" if lic else "open",
-                 f"LICENSE {'present' if lic else 'absent'}; visibility={vis.stdout.strip() or 'unknown'}"))
+    rows.append(("Q10", "Repository license (public, all rights reserved)", "done",
+                 "all rights reserved by owner choice (no LICENSE file, D-028)"))
     rid = (ROOT / "src/floodwatch/data/station_coords_rid.json").exists()
     rows.append(("RID", "RID gate coordinates imported (exact positions for ATG*/HDA*/TCP*)", "done" if rid else "open",
                  "station_coords_rid.json present" if rid else "not provided"))

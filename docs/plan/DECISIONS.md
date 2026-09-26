@@ -179,3 +179,20 @@
   - **no LICENSE is added without the owner's choice** (Q10: all rights reserved until then);
   - history is never rewritten or force-pushed without the owner's go-ahead.
 - **Also:** the SSH and password findings are recorded as an optional owner action, not changed by an agent (KI-214).
+
+### D-029 — R2 off-site backups kept disabled by owner choice
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "keep disable")
+- **Decision:**
+  - Cloudflare R2 off-site backups remain **disabled**.
+  - All raw telemetry archives (`data/raw_archive`) and PostgreSQL database files (`data/pg`) remain stored on the local server disk.
+  - No Cloudflare R2 bucket or S3 tokens are required.
+  - Nightly snapshots/backups will be retained locally on the VPS disk.
+
+### D-030 — Support GLM (Zhipu AI) for background feedback triage
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "I will change from Cloudflare AI to GLM, is it possible. When good, please adapt .env to have GLM token, I will fill in later.")
+- **Decision:**
+  - FloodWatch supports **GLM** (`glm-4-flash` via Zhipu AI OpenAPI `open.bigmodel.cn`) as the primary AI provider for background citizen feedback triage, replacing or complementing Cloudflare Workers AI.
+  - GLM configuration (`AI_PROVIDER=glm`, `GLM_API_KEY`, `GLM_MODEL=glm-4-flash`) is integrated into `.env`, `.env.example`, `docker-compose.yml`, and `src/floodwatch/ai.py`.
+  - When `GLM_API_KEY` is empty, the system gracefully falls back to deterministic rule-based triage without error.
+  - Once the owner populates `GLM_API_KEY` in `.env`, the worker automatically begins classifying feedback notes with `glm-4-flash`.
+
