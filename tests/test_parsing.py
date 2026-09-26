@@ -51,3 +51,9 @@ def test_map_feed_gives_coordinates_and_skips_missing():
             {"code": "ZZZ", "lat": None, "lng": None}]
     out = parsing.parse_map_feed(rows)
     assert len(out) == 1 and out[0]["code"] == "BKK001" and out[0]["lat"] == 13.92 and out[0]["bank_msl"] == 2.563
+
+
+def test_level_far_above_bank_is_flagged_not_deleted():
+    # BKK003 sat at a 7.45 m ceiling with a 2.07 m bank (+5.4 m); genuine flood maxima were <= +1.9 m.
+    assert parsing.qc_level(7.45, 2.07, -3.1) == (7.45, "out_of_range")
+    assert parsing.qc_level(4.0, 2.07, -3.1) == (4.0, "ok")

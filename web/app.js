@@ -21,6 +21,16 @@ const fmtHour = (ms) => new Date(ms).toLocaleTimeString("th-TH", { ...TZ, hour: 
 const fmtAge = (m) => m == null ? "-" : m < 60 ? `${Math.round(m)} นาทีที่แล้ว` : m < 1440 ? `${Math.round(m / 60)} ชม.ที่แล้ว` : `${Math.round(m / 1440)} วันที่แล้ว`;
 const cm = (m) => m == null ? "-" : `${m > 0 ? "+" : ""}${Math.round(m * 100)} ซม.`;
 const freeboardText = (fb) => fb == null ? "" : fb < 0 ? `สูงกว่าตลิ่ง ${Math.abs(Math.round(fb * 100))} ซม.` : `ต่ำกว่าตลิ่ง ${Math.round(fb * 100)} ซม.`;
+const NOTE = {
+  datum_suspect: "ค่าระดับน้ำของสถานีนี้ไม่ได้อยู่ในหน่วย ม.รทก. (ตรวจพบค่าผิดปกติ) จึงไม่แสดงค่า",
+  no_recent_data: "ไม่มีข้อมูลใหม่เกิน 24 ชม. สถานะจึงเป็น “ไม่ทราบ”",
+  stale: "ข้อมูลเก่ากว่า 3 ชม.",
+  no_bank: "ไม่มีข้อมูลระดับตลิ่ง จึงประเมินสถานะไม่ได้",
+  approx_location: "ตำแหน่งบนแผนที่โดยประมาณ (จากชื่อสถานี)",
+  no_location: "ไม่มีพิกัด จึงไม่แสดงบนแผนที่",
+  suspect_values_hidden: "ค่าล่าสุดผิดปกติ (เช่น สูงเกินตลิ่งมากเกินจริง) จึงซ่อนไว้ และแสดงค่าที่เชื่อถือได้ล่าสุดแทน",
+};
+const notesText = (s) => (s.notes || []).filter((n) => n !== "stale").map((n) => NOTE[n] + (n === "approx_location" && s.coord_precision_km ? ` ±${s.coord_precision_km} กม.` : "")).join(" · ");
 const norm = (s) => String(s ?? "").toLowerCase().replace(/\s+/g, "");
 
 let stations = [];
@@ -69,7 +79,7 @@ function itemHTML(s, extra = "") {
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || "")} ${esc(s.province || "")}</span><span class="fb">${esc(freeboardText(s.freeboard_m))}</span></div>
     <div class="meta">${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null && s.trend12 !== "steady" ? " " + esc(cm(s.delta12_median)) + " ใน 12 ชม." : ""}
-      · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${extra}</li>`;
+      · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
 }
 
 function bindItems(root) {
@@ -94,6 +104,10 @@ function renderList() {
 function renderMap() {
   if (!map) {
     map = L.map("map", { zoomControl: true }).setView([13.95, 100.55], 9);
+    // Stations on top so they are always tappable; citizen-report cells below and non-interactive (owner
+    // feedback: taps hit the Traffy circles first). A tap there opens the point check, which lists the counts.
+    map.createPane("reports").style.zIndex = 350;
+    map.createPane("stations").style.zIndex = 650;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(map);
     legend = L.control({ position: "bottomright" });
     legend.onAdd = () => {
@@ -106,20 +120,49 @@ function renderMap() {
     const hint = L.control({ position: "topright" });
     hint.onAdd = () => { const d = L.DomUtil.create("div", "legend"); d.textContent = "👆 แตะจุดใดก็ได้บนแผนที่ เพื่อดูข้อมูลรอบจุดนั้น"; return d; };
     hint.addTo(map);
+    const opts = L.control({ position: "bottomleft" });
+    opts.onAdd = () => {
+      const d = L.DomUtil.create("div", "legend");
+      d.innerHTML = `<label><input type="checkbox" id="all-th"> แสดงสถานีทั่วประเทศ</label><div id="unplaced" class="muted"></div>`;
+      L.DomEvent.disableClickPropagation(d);
+      d.querySelector("#all-th").addEventListener("change", (e) => toggleNational(e.target.checked));
+      return d;
+    };
+    opts.addTo(map);
     map.on("click", (e) => checkPoint(e.latlng.lat, e.latlng.lng, "pin"));
   }
   if (layer) layer.remove();
   layer = L.layerGroup().addTo(map);
   getJSON("/api/reports?hours=6").then((r) => r.cells.forEach(([lat, lon, n]) => {
-    L.circle([lat, lon], { radius: 300 + 120 * Math.min(n, 20), color: "#7b1fa2", weight: 0, fillOpacity: 0.18, bubblingMouseEvents: false })
-      .bindTooltip(`รายงานน้ำท่วมจากประชาชน ${Number(n)} รายการ ใน 6 ชม. (Traffy Fondue)`).addTo(layer);
+    L.circle([lat, lon], { pane: "reports", interactive: false, radius: 150 + 50 * Math.min(n, 20), color: "#7b1fa2",
+      weight: 0, fillOpacity: 0.14 }).addTo(layer);
   })).catch(() => {});
   stations.filter((s) => s.lat && s.lon).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
     const st = STATUS[s.status] || STATUS.unknown;
-    L.circleMarker([s.lat, s.lon], { radius: s.status === "critical" ? 9 : 7, color: "#fff", weight: 1.5, fillColor: st.color, fillOpacity: s.stale ? 0.45 : 0.95, bubblingMouseEvents: false })
-      .bindTooltip(`${esc(s.name_th)} — ${esc(st.th)} ${esc(freeboardText(s.freeboard_m))}`)
+    const approx = (s.notes || []).includes("approx_location");
+    L.circleMarker([s.lat, s.lon], { pane: "stations", radius: s.status === "critical" ? 10 : 8, color: approx ? "#333" : "#fff",
+      weight: 2, dashArray: approx ? "3 3" : null, fillColor: st.color, fillOpacity: s.stale ? 0.45 : 0.95, bubblingMouseEvents: false })
+      .bindTooltip(`${esc(s.name_th)} — ${esc(st.th)} ${esc(freeboardText(s.freeboard_m))}${notesText(s) ? `<br><small>${esc(notesText(s))}</small>` : ""}`)
       .on("click", () => showDetail(s.code)).addTo(layer);
   });
+  const unplaced = stations.filter((s) => !s.lat).length;
+  document.getElementById("unplaced").textContent = unplaced ? `${unplaced} สถานีไม่มีพิกัด (ดูในรายการ)` : "";
+}
+
+/* ---------- whole HII network (optional layer; small markers) ---------- */
+let national = null;
+async function toggleNational(on) {
+  if (national) { national.remove(); national = null; }
+  if (!on) return;
+  national = L.layerGroup().addTo(map);
+  const d = await getJSON("/api/stations?scope=all");
+  const focus = new Set(stations.map((s) => s.code));
+  d.stations.filter((s) => s.lat && !focus.has(s.code)).forEach((s) => {
+    const st = STATUS[s.status] || STATUS.unknown;
+    L.circleMarker([s.lat, s.lon], { pane: "stations", radius: 5, color: "#fff", weight: 1, fillColor: st.color, fillOpacity: 0.8, bubblingMouseEvents: false })
+      .bindTooltip(`${esc(s.name_th)} (${esc(s.province || "")}) — ${esc(st.th)}`).on("click", () => showDetail(s.code)).addTo(national);
+  });
+  map.setView([13.8, 100.9], 6);
 }
 
 /* ---------- Chao Phraya profile (1-D, gauges only; no interpolation between them) ---------- */
@@ -299,6 +342,7 @@ async function showDetail(code) {
       <p class="headline" style="color:${st.color}">${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}</p>
       <p class="muted">ระดับน้ำ ${s.level_msl?.toFixed(2) ?? "-"} ม.รทก. · ตลิ่ง ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ม.รทก. ·
         ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})${s.stale ? " ⚠️ ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว" : ""}</p>
+      ${notesText(s) ? `<div class="warnbox">ℹ️ ${esc(notesText(s))}</div>` : ""}
       <p class="big">${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
@@ -410,7 +454,10 @@ async function load() {
     stations = d.stations;
     const latest = stations.map((s) => s.obs_time).filter(Boolean).sort().pop();
     document.getElementById("updated").textContent = `ข้อมูลล่าสุด ${fmtTime(latest)} · ${stations.length} สถานี`;
-    if (st) renderSummary(st);
+    if (st) {
+      renderSummary(st);
+      document.querySelectorAll(".ver").forEach((e) => { e.textContent = `v${st.version}`; });
+    }
     renderMap();
     renderList();
   } catch (e) {

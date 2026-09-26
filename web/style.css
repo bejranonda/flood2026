@@ -116,3 +116,5 @@ a { color: var(--accent); }
 .urgent { background: #fdecea; border: 2px solid var(--critical); border-radius: 10px; padding: 10px; margin: 8px 0; font-weight: 600; }
 .urgent a { color: var(--critical); }
 .leaflet-container { cursor: crosshair; }
+.item .note { color: #6d4c00; }
+.legend label { cursor: pointer; }

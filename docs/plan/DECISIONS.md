@@ -137,3 +137,20 @@
   - **GLF002 is excluded** because its values are not m MSL ([KI-210](../KNOWN_ISSUES.md)).
 - **Result:** 110 focus stations (81 on the map). BKK008 is on the map as ล้นตลิ่ง (1.18 m vs bank 0.88 m), matching HII's own page (104.72 % of capacity).
 - **Owner follow-up ("find coordinates from the map inside the warning page"):** that page's map loads only the same 110-station feed, plus boundary and river layers. **It has no coordinates for the 29 remaining stations** (KI-207). Its river layer did provide the Chao Phraya centreline, now used for river km ([APPROACH §2.9](../APPROACH_AND_METHODS.md)).
+
+### D-024 — Show every station; filter misleading *values*, never stations, and say why
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "You can include all stations to the map. If some parts of data are not good, filter out the misleading data, but show the stations with note.")
+- **Decision:**
+  - `/api/stations` serves **every** focus station, including those without a recent reading. Each station has `notes`: `datum_suspect`, `suspect_values_hidden`, `no_recent_data`, `stale`, `no_bank`, `approx_location`, `no_location`. The UI shows them in the list, tooltip and detail.
+  - **GLF002** is shown with its non-MSL values hidden (KI-210).
+  - **Plausibility rule:** a level more than **3 m above the station's bank** is flagged `out_of_range`, using the *stored* bank on every insert. It is kept in the DB, hidden in the UI, and the last plausible value is shown instead (KI-211).
+  - **14 of the 29 stations** with no position in any HII feed get **approximate OSM positions** (±2–5 km, dashed markers, `coord_source=osm_approx`, cited per station in [station_coords_approx.json](../../src/floodwatch/data/station_coords_approx.json)). The 15 others that couldn't be matched are listed, and the map shows how many are unplaced.
+  - A map toggle shows **the whole HII network** (840 stations) as small markers.
+- **Also:** station markers are on their own top layer; Traffy cells are non-interactive (the owner couldn't tap stations under them).
+
+### D-025 — Versioned releases, version shown in the UI
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "release as next version, show version on UI too")
+- **Decision:**
+  - The single source is `floodwatch.__version__` (plus `pyproject.toml`). `/api/health` and `/api/stats` return it, and the UI shows it in the header badge and footer.
+  - Each release gets a [CHANGELOG.md](../../CHANGELOG.md) entry, a `vX.Y.Z` git tag and a GitHub release (private repo).
+  - `v0.1.0` (by another session) = `b78869c`; **`v0.2.0`** = this release.

@@ -1,22 +1,29 @@
 # HANDOFF.md — State of the project and how to continue
 
-> Updated **2026-09-26 ~10:50 UTC (17:50 ICT)** so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. Read this first, then [CLAUDE.md](CLAUDE.md) (agent rules) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions work on this repo: **always `git pull --ff-only` and check `git log` before editing**.
+> Updated **2026-09-26 ~11:15 UTC (18:15 ICT)** · **release v0.2.0** ([CHANGELOG](CHANGELOG.md)) so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. Read this first, then [CLAUDE.md](CLAUDE.md) (agent rules) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions work on this repo: **always `git pull --ff-only` and check `git log` before editing**.
 
 ## 1. What is live right now
 | Item | State |
 |---|---|
 | **Main domain** | **https://flood.autobahn.bot** (D-017). ⚠️ The `autobahn.bot` zone shows a Cloudflare "Just a moment…" challenge to non-browser clients (curl, headless Chrome, link previews): [KI-506](docs/KNOWN_ISSUES.md), owner action Q18 |
 | Alias | **https://flood.bejranonda.com**: same tunnel, full alias, **no redirect** until KI-506 is fixed |
-| Site | Thai, **mobile-first**: summary strip (status chips that filter, rising/falling counts, Bangkok rain in the next 24 h, reporting freshness for focus + whole network), tabs (รายการ / แผนที่ / เจ้าพระยา), search, bottom-sheet station detail with a **24 h outlook**, recovery range, chart (gaps not bridged), **share + deep link `#s=CODE`**, and **citizen feedback**, **point check** (tap the map anywhere or use GPS: gauges around the pin, citizen reports, warnings; no invented level; shareable `#p=lat,lon`), chart day markers |
+| Site | **v0.2.0** (version in the header badge and footer). Thai, **mobile-first**: summary strip (status chips that filter, rising/falling counts, Bangkok rain in the next 24 h, reporting freshness for focus + whole network), tabs (รายการ / แผนที่ / เจ้าพระยา), search, bottom-sheet station detail with a **24 h outlook**, recovery range, chart (gaps not bridged), **share + deep link `#s=CODE`**, and **citizen feedback**, **point check** (tap the map anywhere or use GPS: gauges around the pin, citizen reports, warnings; no invented level; shareable `#p=lat,lon`), chart day markers |
 | API | `/api/health`, `/stations`, `/stations/{code}`, `/near`, `/stats`, `/profile` (river km), **`/point`**, **`/summary`** (template), `/reports`, `/rain`, `POST /feedback` (instant `urgent` flag), `/feedback/summary`; docs at `/api/docs` ([ARCHITECTURE §1.1](docs/ARCHITECTURE.md)) |
-| Stations | **110 focus stations**, the whole Bangkok Metropolitan Region (Samut Sakhon and Nakhon Pathom added) + the lower Chao Phraya (D-023). 81 on the map (BKK008 fixed); **29 without coordinates** (Ayutthaya gate pairs etc., KI-207); 26 without a bank level. `TEST*` (KI-209) and **GLF002 (not MSL, KI-210)** excluded. Readings older than 24 h show status "unknown" |
-| History | **One-time 365-day backfill** from `waterlevel_graph` (D-018) by `hii_backfill`: 6 stations every 10 min. **28 / 79 done at 10:41 UTC → complete ~12:10 UTC.** Progress: `collector_state.hii_graph_backfilled`. Then `hii_history` refreshes 3 days every 6 h. DB 267 MB |
+| Stations | **111 focus stations**, whole BMR + lower Chao Phraya (D-023). **Every station is shown** (D-024): 96 on the map (82 HII positions + **14 approximate OSM positions**, dashed, KI-207), **15 listed without a position**. Misleading values are hidden with a per-station note: GLF002 not MSL (KI-210); **> bank + 3 m flagged** (BKK003 stuck at 7.45 m, KI-211); > 24 h old → "unknown". Map toggle shows the whole HII network. `TEST*` excluded |
+| History | **One-time 365-day backfill** from `waterlevel_graph` (D-018) by `hii_backfill`: 6 stations every 10 min. **34 / 79 done at 11:09 UTC**; worker restarts this session delayed batches; expected done ~12:30 UTC. Progress: `collector_state.hii_graph_backfilled`. Then `hii_history` refreshes 3 days every 6 h |
 | Server | Single host `HZ-Agent` (Hetzner DE, 4 vCPU / 7.7 GB, ~13 GB free). **No other environment** (D-013) |
 | Stack | `docker compose` project `floodwatch`: `db` (postgres:16-alpine), `worker`, `app` (FastAPI :3000, 2 uvicorn workers), `cloudflared` (profile `public`), `vpn` (profile `vpn`) |
 | Public path | Both hostnames → proxied CNAME → **tunnel `d62b426d…`** (the owner's new token, 2026-09-26 09:19 UTC) → `cloudflared --url http://app:3000`. No inbound ports |
 | Thai egress | `vpn` container (VPN Gate relay 49.48.220.198) + proxy `http://vpn:8888`. **Flaky**: at 09:30 UTC the exit was up but `dds.bangkok.go.th` timed out ([KI-505](docs/KNOWN_ISSUES.md)) |
 | AI (optional) | Cloudflare Workers AI (SEA-LION v4) triages feedback notes in the worker (`ai_triage`, every 15 min; 3,000-neuron daily budget; circuit breaker). **The site never calls AI** and works unchanged without it (D-022). Credentials are in the worker only; the general token is a fallback until `CF_AI_TOKEN` exists (Q21) |
 | Repo | https://github.com/bejranonda/flood2026 (**private**, D-011) |
+
+## 2b. Session 2026-09-26 10:50–11:15 UTC: requests → results
+| Owner request | Result | Where |
+|---|---|---|
+| "Include all stations on the map; filter misleading data but show the stations with a note" | `/api/stations` serves every focus station with `notes`. **14/29** unlocated gauges placed approximately (Nominatim 0/29; an Overpass name search matched an OSM town, canal, temple or RID office in the right province; ±2–5 km, dashed), 15 listed. GLF002 shown with values hidden. **New QC:** > bank + 3 m flagged (BKK003's 7.45 m "538 cm over bank" was a stuck sensor; 3,104 readings re-flagged; genuine max +1.90 m). Whole-country toggle | [D-024](docs/plan/DECISIONS.md), [KI-211](docs/KNOWN_ISSUES.md), [KI-207](docs/KNOWN_ISSUES.md) |
+| "I can't click the station; the Traffy circle catches it" | Stations on a top map pane; Traffy cells smaller and non-interactive (a tap opens the point check) | `web/app.js` |
+| "Release the next version; show the version in the UI" | **v0.2.0**: `__version__`, `/api/health` + `/api/stats`, header badge + footer, [CHANGELOG](CHANGELOG.md), git tag, GitHub release | [D-025](docs/plan/DECISIONS.md) |
 
 ## 2a. Session 2026-09-26 10:20–10:50 UTC: requests → results
 | Owner request | Result | Where |
@@ -51,7 +58,7 @@ docker compose ps
 docker compose logs -f worker                          # collectors + forecasts
 curl -s localhost:3000/api/health | python3 -m json.tool
 curl -s localhost:3000/api/stats  | python3 -m json.tool
-docker compose run --rm --no-deps worker pytest -q    # 27 tests passing at handoff
+docker compose run --rm --no-deps worker pytest -q    # 29 tests passing at handoff
 # feedback review (notes are private; never publish them)
 docker compose exec db psql -U floodwatch -d floodwatch -c "SELECT created_at, code, verdict, depth, note FROM user_feedback ORDER BY id DESC LIMIT 50"
 # backfill progress
@@ -59,7 +66,7 @@ docker compose exec db psql -U floodwatch -d floodwatch -c "SELECT jsonb_array_l
 ```
 - **Secrets:** `.env` (git-ignored; backups `.env.backup-20260926`, `…b`, `…c`). New key this session: **`FEEDBACK_SALT`** (generated; keep it stable, because changing it resets the rate-limit identity). The `.ovpn` is git-ignored. **Never commit `.env`, `certs/`, `*.pem`, `infra/openvpn/*.ovpn`.**
 - **Tunnel token change checklist:** after replacing `CLOUDFLARE_TUNNEL_TOKEN`, run `docker compose --profile public up -d --force-recreate cloudflared`, read the new `tunnelID` from its log, and **re-point every CNAME** (`flood.autobahn.bot`, `flood.bejranonda.com`) to `<new id>.cfargotunnel.com`. The API token has DNS edit on both zones ([KI-504](docs/KNOWN_ISSUES.md)).
-- **Frontend cache:** Cloudflare serves `/static/*` with `max-age=14400`. **Bump `?v=` in `web/index.html`** when `app.js` or `style.css` change (currently `app.js?v=5`, `style.css?v=3`).
+- **Frontend cache:** Cloudflare serves `/static/*` with `max-age=14400`. **Bump `?v=` in `web/index.html`** when `app.js` or `style.css` change (currently `app.js?v=7`, `style.css?v=4`).
 - **AI:** `collector_state.ai_usage` shows today's calls, neurons, failures and `paused_until`. To reset the breaker, run `UPDATE collector_state SET value = value || '{"failures":0,"paused_until":null}'::jsonb WHERE key='ai_usage'`. To disable, set `AI_ENABLED=0` in `.env` and recreate the worker.
 - **River km:** regenerate with `python3 scripts/build_chainage.py stations.csv > src/floodwatch/data/chaophraya_chainage.json`.
 - **Worker schedule** ([worker.py](src/floodwatch/worker.py)): HII latest 10 min; Traffy 10 min; **`hii_backfill` 10 min (6 stations; a no-op when done)**; HII rain 30 min; Open-Meteo hourly; `hii_stations` and `hii_history` every 6 h; forecasts 30 min; disk check hourly; `bma_dds` every 3 h if `THAI_EGRESS_PROXY` is set.
@@ -84,7 +91,7 @@ docker compose exec db psql -U floodwatch -d floodwatch -c "SELECT jsonb_array_l
 ## 5. Next steps, in priority order
 1. **Owner actions:** Q21 (a Workers-AI-only token), Q22 (Traffy / voice AI?), Q18 (relax the `autobahn.bot` challenge for `flood.` → then add a 301 from the old domain), Q15/Q16 (API token rights + **R2 S3 credentials** → off-site backups), Q19 (who reads feedback), Q20 (delete the old tunnel `ecd8a7b9…` if unused).
 2. **Check the backfill finished** (69 stations with a numeric id; expected ~11:30 UTC 2026-09-26), then the next forecast run. Record in APPROACH §3.3 how many stations now serve `tide`/`tide_trend` (before: 43 tide-fitted stations were still on persistence). Watch disk (`/api/health` → `disk`) and DB size after the ~5M-row load.
-3. **Coordinates for the 29 stations** (mostly Ayutthaya gate pairs `ATG*`): geocode gate names via OSM, flag as approximate. Then **polder-aware "near me" / point check** (biggest UX gap, [UX_VALIDATION §3](docs/UX_VALIDATION.md)): polder polygons (BMA drainage zones) → choose the gauge in the same water body.
+3. **Positions for the 15 unplaced stations**, and exact positions for the 14 approximate ones: RID's gate coordinates are the proper source ([KI-207](docs/KNOWN_ISSUES.md)). More QC rules: flatline and rate of change ([KI-211](docs/KNOWN_ISSUES.md)). Then **polder-aware "near me" / point check** (biggest UX gap, [UX_VALIDATION §3](docs/UX_VALIDATION.md)): polder polygons (BMA drainage zones) → choose the gauge in the same water body.
 4. **1-D river interpolation (D-019):** chainage exists now (HII centreline). Next: a per-reach bias term + tide phase lag fitted on the year of history; leave-one-out on C.12 / CPY015 / CPY014. Ship only if RMSE < 0.10 m (today 0.20).
 5. **Feedback use:** a weekly script comparing `verdict` with the displayed snapshot and later observations; a small review page if the owner wants one (Q19).
 6. **Coordinates / bank for the 34 / 28 stations** lacking them; **BMA / DWR** through a better Thai egress; the **Navy tide PDF** link; **GLF001** by asking HII/Navy directly.
@@ -92,6 +99,7 @@ docker compose exec db psql -U floodwatch -d floodwatch -c "SELECT jsonb_array_l
 8. **Alerts** (Q7) and a service worker for offline use.
 
 ## 6. Rules that must survive a change of harness
+- **Show every station; hide misleading values with a note** (D-024). **Releases:** bump the version, CHANGELOG, tag, GitHub release (D-025).
 - The **evidence rule**: no invented endpoints or numbers; owner statements are checked too.
 - An **honest User-Agent**: `BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)`.
 - **Attribution**, and **ranges instead of countdowns**.

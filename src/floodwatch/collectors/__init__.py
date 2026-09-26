@@ -156,7 +156,7 @@ def hii_stations() -> dt.datetime | None:
                                "https://tiwrm.hii.or.th/thaiwater_l5/public/queryStation?" + urllib.parse.urlencode({"prov": province}))
         for item in listing:
             code = (item.get("code") or "").strip()
-            if not code or code in have or code.startswith("TEST") or code in DATUM_SUSPECT:  # KI-209, KI-210
+            if not code or code in have or code.startswith("TEST"):  # HII test gauges (KI-209)
                 continue
             if unavailable.get(code, "") > retry_before:  # known-broken codes: retry once a day, not every run
                 skipped += 1
@@ -204,9 +204,31 @@ def hii_stations() -> dt.datetime | None:
         c.commit()
     if located:
         log.info("hii_stations: coordinates added from the map feed for %d existing stations", located)
+    approx = _apply_approx_coords()
+    if approx:
+        log.info("hii_stations: approximate OSM positions applied to %d stations", approx)
     log.info("hii_stations: added %d chart-only stations (%d with coordinates); %d unavailable via chart, "
              "%d skipped (failed < 24 h ago)", added, coordinated, failed, skipped)
     return None
+
+
+def _apply_approx_coords() -> int:
+    """Curated approximate positions (src/floodwatch/data/station_coords_approx.json, OSM, KI-207) for stations no
+    HII feed locates. Only fills missing coordinates; marked coord_source='osm_approx' so the UI can say so."""
+    from importlib import resources
+    data = json.loads(resources.files("floodwatch").joinpath("data/station_coords_approx.json").read_text())
+    n = 0
+    with db.connect() as c:
+        for code, m in data["stations"].items():
+            r = c.execute("""UPDATE station SET lat=%s, lon=%s, coord_source='osm_approx', coord_precision_km=%s,
+                               updated_at=now() WHERE code=%s AND lat IS NULL RETURNING code""",
+                          (m["lat"], m["lon"], m["precision_km"], code)).fetchone()
+            if r:
+                c.execute("""INSERT INTO station_version (code, lat, lon, source) VALUES (%s,%s,%s,%s)
+                             ON CONFLICT DO NOTHING""", (code, m["lat"], m["lon"], f"osm_approx {m['osm']}"))
+                n += 1
+        c.commit()
+    return n
 
 
 def openmeteo() -> dt.datetime | None:

@@ -25,7 +25,8 @@
 | KI-206 | Sentinel values, stale stations, spikes | Data quality | 🟡 |
 | KI-208 | HII `ground_level` at river gauges is the channel bed, not land | Data quality | ℹ️ |
 | KI-209 | HII test gauges (`TEST*`) appear in station lists | Data quality | 🟢 |
-| KI-210 | GLF002 (Tha Chin mouth) values are not m MSL | Data quality | 🔴 (excluded) |
+| KI-210 | GLF002 (Tha Chin mouth) values are not m MSL | Data quality | 🟡 (shown, values hidden) |
+| KI-211 | Implausible readings far above bank (sensor ceiling, spikes) | Data quality | 🟢 (flagged) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -113,7 +114,9 @@ C.29A (Bang Sai), Memorial Bridge / Pak Khlong Talat (C.4 or C.22 ⚠️) and Fo
     - `queryStation`'s `water1` has no timestamp, and for GLF001 it read **0.03 m at 08:30 and at 09:04 UTC**. A tide gauge doesn't stay flat for 35 minutes, so the value is frozen; not ingested.
     - **Remaining routes:** Navy/HII direct contact (Q17), or the RID/Navy Fort Chula series if published elsewhere.
   - Known-500 codes are now retried **once a day** instead of three times on every 6 h run (`collector_state.hii_chart_unavailable`).
-  - **34 focus stations had no coordinates** (the map feed covers only ~110 stations). **2026-09-26 (D-023):** the map feed now also fills existing stations, which fixed BKK008. **29 remain** (all absent from the feed): ATG011 ATG021 ATG031 ATG032 ATG042 ATG051 ATG052 ATG081 ATG082 ATG091 ATG092 ATG101 ATG111 ATG112 ATG122 ATG151 ATG152 ATG161 ATG162 ATG171 ATG181 ATG182 BKC006 FROC02 HDA001 HDA002 HDA003 TBW014 TCP013. Most are Ayutthaya gate pairs (upstream/downstream, e.g. ATG081/082 at ปตร.พระธรรมราชา), so geocoding the gate name (OSM) is the likely fix, flagged as approximate.
+  - **34 focus stations had no coordinates** (the map feed covers only ~110 stations). **2026-09-26 (D-023):** the map feed now also fills existing stations, which fixed BKK008. **29 remain** (all absent from the feed): ATG011 ATG021 ATG031 ATG032 ATG042 ATG051 ATG052 ATG081 ATG082 ATG091 ATG092 ATG101 ATG111 ATG112 ATG122 ATG151 ATG152 ATG161 ATG162 ATG171 ATG181 ATG182 BKC006 FROC02 HDA001 HDA002 HDA003 TBW014 TCP013. Most are Ayutthaya gate pairs (upstream/downstream, e.g. ATG081/082 at ปตร.พระธรรมราชา).
+    - **2026-09-26 (D-024):** Nominatim found none of the gate names. An Overpass name search matched **14** to an OSM town, canal, temple or RID office in the right province, now placed **approximately** (±2–5 km, dashed markers, cited in [station_coords_approx.json](../src/floodwatch/data/station_coords_approx.json)).
+    - **15 unplaced** (listed, counted on the map): ATG011 ATG042 ATG051 ATG052 ATG081 ATG082 ATG091 ATG092 ATG101 ATG111 ATG112 FROC02 HDA002 HDA003 TCP013. The proper fix is RID's gate coordinates.
   - **28 focus stations have no bank level** → status "unknown", no recovery estimate.
   - Chart placeholders `bank=0, ground=0` mean *unknown* (now treated as such).
 - **Not the cause:** BKK021 was already served (the owner's example page); it is critical (2.82 m vs bank 2.20).
@@ -170,8 +173,15 @@ Store UTC and display Asia/Bangkok. Never use naive `datetime.now()`.
 ### KI-208 — HII `ground_level` at river gauges is the channel bed · ℹ️
 `ground_level` is the **bed of the channel**, not the land around the gauge. Examples: CPY015 −15.70, C.12 −14.52, CPY014 −13.31 m MSL. It is correct for the status percentage (depth relative to bank depth). It **must not** be used as terrain or to interpolate a land surface ([APPROACH §2.9](APPROACH_AND_METHODS.md)).
 
-### KI-210 — GLF002 (Tha Chin mouth) values are not m MSL · 🔴 (excluded)
-`getGraphFirst/GLF002` serves 4,410 values over 30 days with a **median of 5.53 m, a maximum of 7.40 m and spikes to −28.59 m**. The map feed's latest was 6.816. At a river mouth, MSL values should be around 0–2 m (CPY015 over the same period: −0.94 to 1.58, median 0.44). So the series is on another datum (LLW or gauge zero, KI-201), with bad spikes. **Excluded** via `DATUM_SUSPECT` in `config.py`: not collected, not shown. It would be a valuable tide reference for the western side once HII confirms its datum offset. Same gauge family as GLF001 (Fort Chula, HTTP 500).
+### KI-210 — GLF002 (Tha Chin mouth) values are not m MSL · 🟡 (shown, values hidden)
+`getGraphFirst/GLF002` serves 4,410 values over 30 days with a **median of 5.53 m, a maximum of 7.40 m and spikes to −28.59 m**. The map feed's latest was 6.816. At a river mouth, MSL values should be around 0–2 m (CPY015 over the same period: −0.94 to 1.58, median 0.44). So the series is on another datum (LLW or gauge zero, KI-201), with bad spikes. **Since D-024:** collected and shown on the map with the note "not m MSL"; its level, chart and forecast are hidden (`DATUM_SUSPECT` in `config.py`). It would be a valuable tide reference for the western side once HII confirms its datum offset. Same gauge family as GLF001 (Fort Chula, HTTP 500).
+
+### KI-211 — Implausible readings far above bank · 🟢 (flagged)
+BKK003 (คลองมหาสวัสดิ์ บางกรวย-สวนผัก, bank 2.07 m) alternates daily between plausible 0.5–1.9 m and a **flat 7.45 m** (+5.4 m over bank). That is a sensor ceiling or stuck value, not water; HII's own table shows the same 7.453. It was ranked first as "538 cm over bank".
+- **Rule (D-024):** a level > **bank + 3 m** is flagged `out_of_range`, using the station's *stored* bank on every insert (the latest-values feed lacks BKK003's bank).
+- **Evidence:** over 30 days of all focus gauges, genuine maxima reach +1.90 m (C.67); above +3 m there were only BKK003 (2,798 readings), BKK006 (4 spikes) and CPY012 (3). 3,104 stored readings were re-flagged, not deleted.
+- **UI:** the last plausible value is shown, marked stale, with the note "ค่าล่าสุดผิดปกติ … จึงซ่อนไว้".
+- **Open:** spikes below the ceiling and stuck values within range (flatline and rate-of-change rules still to add, KI-206).
 
 ### KI-209 — HII test gauges in station lists · 🟢
 `queryStation` lists test gauges (`TEST02` and three more `TEST*` codes in Bangkok). **Fixed:** `hii_stations` skips `TEST*`, the API filters them out, and the 4 existing rows were set to `in_focus=false`.

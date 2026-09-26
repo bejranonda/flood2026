@@ -40,3 +40,16 @@ def test_old_reading_is_not_reported_as_current_status():
 def test_chainage_data_is_packaged_and_ordered():
     ch = api.CHAINAGE
     assert ch and ch["CPY015"]["chainage_km"] < ch["C.12"]["chainage_km"] < ch["CPY014"]["chainage_km"] < ch["C.13"]["chainage_km"]
+
+
+def test_misleading_values_are_filtered_but_the_station_is_kept():
+    now = dt.datetime.now(dt.timezone.utc)
+    base = {"code": "GLF002", "name_th": "x", "name_en": None, "lat": 13.5, "lon": 100.3, "bank_msl": None,
+            "ground_msl": None, "agency": None, "province": None, "amphoe": None, "river": None, "level_msl": 6.8,
+            "discharge": None, "situation_level": None, "obs_time": now, "trend12": "rising", "delta12": 0.2,
+            "recovery": None, "forecast_time": None, "coord_source": None, "coord_precision_km": None}
+    r = api._station_row(base)
+    assert r["level_msl"] is None and r["trend12"] is None and "datum_suspect" in r["notes"] and r["status"] == "unknown"
+    r = api._station_row({**base, "code": "ATG151", "coord_source": "osm_approx", "coord_precision_km": 5, "bank_msl": 3.0})
+    assert r["level_msl"] == 6.8 and "approx_location" in r["notes"]
+    assert "no_location" in api._station_row({**base, "code": "X", "lat": None})["notes"]

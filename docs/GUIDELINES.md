@@ -134,7 +134,9 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 11. **"Nearest gauge" isn't "your home":** say so wherever distance-based results appear (Bangkok isn't flat; walls split areas).
 12. **Point check (D-021):** show a category with its range and confidence, never a level or depth at the pin. The four warnings are always visible. No verdict at very low confidence. Put citizen reports next to the gauges.
 13. **Charts need a rough time axis:** day markers with short Thai dates (owner feedback 2026-09-26); no fine ticks.
-14. **Urgent notes:** if a note matches emergency keywords, show 1669 / 1784 / 191 immediately, and say the site has no responders.
+14. **Filter values, never stations (D-024):** keep every station visible and hide only the misleading value (wrong datum, implausible, stale), always with a note saying why. Approximate positions are dashed and give their radius.
+15. **Version on screen (D-025):** the header badge and footer show the deployed version from the API.
+16. **Urgent notes:** if a note matches emergency keywords, show 1669 / 1784 / 191 immediately, and say the site has no responders.
 
 ---
 
@@ -143,6 +145,9 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **AI never writes safety facts** (status, levels, times, advice). Those come from templates and the forecast code.
 - AI output must match a strict schema (`parse_label`) or it is discarded. AI may add urgency, never remove it.
 - **No personal data to AI** beyond the note text the user chose to send; no locations or hashes. Use a token scoped to Workers AI only.
+
+## 6c. Releases (D-025)
+Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGELOG.md) entry, tag `vX.Y.Z`, publish a GitHub release, and bump the `?v=` asset query. The UI reads the version from `/api/stats`.
 
 ## 7. Code and security standards
 

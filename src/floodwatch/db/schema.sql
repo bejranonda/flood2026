@@ -119,3 +119,5 @@ CREATE INDEX IF NOT EXISTS user_feedback_time_idx ON user_feedback (created_at D
 ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS loc_source text;   -- gps | pin (a pin can be anywhere)
 ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS rule_label jsonb;  -- instant keyword triage (always)
 ALTER TABLE user_feedback ADD COLUMN IF NOT EXISTS ai_label jsonb;    -- optional Workers AI triage (D-022)
+ALTER TABLE station ADD COLUMN IF NOT EXISTS coord_source text;          -- NULL = HII feed; osm_approx = curated
+ALTER TABLE station ADD COLUMN IF NOT EXISTS coord_precision_km real;    -- rough radius for approximate positions

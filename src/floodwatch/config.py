@@ -11,7 +11,8 @@ FOCUS_PROVINCES = (
     "กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม", "พระนครศรีอยุธยา",
     "อ่างทอง", "สิงห์บุรี", "ชัยนาท", "นครสวรรค์",
 )
-# Gauges whose values are clearly not m MSL: collected nowhere, shown nowhere, until the datum is known (KI-210).
+# Gauges whose values are clearly not m MSL (KI-210): collected and archived, shown on the map with a note, but
+# their levels are hidden and never forecast until the datum offset is known.
 DATUM_SUSPECT = {"GLF002": "Tha Chin mouth: median 5.5 m, max 7.4 m, spikes to -28.6 m (MSL gauges nearby: ~0-1.6 m)"}
 # Stations that must be tracked even if the latest-values feed omits them (BKK008 is absent from
 # waterlevel_load but served by the HII chart XHR; see research/VALIDATION_2026-09-26.md §E).

@@ -9,6 +9,9 @@ from floodwatch.config import FOCUS_PROVINCES
 
 ICT = dt.timezone(dt.timedelta(hours=7))
 SENTINEL_ABS = 1000.0  # HII uses 999999 for missing/bad values (KI-206)
+# Physically implausible: > 3 m above the bank. Evidence 2026-09-26 (30 days, all focus gauges): genuine maxima
+# reach +1.90 m (C.67); above +3 m only broken readings (BKK003 stuck at a 7.45 m ceiling, spikes at BKK006, CPY012).
+MAX_ABOVE_BANK_M = 3.0
 
 
 def parse_local(ts: str | None) -> dt.datetime | None:
@@ -39,7 +42,7 @@ def qc_level(level: float | None, bank: float | None, ground: float | None) -> t
     if abs(level) >= SENTINEL_ABS:
         return None, "sentinel"
     lo = (ground - 5.0) if ground is not None else -30.0
-    hi = (bank + 8.0) if bank is not None else 200.0
+    hi = (bank + MAX_ABOVE_BANK_M) if bank is not None else 200.0
     if not (lo <= level <= hi):
         return level, "out_of_range"
     return level, "ok"

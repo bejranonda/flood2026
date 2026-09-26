@@ -249,7 +249,10 @@ def run_all() -> int:
                  AND valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY point""").fetchall()}
     from floodwatch.config import RAIN_POINTS
     n = 0
+    from floodwatch.config import DATUM_SUSPECT
     for s in stations:
+        if s["code"] in DATUM_SUSPECT:  # values not in m MSL (KI-210): never forecast or show them
+            continue
         with db.connect() as c:
             rows = c.execute(
                 """SELECT obs_time, level_msl FROM observation WHERE code=%s AND quality_flag='ok'

@@ -25,8 +25,8 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 ### 1.1 Live API (FastAPI, `/api/docs`)
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/health` | Per-source health, data age |
-| `GET /api/stations?scope=focus\|all`, `GET /api/stations/{code}?days=` | Latest level, status vs bank, trend, recovery; history + forecast payload + 7-day feedback counts |
+| `GET /api/health` | Per-source health, data age, **version** |
+| `GET /api/stations?scope=focus\|all`, `GET /api/stations/{code}?days=` | **Every** station, with latest plausible level, status vs bank, trend, recovery, and `notes` explaining any hidden value or approximate/no location (D-024); history + forecast payload + 7-day feedback counts |
 | `GET /api/near?lat=&lon=&n=` | Nearest gauges by distance (⚠️ not polder-aware) |
 | `GET /api/stats` | Compact statistics: status and trend counts, reporting freshness (focus and whole HII network), metadata gaps, Bangkok 24 h rain ([APPROACH §3.4](APPROACH_AND_METHODS.md)) |
 | `GET /api/profile` | Chao Phraya main-stem gauges north → south with freeboard (no interpolation, D-019) |

@@ -14,11 +14,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-<link rel="stylesheet" href="/static/style.css?v=3">
+<link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
 <header class="top">
-  <div class="brand"><strong>🌊 BKK FloodWatch</strong><span class="beta">ฉบับทดลอง</span></div>
+  <div class="brand"><strong>🌊 BKK FloodWatch</strong><span class="beta">ฉบับทดลอง <span class="ver"></span></span></div>
   <div class="updated" id="updated" aria-live="polite">กำลังโหลดข้อมูล…</div>
 </header>
 
@@ -61,10 +61,10 @@
   <p><strong>วิธีคาดการณ์:</strong> แต่ละสถานีทดสอบย้อนหลังกับข้อมูลจริงของตัวเอง (ค่าคงที่, ค่าคงที่+น้ำขึ้นน้ำลง,
     +แนวโน้ม) แล้วเลือกวิธีที่แม่นกว่าการใช้ค่าปัจจุบันเกิน 10% เท่านั้น ช่วงคาดการณ์คำนวณจากความคลาดเคลื่อนจริงในอดีต ·
     สถานะเทียบกับระดับตลิ่งของสถานี ไม่ใช่ระดับพื้นถนนหรือบ้านของคุณ (พื้นที่ กทม. สูงต่ำไม่เท่ากัน) · เวลาแสดงเป็นเวลาประเทศไทย</p>
-  <p class="muted">โครงการอาสา ไม่แสวงหากำไร · <a href="/api/docs">API</a> · <a href="/api/health">สถานะระบบ</a></p>
+  <p class="muted">โครงการอาสา ไม่แสวงหากำไร · เวอร์ชัน <span class="ver">-</span> · <a href="/api/docs">API</a> · <a href="/api/health">สถานะระบบ</a></p>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="/static/app.js?v=5"></script>
+<script src="/static/app.js?v=7"></script>
 </body>
 </html>

@@ -35,6 +35,8 @@
 | 14 | "I want to check **my** spot, and there's no station there" | **Point check** (D-021): tap the map anywhere, or "สถานีใกล้ฉัน" → an area category with range and confidence, nearby river/khlong gauges, citizen reports within ~1 km, rain, and 4 warnings. No verdict at very low confidence. Shareable `#p=lat,lon`. Report water at the pin |
 | 15 | "I can't read even a rough time from the chart" (owner) | **Day markers with short dates** (e.g. "24 ก.ย.") on the chart; "ตอนนี้" moved to the top; no fine ticks |
 | 17 | "BKK008 Saen Saep isn't on the map" (owner) | Coordinates from HII's map feed for every station lacking them (D-023); BKK008 now shows as ล้นตลิ่ง. Samut Sakhon and Nakhon Pathom added (whole BMR) |
+| 18 | "I can't tap the station, the Traffy circle catches it" (owner) | Stations on a top map layer; Traffy cells smaller and non-interactive (a tap opens the point check, which lists the counts) |
+| 19 | "Show all stations; hide bad data with a note" (owner) | Every station listed and, where possible, placed; dashed markers = approximate position; notes for hidden values; whole-country toggle; version shown (D-024, D-025) |
 | 16 | "What if someone writes that they're trapped?" | Keyword rules flag emergency notes instantly, and the page shows **1669 / 1784 / 191** with "this site has no responders" |
 
 ## 3. Still missing (prioritised)

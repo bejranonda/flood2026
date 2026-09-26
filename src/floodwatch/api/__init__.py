@@ -16,11 +16,11 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
-from floodwatch import ai, db, point
-from floodwatch.config import RAIN_POINTS
+from floodwatch import __version__, ai, db, point
+from floodwatch.config import DATUM_SUSPECT, RAIN_POINTS
 from floodwatch.forecast import classify_status
 
-app = FastAPI(title="BKK FloodWatch API", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(title="BKK FloodWatch API", version=__version__, docs_url="/api/docs", openapi_url="/api/openapi.json")
 WEB_DIR = Path(os.environ.get("WEB_DIR", Path(__file__).resolve().parents[3] / "web"))
 CACHE = {"Cache-Control": "public, max-age=60, stale-while-revalidate=300"}
 STALE_MIN = 180  # observation older than this is shown as stale
@@ -44,7 +44,7 @@ def health():
     with db.connect() as c:
         rows = c.execute("SELECT * FROM source_health ORDER BY source").fetchall()
         last = c.execute("SELECT max(obs_time) AS t FROM observation").fetchone()["t"]
-    return _json({"now": dt.datetime.now(dt.timezone.utc).isoformat(), "latest_observation": _iso(last),
+    return _json({"version": __version__, "now": dt.datetime.now(dt.timezone.utc).isoformat(), "latest_observation": _iso(last),
                   "latest_observation_age_min": _age_min(last),
                   "sources": [{k: (_iso(v) if isinstance(v, dt.datetime) else v) for k, v in r.items()} for r in rows]},
                  cache=False)
@@ -52,24 +52,43 @@ def health():
 
 STATIONS_SQL = """
 SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.agency, s.province, s.amphoe,
-       s.river, o.obs_time, o.level_msl, o.discharge, o.situation_level,
+       s.river, s.coord_source, s.coord_precision_km, o.obs_time, o.level_msl, o.discharge, o.situation_level,
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
-       f.payload->'recovery' AS recovery, f.issue_time AS forecast_time
+       f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag
 FROM station s
 LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM observation
                    WHERE code=s.code AND level_msl IS NOT NULL AND quality_flag='ok'
                    ORDER BY obs_time DESC LIMIT 1) o ON true
 LEFT JOIN LATERAL (SELECT payload, issue_time FROM forecast_run WHERE code=s.code
                    ORDER BY issue_time DESC LIMIT 1) f ON true
+LEFT JOIN LATERAL (SELECT obs_time AS raw_time, quality_flag AS raw_flag FROM observation WHERE code=s.code
+                   ORDER BY obs_time DESC LIMIT 1) q ON true
 WHERE (%(all)s OR s.in_focus) AND s.code !~ '^TEST'
 """
 
 
 def _station_row(r: dict) -> dict:
+    """One station for the UI. Misleading values are filtered, never the station: `notes` says what and why."""
+    r = dict(r)
+    notes = []
+    if r["code"] in DATUM_SUSPECT:  # values not m MSL (KI-210): hide the level, keep the station
+        notes.append("datum_suspect")
+        r.update(level_msl=None, trend12=None, delta12=None, recovery=None)
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])
     age = _age_min(r["obs_time"])
     if age is None or age > UNKNOWN_AFTER_MIN:
         status = "unknown"
+        notes.append("no_recent_data")
+    elif age > STALE_MIN:
+        notes.append("stale")
+    if r.get("raw_flag") not in (None, "ok") and (r["obs_time"] is None or r["raw_time"] > r["obs_time"]):
+        notes.append("suspect_values_hidden")  # newest reading failed QC (e.g. BKK003 stuck at 7.45 m): KI-211
+    if r["bank_msl"] is None:
+        notes.append("no_bank")
+    if r.get("lat") is None:
+        notes.append("no_location")
+    elif r.get("coord_source") == "osm_approx":
+        notes.append("approx_location")
     return {
         "code": r["code"], "name_th": r["name_th"] or r["code"], "name_en": r["name_en"], "lat": r["lat"],
         "lon": r["lon"], "bank_msl": r["bank_msl"], "agency": r["agency"], "province": r["province"],
@@ -78,7 +97,8 @@ def _station_row(r: dict) -> dict:
         "status": status, "pct_bank": None if pct is None else round(pct, 1),
         "freeboard_m": None if (r["level_msl"] is None or r["bank_msl"] is None) else round(r["bank_msl"] - r["level_msl"], 2),
         "trend12": r["trend12"], "delta12_median": r["delta12"], "recovery": r["recovery"],
-        "forecast_time": _iso(r["forecast_time"]),
+        "forecast_time": _iso(r["forecast_time"]), "notes": notes,
+        "coord_precision_km": r.get("coord_precision_km"),
     }
 
 
@@ -87,7 +107,7 @@ def stations(scope: str = Query("focus", pattern="^(focus|all)$")):
     with db.connect() as c:
         rows = c.execute(STATIONS_SQL, {"all": scope == "all"}).fetchall()
     return _json({"generated": dt.datetime.now(dt.timezone.utc).isoformat(),
-                  "stations": [_station_row(r) for r in rows if r["level_msl"] is not None or r["code"] == "BKK008"]})
+                  "stations": [_station_row(r) for r in rows]})  # all stations; bad values filtered per station
 
 
 @app.get("/api/stations/{code}")
@@ -102,6 +122,8 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
         fc = c.execute("SELECT payload FROM forecast_run WHERE code=%s ORDER BY issue_time DESC LIMIT 1",
                        (code,)).fetchone()
         fb = _feedback_counts(c, code).get(code)
+    if code in DATUM_SUSPECT:  # KI-210: the station is shown, its non-MSL values are not
+        obs, fc = [], None
     return _json({"station": _station_row(rows[0]), "feedback7d": fb,
                   "observations": [[_iso(o["obs_time"]), o["level_msl"], o["discharge"]] for o in obs],
                   "forecast": fc["payload"] if fc else None})
@@ -199,7 +221,7 @@ def _stats_data() -> dict:
         trend[s["trend12"] if s["trend12"] in trend else "unknown"] += 1
     frows = [r for r in rows if r["in_focus"]]
     return {
-        "generated": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "generated": dt.datetime.now(dt.timezone.utc).isoformat(), "version": __version__,
         "focus": {**_freshness([r["obs_time"] for r in frows]), "status": status, "trend12": trend,
                   "no_coords": sum(not r["has_coords"] for r in frows),
                   "no_bank": sum(not r["has_bank"] for r in frows)},

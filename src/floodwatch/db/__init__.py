@@ -55,6 +55,17 @@ def upsert_station(c: psycopg.Connection, s: dict[str, Any]) -> None:
         )
 
 
+def _flag_implausible(c: psycopg.Connection, rows: list[dict[str, Any]]) -> None:
+    """Apply the > bank + 3 m plausibility rule with the *stored* bank, whatever the source sent (some feeds carry
+    no bank for a station, e.g. BKK003 in waterlevel_load). Flag, never delete (KI-211)."""
+    from floodwatch.collectors.parsing import MAX_ABOVE_BANK_M
+    codes = sorted({r["code"] for r in rows})
+    since = min(r["obs_time"] for r in rows)
+    c.execute("""UPDATE observation o SET quality_flag='out_of_range' FROM station s
+                 WHERE s.code=o.code AND o.code = ANY(%s) AND o.obs_time >= %s AND o.quality_flag='ok'
+                   AND s.bank_msl IS NOT NULL AND o.level_msl > s.bank_msl + %s""", (codes, since, MAX_ABOVE_BANK_M))
+
+
 def insert_observations(c: psycopg.Connection, rows: list[dict[str, Any]]) -> int:
     """Upsert observations. Large batches (backfills: ~50k rows per station-year) go through COPY into a temp
     table, which is orders of magnitude faster than row-by-row inserts. First occurrence of a key wins."""
@@ -69,6 +80,7 @@ def insert_observations(c: psycopg.Connection, rows: list[dict[str, Any]]) -> in
             cur.executemany(
                 f"""INSERT INTO observation ({", ".join(cols)})
                     VALUES ({", ".join(f"%({k})s" for k in cols)}) {conflict}""", rows)
+        _flag_implausible(c, rows)
         return len(rows)
     seen: set = set()
     unique = []
@@ -84,6 +96,7 @@ def insert_observations(c: psycopg.Connection, rows: list[dict[str, Any]]) -> in
             for r in unique:
                 cp.write_row([r.get(k) for k in cols])
         cur.execute(f"INSERT INTO observation ({', '.join(cols)}) SELECT {', '.join(cols)} FROM obs_stage {conflict}")
+    _flag_implausible(c, unique)
     return len(unique)
 
 

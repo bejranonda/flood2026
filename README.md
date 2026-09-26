@@ -10,10 +10,10 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): MVP live at https://flood.autobahn.bot** (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
+> **Current status (2026-09-26): v0.2.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)) (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
 >
 > It collects:
-> - HII telemetry (805 stations in the main feed plus chart-only stations → **110 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya, with up to **one year** of hourly history);
+> - HII telemetry (805 stations in the main feed plus chart-only stations → **111 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya; **every station is on the map or listed**, and misleading values are hidden with a note, with up to **one year** of hourly history);
 > - Open-Meteo rain forecasts;
 > - Traffy reports;
 > - **citizen feedback** from the site itself.
@@ -76,6 +76,7 @@ infra/ (vpn/ sidecar, legacy Caddyfile)  scripts/ (build_chainage.py)  tests/  d
 ## Documentation
 | Doc | What's inside |
 |---|---|
+| [CHANGELOG.md](CHANGELOG.md) | Releases (v0.1.0, v0.2.0) |
 | [docs/README.md](docs/README.md) | Index, reading order, evidence markers |
 | [docs/plan/PLAN.md](docs/plan/PLAN.md) | Roadmap, gates, risks · [DECISIONS](docs/plan/DECISIONS.md) · [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md) |
 | [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) | Three Waters, datums, stations (HII live metadata), polders, the 2026 event, contacts |
