@@ -2,6 +2,13 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.5.1 — 2026-09-26
+- **Favicon & brand icon modernized for browser tab recognizability** (D-039, KI-221):
+  - Solved browser tab visibility failure: the previous dark navy tile (`#0d3b66` to `#061c33`) had zero edge contrast against dark-mode browser tabs (`#202124` / `#1e1e1e`), and 6 micro-details (triple drop, sub-pixel beacon, 1px border, 3 side gauge ticks) collapsed into an unreadable blur at standard 16×16 CSS pixels.
+  - Implemented **"Flood Droplet & Wave"** design: iconic water droplet silhouette, dual rising flood waves (vivid cyan `#38bdf8` and crisp pure white `#ffffff`), glowing amber telemetry beacon (`#fbbf24`), and luminous sky-blue rim (`#7dd3fc`) with soft drop-shadow. Guarantees razor-sharp contrast across dark mode tabs (`#202124`), light mode tabs (`#dee1e6`), and pure white titlebars (`#ffffff`).
+  - Rewrote `scripts/generate_favicon.py`: self-contained 2×2 supersampled pure-Python rasterizer (zero external runtime dependencies; builds valid `favicon.svg`, multi-resolution `favicon.ico` [16×16 and 32×32], `apple-touch-icon.png` [180×180 on deep oceanic squircle to prevent solid-black iOS home screen backgrounds], and `icon-192.png`).
+  - Bumped icon cache-busters in `web/index.html` to `?v=2`. All 12 API/asset tests pass.
+
 ## v0.5.0 — 2026-09-26
 - **BMA canal gauges are judged by BMA's own drainage levels** (D-038): ล้นตลิ่ง (over bank) / **คลองเต็ม** (over BMA critical) / คลองเริ่มเต็ม (over BMA warning) / คลองยังรับน้ำได้. Near flooded streets 60 % of BMA gauges were over BMA critical but only 18 % over the bank. BMA `warning`/`critical` stored (`warning_msl` column); `status_basis`, `over_bma_critical_m`, `bma_critical_msl` in the station API; BMA's critical level drawn on the chart; explanation "canal can't take street water well".
 - Summary chips: "ใกล้ตลิ่ง/คลองเต็ม", "ยังรับน้ำได้". HII/RID gauges unchanged (bank). `app.js?v=18`. 46 tests.

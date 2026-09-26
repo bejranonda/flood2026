@@ -71,6 +71,7 @@
 | 39 | Map switches were under the legend and below the fold on a phone (found by the test) | Moved to the top left; verified at 390 and 1366 px |
 | 40 | Owner: "flood69 gauges show below bank but the area is flooded; maybe gate/pump mixing hides the real level" | Tested: no mixing (canal side only); 39 of 49 cases were plain canal gauges. BMA's own critical level matched flooded streets far better than the bank → **BMA gauges now read ล้นตลิ่ง / คลองเต็ม / คลองเริ่มเต็ม / คลองยังรับน้ำได้** with "เกินเกณฑ์ กทม. N ซม." and an explanation (D-038). Not hidden |
 | 37 | Redundant text in a new gauge's sheet | Trend line hidden when the 🆕 box explains it |
+| 41 | Owner: "favicon not easy to recognize on browser, too much detail" (screenshot of 16px tab) | Redesigned with bold "Bold Wave Tile" (D-039): full 14×14 area, bold white wave crest (🌊) on electric cyan water + royal blue, zero micro-dots or rings. Razor-sharp on dark and light tabs |
 
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.

@@ -183,4 +183,11 @@ Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGEL
 ### 7.3 Frontend
 - Thai-first and i18n-ready. Minimal bundle; loads well on 3G/4G.
 - Talks only to our API. CSS variables for design tokens.
-- Escape every external string (`esc()`); no `innerHTML` with raw API text. Bump the `?v=` query on `app.js` / `style.css` in `index.html` when they change: `/static` files carry no Cache-Control, so browsers and the Cloudflare edge may cache them heuristically.
+- Escape every external string (`esc()`); no `innerHTML` with raw API text. Bump the `?v=` query on `app.js` / `style.css` and icon links in `index.html` when they change: `/static` files carry no Cache-Control, so browsers and the Cloudflare edge may cache them heuristically.
+- **Favicon & Brand Icons (D-039, KI-221):**
+  - Favicons display at **16×16 CSS pixels** in browser tabs. Never cram micro-details (sub-pixel dots, pulse rings, nested shells, ruler ticks, thin 1px borders) into the icon.
+  - Fill the canvas (e.g. rounded squircle) so the icon occupies the full 14×14–16×16 area instead of a narrow shape with empty sides.
+  - High contrast: Bold white wave (`#ffffff`) on vibrant blue (`#0284c7`) works against both dark tabs (`#202124`) and light tabs (`#dee1e6` / `#ffffff`).
+  - iOS Touch Icons: Must use a solid canvas background (not transparent), because iOS renders transparent PNG backgrounds as solid black.
+  - Generation: `scripts/generate_favicon.py` uses standard library only (math, struct, zlib) with 2×2 supersampling for subpixel smoothness and zero external runtime dependencies.
+

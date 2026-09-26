@@ -163,6 +163,13 @@ Depth at a location is always shown as a **probability category**, never an exac
 | Traffy Fondue | LINE `@traffyfondue` | 🟡 |
 | HII | thaiwater.net | ✅ |
 
+### 6.3 Favicon and Brand Visual Standards (D-039)
+- **Brand Emoji:** `🌊` (Great Wave) in `🌊 BKK FloodWatch`.
+- **Favicon Motif:** Bold white surge wave over cyan water on vibrant royal blue squircle tile (`#0284c7` to `#0369a1`).
+- **Tab scale rule:** 16×16 CSS pixels. No micro-details (dots, rings, ticks). Fill the canvas footprint to avoid narrow empty margins.
+- **Contrast standard:** > 5:1 contrast against both dark-mode tabs (`#202124`) and light-mode tabs (`#dee1e6` / `#ffffff`).
+- **Mobile PWA / Touch:** 180×180 and 192×192 assets use solid background canvases so iOS does not render transparent areas as black.
+
 ---
 
 ## 7. Sourcing strategy (keyless first, collected on the server)

@@ -33,6 +33,7 @@
 | KI-218 | BMA data depends on a third-party political relay | Data access | 🟡 accepted (D-031) |
 | KI-219 | BMA codes sent to HII's chart endpoint stalled the worker ~1 h | Infrastructure | 🟢 fixed v0.3.2 |
 | KI-220 | Canal "normal" next to flooded streets read as a contradiction; Traffy overloaded | UX / Data access | 🟢 relabelled (D-036); 🟡 Traffy down |
+| KI-221 | Favicon unrecognizable at 16×16 and blends into dark-mode browser tabs | UI / Brand | 🟢 redesigned with Flood Droplet & Wave (D-039) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -220,6 +221,16 @@ Datums, sensor placement or bank definitions differ, and HII's BKK005 value itse
 
 ### KI-216 — "0 cm below the bank" next to "overflowing" · 🟢 fixed
 BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded to −0, and `-0 < 0` is false in JavaScript, so the text said "ต่ำกว่าตลิ่ง 0 ซม." under a red "ล้นตลิ่ง" badge. **Fix:** round first; 0 cm reads "ระดับเท่าตลิ่ง".
+
+### KI-221 — Favicon unrecognizable at 16×16 and blends into dark-mode browser tabs · 🟢 fixed (D-039)
+- **Problem (owner screenshot, 2026-09-26):** In real browser tabs (16×16 CSS pixels), the original icon was unreadable. Root causes:
+  1. The dark navy background (`#0d3b66` to `#061c33`) had zero edge contrast against dark browser tabs (`#202124` / `#1e1e1e`), vanishing completely.
+  2. The SVG crammed 6 micro-details (1px border, triple nested drops, 1.8px center beacon dot, 1.5px specular highlight, and 3 side gauge ticks) into 64×64. When scaled to 16×16, these collapsed into a murky, illegible pixel blur.
+  3. A narrow droplet left empty space on left and right, making the visible graphic only ~8px wide, and the yellow beacon looked like an ambiguous pyramid/eye.
+- **Resolution (D-039):**
+  - Redesigned with bold, ultra-simple geometry: vibrant royal blue squircle (`#0284c7` to `#0369a1`) filling the 14×14 area, with ONE bold white wave crest (`#ffffff`) over electric cyan water (`#38bdf8`), directly matching the `🌊` brand.
+  - Zero tiny dots, zero rings, zero micro-clutter.
+  - 2×2 supersampled pure Python generator in `scripts/generate_favicon.py` outputs `web/favicon.svg`, dual-resolution `web/favicon.ico` (16×16 and 32×32), `web/apple-touch-icon.png` (180×180), and `web/icon-192.png`. Cache-busters bumped to `?v=3`.
 
 ### KI-209 — HII test gauges in station lists · 🟢
 `queryStation` lists test gauges (`TEST02` and three more `TEST*` codes in Bangkok). **Fixed:** `hii_stations` skips `TEST*`, the API filters them out, and the 4 existing rows were set to `in_focus=false`.

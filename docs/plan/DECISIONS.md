@@ -247,3 +247,16 @@
 - **Decision:** BMA gauges: over bank → **ล้นตลิ่ง** (red); over BMA critical → **คลองเต็ม** (orange); over BMA warning → **คลองเริ่มเต็ม** (amber); otherwise **คลองยังรับน้ำได้** (blue). The margin shown is "เกินเกณฑ์ กทม. N ซม."; the bank distance and BMA's critical level are the second line; the detail explains "the canal can't take street water well"; the chart draws BMA's critical level. `status_basis` in the API says which yardstick applies. HII/RID gauges keep bank-based status. Summary chips use combined words ("ใกล้ตลิ่ง/คลองเต็ม", "ยังรับน้ำได้").
 - **Result:** of 42 BMA gauges with ≥ 3 street reports, 14 still read "ยังรับน้ำได้" (before: most). Not hidden: the street reports next to them stay visible (D-036).
 - **Supersedes** the KI-215 rule "never use BMA critical": it is still never a bank, but now it is the drainage yardstick.
+
+### D-039 — Favicon redesigned for browser tab recognizability (Flood Droplet & Wave)
+- **Date:** 2026-09-26 · **Status:** accepted (owner prompt: "review favicon, it is not easy to recognize on web browswer, make it simple modern and easy to recognize from web browswer"; owner explicitly selected Option 2: Flood Droplet & Wave).
+- **Root-cause evidence:**
+  1. The original favicon used a dark navy background gradient (`#0d3b66` to `#061c33`) inside a rounded square tile. In modern browsers with dark mode tabs (Chrome `#202124`, macOS `#1e1e1e`), the dark base had near-zero edge contrast, making the icon virtually invisible.
+  2. The SVG crammed 6 micro-elements into a 64×64 viewBox (1px border, 3-layer nested droplet, 1.8px center white beacon dot, 1.5px specular highlight, and 3 thin ruler gauge lines). At standard 16×16 CSS tab resolution, these collapsed into a murky, illegible pixel smear.
+  3. iOS home screen risk: Apple touch icons render transparent backgrounds as solid black squares unless backed by a solid squircle canvas.
+- **Decision:**
+  1. Adopted **"Flood Droplet & Wave"** design: iconic water droplet silhouette (hydro telemetry motif), dual rising flood waves (vivid cyan `#38bdf8` and crisp pure white `#ffffff`), and an amber telemetry warning beacon (`#fbbf24`) with white core.
+  2. Contrast guarantee: Luminous sky-blue outer rim (`#7dd3fc`) with soft SVG drop shadow (`tabShadow`) ensures clear silhouette separation on dark tabs (`#202124`), light tabs (`#dee1e6`), and pure white titlebars (`#ffffff`).
+  3. Asset generator `scripts/generate_favicon.py` rewritten in pure Python with 2×2 supersampling for subpixel antialiasing and zero external runtime dependencies (runs in Docker container without PIL).
+  4. Generates `web/favicon.svg`, dual-resolution `web/favicon.ico` (16×16 and 32×32), `web/apple-touch-icon.png` (180×180 on deep oceanic squircle to avoid iOS black background), and `web/icon-192.png` (192×192 PWA). Cache buster bumped to `?v=2` in `web/index.html`.
+

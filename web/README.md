@@ -1,14 +1,20 @@
 # `web/` — Thai, mobile-first web app
 
-> **Status:** empty scaffold. Built in **Phase 3** ([plan](../docs/plan/phase-3-web-app.md)). The framework is still an open question ([OPEN_QUESTIONS.md](../docs/plan/OPEN_QUESTIONS.md)).
+> **Status:** Production live at https://flood.autobahn.bot (**v0.5.1**). Built with vanilla HTML5, CSS3, and JavaScript, served directly by FastAPI and Cloudflare Tunnel for high performance on mobile devices.
 
-## Scope
-- The UI is **entirely in Thai**, with an i18n-ready structure so English can be added later. Use a Thai font (Noto Sans Thai or Sarabun).
-- Station map coloured by status (ปกติ / เฝ้าระวัง / เตือนภัย / วิกฤต relative to ระดับตลิ่ง).
-- "ใกล้บ้านฉัน": the controlling station(s), the trend for the next 12 hours, and a **recovery date range with its conditions**.
-- Station page: observed levels, the bank-level line, a forecast fan chart (12 h / 1 / 2 / 3 / 7 d), tide, upstream flow and rain.
-- Citizen mode is the default; expert mode is a toggle.
-- Every screen shows the last-updated time, source attribution, the disclaimer, official links and hotlines.
+## Features
+- **Mobile-first Thai interface**: Summary statistics, status chips, Bangkok first, Leaflet interactive map with custom telemetry markers, bottom-sheet station details with 24 h outlook, trend arrows, recovery date predictions, and BMA drainage criteria.
+- **Point check (`#p=lat,lon`)**: Tap anywhere on the map or use GPS to inspect nearby gauges, channel conditions, and Traffy Fondue citizen reports with clear warnings.
+- **Place search**: Fast geocoding via OpenStreetMap Nominatim for soi / street / district search without third-party tracking.
+- **Brand & Web Assets**: Modern, high-contrast, scalable favicon and PWA icon suite:
+  - `favicon.svg`: Scalable SVG featuring the Flood Droplet & Wave motif with luminous sky-blue rim and soft drop shadow.
+  - `favicon.ico`: Dual-resolution (16×16 and 32×32) Windows and browser tab icon.
+  - `apple-touch-icon.png`: 180×180 high-res icon on a deep oceanic squircle canvas (preventing black backgrounds on iOS home screens).
+  - `icon-192.png`: 192×192 PWA / Android home screen icon.
+  - Generated via `scripts/generate_favicon.py` using 2×2 supersampling pure Python (zero external dependencies).
 
 ## Rules
-Talk only to our own API. It is served as a static build on Cloudflare Pages, and it has to load fast on weak mobile connections. The UX rules are in [GUIDELINES §6](../docs/GUIDELINES.md).
+- Talks only to our own `/api/*` endpoints. Minimal bundle size; loads fast on 3G/4G connections.
+- Design tokens defined via CSS variables in `style.css`.
+- All external strings escaped via `esc()`; no unsanitized `innerHTML`.
+- Cache-busters (`?v=N`) maintained on scripts, stylesheets, and icon tags in `index.html`.

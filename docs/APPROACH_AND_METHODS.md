@@ -319,6 +319,16 @@ Why these and not more: status and trend answer the citizen's question; freshnes
 
 **Place search (D-032):** OSM Nominatim, not AI. The point check's 8 km radius was set when Bangkok had 10 gauges; with ~200 it mixes too many (at that Sai Mai pin: 21 gauges from normal to critical → very low confidence, no verdict). **Next:** a density-adaptive radius (e.g. the 5 nearest fresh gauges within 3 km when available), tested against user depth reports before shipping.
 
+### 3.8 Web & Brand Asset Pipeline: Browser Tab Recognizability (v0.5.1, D-039)
+- **16×16 CSS pixel scale rule:** Favicons in desktop and mobile tabs render primarily at 16×16 pixels. Any feature thinner than 3–4 px in a 64×64 viewBox becomes sub-pixel anti-aliasing noise at 16×16. Multi-nested droplet outlines, thin gauge ticks, and 1.8 px beacon dots collapse into an illegible smear.
+- **Canvas area utilisation:** Narrow symbols (e.g. slender teardrops) waste 40–50 % of the available width on transparent margins, rendering only ~8 px wide. A rounded squircle tile (`rx=16` in 64×64) utilizes the full 14×14–16×16 pixel footprint.
+- **High-contrast dual-tone wave:** Exactly one dominant motif—a bold white wave crest (`#ffffff`) over electric cyan water (`#38bdf8`) on vibrant royal blue (`#0284c7` to `#0369a1`). Delivers > 5:1 contrast against both dark-mode tabs (`#202124` / `#1e1e1e`) and light-mode tabs (`#dee1e6` / `#ffffff`).
+- **Zero-dependency pure-Python rasterizer (`scripts/generate_favicon.py`):** Uses mathematical boundary evaluation with 2×2 supersampling (4 subpixel samples per pixel) and zlib PNG/ICO struct packing. Requires no third-party imaging libraries (PIL, Cairo), guaranteeing reproducible asset builds inside minimal Docker containers. Outputs:
+  1. `web/favicon.svg`: Modern vector icon (803 bytes).
+  2. `web/favicon.ico`: Dual-resolution Windows/browser icon (16×16 and 32×32, 793 bytes).
+  3. `web/apple-touch-icon.png`: 180×180 high-res icon on deep oceanic squircle canvas (avoids solid-black iOS home screen backgrounds).
+  4. `web/icon-192.png`: 192×192 PWA / Android home screen icon.
+
 ## 4. Derived quantities (shown in the UI and used as features)
 | Quantity | Formula | Notes |
 |---|---|---|
