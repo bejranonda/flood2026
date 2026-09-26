@@ -12,6 +12,7 @@
 7. [APPROACH_AND_METHODS.md](APPROACH_AND_METHODS.md): the calculations and models, including the spatio-temporal framework
 8. [GUIDELINES.md](GUIDELINES.md): rules for engineering, modelling, data ethics and UX
 9. [KNOWN_ISSUES.md](KNOWN_ISSUES.md): limitations and workarounds (KI-IDs)
+10. [UX_VALIDATION.md](UX_VALIDATION.md): resident personas, UX findings and what's still missing
 
 ## Map
 | File | Purpose | Update when… |
@@ -25,7 +26,8 @@
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Pitfalls with status | Something breaks or is worked around |
 | [APPROACH_AND_METHODS.md](APPROACH_AND_METHODS.md) | Methods (= the brief's `docs/METHODS.md`) | A method changes |
 | [GUIDELINES.md](GUIDELINES.md) | Standards | A standard changes |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, storage, security, repo layout | The architecture changes |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, live API, storage, security, repo layout | The architecture changes |
+| [UX_VALIDATION.md](UX_VALIDATION.md) | Personas, UX review findings, gaps | The UI changes, or user feedback arrives |
 
 ## Evidence markers used across the docs
 | Mark | Meaning |

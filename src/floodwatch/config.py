@@ -36,7 +36,7 @@ class Settings:
         "DATABASE_URL", "postgresql://floodwatch:floodwatch@127.0.0.1:5432/floodwatch"))
     archive_path: str = field(default_factory=lambda: _env("TELEMETRY_ARCHIVE_PATH", "./data/raw_archive"))
     user_agent: str = field(default_factory=lambda: _env(
-        "HTTP_USER_AGENT", "BKK-FloodWatch/0.1 (+https://flood.bejranonda.com)"))
+        "HTTP_USER_AGENT", "BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)"))
     timeout_s: float = field(default_factory=lambda: float(_env("HTTP_TIMEOUT_SECONDS", "120")))
     # Optional egress through a Thai IP for sources that geo-block (BMA). D-014. Format: socks5h://host:port
     thai_egress_proxy: str = field(default_factory=lambda: _env("THAI_EGRESS_PROXY"))

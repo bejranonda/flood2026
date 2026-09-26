@@ -79,10 +79,18 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
 ## 5. Data-source etiquette and legal (D-004)
 - **Owner decision D-014 (2026-09-26):** don't wait for agency replies. For geo-blocked **public** data, a Thai egress the owner controls (SSH SOCKS or a paid VPN) is allowed. Free public proxies and bot-challenge solving are not.
 - **Thai egress limits (D-016):** the OpenVPN proxy (`THAI_EGRESS_PROXY`) is opt-in per request and only for **public pages** of sources that geo-block. **Never send credentials, tokens or personal data through it.** Always verify HTTPS certificates. Don't rotate relays or solve bot challenges to get past a block; if an IP class stays blocked, use an owner-controlled Thai host.
-- **Identify honestly:** `User-Agent: BKK-FloodWatch/<version> (+https://flood.bejranonda.com; <contact>)`. **Never spoof a browser**, rotate proxies, or otherwise get around blocks, bot challenges or rate limits. If blocked, ask the agency or use the approved Thai collector node ([KI-101](KNOWN_ISSUES.md)).
+- **Identify honestly:** `User-Agent: BKK-FloodWatch/<version> (+https://flood.autobahn.bot; <contact>)`. **Never spoof a browser**, rotate proxies, or otherwise get around blocks, bot challenges or rate limits. If blocked, ask the agency or use the approved Thai collector node ([KI-101](KNOWN_ISSUES.md)).
 - **Be polite:** poll no more often than the source updates (≥10 min for telemetry), cache aggressively, and back off under errors. Their servers are under flood load too.
 - **Respect ToS and robots.txt.** Ask HII, BMA and BMA/NECTEC (Traffy) for permission before public redistribution.
-- **Privacy:** don't store or republish citizen text or photos. Aggregate crowd reports spatially ([KI-107](KNOWN_ISSUES.md)).
+- **Privacy:** don't store or republish citizen text or photos from third-party sources. Aggregate crowd reports spatially ([KI-107](KNOWN_ISSUES.md)).
+- **Our own user feedback (D-020):**
+  - collect the minimum: no names or contacts;
+  - location only when the user opts in, rounded to ~100 m;
+  - never store IPs, only `sha256(FEEDBACK_SALT + date + IP)` for rate limiting (`FEEDBACK_SALT` lives in `.env`, not the DB);
+  - **never publish notes**; the public sees counts only;
+  - feedback triggers human review and evaluation, **never an automatic change** to a forecast or status (KI-507);
+  - every form says it is **not an emergency channel** and shows 1784 / 1555.
+- **Be polite on failures too:** remember endpoints that fail deterministically (e.g. chart HTTP 500s) and retry them once a day, not on every run.
 - **Licensing:** Open-Meteo and FABDEM are non-commercial; a paid plan is needed if the app is monetised ([KI-106](KNOWN_ISSUES.md)).
 - **Attribution** on every screen.
 
@@ -115,6 +123,15 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 4. **Citizen mode (default)** uses landmark depth bands and a probability category ([KNOWLEDGE §6](KNOWLEDGE.md)), plus action checklists. **Expert mode** shows m MSL, discharge, tide, quantile fans and model level.
 5. **Stale data is shown as stale.** Grey the value out and show its age. Never present a stale reading as current.
 6. Thai font (Noto Sans Thai or Sarabun), with an option for Buddhist-era dates. Must be fast on weak mobile connections, and accessible (contrast, doesn't rely on colour alone).
+7. **Lead with centimetres to the bank** ("ต่ำกว่าตลิ่ง 35 ซม."), not m MSL. MSL stays visible as secondary detail.
+8. **Mobile first** ([UX_VALIDATION](UX_VALIDATION.md)):
+   - tabs instead of stacked map + list, and the detail as a bottom sheet;
+   - tap targets ≥ 44 px, safe-area insets, search by district or khlong;
+   - share and deep links (`#s=CODE`) for LINE;
+   - check at 390 px width before each deploy.
+9. **Compact statistics only:** status counts (tap to filter), rising/falling counts, 24 h rain, and data freshness. Anything more goes to `/api/health`.
+10. **No invented surfaces:** never interpolate water levels across land, walls or polders (D-019). Don't draw lines across data gaps > 90 min. A reading older than 24 h shows status "unknown".
+11. **"Nearest gauge" isn't "your home":** say so wherever distance-based results appear (Bangkok isn't flat; walls split areas).
 
 ---
 
@@ -136,3 +153,4 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 ### 7.3 Frontend
 - Thai-first and i18n-ready. Minimal bundle; loads well on 3G/4G.
 - Talks only to our API. CSS variables for design tokens.
+- Escape every external string (`esc()`); no `innerHTML` with raw API text. Bump the `?v=` query on `app.js` / `style.css` in `index.html` when they change: `/static` files carry no Cache-Control, so browsers and the Cloudflare edge may cache them heuristically.

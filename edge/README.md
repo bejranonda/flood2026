@@ -1,6 +1,6 @@
 # `edge/` — Cloudflare edge configuration
 
-> **Status:** empty scaffold. The Cloudflare Tunnel for `flood.bejranonda.com` is already live, but its configuration isn't in this repo yet ([OPEN_QUESTIONS.md](../docs/plan/OPEN_QUESTIONS.md)). Most of this folder is built in **Phases 3–4**.
+> **Status:** empty scaffold. The Cloudflare Tunnel is live: `flood.autobahn.bot` (main, D-017) and `flood.bejranonda.com` (alias) are proxied CNAMEs to tunnel `d62b426d…`. `cloudflared` runs in `docker-compose.yml` (`--url http://app:3000`, no remote ingress rules). Zone security settings (the `autobahn.bot` bot challenge, [KI-506](../docs/KNOWN_ISSUES.md)) are managed in the dashboard. Most of this folder is built in **Phases 3–4**.
 
 ## Scope
 - Cache rules for the public API: short TTL (1–5 min) plus `stale-while-revalidate`, so traffic at the flood peak doesn't reach the VPS.

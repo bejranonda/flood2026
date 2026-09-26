@@ -93,3 +93,26 @@ CREATE TABLE IF NOT EXISTS source_health (
     consecutive_failures integer NOT NULL DEFAULT 0,
     last_data_time       timestamptz
 );
+
+-- Small key/value store for collector bookkeeping (e.g. which stations were backfilled).
+CREATE TABLE IF NOT EXISTS collector_state (
+    key         text PRIMARY KEY,
+    value       jsonb NOT NULL,
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- Citizen feedback on what we show (privacy: no names/contacts; IP never stored, only a daily-salted hash
+-- for rate limiting; notes are never published). Feeds verification and data-quality review (APPROACH §3.5).
+CREATE TABLE IF NOT EXISTS user_feedback (
+    id           bigserial PRIMARY KEY,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    code         text,                          -- station the feedback is about (NULL = location-only report)
+    verdict      text,                          -- matches | higher | lower | unsure (reality vs what we show)
+    depth        text,                          -- none | ankle | knee | waist | above (water where the user is)
+    note         text,                          -- <= 280 chars, never published
+    lat          double precision,              -- rounded to 3 decimals (~100 m), only if the user opted in
+    lon          double precision,
+    snapshot     jsonb NOT NULL,                -- what the site showed at that moment (taken server-side)
+    client_hash  text NOT NULL
+);
+CREATE INDEX IF NOT EXISTS user_feedback_time_idx ON user_feedback (created_at DESC);

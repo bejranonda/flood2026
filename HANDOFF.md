@@ -1,27 +1,35 @@
 # HANDOFF.md — State of the project and how to continue
 
-> Updated 2026-09-26 ~09:00 UTC (16:00 ICT) so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. Read this first, then [CLAUDE.md](CLAUDE.md) (agent rules) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions have worked on this repo: **always `git pull`/check `git log` before editing**.
+> Updated **2026-09-26 ~09:45 UTC (16:45 ICT)** so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. Read this first, then [CLAUDE.md](CLAUDE.md) (agent rules) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions work on this repo: **always `git pull --ff-only` and check `git log` before editing**.
 
 ## 1. What is live right now
 | Item | State |
 |---|---|
-| Public site | **https://flood.bejranonda.com**: Thai MVP (map, station list, status vs bank, 12 h trend, recovery range, chart with forecast band, "สถานีใกล้ฉัน", citizen-report hotspots) |
-| API | `https://flood.bejranonda.com/api/…` (`/health`, `/stations`, `/stations/{code}`, `/near`, `/reports`, `/rain`; docs at `/api/docs`) |
-| Stations served | **104 focus stations** (was 69): Ayutthaya 32, Nakhon Sawan 16, Chai Nat 13, Bangkok 13, Sing Buri 10, Pathum Thani 8, Samut Prakan 5, Ang Thong 4, Nonthaburi 3. **34 have no coordinates** (list only, not on the map); **28 have no bank level** (status "unknown"). See [KI-207](docs/KNOWN_ISSUES.md) |
-| Server | This single host (`HZ-Agent`, 178.104.238.220, Hetzner DE, 4 vCPU / 7.7 GB RAM, ~13 GB free disk). **No other environment exists** (owner, 2026-09-26) |
-| Stack | `docker compose` project `floodwatch`: `db` (postgres:16-alpine), `worker`, `app` (FastAPI :3000), `cloudflared` (profile `public`), `vpn` (profile `vpn`) |
-| Public path | Cloudflare Tunnel: `flood.bejranonda.com` CNAME → `<tunnel id>.cfargotunnel.com` (proxied) → `cloudflared` → `http://app:3000`. **No inbound ports are open** (80/443 closed; only 127.0.0.1:3000 locally). The old Caddy origin is retired |
-| Thai egress | `vpn` container = OpenVPN client (VPN Gate relay `49.48.220.198`, Thailand) + HTTP proxy on `http://vpn:8888`, used only by collectors that ask for it (`THAI_EGRESS_PROXY`). Volunteer relay: **flaky and untrusted** ([KI-505](docs/KNOWN_ISSUES.md)) |
+| **Main domain** | **https://flood.autobahn.bot** (D-017). ⚠️ The `autobahn.bot` zone shows a Cloudflare "Just a moment…" challenge to non-browser clients (curl, headless Chrome, link previews): [KI-506](docs/KNOWN_ISSUES.md), owner action Q18 |
+| Alias | **https://flood.bejranonda.com**: same tunnel, full alias, **no redirect** until KI-506 is fixed |
+| Site | Thai, **mobile-first**: summary strip (status chips that filter, rising/falling counts, Bangkok rain in the next 24 h, reporting freshness for focus + whole network), tabs (รายการ / แผนที่ / เจ้าพระยา), search, bottom-sheet station detail with a **24 h outlook**, recovery range, chart (gaps not bridged), **share + deep link `#s=CODE`**, and **citizen feedback** |
+| API | `/api/health`, `/stations`, `/stations/{code}`, `/near`, **`/stats`**, **`/profile`**, `/reports`, `/rain`, **`POST /feedback`**, **`/feedback/summary`**; docs at `/api/docs` ([ARCHITECTURE §1.1](docs/ARCHITECTURE.md)) |
+| Stations | **100 focus stations** (104 minus 4 HII `TEST*` gauges, KI-209). 30 have no coordinates; 26 have no bank level ([KI-207](docs/KNOWN_ISSUES.md)). Readings older than 24 h show status "unknown" |
+| History | **One-time 365-day backfill** from `waterlevel_graph` (D-018) by the `hii_backfill` task: **6 stations every 10 min**, so the single worker loop keeps its 10-min collectors on time. It was running at handoff; progress is in `collector_state.hii_graph_backfilled`. After that, `hii_history` refreshes 3 days every 6 h. Some stations return 10-min data (AIT001: ~42k rows per year); large batches are inserted with `COPY` |
+| Server | Single host `HZ-Agent` (Hetzner DE, 4 vCPU / 7.7 GB, ~13 GB free). **No other environment** (D-013) |
+| Stack | `docker compose` project `floodwatch`: `db` (postgres:16-alpine), `worker`, `app` (FastAPI :3000, 2 uvicorn workers), `cloudflared` (profile `public`), `vpn` (profile `vpn`) |
+| Public path | Both hostnames → proxied CNAME → **tunnel `d62b426d…`** (the owner's new token, 2026-09-26 09:19 UTC) → `cloudflared --url http://app:3000`. No inbound ports |
+| Thai egress | `vpn` container (VPN Gate relay 49.48.220.198) + proxy `http://vpn:8888`. **Flaky**: at 09:30 UTC the exit was up but `dds.bangkok.go.th` timed out ([KI-505](docs/KNOWN_ISSUES.md)) |
 | Repo | https://github.com/bejranonda/flood2026 (**private**, D-011) |
 
-## 2. Owner statements checked against evidence (2026-09-26, 08:20–08:50 UTC)
-| Owner statement | Verdict | Evidence |
+## 2. This session (2026-09-26, 09:00–09:45 UTC): requests → results
+| Owner request | Result | Evidence / where |
 |---|---|---|
-| "Many stations are missing, e.g. …/chart/BKK021" | ✅ **True in general; the example was already served.** BKK021 was in the DB and public API (critical, 2.82 m vs bank 2.20). The real gap: the HII chart site lists **162 stations** in our provinces that `waterlevel_load` doesn't (BKK004/007/011/012, ATG\*, MOU\*, …) | `queryStation?prov=<Thai name>` per province vs our DB. **Fix shipped:** `hii_stations` collector added **34** of them (+1 with coordinates) → 104 focus stations. **56 candidates remain unavailable** (chart endpoint returns HTTP 500 or only `999999`) — including **GLF001 ป้อมพระจุลจอมเกล้า (Fort Chula tide gauge, latest 0.03)** and **CPY013 บางไทร (Bang Sai, latest 1.46)** |
-| VPN: OpenVPN file added at `infra/openvpn/…` | ✅ **Works, with caveats** | In an isolated container the exit IP is **49.48.220.198, Phra Nakhon Si Ayutthaya, TH (3BB)**. From that IP: `ews.dwr.go.th` 200 (timed out from DE), `hydro.navy.mi.th` 200 (bot wall from DE), `dds.bangkok.go.th` reachable, **`weather.bangkok.go.th` still 403 (IIS "Access is denied", even with a browser UA → IP-class block, not evaded)**. The tunnel needed one restart to carry traffic → watchdog added |
-| "Tunnel running now in docker" | ✅ **True** | CNAME → tunnel, public URL 200, ports 80/443 closed, `cloudflared` container up |
-| "Token has now Tunnel and R2 permission" | ❌ **Not effective for the token in `.env`** | `/user/tokens/verify` = active, but tunnel get-by-id → *Not authorized* (list returns empty), **R2 list → HTTP 403**. Either a different token was edited, or `.env` holds the old value. Also: R2 needs **S3 API credentials** (`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`), which are separate from the API token |
-| (found while checking) `CLOUDFLARE_ACCOUNT_ID` in `.env` | ⚠️ **Was wrong** (belonged to another account). The zone and the tunnel token belong to account `6914a3…1a45` → **fixed in `.env`** (backup `.env.backup-20260926b`) |
+| "Continue the HANDOFF tasks" | **GLF001 / CPY013:** both remaining routes tested and **failed**. `POST /getGraph` (+CSRF) → HTTP 500, and it only returns the latest point even for working stations. `queryStation.water1` frozen (GLF001 0.03 m at 08:30 and 09:04). **Found instead:** `waterlevel_graph` serves **365 days** → 1-year backfill; the tide is fitted on up to a year; the backtest uses the last 45 days (D-018) | [KI-207](docs/KNOWN_ISSUES.md), [SOURCES](docs/SOURCES.md) |
+| "Is spatio-temporal interpolation useful? Bangkok is not flat" | **2-D over land: no, it misleads.** Metro banks range 0.43–4.56 m; walls and gates split areas; gauges are 7.7 km apart; `ground_level` is the channel bed. **1-D along the Chao Phraya: promising but not ready.** Leave-one-out at C.12: RMSE 0.175 m vs 0.38–0.46 m for nearest-gauge, with +0.15 m bias. Shipped the gauge-only river profile; interpolation waits for chainage + tide lag, shown only if RMSE < 0.10 m (D-019) | [APPROACH §2.9](docs/APPROACH_AND_METHODS.md) |
+| "Compact statistics" | `/api/stats` + a summary strip. Status chips double as filters; freshness shows as 3 numbers + a bar; the whole-network line is behind a toggle. At 09:17 UTC: focus 79 / 95 / 98 of 104 within 1 / 3 / 24 h; network 434 / 783 / 823 of 840 | [APPROACH §3.4](docs/APPROACH_AND_METHODS.md) |
+| "Consider mobile users" | Tabs, bottom sheet, ≥ 44 px targets, search, share/deep link, collapsed disclaimer with hotlines, safe-area insets. Checked at 390×844 and 1366×800 | [UX_VALIDATION](docs/UX_VALIDATION.md) |
+| "Validate as a Bangkok resident" | 6 personas, 13 findings (12 fixed, 1 partly: "near me" has a caveat but is not polder-aware yet), 8 open items. Biggest remaining gap: **polder-aware "near me"** | [UX_VALIDATION](docs/UX_VALIDATION.md) |
+| "User feedback feeds the system" | `POST /api/feedback`: verdict / depth band / note / opt-in location (~100 m), with a server-side snapshot of what was shown. IP never stored (daily-salted hash, `FEEDBACK_SALT` in `.env`); 10 per hour; honeypot. Public sees counts only. Used for review, evaluation and depth labels; **never auto-applied** (D-020) | [APPROACH §3.5](docs/APPROACH_AND_METHODS.md), [KI-507](docs/KNOWN_ISSUES.md) |
+| "Change the main domain to flood.autobahn.bot" + new tunnel token | CNAME created via API. `cloudflared` recreated with the new token (tunnel `d62b426d…`). **Both CNAMEs re-pointed** after the old domain briefly returned 530. Canonical, OG, UA and docs updated. **Blocked:** zone-wide bot challenge (KI-506) | [D-017](docs/plan/DECISIONS.md) |
+| Found while working | TEST02 (11 days stale) ranked as the top "overflowing" gauge → fixed (KI-206/209). Rate limit broken by 2 uvicorn workers with separate salts → shared `FEEDBACK_SALT`. **Worker hung 15+ min** on a trickling HII response → total deadline per request (`httpclient.fetch`). **The single-threaded worker would have been blocked for hours** by a 104-station backfill with row-by-row inserts → batched `hii_backfill` + `COPY` bulk insert. Known-500 chart codes were retried 3× every 6 h → once a day | [KNOWN_ISSUES](docs/KNOWN_ISSUES.md) |
+
+Earlier owner statements (tunnel, VPN, token rights, missing stations) and their verification are in git history (`git show b78869c:HANDOFF.md`).
 
 ## 3. Operate
 ```bash
@@ -30,37 +38,51 @@ git pull --ff-only                                     # other sessions push her
 docker compose --profile public --profile vpn up -d --build   # db, worker, app, cloudflared, vpn
 docker compose ps
 docker compose logs -f worker                          # collectors + forecasts
-docker compose logs vpn --tail 20                      # Thai egress
 curl -s localhost:3000/api/health | python3 -m json.tool
-docker compose run --rm --no-deps worker pytest -q    # 10 tests passing at handoff
-python3 research/validation/validate_research_claims.py   # re-run source probes (result depends on host country)
+curl -s localhost:3000/api/stats  | python3 -m json.tool
+docker compose run --rm --no-deps worker pytest -q    # 15 tests passing at handoff
+# feedback review (notes are private; never publish them)
+docker compose exec db psql -U floodwatch -d floodwatch -c "SELECT created_at, code, verdict, depth, note FROM user_feedback ORDER BY id DESC LIMIT 50"
+# backfill progress
+docker compose exec db psql -U floodwatch -d floodwatch -c "SELECT jsonb_array_length(value) FROM collector_state WHERE key='hii_graph_backfilled'"
 ```
-- **Secrets:** `.env` (git-ignored; backups `.env.backup-20260926`, `…b`). The `.ovpn` file is git-ignored too. **Never commit `.env`, `certs/`, `*.pem`, `infra/openvpn/*.ovpn`.**
-- **Data:** `data/pg` (Postgres) and `data/raw_archive` (immutable gzip payloads + `.meta.json`, dedup by SHA-256), both git-ignored. **Neither is backed up off-site yet.**
-- **Worker schedule** ([worker.py](src/floodwatch/worker.py)): HII latest 10 min; Traffy 10 min; HII rain 30 min; Open-Meteo hourly; **`hii_stations` and `hii_history` every 6 h**; forecasts 30 min; disk check hourly (alert below 2 GB free); `bma_dds` every 3 h **only if `THAI_EGRESS_PROXY` is set**.
-- **VPN swap:** replace the file in `infra/openvpn/` (one `.ovpn`), then `docker compose --profile vpn up -d --build vpn`. Check `docker compose exec vpn curl -s https://ipinfo.io/ip`.
+- **Secrets:** `.env` (git-ignored; backups `.env.backup-20260926`, `…b`, `…c`). New key this session: **`FEEDBACK_SALT`** (generated; keep it stable, because changing it resets the rate-limit identity). The `.ovpn` is git-ignored. **Never commit `.env`, `certs/`, `*.pem`, `infra/openvpn/*.ovpn`.**
+- **Tunnel token change checklist:** after replacing `CLOUDFLARE_TUNNEL_TOKEN`, run `docker compose --profile public up -d --force-recreate cloudflared`, read the new `tunnelID` from its log, and **re-point every CNAME** (`flood.autobahn.bot`, `flood.bejranonda.com`) to `<new id>.cfargotunnel.com`. The API token has DNS edit on both zones ([KI-504](docs/KNOWN_ISSUES.md)).
+- **Frontend cache:** Cloudflare serves `/static/*` with `max-age=14400`. **Bump `?v=` in `web/index.html`** when `app.js` or `style.css` change (currently `v=2`).
+- **Worker schedule** ([worker.py](src/floodwatch/worker.py)): HII latest 10 min; Traffy 10 min; **`hii_backfill` 10 min (6 stations; a no-op when done)**; HII rain 30 min; Open-Meteo hourly; `hii_stations` and `hii_history` every 6 h; forecasts 30 min; disk check hourly; `bma_dds` every 3 h if `THAI_EGRESS_PROXY` is set.
+- **Data:** `data/pg` and `data/raw_archive` (git-ignored), **not backed up off-site yet**.
 
 ## 4. Code map
 | Path | What |
 |---|---|
-| [src/floodwatch/collectors/parsing.py](src/floodwatch/collectors/parsing.py) | Pure parsers + QC (timezone, `999999` sentinel, `0/0` bank-ground placeholders, range, map-feed coordinates). Tested |
-| [src/floodwatch/collectors/\_\_init\_\_.py](src/floodwatch/collectors/__init__.py) | Collectors: HII `waterlevel_load`, `rain_24h`, `waterlevel_graph` (RID + HII history by numeric id), chart XHR `getGraphFirst` (BKK/CPY/BKC/AIT, BKK008 and every chart-only station), **`hii_stations`** (chart station lists + map feed), Open-Meteo, Traffy (privacy-safe), BMA (via Thai egress) |
-| [src/floodwatch/archive/](src/floodwatch/archive/__init__.py) | Raw archive writer (write-once, SHA-256) |
-| [src/floodwatch/db/](src/floodwatch/db/__init__.py) | Schema ([schema.sql](src/floodwatch/db/schema.sql)) + helpers. Plain Postgres (D-013) |
-| [src/floodwatch/forecast/](src/floodwatch/forecast/__init__.py) | MVP forecasts: persistence / persistence + fitted tide / + damped trend; per-station rolling backtest; served only if skill > 10 % vs persistence; split-conformal quantiles; recovery range; status |
-| [src/floodwatch/api/](src/floodwatch/api/__init__.py) · [web/](web/index.html) | FastAPI + Thai frontend (vanilla JS, Leaflet with SRI, SVG chart) |
-| [infra/vpn/](infra/vpn/Dockerfile) | OpenVPN + tinyproxy sidecar with a watchdog. [infra/Caddyfile](infra/Caddyfile) is legacy (not running) |
-| [docker-compose.yml](docker-compose.yml), [Dockerfile](Dockerfile) | Deployment |
+| [src/floodwatch/collectors/parsing.py](src/floodwatch/collectors/parsing.py) | Pure parsers + QC. Tested |
+| [src/floodwatch/collectors/\_\_init\_\_.py](src/floodwatch/collectors/__init__.py) | Collectors; `hii_backfill` (1-year history, 6 stations per run), `hii_history` (3-day refresh + 10-min chart), `hii_stations` (skips `TEST*`, retries known-500 codes daily) |
+| [src/floodwatch/httpclient.py](src/floodwatch/httpclient.py) | Honest UA, retries, **total deadline per request**, optional Thai egress |
+| [src/floodwatch/db/](src/floodwatch/db/__init__.py) | Schema incl. **`user_feedback`**, **`collector_state`**; `get_state`/`set_state`; `insert_observations` (COPY for ≥ 500 rows) |
+| [src/floodwatch/forecast/](src/floodwatch/forecast/__init__.py) | L0 / L1 tide / trend; 45-day backtest (`EVAL_HOURS`), 370-day lookback; conformal quantiles; **`outlook24`**; recovery; status |
+| [src/floodwatch/api/](src/floodwatch/api/__init__.py) | FastAPI: stations, **stats, profile, feedback**, stale → unknown after 24 h |
+| [web/](web/app.js) | Vanilla JS + Leaflet: summary, tabs, search, sheet, share, feedback, river profile. `esc()` on every external string |
+| [infra/vpn/](infra/vpn/Dockerfile) | OpenVPN + tinyproxy sidecar with a watchdog |
+| [tests/](tests/) | `test_parsing.py`, `test_forecast.py` (incl. outlook and the 45-day window), `test_api.py` (freshness, feedback validation, stale status) |
 
 ## 5. Next steps, in priority order
-1. **Off-site backup (R2)** — blocked on the owner: create an R2 bucket, **S3 API token** (Access Key ID + Secret) and put `R2_*` in `.env`; also fix the API token's R2 permission (see §2). Then implement replication of `data/raw_archive` and a nightly `pg_dump` ([ARCHITECTURE §9](docs/ARCHITECTURE.md)). Until then everything lives on one disk.
-2. **Chart-only stations that answer HTTP 500** (GLF001 Fort Chula, CPY013 Bang Sai, BKK004, BKC001, FROC01, …): try the chart page's `POST /getGraph` (form + CSRF `_token`; see `getGraph` in the page source) and the `water1` field returned by `queryStation` (latest value only, no timestamp). **Highest value: GLF001 (tide gauge) and CPY013 (Bang Sai).** Closes [KI-109](docs/KNOWN_ISSUES.md).
-3. **Coordinates and bank levels for the 34 / 28 stations lacking them** (HII map feed `json/telemetering/wl/warning` covers only 107 stations). Sources to try: `waterlevel_graph` metadata (`min_bank`, `ground_level` in its response), RID station list `water.rid.go.th/hyd/…`, OSM/name geocoding as a last resort (flag it as approximate).
-4. **BMA / DWR through the Thai egress:** `dds.bangkok.go.th` and `ews.dwr.go.th` open from the relay; `weather.bangkok.go.th` is 403 even from it. Explore DWR EWS and the DDS pages (now possible via `http://vpn:8888`), write parsers with fixtures, and find a Thai IP that BMA accepts (owner-controlled host, or another relay).
-5. **Navy tide:** `TT2026.pdf` is 404 even from a Thai IP → the URL moved. The Navy home page is reachable through the proxy; find the current link. Until then tide = our own fits (add GLF001 history when available).
-6. **Forecast upgrades (Phase 2):** longer history (loop `waterlevel_graph` back), `utide` with ≥ 1 year, upstream routing (C.2 → C.13 → C.35 lags), rain-driven khlong model, LightGBM L4/L5, polder polygons for "near me" (currently nearest by distance only), calibrate the status thresholds ([APPROACH §3.3](docs/APPROACH_AND_METHODS.md)).
-7. **Disk:** ~13 GB free, shared with other projects. Watch `/api/health` → `disk`. Estimated archive growth 30–80 MB/day (measure it).
-8. **Owner questions still open:** license and going public (Q10), notifications (Q7), Buddhist-era dates (Q8) — [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md).
+1. **Owner actions:** Q18 (relax the `autobahn.bot` challenge for `flood.` → then add a 301 from the old domain), Q15/Q16 (API token rights + **R2 S3 credentials** → off-site backups), Q19 (who reads feedback), Q20 (delete the old tunnel `ecd8a7b9…` if unused).
+2. **Check the backfill finished**: ~100 stations, then the next forecast run. Record in APPROACH §3.3 how many stations now serve `tide`/`tide_trend` (before: 43 tide-fitted stations were still on persistence). Watch disk (`/api/health` → `disk`) and DB size after the ~5M-row load.
+3. **Polder-aware "near me"** (biggest UX gap, [UX_VALIDATION §3](docs/UX_VALIDATION.md)): polder polygons (BMA drainage zones) → choose the gauge in the same water body.
+4. **1-D river interpolation (D-019):** river centreline (OSM, ODbL) → chainage; tide phase lag; leave-one-out on C.12 / CPY015 / CPY014. Ship only if RMSE < 0.10 m.
+5. **Feedback use:** a weekly script comparing `verdict` with the displayed snapshot and later observations; a small review page if the owner wants one (Q19).
+6. **Coordinates / bank for the 34 / 28 stations** lacking them; **BMA / DWR** through a better Thai egress; the **Navy tide PDF** link; **GLF001** by asking HII/Navy directly.
+7. **Forecast upgrades (Phase 2):** routing (C.2 → C.13 → C.35 lags), `utide` now that ~1 year exists, LightGBM, status calibration against official warning levels.
+8. **Alerts** (Q7) and a service worker for offline use.
 
 ## 6. Rules that must survive a change of harness
-Evidence rule (no invented endpoints or numbers; **owner statements are also checked and discrepancies reported**), honest User-Agent, attribution, ranges instead of countdowns, stale data shown as stale, no secrets in git, and the Thai egress limits in [GUIDELINES §5](docs/GUIDELINES.md) (public pages only, no credentials through the relay, no bot-challenge solving). See [CLAUDE.md](CLAUDE.md). Decisions: [docs/plan/DECISIONS.md](docs/plan/DECISIONS.md) (D-012–D-016 cover the MVP choices).
+- The **evidence rule**: no invented endpoints or numbers; owner statements are checked too.
+- An **honest User-Agent**: `BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)`.
+- **Attribution**, and **ranges instead of countdowns**.
+- **Stale data is shown as stale**; after 24 h the status is "unknown".
+- **No interpolated water surfaces over land** (D-019).
+- **Feedback stays private and is never auto-applied** (D-020).
+- **No secrets in git.**
+- The **Thai egress limits** in [GUIDELINES §5](docs/GUIDELINES.md).
+
+See [CLAUDE.md](CLAUDE.md) and [DECISIONS](docs/plan/DECISIONS.md) (D-012 … D-020).

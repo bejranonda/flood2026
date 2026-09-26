@@ -3,50 +3,68 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d3b66">
 <title>BKK FloodWatch — ระดับน้ำ กทม. และลุ่มเจ้าพระยา</title>
-<meta name="description" content="ระดับน้ำล่าสุดและแนวโน้ม 12–72 ชั่วโมง สำหรับกรุงเทพฯ และลุ่มเจ้าพระยาตอนล่าง (ฉบับทดลอง)">
+<meta name="description" content="ระดับน้ำล่าสุด เทียบตลิ่ง และแนวโน้ม 12–72 ชั่วโมง สำหรับกรุงเทพฯ และลุ่มเจ้าพระยาตอนล่าง (ฉบับทดลอง)">
+<link rel="canonical" href="https://flood.autobahn.bot/">
+<meta property="og:title" content="BKK FloodWatch — ระดับน้ำ กทม. และลุ่มเจ้าพระยา">
+<meta property="og:description" content="ระดับน้ำล่าสุด เทียบตลิ่ง และแนวโน้ม สำหรับกรุงเทพฯ และลุ่มเจ้าพระยาตอนล่าง">
+<meta property="og:url" content="https://flood.autobahn.bot/">
+<meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
 <header class="top">
   <div class="brand"><strong>🌊 BKK FloodWatch</strong><span class="beta">ฉบับทดลอง</span></div>
-  <div class="updated" id="updated">กำลังโหลดข้อมูล…</div>
+  <div class="updated" id="updated" aria-live="polite">กำลังโหลดข้อมูล…</div>
 </header>
 
-<div class="notice">
-  ⚠️ ข้อมูลนี้เป็น<strong>การคาดการณ์เบื้องต้น</strong> ไม่ใช่ประกาศทางการ โปรดติดตามประกาศจาก กทม. ปภ. กรมชลประทาน และ สสน. ·
-  <a href="tel:1555">กทม. 1555</a> · <a href="tel:1784">ปภ. 1784</a> · ศูนย์ป้องกันน้ำท่วม กทม. <a href="tel:022485115">02-248-5115</a>
-</div>
+<details class="notice">
+  <summary>⚠️ <strong>ไม่ใช่ประกาศทางการ</strong> · เหตุฉุกเฉินโทร <a href="tel:1784">ปภ. 1784</a> · <a href="tel:1555">กทม. 1555</a></summary>
+  ข้อมูลนี้เป็นการคาดการณ์เบื้องต้นจากข้อมูลสาธารณะ โปรดติดตามประกาศจาก กทม. ปภ. กรมชลประทาน และ สสน. ·
+  ศูนย์ป้องกันน้ำท่วม กทม. <a href="tel:022485115">02-248-5115</a> · แบบฟอร์มความเห็นในเว็บนี้<strong>ไม่ใช่ช่องทางขอความช่วยเหลือ</strong>
+</details>
+
+<section id="summary" class="summary" aria-label="สรุปภาพรวม"></section>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="list" aria-selected="true">📋 รายการ</button>
+  <button role="tab" data-tab="map" aria-selected="false" class="mobile-only">🗺️ แผนที่</button>
+  <button role="tab" data-tab="river" aria-selected="false">〰️ เจ้าพระยา</button>
+</nav>
 
 <main class="layout">
   <section class="panel">
-    <div class="actions">
-      <button id="gps" class="btn primary">📍 สถานีใกล้ฉัน</button>
-      <select id="filter" class="btn" aria-label="กรองสถานะ">
-        <option value="all">ทุกสถานี</option>
-        <option value="alert">เฉพาะเฝ้าระวังขึ้นไป</option>
-      </select>
+    <div id="view-list" class="view">
+      <div class="actions">
+        <button id="gps" class="btn primary">📍 สถานีใกล้ฉัน</button>
+        <input id="q" class="btn search" type="search" placeholder="ค้นหา เขต/คลอง/สถานี" aria-label="ค้นหาสถานี" autocomplete="off">
+      </div>
+      <div id="near"></div>
+      <ul id="list" class="list"></ul>
     </div>
-    <div id="near"></div>
-    <div id="detail" class="detail" hidden></div>
-    <ul id="list" class="list"></ul>
+    <div id="view-river" class="view" hidden></div>
   </section>
   <section id="map" class="map" aria-label="แผนที่สถานี"></section>
 </main>
+
+<div id="sheet" class="sheet" hidden role="dialog" aria-modal="false" aria-labelledby="sheet-title">
+  <div id="detail" class="detail"></div>
+</div>
 
 <footer class="foot">
   <p><strong>ที่มาของข้อมูล:</strong> สถาบันสารสนเทศทรัพยากรน้ำ (สสน./HII ThaiWater) รวมข้อมูลกรมชลประทาน ·
     พยากรณ์ฝน Open-Meteo · รายงานประชาชน Traffy Fondue (วงสีม่วงบนแผนที่ แสดงเป็นจำนวนรวมเท่านั้น)</p>
   <p><strong>วิธีคาดการณ์:</strong> แต่ละสถานีทดสอบย้อนหลังกับข้อมูลจริงของตัวเอง (ค่าคงที่, ค่าคงที่+น้ำขึ้นน้ำลง,
     +แนวโน้ม) แล้วเลือกวิธีที่แม่นกว่าการใช้ค่าปัจจุบันเกิน 10% เท่านั้น ช่วงคาดการณ์คำนวณจากความคลาดเคลื่อนจริงในอดีต ·
-    สถานะเทียบกับระดับตลิ่ง (ม.รทก.) · เวลาแสดงเป็นเวลาประเทศไทย</p>
+    สถานะเทียบกับระดับตลิ่งของสถานี ไม่ใช่ระดับพื้นถนนหรือบ้านของคุณ (พื้นที่ กทม. สูงต่ำไม่เท่ากัน) · เวลาแสดงเป็นเวลาประเทศไทย</p>
   <p class="muted">โครงการอาสา ไม่แสวงหากำไร · <a href="/api/docs">API</a> · <a href="/api/health">สถานะระบบ</a></p>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=2"></script>
 </body>
 </html>

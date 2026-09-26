@@ -2,13 +2,19 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import math
 import os
+import re
+import secrets
 from pathlib import Path
+from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from psycopg.types.json import Jsonb
+from pydantic import BaseModel, Field
 
 from floodwatch import db
 from floodwatch.forecast import classify_status
@@ -17,6 +23,7 @@ app = FastAPI(title="BKK FloodWatch API", version="0.1.0", docs_url="/api/docs",
 WEB_DIR = Path(os.environ.get("WEB_DIR", Path(__file__).resolve().parents[3] / "web"))
 CACHE = {"Cache-Control": "public, max-age=60, stale-while-revalidate=300"}
 STALE_MIN = 180  # observation older than this is shown as stale
+UNKNOWN_AFTER_MIN = 24 * 60  # older than this, the last status says nothing about now -> "unknown"
 
 
 def _json(data, cache: bool = True) -> JSONResponse:
@@ -53,13 +60,15 @@ LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM o
                    ORDER BY obs_time DESC LIMIT 1) o ON true
 LEFT JOIN LATERAL (SELECT payload, issue_time FROM forecast_run WHERE code=s.code
                    ORDER BY issue_time DESC LIMIT 1) f ON true
-WHERE (%(all)s OR s.in_focus)
+WHERE (%(all)s OR s.in_focus) AND s.code !~ '^TEST'
 """
 
 
 def _station_row(r: dict) -> dict:
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])
     age = _age_min(r["obs_time"])
+    if age is None or age > UNKNOWN_AFTER_MIN:
+        status = "unknown"
     return {
         "code": r["code"], "name_th": r["name_th"] or r["code"], "name_en": r["name_en"], "lat": r["lat"],
         "lon": r["lon"], "bank_msl": r["bank_msl"], "agency": r["agency"], "province": r["province"],
@@ -91,7 +100,8 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
                AND obs_time > now() - make_interval(days => %s) ORDER BY obs_time""", (code, days)).fetchall()
         fc = c.execute("SELECT payload FROM forecast_run WHERE code=%s ORDER BY issue_time DESC LIMIT 1",
                        (code,)).fetchone()
-    return _json({"station": _station_row(rows[0]),
+        fb = _feedback_counts(c, code).get(code)
+    return _json({"station": _station_row(rows[0]), "feedback7d": fb,
                   "observations": [[_iso(o["obs_time"]), o["level_msl"], o["discharge"]] for o in obs],
                   "forecast": fc["payload"] if fc else None})
 
@@ -136,6 +146,145 @@ def rain():
                  AND valid_time > now() GROUP BY point""").fetchall()
     return _json({"source": "Open-Meteo", "points": [{"point": r["point"], "mm24": r["mm24"], "mm72": r["mm72"],
                                                       "issue_time": _iso(r["issue"])} for r in rows]})
+
+
+STATS_SQL = """
+SELECT s.in_focus, s.lat IS NOT NULL AS has_coords, s.bank_msl IS NOT NULL AS has_bank, o.obs_time
+FROM station s
+LEFT JOIN LATERAL (SELECT obs_time FROM observation WHERE code=s.code AND level_msl IS NOT NULL
+                   AND quality_flag='ok' ORDER BY obs_time DESC LIMIT 1) o ON true
+"""
+
+
+def _freshness(times: list[dt.datetime | None]) -> dict:
+    now = dt.datetime.now(dt.timezone.utc)
+    ages = [None if t is None else (now - t).total_seconds() / 3600 for t in times]
+    return {"total": len(ages), "h1": sum(a is not None and a <= 1 for a in ages),
+            "h3": sum(a is not None and a <= 3 for a in ages), "h24": sum(a is not None and a <= 24 for a in ages),
+            "older": sum(a is not None and a > 24 for a in ages), "never": sum(a is None for a in ages)}
+
+
+@app.get("/api/stats")
+def stats():
+    """Compact network summary: reporting freshness (focus area and the whole HII network), status and trend
+    counts for the focus area, metadata gaps, and the rain forecast for Bangkok."""
+    with db.connect() as c:
+        rows = c.execute(STATS_SQL).fetchall()
+        focus = [_station_row(r) for r in c.execute(STATIONS_SQL, {"all": False}).fetchall()]
+        rain = c.execute(
+            """SELECT max(mm) AS mm24 FROM (SELECT point, sum(precip_mm) AS mm FROM weather_forecast
+               WHERE issue_time=(SELECT max(issue_time) FROM weather_forecast) AND point LIKE 'bkk%%'
+                 AND valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY point) x""").fetchone()
+    status = {k: 0 for k in ("critical", "warning", "watch", "normal", "unknown")}
+    trend = {k: 0 for k in ("rising", "falling", "steady", "unknown")}
+    for s in focus:
+        status[s["status"]] += 1
+        trend[s["trend12"] if s["trend12"] in trend else "unknown"] += 1
+    frows = [r for r in rows if r["in_focus"]]
+    return _json({
+        "generated": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "focus": {**_freshness([r["obs_time"] for r in frows]), "status": status, "trend12": trend,
+                  "no_coords": sum(not r["has_coords"] for r in frows),
+                  "no_bank": sum(not r["has_bank"] for r in frows)},
+        "network": _freshness([r["obs_time"] for r in rows]),
+        "rain_bkk_next24_mm_max": None if rain["mm24"] is None else round(rain["mm24"], 1),
+    })
+
+
+@app.get("/api/profile")
+def profile():
+    """Chao Phraya main stem, north to south: level vs bank at each gauge (1-D, no interpolation between gauges;
+    APPROACH §2.9). dist_km is the cumulative straight-line distance between gauges, NOT river chainage."""
+    with db.connect() as c:
+        rows = c.execute(STATIONS_SQL + " AND s.river='แม่น้ำเจ้าพระยา' AND s.lat IS NOT NULL", {"all": False}).fetchall()
+    items = sorted((_station_row(r) for r in rows), key=lambda s: -s["lat"])
+    dist = 0.0
+    for i, s in enumerate(items):
+        if i:
+            dist += _haversine_km(items[i - 1]["lat"], items[i - 1]["lon"], s["lat"], s["lon"])
+        s["dist_km"] = round(dist, 1)
+    return _json({"river": "แม่น้ำเจ้าพระยา", "order": "north_to_south", "dist": "straight_line_between_gauges",
+                  "stations": items})
+
+
+# ---- Citizen feedback (privacy: no names/contacts, IP never stored; notes never published) ----
+# Shared by all uvicorn workers; kept in .env, never in the DB, so stored hashes cannot be brute-forced back to
+# IPs. With the date it makes the hash unlinkable across days. Fallback (unset): per process, weaker rate limit.
+_SALT = os.environ.get("FEEDBACK_SALT", "").encode() or secrets.token_bytes(16)
+FEEDBACK_PER_HOUR = 10
+
+
+class FeedbackIn(BaseModel):
+    code: str | None = Field(None, max_length=32)
+    verdict: Literal["matches", "higher", "lower", "unsure"] | None = None
+    depth: Literal["none", "ankle", "knee", "waist", "above"] | None = None
+    note: str | None = Field(None, max_length=280)
+    lat: float | None = Field(None, ge=5, le=21)
+    lon: float | None = Field(None, ge=97, le=106)
+    website: str | None = Field(None, max_length=200)  # honeypot: humans never fill it
+
+
+def _client_hash(request: Request) -> str:
+    ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "?")
+    day = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+    return hashlib.sha256(_SALT + day.encode() + ip.encode()).hexdigest()[:32]
+
+
+@app.post("/api/feedback")
+def feedback(body: FeedbackIn, request: Request):
+    if body.website:
+        return _json({"ok": True}, cache=False)  # silently drop bots
+    if not body.verdict and not body.depth and not (body.note or "").strip():
+        raise HTTPException(422, "empty feedback")
+    note = re.sub(r"[\x00-\x1f\x7f]", " ", body.note or "").strip() or None
+    lat = None if body.lat is None or body.lon is None else round(body.lat, 3)
+    lon = None if lat is None else round(body.lon, 3)
+    who = _client_hash(request)
+    with db.connect() as c:
+        n = c.execute("SELECT count(*) AS n FROM user_feedback WHERE client_hash=%s AND created_at > now() - interval '1 hour'",
+                      (who,)).fetchone()["n"]
+        if n >= FEEDBACK_PER_HOUR:
+            raise HTTPException(429, "too many reports, please try later")
+        snap: dict = {}
+        if body.code:
+            rows = c.execute(STATIONS_SQL + " AND s.code=%(code)s", {"all": True, "code": body.code}).fetchall()
+            if not rows:
+                raise HTTPException(404, "unknown station")
+            r = _station_row(rows[0])
+            snap = {k: r[k] for k in ("level_msl", "obs_time", "status", "freeboard_m", "trend12", "delta12_median",
+                                      "recovery", "forecast_time")}
+        c.execute("""INSERT INTO user_feedback (code, verdict, depth, note, lat, lon, snapshot, client_hash)
+                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                  (body.code, body.verdict, body.depth, note, lat, lon, Jsonb(snap), who))
+        c.commit()
+    return _json({"ok": True}, cache=False)
+
+
+def _feedback_counts(c, code: str | None = None, days: int = 7) -> dict:
+    rows = c.execute(
+        """SELECT code, verdict, depth, count(*) AS n FROM user_feedback
+           WHERE created_at > now() - make_interval(days => %s) AND (%s::text IS NULL OR code=%s)
+           GROUP BY 1, 2, 3""", (days, code, code)).fetchall()
+    out: dict = {}
+    for r in rows:
+        d = out.setdefault(r["code"] or "_location", {"verdict": {}, "depth": {}, "n": 0})
+        d["n"] += r["n"]
+        if r["verdict"]:
+            d["verdict"][r["verdict"]] = d["verdict"].get(r["verdict"], 0) + r["n"]
+        if r["depth"]:
+            d["depth"][r["depth"]] = d["depth"].get(r["depth"], 0) + r["n"]
+    for d in out.values():  # flag for operator review, never an automatic model change
+        v = d["verdict"]
+        off = v.get("higher", 0) + v.get("lower", 0)
+        d["review"] = off >= 3 and off > v.get("matches", 0)
+    return out
+
+
+@app.get("/api/feedback/summary")
+def feedback_summary(days: int = Query(7, ge=1, le=90)):
+    """Counts only (no notes, no locations): what users said about each station."""
+    with db.connect() as c:
+        return _json({"days": days, "stations": _feedback_counts(c, None, days)})
 
 
 @app.get("/")

@@ -1,7 +1,7 @@
 # CLAUDE.md — Working rules for AI agents in this repo
 
 **Project:** BKK FloodWatch 2026. Thai-language water-level monitoring and forecasting for Bangkok and the lower Chao Phraya, built during an active flood.
-**Current state:** MVP live at https://flood.bejranonda.com (single server, docker compose). **Start with [HANDOFF.md](HANDOFF.md)**, then [docs/plan/PLAN.md](docs/plan/PLAN.md).
+**Current state:** MVP live at https://flood.autobahn.bot (alias flood.bejranonda.com; single server, docker compose). **Start with [HANDOFF.md](HANDOFF.md)**, then [docs/plan/PLAN.md](docs/plan/PLAN.md).
 
 ## Before you do anything
 1. Read [docs/README.md](docs/README.md) (index), [docs/plan/PLAN.md](docs/plan/PLAN.md) (phase and gates) and [docs/GUIDELINES.md](docs/GUIDELINES.md) (rules).
@@ -16,7 +16,8 @@
 - **Datums and time:** everything is in m MSL (Ko Lak) and stored in UTC. Know each source's timezone convention (KI-201, KI-205).
 - **Space and time are explicit:** station graph, polders, lags, issue time vs valid time (D-008, [APPROACH §2](docs/APPROACH_AND_METHODS.md)).
 - **No secrets in git** (`.env`, `certs/`, `*.pem`). Don't read or print secret values.
-- **Citizen messaging:** ranges, probabilities and conditions, never minute countdowns (D-005).
+- **Citizen messaging:** ranges, probabilities and conditions, never minute countdowns (D-005). Lead with cm to the bank; check the UI at 390 px; bump `?v=` on static files ([GUIDELINES §6](docs/GUIDELINES.md)).
+- **No interpolated water surfaces over land** (D-019). **User feedback is private and never auto-applied** (D-020); never print or publish feedback notes.
 
 ## Where things go
 Facts → KNOWLEDGE · pitfalls → KNOWN_ISSUES (KI-ID) · source tests → SOURCES · methods → APPROACH_AND_METHODS · decisions → plan/DECISIONS (D-ID) · owner questions → plan/OPEN_QUESTIONS · progress → plan/phase-*.md.

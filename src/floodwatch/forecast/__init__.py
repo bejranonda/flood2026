@@ -23,6 +23,8 @@ TIDE_SPEEDS = {"K1": 15.0410686, "O1": 13.9430356, "M2": 28.9841042, "S2": 30.0,
 QUANTILES = [0.05, 0.25, 0.5, 0.75, 0.95]
 MIN_HOURS = 7 * 24
 SKILL_GATE = 0.10
+EVAL_HOURS = 45 * 24  # backtest the recent regime only; older history (up to a year) serves the tide fit
+LOOKBACK_DAYS = 370
 
 
 def hourly_grid(times: list[dt.datetime], values: list[float]) -> tuple[np.ndarray, np.ndarray]:
@@ -89,9 +91,10 @@ def _slope(ybar: np.ndarray, i: int) -> float:
 
 
 def evaluate(t: np.ndarray, y: np.ndarray) -> dict:
-    """Backtest candidates on the last 40 % of the record. Returns per-horizon choice, skill and residuals."""
+    """Rolling-origin backtest on the last EVAL_HOURS (or the last 40 % of a short record). The tide used in the
+    backtest is fitted only on data before the window (no leakage). Returns per-horizon choice, skill, residuals."""
     n = len(y)
-    split = int(n * 0.6)
+    split = max(int(n * 0.6), n - EVAL_HOURS)
     eta = fit_tide(t[:split], y[:split])
     methods = ["persistence"] + (["tide", "tide_trend"] if eta else ["trend"])
     ybar = trailing_mean(y, 25)
@@ -182,8 +185,25 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
     return {"version": VERSION, "issue_time": issue.isoformat(), "level_now": y0, "trend12": trend,
             "delta12_median": None if med12 is None else round(med12 - y0, 3), "path": path,
             "skill": {str(h): v for h, v in ev.items()}, "history_hours": int(np.isfinite(y).sum()),
-            "tide_fitted": eta is not None,
+            "tide_fitted": eta is not None, "outlook24": outlook24(path, bank),
             "recovery": recovery(y, ybar, y0, bank, path, rain_next24)}
+
+
+def outlook24(path: list[dict], bank: float | None) -> dict | None:
+    """Next-24 h summary for citizens: when the median path peaks, and a coarse chance of reaching the bank.
+    The chance band comes from the per-horizon conformal quantiles (max over horizons), so it is a lower bound
+    on "reaches the bank at some time in 24 h" and is reported as a category, never a precise number (D-005)."""
+    qs = [p for p in path[:24] if p.get("q")]
+    if not qs:
+        return None
+    meds = [p["q"][2] for p in qs]
+    peak = max(qs, key=lambda p: p["q"][2])
+    out = {"peak_h": peak["h"], "peak_q": peak["q"], "varies": (max(meds) - min(meds)) > 0.05}
+    if bank is not None:
+        top = lambda k: max(p["q"][k] for p in qs)
+        out["bank_chance"] = (">50%" if top(2) >= bank else "25-50%" if top(3) >= bank
+                              else "5-25%" if top(4) >= bank else "<5%")
+    return out
 
 
 def recovery(y, ybar, y0, bank, path, rain_next24) -> dict:
@@ -229,7 +249,7 @@ def run_all() -> int:
         with db.connect() as c:
             rows = c.execute(
                 """SELECT obs_time, level_msl FROM observation WHERE code=%s AND quality_flag='ok'
-                   AND obs_time > now() - interval '35 days' ORDER BY obs_time""", (s["code"],)).fetchall()
+                   AND obs_time > now() - make_interval(days => %s) ORDER BY obs_time""", (s["code"], LOOKBACK_DAYS)).fetchall()
         rain24 = None
         if s["lat"] is not None and rain:
             pt = min(RAIN_POINTS, key=lambda k: (RAIN_POINTS[k][0] - s["lat"]) ** 2 + (RAIN_POINTS[k][1] - s["lon"]) ** 2)

@@ -34,11 +34,17 @@ def fetch(url: str, *, via_thai_egress: bool = False, retries: int = 3, method: 
     last: Exception | None = None
     for attempt in range(retries):
         try:
-            resp = _session.request(method, url, headers=headers, timeout=settings.timeout_s,
-                                    proxies=proxies, data=data)
-            if resp.status_code >= 500:
-                raise requests.HTTPError(f"HTTP {resp.status_code}")
-            return Fetched(url, resp.status_code, resp.content, resp.headers.get("content-type", ""))
+            deadline = time.monotonic() + 2 * settings.timeout_s  # `timeout` is per read; also cap the total
+            with _session.request(method, url, headers=headers, timeout=settings.timeout_s, proxies=proxies,
+                                  data=data, stream=True) as resp:
+                if resp.status_code >= 500:
+                    raise requests.HTTPError(f"HTTP {resp.status_code}")
+                chunks = []
+                for chunk in resp.iter_content(64 * 1024):
+                    chunks.append(chunk)
+                    if time.monotonic() > deadline:  # a server trickling bytes once hung the worker for 15+ min
+                        raise TimeoutError(f"total deadline {2 * settings.timeout_s:.0f}s exceeded")
+                return Fetched(url, resp.status_code, b"".join(chunks), resp.headers.get("content-type", ""))
         except Exception as e:  # network error or 5xx: back off and retry
             last = e
             wait = min(8, 2 ** attempt)

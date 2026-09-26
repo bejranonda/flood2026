@@ -2,7 +2,7 @@
 ### Water-level monitoring and forecasting for Bangkok and the lower Chao Phraya
 > **ระบบติดตามและคาดการณ์ระดับน้ำ กรุงเทพมหานครและลุ่มเจ้าพระยาตอนล่าง (พ.ศ. 2569)**
 
-[![Status: MVP live](https://img.shields.io/badge/status-MVP%20live%20(beta)-brightgreen.svg)](https://flood.bejranonda.com)
+[![Status: MVP live](https://img.shields.io/badge/status-MVP%20live%20(beta)-brightgreen.svg)](https://flood.autobahn.bot)
 [![Infra: single server + Cloudflare](https://img.shields.io/badge/infra-single%20server%20%2B%20Cloudflare-orange.svg)](HANDOFF.md)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](docs/GUIDELINES.md)
 [![Domain: Hydrology & Flood Forecasting](https://img.shields.io/badge/domain-hydrology%20%26%20flood%20forecast-0077b6.svg)](docs/APPROACH_AND_METHODS.md)
@@ -10,7 +10,15 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): MVP live at https://flood.bejranonda.com** (ฉบับทดลอง). It collects HII telemetry (805 stations in the main feed plus 34 chart-only stations → **104 in focus**), Open-Meteo rain forecasts and Traffy reports, keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands, and shows a Thai map and list. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
+> **Current status (2026-09-26): MVP live at https://flood.autobahn.bot** (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
+>
+> It collects:
+> - HII telemetry (805 stations in the main feed plus chart-only stations → **100 in focus**, with up to **one year** of hourly history);
+> - Open-Meteo rain forecasts;
+> - Traffy reports;
+> - **citizen feedback** from the site itself.
+>
+> It keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list, map, the Chao Phraya profile, and share links. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
 
 ---
 
@@ -29,23 +37,23 @@ Methods: [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md).
 **น้ำเหนือ** (upstream flood wave: C.2 → C.13 → C.35 → Bang Sai) + **น้ำหนุน** (Gulf tide, mixed and mainly diurnal, plus surge) + **น้ำฝน** (convective rain above the ~60 mm/h drainage capacity), all modulated by **human control**: giant tunnels, gates, pumps, dam releases. East Bangkok needs a rain + polder model; the riverside needs routing + tide. See [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md).
 
 ## Architecture (short)
-A **VPS core** (collectors → immutable raw archive → Postgres + TimescaleDB + PostGIS → forecasts → FastAPI on 127.0.0.1) behind **Cloudflare** (Tunnel, edge cache, Pages, R2 backups). v1 uses **keyless** sources collected on the server. The browser only talks to our API. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+A **single-server core** (collectors → immutable raw archive → Postgres → forecasts → FastAPI) behind a **Cloudflare Tunnel** (no inbound ports; R2 backups pending). TimescaleDB/PostGIS come later. v1 uses **keyless** sources collected on the server. The browser only talks to our API. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Roadmap
 | Phase | Goal | Gate | Status |
 |---|---|---|---|
-| 0 | [Verify every source from the VPS](docs/plan/phase-0-source-verification.md) | G0: approved source set | 🟡 in progress |
-| 1 | [Collectors + our own archive + backfill](docs/plan/phase-1-ingestion-archive.md) | G1: 7 days collected, restore tested | ⏳ |
-| 2 | [Forecasting (spatio-temporal, calibrated)](docs/plan/phase-2-forecasting.md) | G2: beats persistence, coverage 85–95 % | ⏳ |
-| 3 | [Thai web app](docs/plan/phase-3-web-app.md) | G3: UX review | ⏳ |
-| 4 | [Deployment and ops hardening](docs/plan/phase-4-deployment-ops.md) | G4: load and redeploy drills | ⏳ |
+| 0 | [Verify every source](docs/plan/phase-0-source-verification.md) | G0: approved source set | 🟡 HII, Open-Meteo, Traffy in production; BMA/Navy open |
+| 1 | [Collectors + our own archive + backfill](docs/plan/phase-1-ingestion-archive.md) | G1: 7 days collected, restore tested | 🟡 running; 1-year backfill; no R2 yet |
+| 2 | [Forecasting (spatio-temporal, calibrated)](docs/plan/phase-2-forecasting.md) | G2: beats persistence, coverage 85–95 % | 🟡 L0/L1 + trend, conformal bands, 24 h outlook |
+| 3 | [Thai web app](docs/plan/phase-3-web-app.md) | G3: UX review | 🟡 live, mobile-first, feedback ([UX_VALIDATION](docs/UX_VALIDATION.md)) |
+| 4 | [Deployment and ops hardening](docs/plan/phase-4-deployment-ops.md) | G4: load and redeploy drills | 🟡 tunnel live; backups and alerts next |
 
-Strict gates: each phase stops for the owner's approval ([D-002](docs/plan/DECISIONS.md)). The collectors start the moment G0 passes.
+All workstreams run in parallel during the flood ([D-012](docs/plan/DECISIONS.md)); the gates are quality reviews.
 
 ## Data sources (v1, keyless)
 | Source | Status (probe 2026-09-26) | Use |
 |---|---|---|
-| HII ThaiWater public API + chart site | ✅ live (805 stations + **162 chart-only candidates**, 34 added; 30-day history per station; ~56 return HTTP 500, incl. Fort Chula and Bang Sai) | Levels, bank, discharge (RID stations), rain |
+| HII ThaiWater public API + chart site | ✅ live (805 stations + **162 chart-only candidates**, 34 added; **up to 365 days** of hourly history via `waterlevel_graph`; ~54 chart codes return HTTP 500, incl. Fort Chula and Bang Sai; all workarounds tested) | Levels, bank, discharge (RID stations), rain |
 | Open-Meteo forecast / ensemble / flood (GloFAS) | ✅ live | Rain forcing, upstream prior |
 | RID portals | 🟡 reachable; Bang Sai (C.29A) feed still to find | Upstream boundary, releases |
 | Navy tide tables | 🔴 URL moved + bot challenge → our own harmonic fit as the interim | Tide |
@@ -72,9 +80,10 @@ infra/ (vpn/ sidecar, legacy Caddyfile)  tests/  docker-compose.yml  Dockerfile 
 | [docs/plan/PLAN.md](docs/plan/PLAN.md) | Roadmap, gates, risks · [DECISIONS](docs/plan/DECISIONS.md) · [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md) |
 | [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) | Three Waters, datums, stations (HII live metadata), polders, the 2026 event, contacts |
 | [docs/SOURCES.md](docs/SOURCES.md) | Source registry with probe results; refuted endpoints |
-| [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md) | Spatio-temporal framework, model ladder L0–L7, tide, routing, polders, conformal, recovery, depth |
+| [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md) | Spatio-temporal framework (incl. **§2.9 is interpolation useful?**), model ladder L0–L7, statistics (§3.4), **feedback loop (§3.5)**, tide, routing, polders, conformal, recovery, depth |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Phase gates, evidence rule, data ethics, UX, code and security |
-| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-502 with status |
+| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-507 with status |
+| [docs/UX_VALIDATION.md](docs/UX_VALIDATION.md) | Resident personas, UX findings, what changed, what's still missing |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, storage, security, deployment, adding a source |
 | [research/README.md](research/README.md) | Research validity index · [VALIDATION report](research/VALIDATION_2026-09-26.md) |
 
@@ -97,7 +106,7 @@ Operations and next steps: [HANDOFF.md](HANDOFF.md).
 pip install numpy   # only dependency
 python3 research/validation/validate_research_claims.py
 ```
-Results depend on the host's country. Run it on the production VPS for Phase 0 ([KI-101](docs/KNOWN_ISSUES.md)).
+Results depend on the host's country (this host is in Germany; BMA blocks it) ([KI-101](docs/KNOWN_ISSUES.md)).
 
 ## Search & AI discovery index
 

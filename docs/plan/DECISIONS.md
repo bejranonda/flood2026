@@ -86,3 +86,25 @@
 - **Decision:** the `vpn` compose service (profile `vpn`) runs the owner's OpenVPN client plus a small HTTP proxy in **one** container. Only requests that explicitly use `THAI_EGRESS_PROXY=http://vpn:8888` leave through it. **Host routing and SSH are untouched.** A watchdog restarts the tunnel when it stops carrying traffic.
 - **Limits (public relay = untrusted and flaky):** public pages only; **never send credentials, tokens or personal data through it**; HTTPS is always verified; used only for sources that geo-block (BMA/DWR/Navy); no bot-challenge solving; if a site still blocks the relay's IP class (as `weather.bangkok.go.th` does), don't rotate through relays to evade it: get an owner-controlled Thai host instead.
 - **Evidence:** exit IP 49.48.220.198 (Ayutthaya, TH, 3BB); DWR EWS and the Navy home page open from it; BMA `weather.` still 403 ([KI-101](../KNOWN_ISSUES.md)).
+
+### D-017 — Main domain `flood.autobahn.bot`; `flood.bejranonda.com` stays as an alias
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "Change the main domain to https://flood.autobahn.bot/"; the owner also replaced the tunnel token)
+- **Decision:** `flood.autobahn.bot` is the canonical URL: `rel=canonical`, Open Graph URL, User-Agent `BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)`, `CORS_ORIGIN`, and the docs. Both hostnames are proxied CNAMEs to tunnel `d62b426d…`; `cloudflared` sends any hostname to `app:3000`. **No redirect from the old domain yet**, because the `autobahn.bot` zone shows a bot challenge to non-browser clients ([KI-506](../KNOWN_ISSUES.md)). Add a 301 once the owner relaxes it for this host.
+- **Evidence:** CNAME created and re-pointed via the API on 2026-09-26. The old domain returns 200; the new domain returns 403 "Just a moment…" to curl and headless Chrome, as does every proxied host in the zone.
+
+### D-018 — One year of history; backtest on the recent 45 days
+- **Date:** 2026-09-26 · **Status:** accepted
+- **Context:** api-v3 `waterlevel_graph` serves **up to 365 days** of hourly data (C.12: a request from 2025-09-01 returned 8,777 points starting 2025-09-26). With only 30 days, the backtest's tide fit (on the first 60 %) had < 15 days, so 43 stations with a tide fit were still served persistence.
+- **Decision:** each focus station is backfilled **once** with 365 days (`collector_state.hii_graph_backfilled`) by the `hii_backfill` task: 6 stations every 10 min, bulk-inserted with `COPY`, so the single worker loop is never blocked for long. Then `hii_history` refreshes 3 days every 6 h. Forecasts read up to 370 days. The tide is fitted on everything before the backtest window. **The backtest and conformal errors use only the last 45 days**, so the intervals reflect the current regime rather than the dry season.
+- **Consequences:** better tide constants (closer to the ≥ 1-year `utide` target), a one-time load of about 100 requests on HII, and a larger archive (one-off).
+
+### D-019 — No 2-D interpolation of water levels for users; 1-D along the river only after validation
+- **Date:** 2026-09-26 · **Status:** accepted (owner asked whether spatio-temporal interpolation is useful, noting that Bangkok is not flat)
+- **Decision:** don't interpolate water surfaces across land, walls or polders. Show gauges as they are (map, list, and the north→south Chao Phraya profile). Along-river interpolation (chainage + tide lag) goes to Phase 2 and is shown only if leave-one-out RMSE < 0.10 m. Today's test at C.12 gives 0.175 m, against 0.38–0.46 m for the nearest gauge. Temporal: never bridge gaps > 90 min in charts; show "unknown" after 24 h without data. Evidence and reasoning: [APPROACH §2.9](../APPROACH_AND_METHODS.md).
+
+### D-020 — Citizen feedback: collected privately, used for review and evaluation, never auto-applied
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "Give the chance to get feedback from users … will be fed into the system to improve the model or calculation or data")
+- **Decision:**
+  - `POST /api/feedback` collects a verdict on what was shown, the water depth where the user is, a short note, and an opt-in location rounded to ~100 m. The server stores a snapshot of what was displayed.
+  - Privacy: no names or contacts; the IP is never stored (a salted daily hash for rate limiting); notes are never published; the public sees counts only.
+  - Feedback drives **verification metrics, data-quality review and future depth-model labels** ([APPROACH §3.5](../APPROACH_AND_METHODS.md)). It **never automatically changes a forecast or a status** ([KI-507](../KNOWN_ISSUES.md)).

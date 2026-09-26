@@ -56,19 +56,35 @@ def upsert_station(c: psycopg.Connection, s: dict[str, Any]) -> None:
 
 
 def insert_observations(c: psycopg.Connection, rows: list[dict[str, Any]]) -> int:
+    """Upsert observations. Large batches (backfills: ~50k rows per station-year) go through COPY into a temp
+    table, which is orders of magnitude faster than row-by-row inserts. First occurrence of a key wins."""
     if not rows:
         return 0
-    with c.cursor() as cur:
-        cur.executemany(
-            """INSERT INTO observation (code, obs_time, level_msl, discharge, situation_level, source, quality_flag, raw_ref)
-               VALUES (%(code)s, %(obs_time)s, %(level_msl)s, %(discharge)s, %(situation_level)s, %(source)s,
-                       %(quality_flag)s, %(raw_ref)s)
-               ON CONFLICT (code, obs_time) DO UPDATE SET
+    cols = ("code", "obs_time", "level_msl", "discharge", "situation_level", "source", "quality_flag", "raw_ref")
+    conflict = """ON CONFLICT (code, obs_time) DO UPDATE SET
                  discharge=COALESCE(observation.discharge, EXCLUDED.discharge),
-                 situation_level=COALESCE(observation.situation_level, EXCLUDED.situation_level)""",
-            rows,
-        )
-    return len(rows)
+                 situation_level=COALESCE(observation.situation_level, EXCLUDED.situation_level)"""
+    if len(rows) < 500:
+        with c.cursor() as cur:
+            cur.executemany(
+                f"""INSERT INTO observation ({", ".join(cols)})
+                    VALUES ({", ".join(f"%({k})s" for k in cols)}) {conflict}""", rows)
+        return len(rows)
+    seen: set = set()
+    unique = []
+    for r in rows:
+        key = (r["code"], r["obs_time"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(r)
+    with c.cursor() as cur:
+        cur.execute("CREATE TEMP TABLE IF NOT EXISTS obs_stage (LIKE observation INCLUDING DEFAULTS) ON COMMIT DELETE ROWS")
+        cur.execute("TRUNCATE obs_stage")
+        with cur.copy(f"COPY obs_stage ({', '.join(cols)}) FROM STDIN") as cp:
+            for r in unique:
+                cp.write_row([r.get(k) for k in cols])
+        cur.execute(f"INSERT INTO observation ({', '.join(cols)}) SELECT {', '.join(cols)} FROM obs_stage {conflict}")
+    return len(unique)
 
 
 def record_health(source: str, ok: bool, error: str | None = None, data_time: dt.datetime | None = None) -> None:
@@ -100,3 +116,13 @@ def save_forecast(code: str, issue_time: dt.datetime, version: str, payload: dic
             (code, issue_time, version, Jsonb(payload)),
         )
         c.commit()
+
+
+def get_state(c: psycopg.Connection, key: str) -> Any:
+    row = c.execute("SELECT value FROM collector_state WHERE key=%s", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_state(c: psycopg.Connection, key: str, value: Any) -> None:
+    c.execute("""INSERT INTO collector_state (key, value, updated_at) VALUES (%s, %s, now())
+                 ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()""", (key, Jsonb(value)))

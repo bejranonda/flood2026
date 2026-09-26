@@ -125,6 +125,34 @@ Gaps: short gaps (≤ 30 min) can be interpolated for features, with a flag. Lon
 
 ---
 
+### 2.9 Is spatio-temporal interpolation useful for users? (assessment 2026-09-26)
+The owner asked this, noting that **Bangkok is not flat**. Short answer: **2-D interpolation of water levels over the city: no, it would mislead. 1-D interpolation along the Chao Phraya outside the walls: yes, later, once validated. Temporal interpolation: only for short gaps inside models, never in what users see.**
+
+Evidence (live DB, 2026-09-26 ~09:30 UTC):
+- **Sparse, channel-bound gauges.** Bangkok plus Nonthaburi, Samut Prakan and Pathum Thani have **20 gauges with coordinates**. Median nearest-neighbour spacing is **7.7 km** (max 17.1 km). Street-scale flooding varies over tens of metres.
+- **Protection heights differ by metres.** Bank levels of metro gauges range from **0.43 m (BKK017) to 4.56 m MSL (CAN001)**. Water levels on either side of a gate differ too (BKC003 bank 1.51 vs BKC004 0.91 on the same Bang Yo cut). An interpolated surface would cross walls, gates and polder boundaries, which §2.1 forbids.
+- **"Ground level" at a river gauge is the channel bed**, not land: CPY015 −15.7 m, C.12 −14.5 m. HII `ground_level` therefore can't be used to build a land surface ([KI-208](KNOWN_ISSUES.md)).
+- **1-D along the river works, but isn't good enough yet.** Leave-one-out at C.12 Samsen, predicting it from CPY014 (Nonthaburi, 17.9 km upstream) and CPY015 (Krung Thep Bridge, 9.9 km downstream) by linear interpolation in straight-line distance:
+
+  | Method | RMSE (m) | Bias (m) |
+  |---|---|---|
+  | Linear interpolation | **0.175** | +0.145 |
+  | Nearest gauge | 0.38–0.46 | – |
+  | Spread of C.12 itself (SD) | 0.42 | – |
+
+  54 matched hours over 30 days; C.12 reports sparsely. So the along-river position carries information, but the bias (tide phase and non-linear slope) must be modelled before this is shown to riverside residents.
+
+| Interpolation | Useful to users? | Decision |
+|---|---|---|
+| 2-D water surface over land (IDW, kriging) | **No, harmful.** It crosses walls and polders, ignores terrain, and gives false "safe" or "flooded" signals | Not built. "Near me" says the nearest gauge may not represent the user's home |
+| 1-D along the Chao Phraya, outside the walls | **Yes**, for riverside communities (piers, communities outside the flood wall) | **Now:** the "เจ้าพระยา" profile shows gauges only, north → south, with freeboard (`/api/profile`), and nothing between gauges. **Phase 2:** chainage from a river centreline (OSM, ODbL) + tide phase lag (§8), validated leave-one-out, shown only if RMSE < 0.10 m |
+| Along a khlong inside one polder | Maybe. Gauges are sparse and pumps and gates dominate | Phase 2, per polder, only where ≥ 2 gauges share a reach |
+| Rain (gauges → areal mean per polder) | Yes, as model **forcing** (§2.3); little direct value to users | Phase 2 (IDW or Thiessen + radar). Users get the Open-Meteo 24 h total in the summary strip |
+| Temporal gap filling | Inside models only (tide-aware, ≤ 1 h gaps) | **Now:** charts don't bridge gaps > 90 min, and readings older than 24 h show as "unknown" instead of their last status |
+| Depth at the user's point | Yes, the real need, but only as probabilistic categories | §13. Validated against user depth reports (§3.5) and Traffy (§2.3) |
+
+What helps a Bangkok resident most is not interpolation. It is **choosing the gauge in the same water body** (polder-aware "near me", §13) and **reporting ground truth back** (§3.5).
+
 ## 3. Horizons and the model ladder
 
 ### 3.1 Horizon × regime matrix
@@ -152,14 +180,45 @@ Gaps: short gaps (≤ 30 min) can be interpolated for features, with a flag. Lon
 
 ### 3.3 What the live MVP implements (2026-09-26, [forecast/](../src/floodwatch/forecast/__init__.py))
 - Candidates per station: **L0 persistence**, **L1 persistence + tide** (harmonic K1, O1, M2, S2, M4, MS4 fitted by least squares on the station's own 25 h-detrended data; only when ≥ 15 days of hourly data exist), and **L1 + damped 24 h trend** (trend only, for non-tidal stations).
-- **Rolling-origin backtest** on the last 40 % of up to 35 days, horizons 1, 3, 6, 12, 24, 48, 72 h. The best candidate is served **only if its skill vs persistence is > 0.10**, otherwise persistence.
+- **History:** up to **one year** of hourly data per station (api-v3 `waterlevel_graph` serves ≤ 365 days, verified 2026-09-26; backfilled once in batches of 6 stations every 10 min, then refreshed with 3 days every 6 h) plus ~30 days of 10-min chart data for BKK/CPY/BKC/AIT and chart-only stations. The forecast reads up to 370 days.
+- **Rolling-origin backtest** on the **last 45 days** (or the last 40 % of a shorter record), horizons 1, 3, 6, 12, 24, 48, 72 h. The tide used in the backtest is fitted only on data before that window (no leakage), so a long record gives the tide model a fair test while the error quantiles reflect the current flood regime. The best candidate is served **only if its skill vs persistence is > 0.10**, otherwise persistence.
 - **Intervals:** split-conformal, as empirical 5/25/50/75/95 % quantiles of the chosen method's backtest errors, interpolated between horizons. There are no intervals when the backtest has fewer than 30 errors.
 - **Trend (12 h):** "steady" if the median change is within max(2 cm, half the 50 % band).
 - **Recovery:** first crossing below bank of the q25/q50/q75 paths (≤ 72 h), otherwise extrapolation of the 24 h recession rate (low confidence). "Not estimable" when ≥ 30 mm of rain is forecast for the next 24 h at the nearest Open-Meteo point, or when the water isn't falling.
 - **Status:** ≥ bank → วิกฤต; ≥ 90 % of ground→bank range → เตือนภัย; ≥ 70 % → เฝ้าระวัง; otherwise ปกติ (⚠️ heuristic, to be calibrated against official warning levels).
-- **Coverage (2026-09-26 09:00 UTC):** 104 focus stations. **28 have no bank level** (status "unknown", no recovery) and **34 have no coordinates** (not on the map, excluded from "near me"): [KI-207](KNOWN_ISSUES.md). Stations that only the chart site serves have about 30 days of 10-min data, so the tide fit (needs ≥ 15 days) is available; a station with less data stays on persistence without intervals.
-- **Tide reference gap:** the Fort Chula gauge (GLF001) and Bang Sai (CPY013) exist in the HII chart list but their history isn't retrievable yet. Until then regime B relies on each station's own tide fit; getting GLF001 history is the highest-value data task ([HANDOFF §5](../HANDOFF.md)).
+- **Coverage (2026-09-26 09:40 UTC):** 100 focus stations (104 minus 4 `TEST*` gauges). **26 have no bank level** (status "unknown", no recovery) and **30 have no coordinates** (not on the map, excluded from "near me"): [KI-207](KNOWN_ISSUES.md). Stations that only the chart site serves have about 30 days of 10-min data, so the tide fit (needs ≥ 15 days) is available; a station with less data stays on persistence without intervals.
+- **Tide reference gap:** the Fort Chula gauge (GLF001) and Bang Sai (CPY013) exist in the HII chart list but no history is retrievable. `getGraphFirst` and `POST /getGraph` (with CSRF token) both answer HTTP 500, and `queryStation`'s `water1` stayed at 0.03 m for ≥ 35 min at a tide gauge, i.e. frozen (2026-09-26, KI-207). Until then regime B relies on each station's own tide fit; getting GLF001 history is the highest-value data task ([HANDOFF §5](../HANDOFF.md)).
+- **24 h outlook** (`outlook24`): the hour at which the median path peaks, shown as a ±1 h window with the 50 % range (only when the median varies by > 5 cm, i.e. a tide signal is served). Also a **chance of reaching the bank** category: < 5 %, 5–25 %, 25–50 % or > 50 %, from the maximum over 1–24 h of the per-horizon conformal quantiles. ⚠️ This is a *lower bound* on "reaches the bank at some time in 24 h" (marginal quantiles, not a joint path probability), so it is shown only as a category (D-005).
+- **Status after 24 h without data** is "unknown"; the last value is shown, marked stale.
 - Not yet implemented: routing (L3), polder storage, ML (L4/L5), ensembles, and polder-aware "near me" (nearest by distance only).
+
+### 3.4 Network statistics shown to users (`/api/stats`)
+A compact strip at the top of the page answers "how bad is it, and can I trust the data?":
+- **Status chips** (ล้นตลิ่ง / ใกล้ตลิ่ง / เฝ้าระวัง / ปกติ / ไม่ทราบ), each with a count. Tapping one filters the list.
+- **Trend counts** (rising / falling over 12 h) and the **maximum Open-Meteo rain total for the next 24 h** over the Bangkok points.
+- **Reporting freshness** for the focus gauges (100 after removing `TEST*`) (within 1 h / 3 h / 24 h) with a 3-colour bar; the **whole HII network** is behind a "ทั้งประเทศ" toggle. Example at 09:17 UTC: focus 79 / 95 / 98 of 104; network 434 / 783 / 823 of 840, with 17 older than 24 h or never reporting. Also the metadata gaps (no coordinates / no bank level).
+
+Why these and not more: status and trend answer the citizen's question; freshness tells them whether to trust it. Per-agency or per-basin breakdowns belong in `/api/health`, not on a phone screen.
+
+### 3.5 Citizen feedback loop (`POST /api/feedback`)
+- **What users can send**, all optional but at least one of:
+  - a **verdict** on what we show at a station (ตรง / น้ำจริงสูงกว่า / ต่ำกว่า / ไม่แน่ใจ);
+  - the **water depth where they are** (none / ankle ≤ 20 cm / knee ~50 cm / waist ~1 m / above);
+  - a **note** (≤ 280 characters);
+  - an **opt-in location**, rounded to 3 decimals (~100 m).
+
+  The "near me" box also offers a location-only depth report.
+- **What the server adds:** a **snapshot of what the site showed at that moment** (level, status, freeboard, trend, recovery, forecast issue time), so every report can be scored against the forecast that was actually displayed.
+- **Privacy and abuse** ([GUIDELINES §5](GUIDELINES.md)):
+  - no names or contacts;
+  - the IP is never stored, only `sha256(FEEDBACK_SALT + date + IP)` for rate limiting (10 per hour), so senders can't be linked across days;
+  - a honeypot field catches bots;
+  - notes are **never published**; the public sees counts only (`/api/feedback/summary`, and 7-day counts in the station detail).
+- **How it feeds the system.** Feedback is an **input to people and to evaluation, never an automatic model change**, because a flood site attracts both honest error and manipulation.
+  1. **Verification:** the "higher/lower" share per station and lead time is tracked with the §14 metrics. A station with ≥ 3 disagreements outnumbering "matches" in 7 days gets `review: true` and a "ทีมงานกำลังตรวจสอบ" note.
+  2. **Data quality:** reports that disagree with a gauge are usually a stuck sensor, a datum or bank-level error, or a gauge in a different water body. They trigger checks, not edits.
+  3. **Depth ground truth:** depth reports plus location become labels for §13 (DEM, HAND and polder calibration), weighted with Traffy.
+  4. **Model features (Phase 2+):** only aggregated, de-duplicated and outlier-screened counts, and only if they improve the backtest.
 
 ## 4. Derived quantities (shown in the UI and used as features)
 | Quantity | Formula | Notes |

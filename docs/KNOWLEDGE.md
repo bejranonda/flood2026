@@ -85,10 +85,10 @@ C.2  ค่ายจิรประวัติ, Nakhon Sawan ─► C.13 ท้
 ### 3.1b HII has two station catalogues (verified 2026-09-26)
 | Catalogue | Endpoint | Stations | Coordinates | Bank / ground | History |
 |---|---|---|---|---|---|
-| Latest-values feed | `api-v3…/public/waterlevel_load` | 805 (nationwide) | ✅ | ✅ | via `waterlevel_graph` (numeric id) |
+| Latest-values feed | `api-v3…/public/waterlevel_load` | 805 (nationwide) | ✅ | ✅ | via `waterlevel_graph` (numeric id): **up to 365 days, hourly** (verified 2026-09-26) |
 | **Chart site list** | `tiwrm…/queryStation?prov=<Thai province name>` (e.g. `prov=กรุงเทพมหานคร`; numeric codes return `[]`) | **+162 stations** in our 18 nearest provinces that the feed lacks (BKK004/007/011/012, `ATG*`, `MOU*`, …) | ❌ (only in the map feed for 107 stations: `json/telemetering/wl/warning`) | partly (chart `0/0` = unknown) | `getGraphFirst/{code}` ≈ 30 days, 10 min. **HTTP 500 for many codes** ([KI-207](KNOWN_ISSUES.md)) |
 
-The chart list includes the **Fort Chula tide gauge (GLF001 ป้อมพระจุลจอมเกล้า)** and **Bang Sai (CPY013 บางไทร)**: the two key stations missing from the main feed. Their history isn't retrievable yet. Coverage now: **104 focus stations** (Ayutthaya 32, Nakhon Sawan 16, Chai Nat 13, Bangkok 13, Sing Buri 10, Pathum Thani 8, Samut Prakan 5, Ang Thong 4, Nonthaburi 3).
+The chart list includes the **Fort Chula tide gauge (GLF001 ป้อมพระจุลจอมเกล้า)** and **Bang Sai (CPY013 บางไทร)**: the two key stations missing from the main feed. Their history isn't retrievable: `getGraphFirst` and `POST /getGraph` both answer HTTP 500, and `queryStation`'s `water1` is frozen ([KI-207](KNOWN_ISSUES.md)). The lists also contain test gauges (`TEST*`), which are excluded (KI-209). Coverage now: **100 focus stations** (after removing 4 `TEST*` gauges; province split below is from before that) (Ayutthaya 32, Nakhon Sawan 16, Chai Nat 13, Bangkok 13, Sing Buri 10, Pathum Thani 8, Samut Prakan 5, Ang Thong 4, Nonthaburi 3).
 
 ### 3.2 Station metadata (HII live, 2026-09-26)
 Bank = HII `min_bank` (m MSL). This is the operational reference; older DWR report values differ by up to 1.5 m (see [validation §E](../research/VALIDATION_2026-09-26.md)).
@@ -118,6 +118,7 @@ Bank = HII `min_bank` (m MSL). This is the operational reference; older DWR repo
 2. **Pre-storm drawdown:** BMA pumps canals down before forecast rain to create storage 🟡. The exact target levels (drafts: −0.2 to −0.8 m MSL) are ⚠️.
 3. **Gate logic:** gravity outflow only when H_khlong > H_river; otherwise the gates close and the pumps take over.
 4. **Spatial structure:** each polder (drainage zone) has its own khlongs, pumps and outlets. A resident's flood risk depends on **which polder** they're in, not on straight-line distance to a gauge ([APPROACH §2](APPROACH_AND_METHODS.md)).
+5. **Bangkok is not flat, and neither are its protection heights** ✅ (HII metadata, 2026-09-26). Bank levels of gauges in Bangkok, Nonthaburi, Samut Prakan and Pathum Thani range from **0.43 m (BKK017, Khlong Hua Takhe) to 4.56 m MSL (CAN001)**. River-side banks are 2.16–2.50 m (CPY015, C.12, CPY014); gates on the same cut differ (BKC003 1.51 vs BKC004 0.91). The 20 metro gauges with coordinates are **7.7 km apart** (median nearest-neighbour). So a gauge describes its own channel, not the land around it ([APPROACH §2.9](APPROACH_AND_METHODS.md), D-019).
 
 ---
 
@@ -143,6 +144,8 @@ From news collected in [sources_survey §1](../research/sources_survey.md) 🟡,
 | > 50 cm | ระดับเข่าขึ้นไป พิจารณาอพยพ | ฉุกเฉิน (แดงเข้ม) |
 
 Depth at a location is always shown as a **probability category**, never an exact number (KI-202, [APPROACH §13](APPROACH_AND_METHODS.md)).
+
+**Body-landmark bands for user reports** (feedback form, [APPROACH §3.5](APPROACH_AND_METHODS.md)): ไม่มีน้ำท่วม · ข้อเท้า (≤ 20 cm) · เข่า (~50 cm) · เอว (~1 m) · สูงกว่าเอว. These are easier to judge while standing in water than centimetres. They are coarse labels for validation, not measurements.
 
 ### 6.2 Official contacts (re-check every number before the UI launches)
 | Service | Number / channel | Status |

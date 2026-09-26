@@ -38,3 +38,20 @@ def test_status_relative_to_bank():
     assert forecast.classify_status(2.82, 2.2, -0.33)[0] == "critical"
     assert forecast.classify_status(0.0, 2.0, -2.0)[0] == "normal"
     assert forecast.classify_status(None, 2.0, -2.0)[0] == "unknown"
+
+
+def test_outlook24_reports_peak_and_bank_chance():
+    times, vals = _synthetic()
+    fc = forecast.forecast_station("T", times, vals, bank=1.6, rain_next24=0)
+    o = fc["outlook24"]
+    assert 1 <= o["peak_h"] <= 24 and o["varies"]
+    assert o["bank_chance"] in ("<5%", "5-25%", "25-50%", ">50%")
+    far = forecast.forecast_station("T", times, vals, bank=9.0, rain_next24=0)["outlook24"]
+    assert far["bank_chance"] == "<5%"
+
+
+def test_long_record_backtests_recent_window_only():
+    times, vals = _synthetic(days=120)
+    fc = forecast.forecast_station("T", times, vals, bank=2.0, rain_next24=0)
+    assert fc["skill"]["6"]["n"] <= forecast.EVAL_HOURS
+    assert fc["skill"]["6"]["method"] in ("tide", "tide_trend")

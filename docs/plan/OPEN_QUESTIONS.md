@@ -8,7 +8,6 @@
 | # | Question | Why it matters | Blocks |
 |---|---|---|---|
 | Q1 | **Production VPS details:** provider, region (Singapore or Thailand?), vCPU/RAM/**disk**, OS, egress IP. Is it separate from this dev host (`HZ-Agent`, Germany, ~11 GB free, no `cloudflared`)? | Phase 0 tests must run on the VPS. BMA blocks the German host. Disk sizing for the archive | Phase 0 |
-| Q2 | What does `flood.bejranonda.com` serve today, and where is the tunnel configured (dashboard or config file)? | README status; bringing the config into `infra/` | Phase 1/4 |
 | Q3 | Who contacts **HII**, **BMA DDS** and **BMA/NECTEC (Traffy)** about permission and official feeds, ideally in Thai from a named person or organisation? | Public redistribution depends on it | Public launch |
 | Q4 | Will you register **TMD** (uid/ukey), **GISTDA**, **Copernicus GFM** and **NASA Earthdata**? The keys go in `.env` on the VPS | P2 sources | Phase 1 (optional) |
 | Q5 | Confirm the **v1 area**: Bangkok + Nonthaburi, Pathum Thani, Samut Prakan, Ayutthaya, Ang Thong, Sing Buri, Chai Nat, Nakhon Sawan? Any specific neighbourhoods to prioritise? | Station inventory and polder mapping effort | G0 |
@@ -29,6 +28,13 @@
 | Q16 | **R2 backups:** please create an R2 bucket and an **S3 API token** (Access Key ID + Secret) and put `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET` in `.env`. | Off-site copy of the archive and database |
 | Q17 | **Thai IP for BMA:** the VPN relay reaches `dds.bangkok.go.th`, but `weather.bangkok.go.th` still returns 403. Do you have a Thai server or home connection we can use as an SSH SOCKS exit (`ssh -N -D`)? | BMA khlong data |
 
+## New (2026-09-26, domain, feedback and UX work)
+| # | Question | Why it matters |
+|---|---|---|
+| Q18 | **`autobahn.bot` bot challenge:** please relax it for `flood.autobahn.bot` (Configuration Rule: Security Level "Essentially Off" + WAF skip, or turn off Bot Fight Mode for the zone). Until then the old domain stays a full alias ([KI-506](../KNOWN_ISSUES.md)). May we add a 301 from `flood.bejranonda.com` once it's fixed? | Slow phones, LINE link previews, API users |
+| Q19 | **Who reads user feedback** (notes) and how often during the flood? Should we add a small password-protected review page, or is SQL access enough? | Feedback is only useful if someone acts on it ([D-020](DECISIONS.md)) |
+| Q20 | **Old tunnel `ecd8a7b9…`** stopped when the token changed. Did anything else use it? It can be deleted in the dashboard if not. | Housekeeping |
+
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
@@ -41,3 +47,5 @@
 | A7 | Q3 (permissions from agencies) | Don't wait; find alternatives (proxy/VPN/scripts) (2026-09-26) | [D-014](DECISIONS.md), [D-016](DECISIONS.md) |
 | A8 | Q13 (interim public page) | Yes, build everything in parallel and ship now (2026-09-26) | [D-012](DECISIONS.md) |
 | A9 | Q14 (Thai collector node) | The owner added an OpenVPN (VPN Gate, Thailand) config (2026-09-26) | [D-016](DECISIONS.md) |
+| A10 | Q2 (what the domain serves; tunnel config) | Main domain is now `flood.autobahn.bot`; new tunnel token supplied (2026-09-26) | [D-017](DECISIONS.md) |
+| A11 | Can users give feedback on predictions? | Yes: collect privately and feed evaluation and review (2026-09-26) | [D-020](DECISIONS.md) |

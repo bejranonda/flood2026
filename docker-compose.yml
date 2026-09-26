@@ -23,8 +23,9 @@ services:
     command: ["python", "-m", "floodwatch.worker"]
     environment: &appenv
       DATABASE_URL: postgresql://floodwatch:${POSTGRES_PASSWORD}@db:5432/floodwatch
+      FEEDBACK_SALT: ${FEEDBACK_SALT:-}
       TELEMETRY_ARCHIVE_PATH: /data/raw_archive
-      HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BKK-FloodWatch/0.1 (+https://flood.bejranonda.com)}
+      HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)}
       THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}   # e.g. http://vpn:8888 with --profile vpn
       MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
     volumes:

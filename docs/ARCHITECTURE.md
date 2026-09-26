@@ -12,12 +12,26 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 
 **Why not Cloudflare alone:** the core is scientific Python with long time series, heavy analytical queries and model training. That doesn't fit the Workers CPU limits or D1. **Why still put Cloudflare in front:** at the flood peak, traffic can jump by orders of magnitude, and 1–5 minute edge caching absorbs it.
 
-| Component | Status (2026-09-26) |
+| Component | Status (2026-09-26, verified) |
 |---|---|
-| Domain `flood.bejranonda.com` via Cloudflare Tunnel | **Live** (owner-reported). Its configuration isn't in this repo yet |
-| Production VPS | **Live** (owner-reported). Region and specs to confirm ([OPEN_QUESTIONS](plan/OPEN_QUESTIONS.md)) |
-| Application code | **None yet**. Scaffold only ([§7](#7-repository-layout)). Hosted in the private GitHub repo `bejranonda/flood2026` ([D-011](plan/DECISIONS.md)) |
-| Dev host of this repo | Germany, 4 vCPU / 7 GB / ~11 GB free. **Not the VPS**, and blocked by BMA ([KI-502](KNOWN_ISSUES.md)) |
+| **Main domain `flood.autobahn.bot`** ([D-017](plan/DECISIONS.md)) | Proxied CNAME → Cloudflare Tunnel `d62b426d…` → `cloudflared` → `http://app:3000`. ⚠️ The zone shows a bot challenge to non-browser clients ([KI-506](KNOWN_ISSUES.md)) |
+| Alias `flood.bejranonda.com` | Same tunnel, full alias (no redirect until KI-506 is fixed) |
+| Server | The single host `HZ-Agent` (Hetzner DE, 4 vCPU / 7.7 GB / ~13 GB free). **No other environment** ([D-013](plan/DECISIONS.md)). No inbound ports open |
+| Application | **Live MVP**: collectors, raw archive, forecasts, FastAPI + Thai web app, all in `docker compose` (`db`, `worker`, `app`, `cloudflared`, `vpn`) |
+| Database | Plain PostgreSQL 16; TimescaleDB/PostGIS deferred ([D-013](plan/DECISIONS.md)) |
+| Off-site backup (R2) | **Not yet** (owner: Q15/Q16) |
+| Repo | Private GitHub `bejranonda/flood2026` ([D-011](plan/DECISIONS.md)) |
+
+### 1.1 Live API (FastAPI, `/api/docs`)
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health` | Per-source health, data age |
+| `GET /api/stations?scope=focus\|all`, `GET /api/stations/{code}?days=` | Latest level, status vs bank, trend, recovery; history + forecast payload + 7-day feedback counts |
+| `GET /api/near?lat=&lon=&n=` | Nearest gauges by distance (⚠️ not polder-aware) |
+| `GET /api/stats` | Compact statistics: status and trend counts, reporting freshness (focus and whole HII network), metadata gaps, Bangkok 24 h rain ([APPROACH §3.4](APPROACH_AND_METHODS.md)) |
+| `GET /api/profile` | Chao Phraya main-stem gauges north → south with freeboard (no interpolation, D-019) |
+| `GET /api/reports?hours=`, `GET /api/rain` | Aggregated Traffy flood reports (counts per ~1 km cell); Open-Meteo rain totals |
+| `POST /api/feedback`, `GET /api/feedback/summary` | Citizen feedback (private; rate-limited) and public counts ([D-020](plan/DECISIONS.md)) |
 
 ---
 
@@ -73,6 +87,10 @@ PostgreSQL + **TimescaleDB** (hypertables, compression, continuous aggregates fo
 | `operation_event` | RID releases and diversions, BMA gates and pumps, warnings (time range, value, source) |
 | `forecast_run`, `forecast_value` | model level (L0–L5), version, issue_time, lead, quantiles, conditions |
 | `source_health` | per source: last success, last error, data age → degraded mode and alerts |
+| `user_feedback` *(live)* | verdict, depth band, note (private), rounded lat/lon (opt-in), **snapshot of what was shown**, daily-salted client hash |
+| `collector_state` *(live)* | small key/value bookkeeping: stations already backfilled (365 d), chart codes that failed in the last 24 h |
+
+The live MVP schema ([schema.sql](../src/floodwatch/db/schema.sql)) is a simpler subset of this target: `station`, `station_version`, `observation`, `rain_obs`, `weather_forecast`, `crowd_report`, `forecast_run`, `source_health`, `user_feedback`, `collector_state`.
 
 Store UTC and display Asia/Bangkok. Station metadata is **versioned, never overwritten**.
 

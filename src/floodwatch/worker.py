@@ -20,6 +20,7 @@ TASKS = [
     ("openmeteo", 3600),
     ("hii_stations", 6 * 3600),
     ("hii_history", 6 * 3600),
+    ("hii_backfill", 600),  # a few stations per run until the 1-year backfill is complete (D-018)
     ("bma_dds", 3 * 3600),
     ("forecast", 1800),
     ("disk", 3600),

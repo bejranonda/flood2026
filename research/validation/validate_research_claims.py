@@ -17,7 +17,7 @@ import urllib.request
 
 import numpy as np
 
-UA = "BKK-FloodWatch-research/0.1 (+https://flood.bejranonda.com)"
+UA = "BKK-FloodWatch-research/0.1 (+https://flood.autobahn.bot)"
 TIMEOUT_S = 40
 
 # (label, url, verdict expected at the time of the 2026-09-26 run)
