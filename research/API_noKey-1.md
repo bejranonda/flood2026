@@ -1,3 +1,8 @@
+> **Research snapshot, 26 Sep 2026 (assistant-assisted research via Gemini; its links carry `utm_source=gemini`). Validity: 🟠 mixed. Validated claim-by-claim in [VALIDATION_2026-09-26.md](VALIDATION_2026-09-26.md) §A.**
+> ✅ Useful and confirmed: Open-Meteo works without a key (forecast, ensemble, flood, elevation all return 200); the browser must go through our backend or edge because of CORS; TMD and GISTDA registration portals exist.
+> ❌ Refuted: the `api2.thaiwater.net` host does not exist (DNS failure). The tide constants run **inverted** against observations (correlation −0.74 at CPY015), because V₀+u is missing.
+> ⚠️ Unsourced: the road elevations in `bkk_stations_elevation.json`.
+
 When you do not have official Thai government API keys, you can implement **three practical strategies**:
 
 1. **Zero-Key Open APIs & Local Mathematical Models** (immediate, 100% free, no signup required).

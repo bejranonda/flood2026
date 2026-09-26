@@ -1,190 +1,217 @@
-# KNOWN_ISSUES.md — Bottlenecks, API Limitations & Workarounds
+# KNOWN_ISSUES.md — Limitations, pitfalls and workarounds
 
-> **Project:** Bangkok & Central Thailand Flood Intelligence & Hydrodynamic Forecasting Platform (2026)  
-> **Audience:** Developers, DevOps Engineers, and System Operators  
-> **Last Updated:** 26 September 2026
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-26
+> **Audience:** developers, operators, AI agents
+> **Status values:** 🔴 Open · 🟡 Workaround defined · 🟢 Resolved · ℹ️ Inherent (permanent constraint; design around it)
+> Evidence for items marked "probe" is in [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md).
 
----
-
-## Executive Summary
-
-During hydroinformatics research and empirical API testing across Thai government, military, and meteorological sources, several operational bottlenecks, firewall restrictions, and data formatting anomalies were identified. This document records each known issue alongside its verified engineering workaround.
-
----
-
-## 1. Thai Government Telemetry API Egress Firewalls & HTTP 403 Forbidden
-
-### Symptom
-When querying `https://api-v3.thaiwater.net/api/v1/thaiwater30/public/waterlevel_load` or other HAII endpoints from international cloud datacenters (AWS, GCP, DigitalOcean) or sandboxed environments, requests may return:
-```http
-HTTP/1.1 403 Forbidden
-Content-Type: text/html
-Connection: close
-```
-
-### Root Cause
-1. **Geo-IP / Datacenter Filtering:** Thai government infrastructure frequently implements strict perimeter WAFs (Web Application Firewalls) that throttle or outright reject inbound traffic originating from non-Thai IP ranges or known cloud provider ASNs (Autonomous System Numbers).
-2. **Strict User-Agent Inspection:** Generic HTTP clients (e.g. `curl`, `python-requests/2.x`, `Go-http-client`) without complete browser headers are blocked by default anti-scraping rules.
-
-### Solution & Workaround
-* **Host Location:** Deploy the core VPS and data collectors in **Singapore or directly inside Thailand** (e.g., local Thai cloud or colocation provider).
-* **Cloudflare Workers Proxy:** If running the VPS in a region that is blocked, route collector requests through a lightweight Cloudflare Worker or reverse proxy operating from Bangkok/Singapore edge nodes.
-* **Header Spoofing & Custom User-Agent:**
-  ```python
-  headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-      "Accept": "application/json, text/plain, */*",
-      "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7",
-      "Origin": "https://www.thaiwater.net",
-      "Referer": "https://www.thaiwater.net/"
-  }
-  ```
-* **Single-Flight Request Caching:** Cache responses for 5 minutes locally; avoid rapid multi-threaded polling that triggers rate-limit IP bans.
+| ID | Title | Area | Status |
+|---|---|---|---|
+| KI-101 | Geo/datacenter IP blocking (BMA yes, HII no) | Data access | 🟡 |
+| KI-102 | Navy tide tables: PDF moved (404) and bot challenge | Data access | 🔴 |
+| KI-103 | BMA DDS has no API and isn't mirrored in HII | Data access | 🔴 |
+| KI-104 | Short history retention at sources | Data access | 🟡 |
+| KI-105 | CORS: actual behaviour differs from earlier claims | Data access | 🟢 |
+| KI-106 | Open-Meteo free tier is non-commercial | Data access | ℹ️ |
+| KI-107 | Traffy data contains personal data; report time ≠ flood time | Data access | 🟡 |
+| KI-108 | Large, slow HII payloads | Data access | 🟡 |
+| KI-109 | Key stations missing from HII (C.29A, Memorial Bridge, Fort Chula) | Data access | 🔴 |
+| KI-201 | Datum mixing (MSL / LLW / gauge zero / EGM2008); LLW offsets unknown | Data quality | 🔴 |
+| KI-202 | DEM vertical error ≫ flood depth | Data quality | ℹ️ |
+| KI-203 | Station code and metadata ambiguity | Data quality | 🔴 |
+| KI-204 | Duplicate stations across agencies | Data quality | 🟡 |
+| KI-205 | Mixed timestamp conventions | Data quality | 🟡 |
+| KI-206 | Sentinel values, stale stations, spikes | Data quality | 🟡 |
+| KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
+| KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
+| KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
+| KI-304 | Unsourced street-elevation benchmarks | Modelling | 🔴 |
+| KI-305 | No archive of as-issued forecasts yet (perfect-prognosis risk) | Modelling | 🔴 |
+| KI-306 | Spatial and temporal scale mismatch between data sources | Modelling | ℹ️ |
+| KI-401 | Research files of mixed validity | Docs integrity | 🟢 |
+| KI-402 | Config contradictions (`.env.example` vs guidelines) | Docs integrity | 🟢 |
+| KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
+| KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
+| KI-502 | Dev host is not the production VPS | Infrastructure | 🔴 |
 
 ---
 
-## 2. Royal Thai Navy Astronomical Tide Tables Locked in Annual PDFs
+## 1. Data access
 
-### Symptom
-The Hydrographic Department of the Royal Thai Navy (RTN / กรมอุทกศาสตร์ กองทัพเรือ) provides the most authoritative tidal constituent predictions for the Gulf of Thailand and the Chao Phraya estuarine reach, but publishes them primarily as:
-- Annual PDF documents (e.g., `https://www.hydro.navy.mi.th/download/Water_lever69/LLW/TT2026.pdf`)
-- Interactive ASP.NET web forms without a documented public REST API.
+### KI-101 — Geo/datacenter IP blocking · 🟡
+**Probe (2026-09-26, from Germany):** HII `api-v3` and `tiwrm` work. **All BMA hosts** (`dds.bangkok.go.th`, `weather.bangkok.go.th`) reset the connection, and `www.bangkok.go.th` returns 403. `ews.dwr.go.th` timed out. The earlier claim that HII returns 403 to foreign datacenters is **not** supported. That 403 came from a sandbox with restricted egress.
+**Workaround:**
+- Run the collectors from the production VPS in Singapore or Thailand, and **re-test everything there** (Phase 0).
+- If BMA still blocks the VPS, use a **small collector node on a Thai IP**, as the brief suggests, and **ask BMA for access**.
+- **Do not** spoof browser User-Agents or rotate proxies to get around blocks ([GUIDELINES §5](GUIDELINES.md)).
 
-### Technical Complications
-1. **Vertical Datum Mismatch:** Navy tide tables are referenced to **Lowest Low Water (LLW / ม.ตลน.)**, whereas all urban floodwalls, street elevations, and RID river gauges use **Mean Sea Level (Ko Lak MSL / ม.รทก.)**.
-2. **Table Parsing Fragility:** Annual PDF formats shift slightly between years, risking parser breakage.
+### KI-102 — Navy tide tables · 🔴
+**Symptom:** `www.hydro.navy.mi.th/download/Water_lever69/LLW/TT2026.pdf` redirects to `hydro.navy.mi.th/…`, which returns **404**. The site is behind a Cloudflare bot challenge, so scripts can't fetch it. The tables are referenced to **LLW**, not MSL.
+**Workaround:**
+- Find the current PDF by hand in a browser and archive it once a year. Parse it with `pdfplumber` into `tide_prediction` (LLW and MSL).
+- **Interim / fallback:** fit our own harmonic model on HII tidal stations. A 4-constituent fit on 30 days at CPY015 already explains 92 % of the tidal variance. Use `utide` with ≥1 year of data for production ([APPROACH §5](APPROACH_AND_METHODS.md)).
 
-### Solution & Workaround
-* **Automated Annual Ingestion Script:** Parse the PDF once per calendar year using `pdfplumber` / `pypdf` into a persistent SQLite/TimescaleDB lookup table: `tide_astronomical_hourly(station_id, timestamp, height_llw, height_msl)`.
-* **Datum Translation Offsets:** Calibrate station-specific LLW $\to$ MSL translation constants based on official hydrographic benchmarks:
-  $$\Delta Z_{\text{Fort\_Chula}} = -1.55\text{ m MSL}$$
-  $$\Delta Z_{\text{Bangkok\_Port}} = -1.35\text{ m MSL}$$
-  $$\Delta Z_{\text{Memorial\_Bridge}} = -1.25\text{ m MSL}$$
-* **Self-Contained Harmonic Engine Fallback (`utide`):**
-  Train a local harmonic tidal model using Python's `utide` on historical sea-level records. The engine computes:
-  $$H_{\text{ast}}(t) = Z_0 + \sum_{k=1}^{M} f_k A_k \cos\left( \omega_k t + V_k + u_k - \kappa_k \right)$$
-  using the 4 primary constituents ($M_2, S_2, K_1, O_1$) plus shallow water overtides ($M_4, MS_4$), enabling sub-second local tide generation without hitting external servers.
+### KI-103 — BMA DDS has no API and isn't mirrored in HII · 🔴
+**Symptom:** the older claim that "many BMA stations are aggregated by HII under agency bma" is **wrong**. HII `waterlevel_load` has no BMA-agency rows. The `BKKxxx` codes are HII's own stations. The BMA portals are legacy web pages, blocked from outside Thailand.
+**Workaround:**
+- Use HII's Bangkok stations first (BKK008, BKK021, AIT001, BKK001–BKK020, C.12, CPY014, CPY015).
+- From a Thai IP, capture the DDS XHR calls and pages (`StationDetailFlow?id=`, canal lists).
+- Scrape politely: one call per cycle, with a circuit breaker (after 3 failures, switch to degraded mode).
+- Ask BMA for an official feed.
 
----
+### KI-104 — Short history retention at sources · 🟡
+The HII exchange standard only guarantees **7 days** 🟡. The chart XHR `getGraphFirst` returns **~30 days** ✅.
+**Workaround:** **start the raw archive and the backfill right after G0.** Loop `getGraph` ranges back as far as allowed. Add GloFAS 1984→, data.go.th CSV, DWR/ONWR PDFs and RID yearbooks.
 
-## 3. BMA Department of Drainage & Sewerage (DDS) Telemetry Inaccessibility
+### KI-105 — CORS · 🟢 (corrected)
+Earlier docs said Thai endpoints never allow browser calls. **Probe:**
+- HII `api-v3` **echoes the Origin** (with credentials allowed).
+- Traffy and Open-Meteo send `*`.
+- Only the `tiwrm` chart XHR has no CORS headers.
 
-### Symptom
-BMA's Department of Drainage and Sewerage operates over 120 canal gauges, 55 flow stations, and 270 pump stations (`https://dds.bangkok.go.th/` and `http://weather.bangkok.go.th/water/`), but does not provide an open developer API gateway with API keys.
+The design is unchanged: **the browser only calls our API** (D-001). The reasons are the archive, caching that protects HII, degraded mode and consistent data, not CORS.
 
-### Technical Complications
-* Endpoints use legacy ASP.NET WebForms (`.aspx`) with dynamic `__VIEWSTATE` and `__EVENTVALIDATION` tokens.
-* Network timeouts during storm peaks when citizen traffic spikes on DDS servers.
+### KI-106 — Open-Meteo free tier is non-commercial · ℹ️
+Free and keyless for **non-commercial** use (about 10k calls a day ⚠️; re-check the terms). If the app is ever monetised, switch to a paid plan. FABDEM is also non-commercial.
 
-### Solution & Workaround
-1. **Mirroring via HAII ThaiWater:** Many key BMA canal stations (such as `BKK008` Khlong Saen Saep, `BKK021` Khlong Lat Phrao) are already aggregated by HAII ThaiWater v3 API under the `agency: "bma"` tag. **Always query HAII first.**
-2. **Resilient Headless Scraper:** For stations exclusive to BMA DDS:
-   * Query `http://weather.bangkok.go.th/water/CanalList.aspx` every 10 minutes using `cheerio` / `BeautifulSoup`.
-   * Apply a **Circuit Breaker pattern**: if BMA fails 3 consecutive times, fall back to the last known canal state with an exponential backoff warning flag (`degraded_mode: true`).
+### KI-107 — Traffy data: privacy and meaning · 🟡
+`publicapi.traffy.in.th` returns citizens' free text, photos and exact coordinates. **Rules:**
+- Store only ticket ID, coordinates, time, state and a flood flag.
+- **Never republish photos or text.**
+- Aggregate spatially (e.g. counts per 500 m cell).
+- Ask BMA/NECTEC before public use.
 
----
+The report timestamp is **when someone reported**, not when the water peaked, so use it for validation only.
 
-## 4. HAII ThaiWater 7-Day History Retention Horizon
+### KI-108 — Large, slow HII payloads · 🟡
+`waterlevel_load` is ~1.4 MB and takes ~9 s; `rain_24h` is several MB and took >60 s (from Germany). **Workaround:** `Accept-Encoding: gzip`, timeouts ≥120 s, one call per cycle, and **never** on the user request path.
 
-### Symptom
-The public REST API of HAII guarantees only **7 rolling days of historical observations** on several endpoints. Older time series are either archived behind internal permissions or trimmed.
-
-### Impact on ML Training
-Machine learning models (LightGBM, Random Forest, LSTMs) require multiple flood seasons (e.g., 2011, 2017, 2021, 2022, 2024, 2026) to learn non-linear catchment responses and recession curves.
-
-### Solution & Workaround
-* **Immediate Raw Archiving:** Start the raw time-series collector on Day 1. Store every incoming JSON response in raw, gzip-compressed format (`YYYY/MM/DD/source_payload_hash.json.gz`) replicated to **Cloudflare R2**.
-* **Historical Backfilling Pipeline:**
-  * Pull multi-year daily maximums from data.go.th (e.g. Chao Phraya at Pak Khlong Talat dataset).
-  * Ingest GloFAS v4 1984–present daily discharge reanalysis via Open-Meteo Flood API.
-  * Extract RID annual hydrology yearbooks (hydro-c2, c13, c29 tables).
+### KI-109 — Key stations missing from HII · 🔴
+C.29A (Bang Sai), Memorial Bridge / Pak Khlong Talat (C.4 or C.22 ⚠️) and Fort Phra Chulachomklao are **not** in `waterlevel_load`.
+**Workaround:** find RID and Navy feeds in Phase 0. In the meantime, estimate Bang Sai from C.35 + S.26 with routing, and use CPY015 / C.12 as the Bangkok river references.
 
 ---
 
-## 5. DEM Vertical Accuracy Discrepancy vs Street Flood Depths
+## 2. Data quality and datums
 
-### Symptom
-Freely available global Digital Elevation Models (such as Copernicus GLO-30 or NASA SRTM) have a vertical Root Mean Square Error (RMSE) of $\pm 1.0\text{ m}$ to $\pm 1.5\text{ m}$ in flat, coastal delta environments like Bangkok.
+### KI-201 — Datum mixing; LLW offsets unknown · 🔴
+Sources mix MSL (Ko Lak), LLW (Navy), gauge zero (`waterlevel_m`, BMA) and EGM2008 (DEMs). The LLW→MSL offsets that used to be in these docs (−1.55 / −1.35 / −1.25 m) **had no source** and were removed.
+**Workaround:**
+- Keep one conversion table per station, with source and effective date.
+- Use HII `min_bank` / `ground_level` as MSL anchors.
+- Unit-test every conversion ([tests/](../tests/README.md)).
+- Consider **land subsidence** when comparing across years.
 
-### Impact on Citizen Experience
-Urban street floods operate at a scale of **10 to 35 centimeters** (sidewalk height vs car exhaust level). A 1-meter vertical terrain error will incorrectly report dry streets as underwater or flooded streets as safe.
+### KI-202 — DEM vertical error ≫ flood depth · ℹ️
+Global DEMs have ≥1 m RMSE in flat, built-up Bangkok 🟡, while street floods are 10–50 cm. **Probe:** Open-Meteo elevation returned 4 m (Memorial Bridge) and 7 m (Udom Suk), far above the true ~0–2 m MSL. The DEMs are on **EGM2008**, not ellipsoidal heights.
+**Workaround:**
+- Report depth as **P(d > 0) = Φ((H_ws − z_g)/σ)** in categories.
+- Use HAND (height above nearest drainage) and the controlling water body.
+- Let the satellite flood extent override.
+- Let users enter their floor or ground height.
+- Ask GISTDA, BMA or RTSD for survey or LiDAR data.
 
-### Solution & Workaround
-1. **FABDEM Integration:** Utilize **FABDEM** (Forest And Buildings removed Copernicus DEM), which reduces building/forest canopy bias and achieves the highest vertical fidelity in Bangkok.
-2. **HAND (Height Above Nearest Drainage):** Rather than raw absolute elevation, calculate relative height above the receiving canal embankment.
-3. **Probabilistic Inundation Output:**
-   Never state an absolute depth with false precision. Report the depth as a confidence distribution:
-   $$P(d > 0) = \Phi\left(\frac{H_{\text{water}} - Z_{\text{road}}}{\sqrt{\sigma_{\text{DEM}}^2 + \sigma_{\text{forecast}}^2}}\right)$$
-   Categorize into practical physical bands:
-   * **1–10 cm:** Footpath wash / caution for motorcycles
-   * **11–20 cm:** Curb height / small cars slow down
-   * **21–35 cm:** Half-wheel / sedans avoid passage
-   * **> 50 cm:** Floor height / emergency evacuation
-4. **User Calibration Input:** Allow citizens to adjust their local threshold: *"ถนนหน้าบ้านสูงกว่าคลองกี่ ซม."* (Personalized road elevation offset).
+### KI-203 — Station code and metadata ambiguity · 🔴
+- Memorial Bridge is **C.4** in the literature but **C.22** in the older docs.
+- RID uses **C.29A** for Bang Sai.
+- The C.13 bank level appears as 17.21, 15.77 and (HII) **16.34**.
+- The older docs had BKK021 as "วัดลาดพร้าว", bank 1.10. HII says **วัดบางบัว, bank 2.20**.
+- The older docs had BKK008's bank at 1.20. HII says **0.88**.
 
----
+**Workaround:** HII metadata is the operational reference. Store where each value came from, version it, and confirm with RID.
 
-## 6. Managed Hydraulic Interventions & Non-Stationary Operations
+### KI-204 — Duplicate stations across agencies · 🟡
+The same physical site can appear under several agencies or IDs within ~100 m. **Workaround:** de-duplicate by distance < 100 m plus a name/code match. Prefer the record that has a bank level and the latest timestamp ([sources_survey §3.1](../research/sources_survey.md)).
 
-### Symptom
-Bangkok's flood levels are heavily manipulated by human intervention. When RID suddenly increases the Chao Phraya Dam release from $1,500\text{ m}^3/\text{s}$ to $2,000\text{ m}^3/\text{s}$, or BMA shuts a major canal gate, purely statistical models produce erroneous forecasts.
+### KI-205 — Mixed timestamp conventions · 🟡
+| Source | Convention |
+|---|---|
+| HII `waterlevel_datetime` | Local time **without TZ** → treat as +07:00 |
+| HII chart epoch | True UTC |
+| Traffy `timestamp` | UTC |
+| Open-Meteo | Whatever `timezone=` you request |
 
-### Solution & Workaround
-* **Scenario-Based Boundary Conditions:** Treat announced RID dam release schedules as deterministic upstream boundaries:
-  *"พยากรณ์อิงตามแผนการระบายน้ำของกรมชลประทานที่ 2,000 ลบ.ม./วินาที"*
-* **Event-Flag Features in ML Models:** Feed active gate state, pump availability percentage, and announced warning alerts as binary/continuous features into LightGBM.
-* **Fast Error Fading:** Blend in an autoregressive residual correction:
-  $$\hat{\varepsilon}(t+h) = \phi^h \cdot \left( H_{\text{obs}}(t) - H_{\text{model}}(t) \right)$$
-  which eliminates instantaneous bias and naturally decays over longer forecast horizons.
+Store UTC and display Asia/Bangkok. Never use naive `datetime.now()`.
 
----
+### KI-206 — Sentinel values, stale stations, spikes · 🟡
+- HII chart data uses **`999999`** for missing or bad values (51 of 727 rows at CPY015).
+- Some stations are stale for days (e.g. BKC004).
+- Spikes and flatlines occur.
 
-## 7. Cloudflare Token Scope & Tunnel Routing Configuration
-
-### Symptom
-When establishing Cloudflare Tunnels (`cloudflared`) or deploying edge functions, authentication failures or routing drops occur if tokens are misconfigured.
-
-### Solution & Workaround
-* **Token Creation Requirements in Cloudflare Dashboard:**
-  * **Permissions:**
-    * `Account.Cloudflare Tunnel`: Edit
-    * `Account.Workers / Pages`: Edit
-    * `Zone.DNS`: Edit
-    * `Zone.Cache Purge`: Purge
-* **Zero-Expose Ingress Rule:**
-  The production VPS should **never expose port 80/443 directly to the public internet**. Run `cloudflared tunnel run` locally on the VPS, routing inbound traffic from `flood.yourdomain.com` directly to `http://localhost:3000`. This completely shields the origin server from DDoS attacks and port scanning.
+**Workaround:** QC flags (sentinel, range, rate of change, flatline, neighbour-consistency check) and per-station data age in every API response. Flag readings; never delete them.
 
 ---
 
-## 8. Browser Cross-Origin (CORS) Restrictions on Thai Telemetry Endpoints
+## 3. Modelling
 
-### Symptom
-When calling `https://api-v3.thaiwater.net` or `https://weather.bangkok.go.th` directly from frontend browser JavaScript (`fetch()` or `axios`), browsers block the request:
-```text
-Access to fetch at 'https://api-v3.thaiwater.net/...' from origin 'https://flood.bejranonda.com'
-has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-```
+### KI-301 — Placeholder tide constants · 🟢 (don't use)
+Two draft constant sets were validated against 30 days observed at CPY015:
+- **Draft A** (the old docs' JS): correlation **−0.74** (inverted).
+- **Draft B** (the engine): **+0.12**.
+- A simple fit to the data: **+0.96**.
 
-### Technical Complications
-Thai government endpoints do not return permissive wildcard CORS headers (`Access-Control-Allow-Origin: *`). Direct frontend calls will always fail in modern browsers.
+Root cause: the phases were used without the astronomical argument **V₀+u** and nodal factor **f**. **Resolution:** fit our own constants (`utide`) or use the Navy tables. Never hard-code constants copied from a document.
 
-### Solution & Workaround
-* **Never call external Thai endpoints directly from frontend clients.**
-* **Deploy Cloudflare Edge Micro-Proxy / Worker:**
-  * Route requests to `https://flood.bejranonda.com/api/water-levels`.
-  * The Cloudflare Worker / VPS backend fetches upstream data with appropriate `User-Agent` headers.
-  * Adds `Access-Control-Allow-Origin: *` and `Cache-Control: public, max-age=300`.
-  * Edge caches the response for 5 minutes, eliminating redundant external queries and protecting against rate limits.
+### KI-302 — Draft `BKKHydroEngine` · 🟢 (don't port)
+Running it gives:
+- river 3.40 m (above the 3.0 m wall)
+- khlong −1.25 m (unbounded pumping)
+- an ETA that goes **earlier** as the water gets deeper
+- output that doesn't match the "sample" the old README published
+
+Its equations are a useful reference; its implementation and parameters are not ([validation §C](../research/VALIDATION_2026-09-26.md)).
+
+### KI-303 — Managed operations make the system non-stationary · ℹ️
+Dam releases, diversions, gate closures and pump outages change the system abruptly. **Workaround:**
+- Store announced operations as events and scenario inputs ("ตามแผนการระบายน้ำของกรมชลประทาน X ลบ.ม./วินาที").
+- Add event flags as ML features.
+- AR error fading.
+- Adaptive conformal calibration ([APPROACH §11](APPROACH_AND_METHODS.md)).
+
+### KI-304 — Unsourced street-elevation benchmarks · 🔴
+The `bkk_stations_elevation.json` values in [API_noKey-1.md](../research/API_noKey-1.md) and the "hotspot road elevation" table in the old KNOWLEDGE.md have **no source**. They were removed from the docs. Replace them with survey data or DEM-with-uncertainty in Phase 2/3.
+
+### KI-305 — No archive of as-issued forecasts yet · 🔴
+Training on observed future rain ("perfect prognosis") overstates skill. **Workaround:** archive **every** Open-Meteo run from day one of Phase 1. Until enough runs exist, train on observed rain but **widen the intervals** and state this on the model page.
+
+### KI-306 — Spatial and temporal scale mismatch · ℹ️
+| Source | Scale |
+|---|---|
+| Gauges | Points, 10-min |
+| NWP | 9–25 km grids, hourly |
+| GloFAS | 5 km, daily |
+| DEMs | 30–90 m |
+| Traffy | Points, irregular |
+| Navy tide | A few stations, hourly |
+
+Naive nearest-point joins create bias. **Workaround:** explicit aggregation and downscaling rules per variable, polder-level rainfall aggregation, and resampling rules ([APPROACH §2](APPROACH_AND_METHODS.md)).
 
 ---
 
-## 9. Third-Party Elevation API Throttling & Cost Discrepancy
+## 4. Documentation integrity
 
-### Symptom
-Calling commercial elevation services (e.g., Google Elevation API) for every user GPS coordinate query creates recurring API costs and latency spikes (> 1.5 seconds) during flood traffic surges.
+### KI-401 — Research files of mixed validity · 🟢
+Three research files (Gemini / claude.ai) mixed useful ideas with refuted endpoints and constants. **Resolved (2026-09-26):** every file was validated claim by claim ([VALIDATION](../research/VALIDATION_2026-09-26.md)), given validity banners, and only ✅/💡 items went into `docs/` (D-003).
 
-### Solution & Workaround
-1. **Pre-Compiled Benchmark Lookup:** Bundle `bkk_stations_elevation.json` covering the top 50 flood-prone road segments in Bangkok with sub-millisecond local RAM lookup.
-2. **Open-Meteo Elevation API:** For points outside the curated benchmark list, query `https://api.open-meteo.com/v1/elevation` (free, keyless).
-3. **Open-Elevation Open-Source Fallback:** Maintain an offline raster lookup using FABDEM COG tiles loaded locally on the VPS.
+### KI-402 — Config contradictions · 🟢
+The old `.env.example` used SQLite and `HOST=0.0.0.0`, while GUIDELINES said TimescaleDB and 127.0.0.1. **Resolved:** `.env.example` is aligned with [ARCHITECTURE](ARCHITECTURE.md). If your local `.env` was copied from the old template, check `HOST`, `DATABASE_URL`, `CORS_ORIGIN` and the TMD keys.
 
+### KI-403 — Old README problems · 🟢
+The old README had:
+- a quick start that ran `python3 file.md`
+- a sample output that the code never produced
+- a `docker compose` command with no compose file
+- a license badge with no LICENSE file
+- a "Live Deployment" badge with no app deployed
+
+**Resolved:** the README was rewritten with an honest status.
+
+---
+
+## 5. Infrastructure
+
+### KI-501 — Cloudflare token scopes and tunnel config · 🟡
+The API token needs: Account → Cloudflare Tunnel: Edit, Workers/Pages: Edit; Zone → DNS: Edit, Cache Purge: Purge. The VPS never exposes 80/443. `cloudflared` routes `flood.bejranonda.com` to `http://127.0.0.1:${PORT}`. The live tunnel's configuration **isn't in this repo yet** (Phase 1/4 → `infra/`).
+
+### KI-502 — Dev host is not the production VPS · 🔴
+This repo's working host (`HZ-Agent`) is in **Germany**, with 4 vCPU, 7 GB RAM, **~11 GB free disk** and no `cloudflared`. That isn't enough to hold the archive, and it is blocked by BMA. **Phase 0 tests must run on the production VPS** (region and specs in [OPEN_QUESTIONS](plan/OPEN_QUESTIONS.md)).

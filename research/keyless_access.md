@@ -1,3 +1,6 @@
+> **Research snapshot, 26 Sep 2026 (historical record, not maintained).** Trust level: 🟢 careful. It sets keyless sources against optional free registrations.
+> Its conclusions are merged into [docs/SOURCES.md](../docs/SOURCES.md) (Access & keys). Index: [research/README.md](README.md).
+
 You don't need any API key to start: the core of the app runs entirely on keyless sources. Keys only matter for two optional extras, and both are free to register.
 
 **No key needed (enough for v1)**

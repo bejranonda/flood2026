@@ -1,3 +1,6 @@
+> **Research snapshot, 26 Sep 2026 (historical record, not maintained).** Trust level: 🟢 careful research, with literature cited in §11.
+> The maintained method spec is [docs/APPROACH_AND_METHODS.md](../docs/APPROACH_AND_METHODS.md). Index of all research files: [research/README.md](README.md).
+
 # METHODS.md — Calculation & Forecasting Methods for Bangkok / Central Thailand Water Levels
 
 > Research date: 26 Sep 2026. Companion to `SOURCES.md` (data sources).

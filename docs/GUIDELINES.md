@@ -1,152 +1,134 @@
-# GUIDELINES.md — Engineering, Modeling & Operational Standards
+# GUIDELINES.md — Engineering, Modelling, Data Ethics & UX Standards
 
-> **Project:** Bangkok & Central Thailand Flood Intelligence & Hydrodynamic Forecasting Platform (2026)  
-> **Audience:** Core Maintainers, Contributors, and Automation Agents  
-> **Last Updated:** 26 September 2026
-
----
-
-## 1. Core Engineering Philosophy
-
-The platform operates on three non-negotiable principles:
-
-1. **Hybrid Hydroinformatics Principle:**
-   $$\text{Forecast} = \text{Physically Structured Baseline} + \text{ML Residual Correction} + \text{Calibrated Uncertainty}$$
-   Pure "black-box" machine learning extrapolates dangerously during record floods. Pure numerical shallow-water equations (e.g., 2D Saint-Venant) are too computationally demanding for real-time edge updates. We combine physical hydraulic routing with gradient-boosted residuals and conformalized uncertainty bounds.
-
-2. **Mandatory Baseline Verification:**
-   Every station and horizon must beat simple baselines in walk-forward backtesting before its forecast is exposed to the public:
-   * **Regime A (Rivers):** Must outperform **L0 Persistence** ($H_{t+h} = H_t$).
-   * **Regime B (Tidal Reaches):** Must outperform **L1 Persistence + Astronomical Tide Change** ($H_t + \eta_{t+h} - \eta_t$).
-   * **Skill Metric:** $\text{Skill} = 1 - \frac{\text{RMSE}_{\text{model}}}{\text{RMSE}_{\text{persistence}}} > 0.10$.
-   If a model fails this acceptance gate for a given horizon, the UI automatically falls back to the baseline with widened confidence intervals.
-
-3. **Total Transparency & Provenance:**
-   Every screen must display:
-   * Timestamp of last observed sensor reading (in Thai ICT: `Asia/Bangkok`).
-   * Primary telemetry agency attribution (HAII, RID, BMA, RTN, TMD).
-   * Direct emergency contact numbers (DDPM 1784, BMA Flood Center 1555).
-
-4. **Zero-Key First Architecture Principle:**
-   * **V1 Independence:** The system must boot and deliver full predictive functionality without requiring proprietary or gated API keys.
-   * **Keyless Stack:** Weather via Open-Meteo, astronomical tides via local harmonic calculation, street elevation via curated hotspot JSON (`bkk_stations_elevation.json`), and canal telemetry via public reverse-engineered endpoints.
-   * **Progressive Enhancement:** Official API keys (TMD, GISTDA, DGA) serve as progressive enhancements for V2, not hard deployment blockers.
-
-5. **Edge Micro-Proxy & CORS Compliance:**
-   * Frontend clients must never query external Thai government endpoints directly to avoid browser CORS blocks.
-   * All external telemetry is routed through the Cloudflare edge micro-proxy (`/api/water-levels`) or local VPS backend, applying strict 5-minute caching (`Cache-Control: public, max-age=300`) to safeguard origin servers.
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-26
+> **Audience:** maintainers, contributors, AI agents (agents: also read [CLAUDE.md](../CLAUDE.md))
 
 ---
 
-## 2. Architecture & Hybrid Deployment Standards
+## 1. Core principles
 
-To maximize resilience during flood peaks when government servers face heavy load:
-
-```
-[ Thai Government / Military Feeds ] ──► [ Local Ingestion Engine ]
-(HAII, RID, BMA DDS, RTN Navy, TMD)      (Async Python Collectors, 5-10 min)
-                                                    │
-                                                    ▼
-                                       ┌─────────────────────────┐
-                                       │ 1. Immutable Raw Gzip   │ ──► Replicate to Cloudflare R2
-                                       │ 2. PostgreSQL + Timescale│
-                                       └─────────────────────────┘
-                                                    │
-                                                    ▼
-                                       [ FastAPI Prediction Engine ]
-                                       (HydroEngine + LightGBM + CQR)
-                                                    │
-                                                    ▼ (Localhost port 3000)
-                                       [ Cloudflare Tunnel (Zero-Open Port) ]
-                                                    │
-                                                    ▼
-                                       [ Cloudflare CDN Edge Cache ]
-                                       (TTL: 1-5 mins, stale-while-revalidate)
-                                                    │
-                                                    ▼
-                                       [ Citizen & Expert Users ]
-                                       (Mobile-first Thai Web App)
-```
-
-### Ingestion Hygiene Rules
-* **Immutability First:** Store every external API payload as raw, gzip-compressed data with SHA-256 hash before parsing. If an upstream schema changes or a parsing bug occurs, raw data can be reprocessed without data loss.
-* **Circuit Breaker:** If an external agency fails or returns HTTP 4xx/5xx:
-  * Retry with exponential backoff (1s, 2s, 4s, 8s max).
-  * Do not crash the application.
-  * Enter **Degraded Mode**: serve the last verified reading with an explicit visual warning: *"ข้อมูลล่าสุดเมื่อ 14:15 น. (ระบบตรวจวัดต้นทางขัดข้องชั่วคราว)"*.
-* **Single-Flight Requests:** Coalesce overlapping collector requests so that only one outgoing HTTP call hits an agency per refresh cycle.
+1. **Hybrid forecasting.** Forecast = physically structured baseline + ML residual correction + calibrated uncertainty. Pure black-box ML extrapolates dangerously in record floods. Full 2-D hydrodynamics is too heavy for a 10-minute cycle ([APPROACH](APPROACH_AND_METHODS.md)).
+2. **Beat the baselines or don't publish.** Every station × horizon must beat persistence (L0), or persistence + tide (L1) in tidal reaches, in walk-forward backtests (§4.3). Otherwise the app falls back to the baseline with wider intervals.
+3. **Our archive is the system of record.** External sources are feeds and may disappear, change or throttle at any time. Every payload is archived raw before it is parsed ([ARCHITECTURE §3](ARCHITECTURE.md)).
+4. **Keyless first, collected on the server** (D-001). v1 needs no gated API keys. "Zero-key" does **not** mean computing in the browser. **The browser only calls our API or edge**, never a government endpoint, even where CORS would allow it ([KI-105](KNOWN_ISSUES.md)). Code in the browser is for display only.
+5. **Transparency on every screen.** Last observation time (Asia/Bangkok), data age, source attribution, forecast conditions, disclaimer, official links and hotlines.
+6. **Space and time are first-class.** Every value carries **where** (station or geometry, datum, CRS) and **when** (observation time, issue time, valid time, all in UTC) ([APPROACH §2](APPROACH_AND_METHODS.md)).
 
 ---
 
-## 3. Modeling & Scientific Rigor
+## 2. Working process
 
-### 3.1 Training & Validation Protocol
-* **No Future Data Leakage:** Always train on **as-issued weather forecasts** (archived NWP runs), never on actual future observed rainfall. Training on observed rainfall (*perfect prognosis*) artificially inflates model accuracy that collapses during live deployment.
-* **Time-Series Splits Only:** Never use random K-fold cross-validation or shuffle time-series data. Use **Rolling-Origin Walk-Forward Backtesting**:
-  * Train up to event $T$.
-  * Predict $T + 12\text{h} \dots T + 72\text{h}$.
-  * Advance window by step $\Delta t$.
-* **Held-Out Test Benchmarks:** Evaluate performance specifically on historical benchmark flood events:
-  * **2011 Mega-Flood:** Tests extreme floodplain overland travel and channel overtopping.
-  * **2017 & 2021 Events:** Tests combined upstream release and seasonal high tide interaction.
-  * **2022 Event:** Tests intense pluvial cloudbursts and BMA giant tunnel drawdown.
-  * **Current 2026 Event:** Live validation.
+### 2.1 Strict phase gates (D-002)
+- Work phase by phase ([plan/PLAN.md](plan/PLAN.md)). At the end of each phase, deliver its report or result and **stop until the owner approves the gate** (G0–G4).
+- **Exception built into the plan:** once G0 approves the sources, start the collectors and backfill immediately. Every flood day we don't capture is lost for good.
 
-### 3.2 Conformalized Uncertainty Calibration
-* Fit models using **Quantile Loss** ($\tau \in \{0.05, 0.25, 0.50, 0.75, 0.95\}$).
-* Calibrate prediction intervals using **Conformalized Quantile Regression (CQR)** via `mapie`.
-* **Coverage Guarantee:** The empirical 90% confidence band must capture between **85% and 95%** of observed data points on the rolling 14-day validation window. If empirical coverage falls below 85%, automatically widen the interval.
+### 2.2 Evidence rule (D-003)
+- Every number, endpoint, constant or station attribute in `docs/` carries **evidence**: a live call (with date and host), observed data, or a cited source. Otherwise it is marked **⚠️** and gets a Phase 0 or Phase 2 task.
+- **Never invent** endpoints, field names, constants or data. When something fails, say so and propose alternatives.
+- **Sample outputs must be produced by running the code** in the same change. Never write expected-looking numbers by hand.
+- AI-assisted research (claude.ai, Gemini, and so on) is welcome as **input**. It is validated claim by claim before use ([research/README.md](../research/README.md)).
+- Silent fallbacks to made-up values (e.g. "default Bang Sai flow 2,450 m³/s") are forbidden. Missing data is shown as missing.
 
----
+### 2.3 Documentation upkeep
+| When you learn… | Update |
+|---|---|
+| A domain fact (hydrology, stations, datums) | [KNOWLEDGE.md](KNOWLEDGE.md) |
+| A limitation, failure mode or workaround | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (new KI-ID and status) |
+| A source was tested, changed or failed | [SOURCES.md](SOURCES.md) |
+| A method or model changed | [APPROACH_AND_METHODS.md](APPROACH_AND_METHODS.md) |
+| An architectural or product decision | [plan/DECISIONS.md](plan/DECISIONS.md) (new D-ID) |
+| A question only the owner can answer | [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md) |
+| Task progress | The relevant `plan/phase-*.md` checklist |
 
-## 4. Code & Security Standards
-
-### 4.1 Security & Secret Management
-* **Never Commit `.env`:** Ensure `.env` is strictly ignored by version control. Commit only `.env.example` with sanitized placeholders.
-* **Cloudflare Zero-Trust Ingress:**
-  * Do **NOT** bind FastAPI or web servers directly to `0.0.0.0:80` or `0.0.0.0:443` on public internet interfaces.
-  * Bind to `127.0.0.1:3000` and route inbound traffic strictly through an authenticated **Cloudflare Tunnel (`cloudflared`)**.
-  * Restrict SSH access to cryptographic key authentication; disable password authentication and root SSH login.
-
-### 4.2 Code Quality & Structure
-* **Python Backend:**
-  * Target Python 3.11+.
-  * Strict PEP 8 compliance, enforced via `ruff` or `flake8`.
-  * Comprehensive type hinting (`typing.Dict`, `typing.List`, `typing.Tuple`, `typing.Optional`).
-  * Structured JSON logging via standard `logging` library; no raw `print()` statements in production services.
-* **Frontend:**
-  * Vanilla modern JavaScript (ES6+) or Vue 3 / React with clean component separation.
-  * Vanilla CSS or curated utility CSS using HSL color tokens and CSS variables.
-  * Zero heavy external bundles; maximize mobile loading performance on weak 3G/4G cellular networks.
+Update `Last updated` on each file you touch. Docs are written in English; Thai is used for UI strings and domain terms.
 
 ---
 
-## 5. Citizen-Centric UX & Communication Standards
+## 3. Architecture and ingestion hygiene
+- **Immutability first:** store every payload gzip-compressed with its SHA-256, fetch time, URL and HTTP status **before** parsing.
+- **Circuit breaker:** retry with exponential backoff (1, 2, 4, 8 s, with a cap). Never crash the scheduler. After repeated failures, go to **degraded mode**: serve the last verified reading, its age, and a notice such as *"ข้อมูลล่าสุดเมื่อ 14:15 น. (แหล่งข้อมูลขัดข้องชั่วคราว)"*.
+- **Single-flight:** at most one outgoing request per source per cycle. Nothing is fetched upstream on the user's request path.
+- **QC flags, not deletion:** sentinel values (HII `999999`), range, rate of change, flatline, clock error, and neighbour consistency ([KI-206](KNOWN_ISSUES.md)).
+- **Version metadata:** station bank level, datum, location and rating changes are versioned with effective dates, never overwritten.
 
-People consulting this platform are often stressed, in transit, or protecting their homes from floodwaters. The interface must be immediate, calming, and unambiguous.
+---
+
+## 4. Modelling and scientific rigour
+
+### 4.1 No leakage
+- Train on **as-issued** forecasts (the archived NWP runs), never on observed future rain. Until enough runs are archived, widen the intervals and disclose it ([KI-305](KNOWN_ISSUES.md)).
+- Only time-ordered validation: **rolling-origin walk-forward** with an **embargo gap** of at least the forecast horizon between training and test, because autocorrelation leaks information. Never shuffle or use random K-fold.
+- Spatial generalisation is tested with **leave-station-out** and, for polders, leave-zone-out splits.
+
+### 4.2 Held-out events
+2011 (mega-flood, overland flow), 2017, 2021 (release + high tide), 2022 (pluvial cloudbursts, tunnel drawdown), 2024, and the **2026 event** as live validation. Use this same list everywhere.
+
+### 4.3 Acceptance gate (per station × horizon)
+- **Skill vs persistence** = 1 − RMSE_model / RMSE_persistence **> 0.10**, **and**
+- **90 % interval coverage between 85 % and 95 %** on held-out events and on the rolling 14-day window.
+- **Reported, not gating:** NSE, KGE, CRPS, peak magnitude and timing error, and POD/FAR/CSI for bank and warning exceedance.
+- **Unit tests, not gating:** mass-balance closure < 3 % for the storage model; monotonic constraints hold.
+- If coverage drops below 85 %: widen automatically (ACI) and alert.
+
+### 4.4 Uncertainty is mandatory
+Always give quantiles or intervals, and let them widen with the horizon. Beyond about 3 days, show **probabilities or categories**, not precise levels.
+
+---
+
+## 5. Data-source etiquette and legal (D-004)
+- **Identify honestly:** `User-Agent: BKK-FloodWatch/<version> (+https://flood.bejranonda.com; <contact>)`. **Never spoof a browser**, rotate proxies, or otherwise get around blocks, bot challenges or rate limits. If blocked, ask the agency or use the approved Thai collector node ([KI-101](KNOWN_ISSUES.md)).
+- **Be polite:** poll no more often than the source updates (≥10 min for telemetry), cache aggressively, and back off under errors. Their servers are under flood load too.
+- **Respect ToS and robots.txt.** Ask HII, BMA and BMA/NECTEC (Traffy) for permission before public redistribution.
+- **Privacy:** don't store or republish citizen text or photos. Aggregate crowd reports spatially ([KI-107](KNOWN_ISSUES.md)).
+- **Licensing:** Open-Meteo and FABDEM are non-commercial; a paid plan is needed if the app is monetised ([KI-106](KNOWN_ISSUES.md)).
+- **Attribution** on every screen.
+
+---
+
+## 6. Citizen UX and communication (D-005)
+People using the app may be stressed, on the move, or protecting their home. Be immediate, calm and unambiguous.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  📍 คลองแสนแสบ - ประตูน้ำบางกะปิ (BKK008)                               │
-│  อัปเดตล่าสุด: 14:30 น. (สถานี สสน./กทม.)                                │
+│  📍 คลองแสนแสบ บางกะปิ (BKK008)                                          │
+│  ข้อมูลล่าสุด 14:30 น. (สสน.) · อัปเดตทุก 10 นาที                             │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ⚠️ สถานะ: น้ำเอ่อล้นระดับทางเท้า (ท่วมผิวถนน ~18 ซม.)                   │
+│  สถานะ: ระดับน้ำสูงกว่าตลิ่ง ~30 ซม. (เตือนภัย)                               │
 │                                                                        │
-│  📈 แนวโน้ม 12 ชม. ข้างหน้า: น้ำจะขึ้นสูงสุดอีก ~5 ซม. เวลา 16:30 น.    │
-│     (สาเหตุ: น้ำทะเลหนุนสูงในแม่น้ำเจ้าพระยา ประตูระบายน้ำต้องปิดชั่วคราว)  │
+│  📈 12 ชม. ข้างหน้า: มีแนวโน้ม "เพิ่มขึ้น" ประมาณ 3–10 ซม.                      │
+│     สูงสุดช่วง 16:00–18:00 น.  (ความเชื่อมั่น: ปานกลาง)                         │
 │                                                                        │
-│  ⏱️ คาดการณ์น้ำลดแห้ง: อีก 4 ชั่วโมง (ประมาณ 18:30 น.)                    │
-│     (สมมติฐาน: เดินเครื่องสูบน้ำอุโมงค์พระโขนงเต็มกำลัง และไม่มีฝนตกหนักเพิ่ม)│
+│  ⏱️ คาดว่าจะลดต่ำกว่าตลิ่ง: ประมาณ 28–30 ก.ย.                                │
+│     เงื่อนไข: หากไม่มีฝนตกหนักเพิ่ม และเครื่องสูบน้ำทำงานปกติ                          │
+│                                                                        │
+│  ⚠️ เป็นการคาดการณ์ โปรดติดตามประกาศทางการ · กทม. 1555 · ปภ. 1784             │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+*(The numbers in the mockup are illustrative.)*
 
-### Essential UX Rules
-1. **The "Two Golden Questions" Above the Fold:**
-   * Question 1: *"น้ำแถวบ้านจะขึ้นหรือลง?"* (Trend & Delta $\Delta H$).
-   * Question 2: *"น้ำจะแห้งเมื่อไหร่?"* (Recovery ETA Countdown $T_{\text{dry}}$).
-2. **Citizen Mode vs Expert Mode:**
-   * **Citizen Mode (Default):** Depths in centimeters relative to curbs/wheels, actionable checklists (*"ย้ายปลั๊กไฟ"*, *"เลี่ยงรถเล็กผ่าน"*), simple trend arrows.
-   * **Expert Mode (Toggle):** Hydrographs in meters MSL (ม.รทก.), discharge in m³/s, tidal harmonics, radar hyetographs.
-3. **Conditionality Language:**
-   Never promise an unconditional dry time. Always explicitly state the condition:
-   *"คาดการณ์น้ำลดสู่ภาวะปกติ 18:30 น. (หากไม่มีฝนตกหนักเพิ่มเติม และเครื่องสูบน้ำทำงานปกติ)"*.
+1. **Two golden questions above the fold:** "จะขึ้นหรือลง?" (the trend with a range) and "เมื่อไหร่จะกลับสู่ปกติ?" (a **date or time range**).
+2. **No minute-precise countdowns.** Show ranges and a confidence level. If new heavy rain is forecast, say "ยังประเมินไม่ได้" instead of guessing.
+3. **Always state the conditions** (rain, pumps, RID release plan).
+4. **Citizen mode (default)** uses landmark depth bands and a probability category ([KNOWLEDGE §6](KNOWLEDGE.md)), plus action checklists. **Expert mode** shows m MSL, discharge, tide, quantile fans and model level.
+5. **Stale data is shown as stale.** Grey the value out and show its age. Never present a stale reading as current.
+6. Thai font (Noto Sans Thai or Sarabun), with an option for Buddhist-era dates. Must be fast on weak mobile connections, and accessible (contrast, doesn't rely on colour alone).
+
+---
+
+## 7. Code and security standards
+
+### 7.1 Security
+- `.env`, `certs/` and `*.pem` are git-ignored. Commit only `.env.example` with placeholders.
+- Services bind to **127.0.0.1**. Public traffic enters only through the Cloudflare Tunnel. No open 80/443.
+- SSH by key only, with password and root login disabled.
+- Least-privilege Cloudflare and R2 tokens ([KI-501](KNOWN_ISSUES.md)).
+
+### 7.2 Python (backend, collectors, models)
+- Python ≥ 3.11. Type hints with built-in generics (`dict[str, float]`, `list[Reading]`, `X | None`).
+- `ruff` for lint and format; `pytest`. Structured JSON logging via `logging`, with no `print` in services.
+- Timezone-aware datetimes only (`datetime.now(tz=UTC)`), no naive `now()`.
+- One adapter per source ([collectors/](../src/floodwatch/collectors/README.md)). Recorded fixtures in tests, never live calls.
+
+### 7.3 Frontend
+- Thai-first and i18n-ready. Minimal bundle; loads well on 3G/4G.
+- Talks only to our API. CSS variables for design tokens.

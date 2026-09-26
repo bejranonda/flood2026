@@ -11,4 +11,4 @@
 
 A model is served for a station and horizon only if it passes the acceptance gate: **skill vs persistence > 0.1 and 90 % interval coverage between 85 % and 95 %** on held-out events. Otherwise the app falls back to a lower level with wider intervals.
 
-⚠️ Do **not** port the draft `BKKHydroEngine` from [`research/unverified/`](../../../research/unverified/README.md). Its outputs are physically implausible (KI-302 in [KNOWN_ISSUES.md](../../../docs/KNOWN_ISSUES.md)).
+⚠️ Do **not** port the draft `BKKHydroEngine` ([research](../../../research/bangkok_flood_calculation_forecasting_engine.md)). Running it gives physically implausible output ([validation §C12](../../../research/VALIDATION_2026-09-26.md), KI-302 in [KNOWN_ISSUES.md](../../../docs/KNOWN_ISSUES.md)). Its equations are fine as a reference; its numbers are not.

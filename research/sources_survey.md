@@ -1,3 +1,6 @@
+> **Research snapshot, 26 Sep 2026 (historical record, not maintained).** Trust level: 🟢 careful research. It uses a verification legend and cites sources, but **no endpoint has been tested from the production VPS yet**.
+> The maintained source registry is [docs/SOURCES.md](../docs/SOURCES.md). Index of all research files: [research/README.md](README.md).
+
 # SOURCES.md — Data Sources for the Bangkok / Central Thailand Water Level Forecasting App
 
 > Research date: 26 Sep 2026 (during the ongoing Bangkok flood event)
@@ -26,7 +29,7 @@ All endpoints must be re-tested **from the production VPS** before building on t
 3. **BKK008 (user's example) = คลองแสนแสบ บางกะปิ** — a khlong station, i.e. exactly the rain-driven case above.
 4. **Tide matters for everything below Bang Sai.** Royal Thai Navy publishes hourly harmonic predictions (112 constituents) for Chao Phraya stations; 2026 tables exist as PDF.
 5. **HII's official exchange-standard API only guarantees 7 days of history** → start our own archive and backfill **immediately**.
-6. **Zero-Key Architecture (V1):** The system operates keyless using Open-Meteo, client-side astronomical tide harmonics ($M_2, S_2, K_1, O_1$), local static hotspot elevation benchmarks, and public reverse-engineered endpoints. Detailed keyless recipes and free registration portals are in [API_noKey-1.md](API_noKey-1.md) and [API_noKey-2.md](API_noKey-2.md).
+6. **Zero-Key Architecture (V1):** The system operates keyless using Open-Meteo, client-side astronomical tide harmonics ($M_2, S_2, K_1, O_1$), local static hotspot elevation benchmarks, and public reverse-engineered endpoints. Detailed keyless recipes and free registration portals are in [API_noKey-1.md](API_noKey-1.md) (🟠 mixed validity, see [VALIDATION_2026-09-26.md](VALIDATION_2026-09-26.md)) and [keyless_access.md](keyless_access.md).
 
 ---
 

@@ -1,3 +1,8 @@
+> **Research snapshot, 26 Sep 2026 (assistant-assisted research, claude.ai or Gemini). Validity: 🟠 mixed. Validated claim-by-claim in [VALIDATION_2026-09-26.md](VALIDATION_2026-09-26.md) §C.**
+> ✅ Useful: the Three Waters framing; the textbook equations (Saint-Venant, Muskingum, orifice and gate flow, Rational Method, the polder continuity balance); the depth-to-landmark bands used as UX vocabulary; the ordering of the superposition algorithm.
+> ❌ Refuted: the `BKKHydroEngine` output. Running it gives a river at 3.40 m (above the 3.0 m wall), a khlong at −1.25 m and a time-to-dry that goes backwards. The "sample output" in the old README was never produced by this code. The tide constants don't fit observations (correlation +0.12).
+> ⚠️ Treat as hypotheses to fit from data: the celerity law exponent 0.38, the damping coefficients, and the travel-time table.
+
 # Bangkok Flood Calculation & Hydrodynamic Forecasting Engine
 ## Mathematical Modeling, Hydrodynamic Superposition, Street Inundation, and Recovery Time Estimation
 

@@ -10,7 +10,7 @@ Every adapter goes through the same steps in the same order:
 
 1. **Fetch.** Make one polite HTTP request. Use the configured `HTTP_USER_AGENT`, which has to identify the app and a contact. Don't spoof a browser ([GUIDELINES §5](../../../docs/GUIDELINES.md)). Retry with exponential backoff, and use single-flight so two runs never request the same thing at once.
 2. **Archive raw.** Before parsing anything, write the payload exactly as received (gzip) to the raw archive, along with the fetch time (UTC), URL, HTTP status and SHA-256. See [`../archive/`](../archive/README.md).
-3. **Parse.** Turn the payload into normalised rows (`station_id, source, ts_utc, level_msl, bank_level_msl, discharge, quality_flag, raw_ref`). Treat source timestamps that have no timezone as `Asia/Bangkok` (+07:00).
+3. **Parse.** Turn the payload into normalised rows (`station_id, source, obs_time (UTC), level_msl, bank_level_msl, discharge, quality_flag, raw_ref`). Treat source timestamps that have no timezone as `Asia/Bangkok` (+07:00).
 4. **QC.** Flag spikes, flatlines, gaps and clock errors. Never delete a reading.
 5. **Report health.** Record success or failure and data age, so the API can switch to degraded mode and alerts can fire.
 
@@ -19,4 +19,4 @@ A failing adapter must never crash the scheduler or stop the other adapters.
 ## Planned adapters (after G0 confirms them in [SOURCES.md](../../../docs/SOURCES.md))
 `hii_waterlevel`, `hii_rain`, `hii_graph_backfill`, `openmeteo_forecast`, `openmeteo_ensemble`, `openmeteo_flood`, `rid_reports`, `bma_dds`, `navy_tide_pdf`. The keyed adapters (`tmd`, `gistda`) come only once the keys exist.
 
-**Never** build an adapter against an endpoint listed under *Rejected / unverified endpoints* in [SOURCES.md](../../../docs/SOURCES.md).
+**Never** build an adapter against an endpoint listed under *Refuted endpoints* in [SOURCES.md](../../../docs/SOURCES.md).

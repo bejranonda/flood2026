@@ -1,3 +1,8 @@
+> **Research snapshot, 26 Sep 2026 (assistant-assisted research, claude.ai or Gemini). Validity: 🟠 mixed. Validated claim-by-claim in [VALIDATION_2026-09-26.md](VALIDATION_2026-09-26.md) §B.**
+> ✅ Useful and confirmed: the five data domains; Traffy citizen reports **are** reachable by machine (but at `publicapi.traffy.in.th`, not the URL given here); the BMA giant-tunnel capacities of 60 m³/s; the RID and GISTDA portals; the Open-Meteo request shown.
+> ❌ Refuted: HII `/v1/telemetry/station/river` returns 404; `open.traffy.in.th` does not exist in DNS; the harvester silently substitutes a made-up 2,450 m³/s.
+> ⚠️ Not yet checkable from a non-Thai host: the BMA DDS URL paths and table layout (BMA resets connections from outside Thailand).
+
 # Bangkok Flood Intelligence & Predictive Engine
 ## Exhaustive Data Source Audit, Extraction Architectures & Hydrological Schemas
 

@@ -8,7 +8,7 @@ This is layer 2 of the two-layer storage ([ARCHITECTURE.md §3](../../../docs/AR
 ## Planned tables (draft — finalised in Phase 1)
 | Table | Purpose |
 |---|---|
-| `observation` (hypertable) | `station_id, source, ts_utc, level_msl, bank_level_msl, discharge, quality_flag, raw_ref` |
+| `observation` (hypertable) | `station_id, source, obs_time (UTC), level_msl, bank_level_msl, discharge, quality_flag, raw_ref` |
 | `station`, `station_version` | Station metadata **with history**: bank level, datum and location changes are versioned, never overwritten. Also holds upstream/downstream links and river chainage. |
 | `weather_forecast_run` | **Every issued** NWP run (model, issue time, lead time, member), so backtests use forecasts exactly as issued. |
 | `tide_prediction` | Navy table and own harmonic predictions (`height_llw`, `height_msl`, method). |
@@ -16,3 +16,6 @@ This is layer 2 of the two-layer storage ([ARCHITECTURE.md §3](../../../docs/AR
 | `forecast_run`, `forecast_value` | **Our own** forecasts for every run, with the model version, so we can measure real skill over time. |
 
 Use compression and continuous aggregates (hourly and daily) for fast charts. Store UTC; display Asia/Bangkok.
+
+## Spatial side (PostGIS, D-008)
+Station points, polder polygons and river reaches with chainage live in the same database via **PostGIS**. They support nearest-station and point-in-polygon lookups (the "controlling water body" for "ใกล้บ้านฉัน"), areal rain aggregation per polder, and interpolation along the chainage ([APPROACH §2](../../../docs/APPROACH_AND_METHODS.md)). Store WGS84 (EPSG:4326); compute distances and areas in UTM 47N (EPSG:32647).
