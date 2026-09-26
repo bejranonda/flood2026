@@ -108,12 +108,44 @@ def _station_row(r: dict) -> dict:
     }
 
 
+STREET_HOURS, STREET_KM = 6, 1.0
+
+
+def _street_reports(c) -> list[tuple[float, float]]:
+    """Traffy flood reports of the last STREET_HOURS (locations only; KI-107)."""
+    return [(r["lat"], r["lon"]) for r in c.execute(
+        """SELECT lat, lon FROM crowd_report WHERE is_flood AND lat IS NOT NULL
+           AND report_time > now() - make_interval(hours => %s)""", (STREET_HOURS,)).fetchall()]
+
+
+def street_counts(items: list[dict], reports: list[tuple[float, float]]) -> None:
+    """Add `street_reports_6h` to each station: street-flood reports within STREET_KM. A khlong gauge measures the
+    canal against its bank, not the street: canals are often pumped down while streets flood from rain the drains
+    can't take (KNOWLEDGE §4), so both facts are shown side by side instead of one hiding the other (D-036)."""
+    deg = STREET_KM / 111.0
+    for s in items:
+        if s.get("lat") is None or s.get("lon") is None:
+            s["street_reports_6h"] = None
+            continue
+        s["street_reports_6h"] = sum(1 for la, lo in reports if abs(la - s["lat"]) <= deg and abs(lo - s["lon"]) <= deg * 1.03
+                                     and point.haversine_km(s["lat"], s["lon"], la, lo) <= STREET_KM)
+
+
+def _traffy_age_min(c) -> float | None:
+    r = c.execute("SELECT last_success FROM source_health WHERE source='traffy'").fetchone()
+    return _age_min(r["last_success"]) if r else None
+
+
 @app.get("/api/stations")
 def stations(scope: str = Query("focus", pattern="^(focus|all)$")):
     with db.connect() as c:
         rows = c.execute(STATIONS_SQL, {"all": scope == "all"}).fetchall()
-    return _json({"generated": dt.datetime.now(dt.timezone.utc).isoformat(),
-                  "stations": [_station_row(r) for r in rows]})  # all stations; bad values filtered per station
+        reps, tage = _street_reports(c), _traffy_age_min(c)
+    items = [_station_row(r) for r in rows]  # all stations; bad values filtered per station
+    street_counts(items, reps)
+    return _json({"generated": dt.datetime.now(dt.timezone.utc).isoformat(), "stations": items,
+                  "street_source": {"name": "Traffy Fondue", "hours": STREET_HOURS, "km": STREET_KM,
+                                    "last_update_age_min": tage}})
 
 
 @app.get("/api/stations/{code}")
@@ -128,9 +160,13 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
         fc = c.execute("SELECT payload FROM forecast_run WHERE code=%s ORDER BY issue_time DESC LIMIT 1",
                        (code,)).fetchone()
         fb = _feedback_counts(c, code).get(code)
+        reps, tage = _street_reports(c), _traffy_age_min(c)
+    srow = _station_row(rows[0])
+    street_counts([srow], reps)
+    srow["street_source_age_min"] = tage
     if code in DATUM_SUSPECT:  # KI-210: the station is shown, its non-MSL values are not
         obs, fc = [], None
-    return _json({"station": _station_row(rows[0]), "feedback7d": fb,
+    return _json({"station": srow, "feedback7d": fb,
                   "observations": [[_iso(o["obs_time"]), o["level_msl"], o["discharge"]] for o in obs],
                   "forecast": fc["payload"] if fc else None})
 
@@ -161,7 +197,9 @@ def reports(hours: int = Query(6, ge=1, le=48)):
             """SELECT round(lat::numeric, 2) AS lat, round(lon::numeric, 2) AS lon, count(*) AS n
                FROM crowd_report WHERE is_flood AND report_time > now() - make_interval(hours => %s)
                GROUP BY 1, 2 ORDER BY n DESC""", (hours,)).fetchall()
-    return _json({"hours": hours, "cells": [[float(r["lat"]), float(r["lon"]), r["n"]] for r in rows]})
+        tage = _traffy_age_min(c)
+    return _json({"hours": hours, "cells": [[float(r["lat"]), float(r["lon"]), r["n"]] for r in rows],
+                  "last_update_age_min": tage})
 
 
 @app.get("/api/rain")

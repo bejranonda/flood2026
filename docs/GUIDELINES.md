@@ -61,6 +61,8 @@ Update `Last updated` on each file you touch. Docs are written in English; Thai 
 ---
 
 - **Adding a source adds stations to every query** (KI-219): check each collector's and the forecaster's station selection (filter by `agency`), and watch one full worker cycle in the logs after deploying.
+- **Name what a gauge measures, not what the area is like** (D-036): never "ปกติ"/green for a channel below its bank; use "ต่ำกว่าตลิ่ง" (blue) and show street reports beside it. Hide gauges only when they say nothing about now (no data 24 h), and fold them away rather than deleting them from the page.
+- **Always state the age of a secondary layer** (Traffy) when it is more than an hour old.
 - **New stations must say they are new** (no empty chart without an explanation): the API gives `history_since`/`history_days`, the UI labels gauges with < 7 days of history.
 
 ## 4. Modelling and scientific rigour

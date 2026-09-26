@@ -210,7 +210,7 @@ def summary_text(stats: dict) -> str:
     f = stats["focus"]
     s = f["status"]
     parts = [f"จาก {f['total']} สถานีที่ติดตาม ล้นตลิ่ง {s['critical']} · ใกล้ตลิ่ง {s['warning']} · เฝ้าระวัง {s['watch']}"
-             f" · ปกติ {s['normal']} · ไม่ทราบ {s['unknown']} สถานี"]
+             f" · ต่ำกว่าตลิ่ง {s['normal']} · ไม่ทราบ {s['unknown']} สถานี"]
     t = f["trend12"]
     parts.append(f"ใน 12 ชม. ข้างหน้ามีแนวโน้มเพิ่มขึ้น {t['rising']} สถานี ลดลง {t['falling']} สถานี")
     rain = stats.get("rain_bkk_next24_mm_max")

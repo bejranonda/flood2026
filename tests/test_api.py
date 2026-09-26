@@ -96,3 +96,10 @@ def test_station_row_reports_history_start_for_new_gauges():
     r = api._station_row(row)
     assert r["history_days"] == 1.5 and r["history_since"].startswith(str((now - dt.timedelta(hours=36)).date()))
     assert api._station_row({**row, "first_time": None})["history_days"] is None
+
+
+def test_street_counts_within_one_km_only():
+    items = [{"lat": 13.7650, "lon": 100.6450}, {"lat": None, "lon": None}]
+    reports = [(13.7651, 100.6451), (13.7700, 100.6450), (13.7800, 100.6450), (13.9, 100.9)]  # 0.01, 0.55, 1.67 km, far
+    api.street_counts(items, reports)
+    assert items[0]["street_reports_6h"] == 2 and items[1]["street_reports_6h"] is None

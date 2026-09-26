@@ -1,6 +1,6 @@
 :root {
   --bg: #f6f7f9; --card: #fff; --ink: #1c2430; --muted: #5b6573; --line: #e3e7ec;
-  --normal: #2e9d5b; --watch: #b58900; --warning: #e46c0a; --critical: #c62828; --unknown: #8a94a3;
+  --normal: #2f6fb0; --watch: #b58900; --warning: #e46c0a; --critical: #c62828; --unknown: #8a94a3;
   --accent: #1565c0; --top-h: 48px;
 }
 * { box-sizing: border-box; }
@@ -127,3 +127,8 @@ a { color: var(--accent); }
 .placeq { list-style: none; margin: 0 0 8px; }
 .placebtn, .placehit { width: 100%; text-align: left; min-height: 44px; margin: 0 0 6px; }
 .placehit .muted { display: block; font-size: 12px; }
+.item .street { color: #6a1b9a; }
+.nodata { list-style: none; margin: 8px 0; }
+.nodata summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--muted); }
+.fchip { margin-left: 4px; }
+.legend label { display: block; }

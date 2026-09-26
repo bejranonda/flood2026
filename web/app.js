@@ -5,7 +5,9 @@ const STATUS = {
   critical: { th: "ล้นตลิ่ง", long: "วิกฤต (ล้นตลิ่ง)", color: "#c62828" },
   warning: { th: "ใกล้ตลิ่ง", long: "เตือนภัย (ใกล้ตลิ่ง)", color: "#e46c0a" },
   watch: { th: "เฝ้าระวัง", long: "เฝ้าระวัง", color: "#b58900" },
-  normal: { th: "ปกติ", long: "ปกติ", color: "#2e9d5b" },
+  // Not "ปกติ" (normal): a canal below its bank says nothing about the street, which can flood from rain the drains
+  // can't take while BMA keeps canals pumped low (owner report 2026-09-26, D-036). Blue = water in the channel, not "safe".
+  normal: { th: "ต่ำกว่าตลิ่ง", long: "น้ำต่ำกว่าตลิ่ง", color: "#2f6fb0" },
   unknown: { th: "ไม่ทราบ", long: "ไม่ทราบ (ไม่มีระดับตลิ่ง)", color: "#8a94a3" },
 };
 const RANK = { critical: 0, warning: 1, watch: 2, normal: 3, unknown: 4 };
@@ -50,6 +52,13 @@ const norm = (s) => String(s ?? "").toLowerCase().replace(/\s+/g, "");
 
 let stations = [];
 let statusFilter = null;
+let streetSrc = null;       // {hours, km, last_update_age_min} of the street-report layer (Traffy)
+let forecastOnly = false;   // list chip: only gauges with a tested forecast
+let showNoData = false;     // map: gauges without data for 24 h are hidden unless asked for
+const hasForecast = (s) => ["rising", "falling", "steady"].includes(s.trend12);
+const STREET_MIN = 3;       // street-flood reports within 1 km worth showing on a gauge
+const streetAge = () => streetSrc?.last_update_age_min != null && streetSrc.last_update_age_min > 60
+  ? ` (ข้อมูล Traffy ล่าสุด ${fmtAge(streetSrc.last_update_age_min)})` : "";
 let map, layer, legend;
 let lastPos = null;
 
@@ -94,7 +103,8 @@ function itemHTML(s, extra = "") {
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(freeboardText(s.freeboard_m))}</span></div>
     <div class="meta">${isNew(s) && (!s.trend12 || s.trend12 === "unknown") ? "🆕 สถานีใหม่ เริ่มเก็บข้อมูล " + esc(new Date(s.history_since).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" })) : esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null && s.trend12 !== "steady" ? " " + esc(cm(s.delta12_median)) + " ใน 12 ชม." : ""}
-      · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
+      · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${(s.street_reports_6h || 0) >= STREET_MIN
+        ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
 }
 
 function bindItems(root) {
@@ -110,8 +120,9 @@ function renderRegions() {
   el.innerHTML = Object.entries(REGIONS).map(([k, r]) => {
     const n = stations.filter((s) => r.test(s.province || "")).length;
     return `<button type="button" class="rchip" data-region="${k}" aria-pressed="${k === region}">${esc(r.th)} <b>${n}</b></button>`;
-  }).join("");
-  el.querySelectorAll(".rchip").forEach((b) => b.addEventListener("click", () => {
+  }).join("") + `<button type="button" class="rchip fchip" aria-pressed="${forecastOnly}" title="ซ่อนสถานีที่ยังคาดการณ์ไม่ได้ (เช่น สถานีใหม่)">📈 เฉพาะที่คาดการณ์ได้</button>`;
+  el.querySelector(".fchip").addEventListener("click", () => { forecastOnly = !forecastOnly; renderList(); });
+  el.querySelectorAll(".rchip[data-region]").forEach((b) => b.addEventListener("click", () => {
     region = b.dataset.region;
     try { localStorage.setItem("region", region); } catch { /* private mode */ }
     renderList();
@@ -124,12 +135,20 @@ function renderList() {
   const rows = stations
     .filter((s) => q || REGIONS[region].test(s.province || ""))  // a search looks in every region
     .filter((s) => !statusFilter || s.status === statusFilter)
+    .filter((s) => !forecastOnly || hasForecast(s))
     .filter((s) => !q || norm([s.name_th, s.code, s.amphoe, s.province, s.river].join(" ")).includes(q))
     .sort((a, b) => (RANK[a.status] - RANK[b.status]) || ((a.freeboard_m ?? 99) - (b.freeboard_m ?? 99)));
+  // Gauges without data for 24 h say nothing about now: collapsed at the end instead of mixed in (D-036).
+  // Still shown when the user asks for them (the "ไม่ทราบ" chip) or searches by name.
+  const keepAll = statusFilter === "unknown" || q;
+  const live = keepAll ? rows : rows.filter((s) => s.status !== "unknown");
+  const dead = keepAll ? [] : rows.filter((s) => s.status === "unknown");
   const ul = document.getElementById("list");
   const raw = document.getElementById("q").value.trim();
   const place = raw.length >= 2 ? `<li class="placeq"><button type="button" class="btn placebtn">🔎 ค้นหาสถานที่ “${esc(raw)}” (ซอย ถนน ย่าน)</button><div class="placeres"></div></li>` : "";
-  ul.innerHTML = place + (rows.map((s) => itemHTML(s)).join("") || "<li class='muted'>ไม่พบสถานีชื่อนี้ ลองค้นหาเป็นสถานที่ด้านบน</li>");
+  const tail = dead.length ? `<li class="nodata"><details><summary>สถานีที่ไม่มีข้อมูลล่าสุด ${dead.length} สถานี (ไม่ได้ส่งข้อมูลเกิน 24 ชม.)</summary>
+    <ul class="list">${dead.map((s) => itemHTML(s)).join("")}</ul></details></li>` : "";
+  ul.innerHTML = place + (live.map((s) => itemHTML(s)).join("") || (dead.length ? "" : "<li class='muted'>ไม่พบสถานีชื่อนี้ ลองค้นหาเป็นสถานที่ด้านบน</li>")) + tail;
   ul.querySelector(".placebtn")?.addEventListener("click", () => placeSearch(raw));
   bindItems(ul);
 }
@@ -169,7 +188,7 @@ function renderMap() {
     legend.onAdd = () => {
       const d = L.DomUtil.create("div", "legend");
       d.innerHTML = Object.values(STATUS).map((s) => `<div><i style="background:${s.color}"></i>${esc(s.th)}</div>`).join("")
-        + `<div><i style="background:#7b1fa2;opacity:.4"></i>รายงานประชาชน 6 ชม.</div>`;
+        + `<div><i style="background:#7b1fa2;opacity:.4"></i>น้ำท่วมบนถนน (Traffy) 6 ชม.<span id="street-age"></span></div>`;
       return d;
     };
     legend.addTo(map);
@@ -179,8 +198,10 @@ function renderMap() {
     const opts = L.control({ position: "bottomleft" });
     opts.onAdd = () => {
       const d = L.DomUtil.create("div", "legend");
-      d.innerHTML = `<label><input type="checkbox" id="all-th"> แสดงสถานีทั่วประเทศ</label><div id="unplaced" class="muted"></div>`;
+      d.innerHTML = `<label><input type="checkbox" id="all-th"> แสดงสถานีทั่วประเทศ</label>
+        <label><input type="checkbox" id="nodata"> แสดงสถานีที่ไม่มีข้อมูล</label><div id="unplaced" class="muted"></div>`;
       L.DomEvent.disableClickPropagation(d);
+      d.querySelector("#nodata").addEventListener("change", (e) => { showNoData = e.target.checked; renderMap(); });
       d.querySelector("#all-th").addEventListener("change", (e) => toggleNational(e.target.checked));
       return d;
     };
@@ -193,7 +214,9 @@ function renderMap() {
     L.circle([lat, lon], { pane: "reports", interactive: false, radius: 150 + 50 * Math.min(n, 20), color: "#7b1fa2",
       weight: 0, fillOpacity: 0.14 }).addTo(layer);
   })).catch(() => {});
-  stations.filter((s) => s.lat && s.lon).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
+  const sa = document.getElementById("street-age");
+  if (sa) sa.textContent = streetAge();
+  stations.filter((s) => s.lat && s.lon && (showNoData || s.status !== "unknown")).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
     const st = STATUS[s.status] || STATUS.unknown;
     const approx = (s.notes || []).includes("approx_location");
     L.circleMarker([s.lat, s.lon], { pane: "stations", radius: s.status === "critical" ? 10 : 8, color: approx ? "#333" : "#fff",
@@ -261,6 +284,15 @@ function dayTicks(tmin, tmax, x, H) {
 
 // New gauges (history < 7 days, e.g. BMA from 26 Sep): say why the chart is short and when a forecast can start,
 // so a short chart is not mistaken for lost data (owner, 2026-09-26).
+function streetNote(s) {
+  const n = s.street_reports_6h || 0;
+  if (n < STREET_MIN) return "";
+  const calm = ["normal", "watch"].includes(s.status);
+  return `<div class="warnbox">🚗 <strong>ถนนรอบสถานีนี้ (1 กม.) มีรายงานน้ำท่วม ${n} เรื่องใน 6 ชม.</strong>${esc(streetAge())} (Traffy Fondue)
+    ${calm ? `<br>น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}ยังต่ำกว่าตลิ่ง แต่ถนนท่วมได้ เพราะฝนตกหนักเกินกว่าท่อระบายน้ำจะรับไหว
+      และ กทม. มักพร่องน้ำในคลองไว้รับฝน <b>สถานีนี้วัดน้ำในคลอง ไม่ได้วัดน้ำบนถนน</b>` : ""}</div>`;
+}
+
 const NEW_DAYS = 7;
 const isNew = (s) => s.history_days != null && s.history_days < NEW_DAYS;
 function newGaugeNote(s, fc) {
@@ -409,16 +441,17 @@ async function showDetail(code) {
     box.innerHTML = `<div class="tools"><button class="btn share" aria-label="แชร์">🔗 แชร์</button><button class="btn close" aria-label="ปิด">✕</button></div>
       <h2 id="sheet-title">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></h2>
       <div class="muted">${esc(s.river || "")} · ${esc(s.amphoe || "")} ${esc(s.province || "")} · ${esc(s.agency || "")}</div>
-      <p class="headline" style="color:${st.color}">${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}</p>
+      <p class="headline" style="color:${st.color}">${s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
+        : `${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}`}</p>
       <p class="muted">ระดับน้ำ ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit} ·
         ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})${s.stale ? " ⚠️ ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว" : ""}</p>
       ${notesText(s) ? `<div class="warnbox">ℹ️ ${esc(notesText(s))}</div>` : ""}
       ${bma ? `<div class="warnbox">ℹ️ สถานีของสำนักการระบายน้ำ กทม. ดึงผ่านเว็บ <a href="https://flood69.peoplesparty.or.th/#klong" target="_blank" rel="noopener">flood69 (พรรคประชาชน)</a> ซึ่งสำเนาข้อมูล กทม. ทุก 5 นาที ·
         ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ที่อยู่ใกล้กัน 30–60 ซม. จึงเทียบกับตลิ่งของสถานีนี้เท่านั้น · ประวัติย้อนหลังเริ่มเก็บ 26 ก.ย.</div>` : ""}
-      <p class="big">${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
+      <p class="big"${isNew(s) && !hasForecast(s) ? " hidden" : ""}>${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
-      ${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl)}
+      ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl)}
       <p class="muted">วิธีคาดการณ์: ${esc(methods.join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
         · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p>
       ${feedbackCounts(d.feedback7d)}
@@ -450,6 +483,7 @@ const WARN = {
   walls_and_polders: "คันกั้นน้ำและประตูระบายน้ำแบ่งพื้นที่ ถ้าอยู่นอกคันริมแม่น้ำให้ดูสถานี “แม่น้ำ” ถ้าอยู่ด้านในให้ดูสถานี “คลอง”",
   gauges_far_or_disagree: "สถานีรอบ ๆ อยู่ไกลหรือให้ผลต่างกันมาก ใช้ประกอบเท่านั้น",
   nearest_gauge_far: "สถานีที่ใกล้ที่สุดอยู่ห่างเกิน 3 กม.",
+  street_flooding_despite_channels: "<b>มีรายงานน้ำท่วมบนถนนรอบจุดนี้</b> แม้น้ำในคลองใกล้เคียงยังต่ำกว่าตลิ่ง: ถนนท่วมจากฝนที่ท่อระบายไม่ทัน ไม่ใช่คลองล้น เชื่อรายงานบนถนนก่อน",
 };
 const CONF = { medium: "ปานกลาง", low: "ต่ำ", very_low: "ต่ำมาก", none: "ประเมินไม่ได้" };
 let pinMarker = null;
@@ -525,6 +559,7 @@ async function load() {
   try {
     const [d, st] = await Promise.all([getJSON("/api/stations?scope=focus"), getJSON("/api/stats").catch(() => null)]);
     stations = d.stations;
+    streetSrc = d.street_source || null;
     const latest = stations.map((s) => s.obs_time).filter(Boolean).sort().pop();
     document.getElementById("updated").textContent = `ข้อมูลล่าสุด ${fmtTime(latest)} · ${stations.length} สถานี`;
     if (st) {

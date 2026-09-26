@@ -34,3 +34,16 @@ def test_water_body_label():
 def test_single_distant_gauge_is_very_low_confidence():
     st = [_st("A", 13.854, 100.587, "critical")]
     assert point.area_index(13.82, 100.60, st)["confidence"] == "very_low"
+
+
+def test_street_reports_override_a_calm_channel_picture():
+    # 2026-09-26: 34 BMA gauges read "below bank" with >= 5 Traffy street-flood reports within 1 km (e.g. Saen Saep at
+    # Bang Kapi: 35 cm below bank, 35 reports). The point check must not look calm when streets report flooding.
+    near = [{"code": "A", "lat": 13.765, "lon": 100.645, "status": "normal", "stale": False, "river": "คลองแสนแสบ"},
+            {"code": "B", "lat": 13.770, "lon": 100.650, "status": "normal", "stale": False, "river": "คลองแสนแสบ"}]
+    calm = point.assess(13.766, 100.646, near, 0, {}, None)
+    assert "street_flooding_despite_channels" not in calm["warnings"]
+    wet = point.assess(13.766, 100.646, near, point.STREET_ALERT, {}, None)
+    assert "street_flooding_despite_channels" in wet["warnings"]
+    over = [{**s, "status": "critical"} for s in near]
+    assert "street_flooding_despite_channels" not in point.assess(13.766, 100.646, over, 9, {}, None)["warnings"]

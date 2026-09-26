@@ -14,6 +14,7 @@ LEVELS = ["normal", "watch", "warning", "critical"]
 RADIUS_KM = 8.0        # beyond this a gauge says too little about the point
 NEAR_KM = 3.0
 LIST_KM = 15.0
+STREET_ALERT = 3      # street-flood reports within ~1 km in 6 h that override a calm channel picture
 
 
 def haversine_km(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
@@ -75,6 +76,8 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
         warnings.append("gauges_far_or_disagree")
     if listed and listed[0]["distance_km"] > NEAR_KM:
         warnings.append("nearest_gauge_far")
+    if reports_1km >= STREET_ALERT and idx.get("category") in ("normal", "watch", None):
+        warnings.append("street_flooding_despite_channels")  # canals low, streets flooded: rain vs drains (D-036)
     return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx, "stations": listed[:5],
             "evidence": {"traffy_flood_reports_1km_6h": reports_1km, "user_depth_reports_1km_24h": feedback_depths},
             "rain_next24_mm": rain_next24_mm, "warnings": warnings}

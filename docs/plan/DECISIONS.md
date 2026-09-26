@@ -223,3 +223,13 @@
 - **Evidence (17:33 UTC):** `curl`, `facebookexternalhit` and a LINE user agent get **HTTP 200**, no `cf-mitigated`, on `/` and `/api/health` of `flood.autobahn.bot`. The flood-only page rule (D-034, security level and BIC off) stays.
 - **Decision:** every path on `flood.bejranonda.com` answers **301 → flood.autobahn.bot**, `/api/*` included; only `/api/health` stays answering on the old host so an old uptime monitor keeps working. A browser following an old link with a `#s=` fragment lands on the station on the new domain (tested).
 - **Left for later:** the old hostname's CNAME and tunnel route can be removed once redirects have run for a few weeks (keep them until then: shared links live in chats).
+
+### D-036 — Channels and streets are separate facts: relabel "normal", show street reports beside gauges, fold away dead gauges
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "many areas are under flood from Traffy, but the new flood69 stations show water below bank. It is conflict. Should we filter or separate?" and "filter the stations which cannot be predicted")
+- **Evidence (18:10 UTC):** of 188 fresh BMA gauges, **34 read "normal" with ≥ 5 Traffy flood reports within 1 km** (12 h window), e.g. Saen Saep at Bang Kapi district office: 35 cm below bank, 35 street reports. Not a data conflict: a khlong gauge measures the canal against its bank; streets flood when rain exceeds the drains while BMA keeps canals pumped low (KNOWLEDGE §4.2–4.3).
+- **Decision:**
+  1. Status `normal` is shown as **"ต่ำกว่าตลิ่ง" (below bank) in blue**, never "ปกติ" (normal) in green: it describes the channel, not the neighbourhood. Headline: "น้ำในคลองต่ำกว่าตลิ่ง 35 ซม.".
+  2. **Street layer beside every gauge:** `street_reports_6h` (Traffy flood reports within 1 km, 6 h) in `/api/stations`; cards show "🚗 ถนนรอบ ๆ มีรายงานน้ำท่วม N เรื่อง" at ≥ 3; the detail explains canal vs street; the point check adds `street_flooding_despite_channels` when ≥ 3 reports meet a calm channel picture, and tells users to trust street reports first. **Neither source is filtered out.**
+  3. **Freshness of the street layer is always stated** when Traffy is > 60 min old ("ข้อมูล Traffy ล่าสุด 3 ชม.ที่แล้ว").
+  4. **Filtering:** gauges with no data for 24 h are folded into a closed "ไม่มีข้อมูลล่าสุด (N)" group at the end of the list and hidden on the map (checkbox to show). A **"📈 เฉพาะที่คาดการณ์ได้" chip** (off by default) hides gauges without a tested forecast. Not on by default: it would hide 186 of 209 Bangkok gauges, the reason residents come (Q27).
+- **Not done:** merging Traffy into gauge status (reports lag, cluster where people are, and describe streets), or hiding BMA gauges that disagree with reports.

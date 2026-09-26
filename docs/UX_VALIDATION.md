@@ -60,6 +60,15 @@
 | 31 | Commuters: "which roads to avoid?" | Link to BMA's road page in the point card (a snapshot, not a feed) |
 | 32 | Owner: "the historic graph and forecasting all lost, what happened? Should we separate old and new info?" | Nothing was lost: the Bangkok list now opens on BMA gauges that only started today, and a worker stall (KI-219) made their charts even shorter. **Separated in the display, not the storage:** gauges with < 7 days of history are labelled "🆕 สถานีใหม่" with the start date and the expected forecast date |
 
+### Round 5 (2026-09-26 ~18:20 UTC): owner: "filter unpredictable stations"; "Traffy shows floods, flood69 stations show below bank: conflict?"
+| # | Finding | Done (v0.4.0, D-036) |
+|---|---|---|
+| 33 | Green "ปกติ" on a canal while the streets around it flood reads as "all fine here" (34 BMA gauges with ≥ 5 street reports within 1 km) | "ต่ำกว่าตลิ่ง" in blue; headline "น้ำในคลองต่ำกว่าตลิ่ง 35 ซม."; card line "🚗 ถนนรอบ ๆ มีรายงานน้ำท่วม N เรื่อง"; detail explains canal vs street; point check warns and says to trust street reports |
+| 34 | 42 gauges with no data for > 24 h mixed into the list and map | Folded into "สถานีที่ไม่มีข้อมูลล่าสุด (N)" at the end (13 in Bangkok); hidden on the map unless "แสดงสถานีที่ไม่มีข้อมูล" is ticked; still reachable via the "ไม่ทราบ" chip and search |
+| 35 | "Show only what can be predicted" | Chip "📈 เฉพาะที่คาดการณ์ได้" (Bangkok: 10 of 196 live gauges). Off by default, otherwise Bangkok residents lose the canal network |
+| 36 | Street data silently 3 h old (Traffy outage) | Age shown on cards, in the detail and the map legend when > 60 min |
+| 37 | Redundant text in a new gauge's sheet | Trend line hidden when the 🆕 box explains it |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

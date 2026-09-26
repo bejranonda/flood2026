@@ -2,6 +2,14 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.4.0 — 2026-09-26
+Canals and streets are shown as separate facts (D-036), after the owner saw "flood69 gauges below bank" next to Traffy street floods.
+- **"ปกติ" → "ต่ำกว่าตลิ่ง" (blue)** everywhere: a canal below its bank says nothing about the street. Headline "น้ำในคลองต่ำกว่าตลิ่ง N ซม.".
+- **Street reports beside each gauge:** `street_reports_6h` in `/api/stations` (Traffy flood reports within 1 km, 6 h); card line, detail explanation (rain beyond the drains, canals pumped low), and a point-check warning `street_flooding_despite_channels`.
+- **Filtering:** gauges without data for 24 h folded away in the list and hidden on the map (checkbox); optional "📈 เฉพาะที่คาดการณ์ได้" chip.
+- **Traffy:** overloaded (HTTP 502 since 15:11 UTC); requests cut to 40 tickets; the street layer's age is shown when > 60 min (KI-220).
+- `app.js?v=14`, `style.css?v=8`. 43 tests.
+
 ## v0.3.2 — 2026-09-26
 - **Only flood.autobahn.bot remains** (D-035): the owner turned Bot Fight Mode off, so `flood.bejranonda.com` now 301s every path, `/api/*` included (only `/api/health` still answers there for old monitors). curl, Facebook and LINE user agents get HTTP 200 on the main domain; an old `#s=` link lands on the station (tested in a browser). Q18 and KI-506 closed.
 - **Fix (KI-219):** since v0.3.0 the HII history job also asked HII's chart endpoint for the 199 BMA gauges (HTTP 500 ×3 each), stalling the single worker loop for ~1 h (no BMA readings or forecast refresh 16:33–17:46 UTC). BMA stations are now excluded; a regression test guards it. No data was deleted.

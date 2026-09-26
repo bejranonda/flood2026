@@ -255,7 +255,9 @@ def openmeteo() -> dt.datetime | None:
 
 
 def traffy() -> dt.datetime | None:
-    payload, _ = _get_json("traffy_public", "https://publicapi.traffy.in.th/share/teamchadchart/search?limit=500",
+    # limit=40: under flood load Traffy's gateway gives up at 60 s and 50 tickets took 51 s (2026-09-26 18:10 UTC);
+    # limit=500 had failed with HTTP 502 for 3 h. The newest 40 every 10 min, upserted, keeps up with the stream.
+    payload, _ = _get_json("traffy_public", "https://publicapi.traffy.in.th/share/teamchadchart/search?limit=40",
                            retries=1)  # optional layer, polled again in 10 min: never hold the worker loop
     rows = parsing.parse_traffy(payload)
     with db.connect() as c, c.cursor() as cur:

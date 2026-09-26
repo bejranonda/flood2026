@@ -10,7 +10,7 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): v0.3.2 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); the bot challenge is off, so link previews and API clients work.
+> **Current status (2026-09-26): v0.4.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); the bot challenge is off, so link previews and API clients work.
 > **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) (gate coordinates, a courtesy note to the BMA relay, decisions). Status: `python3 scripts/owner_status.py`.
 >
 > It collects:
@@ -62,7 +62,7 @@ All workstreams run in parallel during the flood ([D-012](docs/plan/DECISIONS.md
 | BMA KlongMap via flood69 relay | ✅ live since v0.3.0: 199 Bangkok gauges, 5-min copies; BMA direct is unreachable from here | Bangkok khlongs, gates (inside/outside) |
 | BMA DDS / DWR EWS | 🟡 `weather.bangkok.go.th` unreachable (reset / relay can't connect) | — |
 | OSM Nominatim | ✅ place search only, on demand | Find a soi, open the point check |
-| Traffy Fondue public API | ✅ live (privacy rules apply) | Validation, "reported nearby" |
+| Traffy Fondue public API | 🟡 overloaded since 2026-09-26 15:11 UTC (HTTP 502); requests cut to 40 tickets, age shown in the UI | Street flooding beside each gauge (D-036), point check |
 
 Full registry, including endpoints that were tested and **refuted**: [docs/SOURCES.md](docs/SOURCES.md).
 

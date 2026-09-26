@@ -32,6 +32,7 @@
 | KI-217 | BMA and HII gauges 7–100 m apart disagree by 0.3–0.6 m (level and bank) | Data quality | 🟡 open (handled: never mixed) |
 | KI-218 | BMA data depends on a third-party political relay | Data access | 🟡 accepted (D-031) |
 | KI-219 | BMA codes sent to HII's chart endpoint stalled the worker ~1 h | Infrastructure | 🟢 fixed v0.3.2 |
+| KI-220 | Canal "normal" next to flooded streets read as a contradiction; Traffy overloaded | UX / Data access | 🟢 relabelled (D-036); 🟡 Traffy down |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -211,6 +212,10 @@ Datums, sensor placement or bank definitions differ, and HII's BKK005 value itse
 ### KI-219 — A new source's stations leaked into another collector's query · 🟢 fixed
 `hii_history` selected *all* focus stations. After v0.3.0 added 199 BMA gauges (`WL.*`, no `hii_id`), it asked HII's chart endpoint for each: HTTP 500 with 3 retries ≈ 10 s per code ≈ 33 min, on the single worker loop. Result 16:33–17:46 UTC: no BMA readings, no forecast refresh. The owner saw BMA gauges with near-empty charts and read it as "history and forecasts lost" (nothing was deleted: 3.2 M observations intact, HII gauges kept their year of history). **Fix:** `agency IS DISTINCT FROM 'BMA'` in the query + a regression test. **Rule:** when adding a source, check every collector's and the forecaster's station query (GUIDELINES §3).
 **Related:** BMA logger clocks can run a few minutes ahead (WL.KKD.04 stamped 18:00 at 17:55 UTC, so `/api/health` showed a latest-observation age of −4 min). Readings more than 15 min in the future are flagged `future_time` and not shown.
+
+### KI-220 — "Canal normal, street flooded" and a Traffy outage · 🟢 / 🟡
+- **Perceived conflict (owner, 2026-09-26):** 34 BMA gauges showed green "ปกติ" with ≥ 5 street-flood reports within 1 km. Both were right: canal vs street (D-036). The word "normal" was the bug. Fixed in v0.4.0: "ต่ำกว่าตลิ่ง" in blue, street reports beside the gauge, a point-check warning.
+- **Traffy overload:** `publicapi.traffy.in.th` answered HTTP 502 from 15:11 UTC (limit=500); at 18:10 limit=50 took 51 s and the gateway cuts at 60 s, so even limit=40 got 502. The collector now asks for 40 (lighter); the UI states the street layer's age whenever it is > 60 min. As the outage lasts, the 6 h window empties: "no street reports" then means "no fresh data", which the age note says.
 
 ### KI-216 — "0 cm below the bank" next to "overflowing" · 🟢 fixed
 BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded to −0, and `-0 < 0` is false in JavaScript, so the text said "ต่ำกว่าตลิ่ง 0 ซม." under a red "ล้นตลิ่ง" badge. **Fix:** round first; 0 cm reads "ระดับเท่าตลิ่ง".
