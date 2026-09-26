@@ -63,3 +63,10 @@ def test_payload_is_json_serialisable():
     times, vals = _synthetic()
     for bank in (1.6, None):
         json.dumps(forecast.forecast_station("T", times, vals, bank=bank, rain_next24=0))
+
+
+def test_no_peak_window_without_a_tide_model():
+    times, vals = _synthetic(days=3)  # too short for any model -> no intervals, no outlook
+    assert forecast.forecast_station("T", times, vals, bank=2.0, rain_next24=0)["outlook24"] is None
+    path = [{"h": h, "method": "persistence", "q": [0.8, 0.9, 1.0 + 0.01 * h, 1.1, 1.2]} for h in range(1, 25)]
+    assert forecast.outlook24(path, 2.0)["varies"] is False
