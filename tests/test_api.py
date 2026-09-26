@@ -35,3 +35,8 @@ def test_old_reading_is_not_reported_as_current_status():
     assert r["status"] == "unknown" and r["stale"]
     r = api._station_row({**row, "obs_time": dt.datetime.now(dt.timezone.utc)})
     assert r["status"] == "critical" and not r["stale"]
+
+
+def test_chainage_data_is_packaged_and_ordered():
+    ch = api.CHAINAGE
+    assert ch and ch["CPY015"]["chainage_km"] < ch["C.12"]["chainage_km"] < ch["CPY014"]["chainage_km"] < ch["C.13"]["chainage_km"]

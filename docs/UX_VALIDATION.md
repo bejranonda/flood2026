@@ -29,6 +29,14 @@
 | 12 | Colours without a key | Medium | Map legend; chips show colour and label together |
 | 13 | Riverside residents want to see the whole river | Medium | **"เจ้าพระยา" tab**: every main-stem gauge from Nakhon Sawan to the gulf with freeboard bars. Gauges only; no interpolation between them ([APPROACH §2.9](APPROACH_AND_METHODS.md)) |
 
+### Round 2 (2026-09-26 ~10:30 UTC, owner feedback)
+| # | Finding | Done |
+|---|---|---|
+| 14 | "I want to check **my** spot, and there's no station there" | **Point check** (D-021): tap the map anywhere, or "สถานีใกล้ฉัน" → an area category with range and confidence, nearby river/khlong gauges, citizen reports within ~1 km, rain, and 4 warnings. No verdict at very low confidence. Shareable `#p=lat,lon`. Report water at the pin |
+| 15 | "I can't read even a rough time from the chart" (owner) | **Day markers with short dates** (e.g. "24 ก.ย.") on the chart; "ตอนนี้" moved to the top; no fine ticks |
+| 17 | "BKK008 Saen Saep isn't on the map" (owner) | Coordinates from HII's map feed for every station lacking them (D-023); BKK008 now shows as ล้นตลิ่ง. Samut Sakhon and Nakhon Pathom added (whole BMR) |
+| 16 | "What if someone writes that they're trapped?" | Keyword rules flag emergency notes instantly, and the page shows **1669 / 1784 / 191** with "this site has no responders" |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

@@ -31,7 +31,12 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | `GET /api/stats` | Compact statistics: status and trend counts, reporting freshness (focus and whole HII network), metadata gaps, Bangkok 24 h rain ([APPROACH §3.4](APPROACH_AND_METHODS.md)) |
 | `GET /api/profile` | Chao Phraya main-stem gauges north → south with freeboard (no interpolation, D-019) |
 | `GET /api/reports?hours=`, `GET /api/rain` | Aggregated Traffy flood reports (counts per ~1 km cell); Open-Meteo rain totals |
-| `POST /api/feedback`, `GET /api/feedback/summary` | Citizen feedback (private; rate-limited) and public counts ([D-020](plan/DECISIONS.md)) |
+| `POST /api/feedback`, `GET /api/feedback/summary` | Citizen feedback (private; rate-limited; instant rule-based `urgent` flag) and public counts ([D-020](plan/DECISIONS.md)) |
+| `GET /api/point?lat=&lon=` | Point check for places without a gauge: area category, nearby gauges, citizen evidence, warnings ([D-021](plan/DECISIONS.md)) |
+| `GET /api/summary` | One deterministic Thai situation sentence (template, not AI) |
+
+### 1.2 Optional Cloudflare Workers AI ([D-022](plan/DECISIONS.md))
+The worker task `ai_triage` (every 15 min) sends new feedback notes to Workers AI (SEA-LION v4) over REST and stores `user_feedback.ai_label`. It has a budget and a circuit breaker (state in `collector_state.ai_usage`), and **only the worker holds AI credentials**. If AI is unavailable, nothing user-facing changes.
 
 ---
 

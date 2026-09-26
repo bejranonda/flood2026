@@ -141,6 +141,21 @@ Evidence (live DB, 2026-09-26 ~09:30 UTC):
   | Spread of C.12 itself (SD) | 0.42 | – |
 
   54 matched hours over 30 days; C.12 reports sparsely. So the along-river position carries information, but the bias (tide phase and non-linear slope) must be modelled before this is shown to riverside residents.
+- **Update ~10:45 UTC, with true river distance:**
+  - HII's map page has a river centreline layer (`resources/json/river/river_main.json`). [scripts/build_chainage.py](../scripts/build_chainage.py) turns it into river km from the mouth for each gauge ([data file](../src/floodwatch/data/chaophraya_chainage.json)):
+    - the Chao Phraya pieces are joined as a graph and measured as the shortest path from the mouth;
+    - mouth → Nakhon Sawan is 376 km, against the commonly cited ~372 km;
+    - uncertainty is up to ~10 km near branch points; the order of C.2 and CPY001 depends on how pieces link.
+  - River km: CPY015 42.0 · C.12 57.4 · CPY014 84.1.
+  - Leave-one-out at C.12 with **river-km weights**, on 125 matched hours (after the backfill):
+
+    | Method | RMSE (m) | Bias (m) |
+    |---|---|---|
+    | Linear in river km | **0.200** | **+0.171** |
+    | Straight-line weights | 0.190 | – |
+    | Nearest gauge | 0.45–0.52 | – |
+
+  - **True distance doesn't remove the bias.** C.12 sits ~17 cm above a straight line between its neighbours: a non-linear water surface, or gauge datum offsets (KI-201). The next step is a per-reach bias term (or tide-phase-aware model) fitted on the year of history, still gated at RMSE < 0.10 m. River km is used now only to order and label the "เจ้าพระยา" profile.
 
 | Interpolation | Useful to users? | Decision |
 |---|---|---|
@@ -152,6 +167,30 @@ Evidence (live DB, 2026-09-26 ~09:30 UTC):
 | Depth at the user's point | Yes, the real need, but only as probabilistic categories | §13. Validated against user depth reports (§3.5) and Traffy (§2.3) |
 
 What helps a Bangkok resident most is not interpolation. It is **choosing the gauge in the same water body** (polder-aware "near me", §13) and **reporting ground truth back** (§3.5).
+
+### 2.10 Point check: a place with no gauge (`/api/point`, D-021)
+The owner asked what a user should see when they pin a place that has no station. Following §2.9, **we don't interpolate a water level to the pin**. The pin gets an evidence card instead.
+
+1. **Area category, not a level.** An inverse-distance-weighted (power 2, min distance 0.3 km) mean of the **status rank** (normal 0 · watch 1 · warning 2 · critical 3) of fresh gauges within **8 km**.
+   - This interpolates a *normalised state*: each gauge relative to its own bank. That transfers between places far better than an absolute level, because banks differ by metres.
+   - It is shown with the **minimum and maximum** status of those gauges, so disagreement is visible.
+2. **Confidence, never "high".**
+
+   | Confidence | Condition |
+   |---|---|
+   | medium | ≥ 2 gauges within 3 km that agree within one class |
+   | low | nearest ≤ 5 km, agreement within one class, and (≥ 2 gauges or nearest ≤ 3 km) |
+   | very low | otherwise; the UI then **shows no area verdict**, only the range and the gauges |
+   | none | no fresh gauge within 8 km: "ประเมินไม่ได้" |
+
+   Example, pin at 13.82, 100.60: only BKK021, 4 km away → very low, no verdict.
+3. **Gauges nearby** (≤ 15 km, up to 5), each labelled **river** (outside the walls) or **khlong** (drainage inside polders). The user is told which kind applies to them.
+4. **Citizen evidence at the pin:** Traffy flood reports within ~1 km in 6 h, and our users' depth reports within ~1 km in 24 h. On the ground these beat any interpolation.
+5. **Rain:** the Open-Meteo total for the next 24 h at the nearest of 8 forecast points, labelled as coarse.
+6. **Warnings, always shown:** not the water level at this point; Bangkok isn't flat; walls and polders separate areas; plus "gauges far or disagreeing" and "nearest gauge > 3 km" when they apply.
+7. **Report from the pin:** the feedback form attaches the pin's location with `loc_source = pin` (vs `gps`), so pin reports can be weighted lower. A pin can be placed anywhere.
+
+**Not done, and why:** a depth at the pin needs ground elevation. Available DEMs (Copernicus GLO-30/90, FABDEM) have errors ≥ 1–2 m in Bangkok, larger than flood depths (KI-202), and GLO is a surface model (buildings). Planned (§13): polder polygons → the controlling gauge; FABDEM + σ → a probability category; calibrated against user depth reports.
 
 ## 3. Horizons and the model ladder
 
@@ -186,7 +225,7 @@ What helps a Bangkok resident most is not interpolation. It is **choosing the ga
 - **Trend (12 h):** "steady" if the median change is within max(2 cm, half the 50 % band).
 - **Recovery:** first crossing below bank of the q25/q50/q75 paths (≤ 72 h), otherwise extrapolation of the 24 h recession rate (low confidence). "Not estimable" when ≥ 30 mm of rain is forecast for the next 24 h at the nearest Open-Meteo point, or when the water isn't falling.
 - **Status:** ≥ bank → วิกฤต; ≥ 90 % of ground→bank range → เตือนภัย; ≥ 70 % → เฝ้าระวัง; otherwise ปกติ (⚠️ heuristic, to be calibrated against official warning levels).
-- **Coverage (2026-09-26 09:40 UTC):** 100 focus stations (104 minus 4 `TEST*` gauges). **26 have no bank level** (status "unknown", no recovery) and **30 have no coordinates** (not on the map, excluded from "near me"): [KI-207](KNOWN_ISSUES.md). Stations that only the chart site serves have about 30 days of 10-min data, so the tide fit (needs ≥ 15 days) is available; a station with less data stays on persistence without intervals.
+- **Coverage (2026-09-26 10:40 UTC):** 110 focus stations (Samut Sakhon and Nakhon Pathom added, D-023; `TEST*` and GLF002 excluded). **26 have no bank level** (status "unknown", no recovery) and **29 have no coordinates** (not on the map, excluded from "near me"): [KI-207](KNOWN_ISSUES.md). Stations that only the chart site serves have about 30 days of 10-min data, so the tide fit (needs ≥ 15 days) is available; a station with less data stays on persistence without intervals.
 - **Tide reference gap:** the Fort Chula gauge (GLF001) and Bang Sai (CPY013) exist in the HII chart list but no history is retrievable. `getGraphFirst` and `POST /getGraph` (with CSRF token) both answer HTTP 500, and `queryStation`'s `water1` stayed at 0.03 m for ≥ 35 min at a tide gauge, i.e. frozen (2026-09-26, KI-207). Until then regime B relies on each station's own tide fit; getting GLF001 history is the highest-value data task ([HANDOFF §5](../HANDOFF.md)).
 - **24 h outlook** (`outlook24`): the hour at which the median path peaks, shown as a ±1 h window with the 50 % range, **only when a tide model is served** and the median varies by > 5 cm. Under persistence the median just drifts with the per-horizon error bias; CPY015 showed a spurious "peak" at +24 h before this rule. Also a **chance of reaching the bank** category: < 5 %, 5–25 %, 25–50 % or > 50 %, from the maximum over 1–24 h of the per-horizon conformal quantiles. ⚠️ This is a *lower bound* on "reaches the bank at some time in 24 h" (marginal quantiles, not a joint path probability), so it is shown only as a category (D-005).
 - **Status after 24 h without data** is "unknown"; the last value is shown, marked stale.
@@ -219,6 +258,34 @@ Why these and not more: status and trend answer the citizen's question; freshnes
   2. **Data quality:** reports that disagree with a gauge are usually a stuck sensor, a datum or bank-level error, or a gauge in a different water body. They trigger checks, not edits.
   3. **Depth ground truth:** depth reports plus location become labels for §13 (DEM, HAND and polder calibration), weighted with Traffy.
   4. **Model features (Phase 2+):** only aggregated, de-duplicated and outlier-screened counts, and only if they improve the backtest.
+
+### 3.6 Cloudflare Workers AI: where it helps, and where it must not (D-022)
+**Tested 2026-09-26 (~10:20 UTC)** with the account's API token (`/ai/run`, REST).
+- **SEA-LION v4 27B** (`@cf/aisingapore/gemma-sea-lion-v4-27b-it`, AI Singapore, trained for Southeast Asian languages):
+  - Fluent Thai.
+  - Triage of three test notes correct (emergency / local drainage / spam), ~0.6 s each.
+  - Measured cost **~4.8 neurons per note** (2 notes = 9.56). The free allocation is 10,000 neurons/day ([Cloudflare pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)), and we cap at 3,000.
+- **Summaries of the flood situation drift on safety terms**, even when given the numbers as JSON:
+  - SEA-LION called our "warning" level "เฝ้าระวัง" (our *watch*).
+  - Llama 3.3 70B called the focus area "ทั่วประเทศ" (nationwide) and paraphrased freely.
+
+**Therefore:**
+
+| Use | Status | Why |
+|---|---|---|
+| **Triage of feedback notes** (category + urgent) | ✅ live, worker task every 15 min | Low stakes, verifiable schema; helps operators find emergencies and spam (Q19) |
+| Instant "urgent" response to the reporter | ✅ **keyword rules, not AI** | Must work without the network or quota. AI may *add* urgency later, never remove it |
+| Situation summary text | ✅ **template** (`/api/summary`) | Safety facts must be exact; the AI drift above |
+| Traffy text → better flood / not-flood labels | 💡 later | Public text, discarded after labelling. **Volume:** ≥ 1,030 tickets were seen in the last 24 h (2026-09-26; a lower bound, since we poll the latest 500). At ~5 neurons each that is ≥ 5,000 neurons/day, i.e. half the free allocation. Label only tickets the keyword rule leaves uncertain, or use Workers Paid |
+| Voice reports (Whisper, Thai) for elderly users | 💡 later | Accessibility; transcripts go through the same privacy rules |
+| English / other-language UI text | 💡 later, pre-translated at build time | Never live-translate warnings |
+| Chatbot / Q&A | ❌ not planned | Hallucination risk on life-safety questions |
+
+**If the Cloudflare quota is exhausted, or AI fails for any reason, the site is unaffected.**
+- AI runs only in the worker; no page or API request calls it.
+- The daily budget and a circuit breaker stop calls: 3 failures → 1 h pause; error 3036 "daily allocation used" → pause until 00:05 UTC.
+- Rule labels remain; notes are labelled later.
+- Verified 2026-09-26: with budget 0, `available()` returns False; with an invalid token, 3 calls → paused for 1 h; `/api/summary` and the site kept returning 200.
 
 ## 4. Derived quantities (shown in the UI and used as features)
 | Quantity | Formula | Notes |

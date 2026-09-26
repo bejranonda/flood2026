@@ -4,11 +4,15 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-# Provinces the app focuses on (docs/SOURCES.md §4, OPEN_QUESTIONS Q5).
+# Provinces the app focuses on (docs/SOURCES.md §4, OPEN_QUESTIONS Q5): the whole Bangkok Metropolitan Region
+# (Bangkok + Nonthaburi, Pathum Thani, Samut Prakan, Samut Sakhon, Nakhon Pathom; the last two added 2026-09-26,
+# D-023) and the lower Chao Phraya chain up to Nakhon Sawan.
 FOCUS_PROVINCES = (
-    "กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "พระนครศรีอยุธยา",
+    "กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม", "พระนครศรีอยุธยา",
     "อ่างทอง", "สิงห์บุรี", "ชัยนาท", "นครสวรรค์",
 )
+# Gauges whose values are clearly not m MSL: collected nowhere, shown nowhere, until the datum is known (KI-210).
+DATUM_SUSPECT = {"GLF002": "Tha Chin mouth: median 5.5 m, max 7.4 m, spikes to -28.6 m (MSL gauges nearby: ~0-1.6 m)"}
 # Stations that must be tracked even if the latest-values feed omits them (BKK008 is absent from
 # waterlevel_load but served by the HII chart XHR; see research/VALIDATION_2026-09-26.md §E).
 EXTRA_STATIONS = ("BKK008",)
@@ -19,6 +23,7 @@ RAIN_POINTS = {
     "bkk_east": (13.80, 100.75),
     "bkk_north": (13.90, 100.60),
     "bkk_west": (13.72, 100.40),
+    "samut_sakhon_nakhon_pathom": (13.72, 100.20),
     "nonthaburi_pathum": (14.00, 100.52),
     "ayutthaya": (14.35, 100.55),
     "chainat": (15.18, 100.13),

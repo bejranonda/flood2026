@@ -16,7 +16,8 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
-from floodwatch import db
+from floodwatch import ai, db, point
+from floodwatch.config import RAIN_POINTS
 from floodwatch.forecast import classify_status
 
 app = FastAPI(title="BKK FloodWatch API", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -148,6 +149,18 @@ def rain():
                                                       "issue_time": _iso(r["issue"])} for r in rows]})
 
 
+def _load_chainage() -> dict:
+    """River km from the mouth for Chao Phraya gauges (scripts/build_chainage.py; approximate, ±10 km near branches)."""
+    try:
+        from importlib import resources
+        import json as _j
+        return _j.loads(resources.files("floodwatch").joinpath("data/chaophraya_chainage.json").read_text())["stations"]
+    except Exception:
+        return {}
+
+
+CHAINAGE = _load_chainage()
+
 STATS_SQL = """
 SELECT s.in_focus, s.lat IS NOT NULL AS has_coords, s.bank_msl IS NOT NULL AS has_bank, o.obs_time
 FROM station s
@@ -168,6 +181,10 @@ def _freshness(times: list[dt.datetime | None]) -> dict:
 def stats():
     """Compact network summary: reporting freshness (focus area and the whole HII network), status and trend
     counts for the focus area, metadata gaps, and the rain forecast for Bangkok."""
+    return _json(_stats_data())
+
+
+def _stats_data() -> dict:
     with db.connect() as c:
         rows = c.execute(STATS_SQL).fetchall()
         focus = [_station_row(r) for r in c.execute(STATIONS_SQL, {"all": False}).fetchall()]
@@ -181,29 +198,28 @@ def stats():
         status[s["status"]] += 1
         trend[s["trend12"] if s["trend12"] in trend else "unknown"] += 1
     frows = [r for r in rows if r["in_focus"]]
-    return _json({
+    return {
         "generated": dt.datetime.now(dt.timezone.utc).isoformat(),
         "focus": {**_freshness([r["obs_time"] for r in frows]), "status": status, "trend12": trend,
                   "no_coords": sum(not r["has_coords"] for r in frows),
                   "no_bank": sum(not r["has_bank"] for r in frows)},
         "network": _freshness([r["obs_time"] for r in rows]),
         "rain_bkk_next24_mm_max": None if rain["mm24"] is None else round(rain["mm24"], 1),
-    })
+    }
 
 
 @app.get("/api/profile")
 def profile():
     """Chao Phraya main stem, north to south: level vs bank at each gauge (1-D, no interpolation between gauges;
-    APPROACH §2.9). dist_km is the cumulative straight-line distance between gauges, NOT river chainage."""
+    APPROACH §2.9). chainage_km = approximate river km from the mouth along HII's centreline (±10 km near
+    branches); stations without chainage fall back to latitude order."""
     with db.connect() as c:
         rows = c.execute(STATIONS_SQL + " AND s.river='แม่น้ำเจ้าพระยา' AND s.lat IS NOT NULL", {"all": False}).fetchall()
-    items = sorted((_station_row(r) for r in rows), key=lambda s: -s["lat"])
-    dist = 0.0
-    for i, s in enumerate(items):
-        if i:
-            dist += _haversine_km(items[i - 1]["lat"], items[i - 1]["lon"], s["lat"], s["lon"])
-        s["dist_km"] = round(dist, 1)
-    return _json({"river": "แม่น้ำเจ้าพระยา", "order": "north_to_south", "dist": "straight_line_between_gauges",
+    items = [_station_row(r) for r in rows]
+    for s in items:
+        s["chainage_km"] = (CHAINAGE.get(s["code"]) or {}).get("chainage_km")
+    items.sort(key=lambda s: (-(s["chainage_km"] if s["chainage_km"] is not None else s["lat"] * 100)))
+    return _json({"river": "แม่น้ำเจ้าพระยา", "order": "north_to_south", "dist": "river_km_from_mouth_approx",
                   "stations": items})
 
 
@@ -221,6 +237,7 @@ class FeedbackIn(BaseModel):
     note: str | None = Field(None, max_length=280)
     lat: float | None = Field(None, ge=5, le=21)
     lon: float | None = Field(None, ge=97, le=106)
+    loc_source: Literal["gps", "pin"] | None = None
     website: str | None = Field(None, max_length=200)  # honeypot: humans never fill it
 
 
@@ -253,11 +270,15 @@ def feedback(body: FeedbackIn, request: Request):
             r = _station_row(rows[0])
             snap = {k: r[k] for k in ("level_msl", "obs_time", "status", "freeboard_m", "trend12", "delta12_median",
                                       "recovery", "forecast_time")}
-        c.execute("""INSERT INTO user_feedback (code, verdict, depth, note, lat, lon, snapshot, client_hash)
-                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
-                  (body.code, body.verdict, body.depth, note, lat, lon, Jsonb(snap), who))
+        rules = ai.triage_rules(note)
+        c.execute("""INSERT INTO user_feedback (code, verdict, depth, note, lat, lon, snapshot, client_hash,
+                                                loc_source, rule_label)
+                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                  (body.code, body.verdict, body.depth, note, lat, lon, Jsonb(snap), who,
+                   body.loc_source if lat is not None else None, Jsonb(rules)))
         c.commit()
-    return _json({"ok": True}, cache=False)
+    # Instant, rule-based: if the note sounds like an emergency, the page shows hotlines right away.
+    return _json({"ok": True, "urgent": rules["urgent"]}, cache=False)
 
 
 def _feedback_counts(c, code: str | None = None, days: int = 7) -> dict:
@@ -285,6 +306,34 @@ def feedback_summary(days: int = Query(7, ge=1, le=90)):
     """Counts only (no notes, no locations): what users said about each station."""
     with db.connect() as c:
         return _json({"days": days, "stations": _feedback_counts(c, None, days)})
+
+
+@app.get("/api/point")
+def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge=97, le=106)):
+    """What can be said about a place with no gauge: gauges around it, an area category (not a water level),
+    nearby citizen evidence and warnings (APPROACH §2.10, D-021)."""
+    with db.connect() as c:
+        rows = [_station_row(r) for r in c.execute(STATIONS_SQL, {"all": False}).fetchall()]
+        box = {"lat0": lat - 0.01, "lat1": lat + 0.01, "lon0": lon - 0.01, "lon1": lon + 0.01}
+        traffy = c.execute("""SELECT count(*) AS n FROM crowd_report WHERE is_flood AND report_time > now() - interval '6 hours'
+                              AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s""", box).fetchone()["n"]
+        depths = {r["depth"]: r["n"] for r in c.execute(
+            """SELECT depth, count(*) AS n FROM user_feedback WHERE depth IS NOT NULL AND lat IS NOT NULL
+               AND created_at > now() - interval '24 hours'
+               AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s GROUP BY 1""", box).fetchall()}
+        pt = min(RAIN_POINTS, key=lambda k: (RAIN_POINTS[k][0] - lat) ** 2 + (RAIN_POINTS[k][1] - lon) ** 2)
+        rain = c.execute("""SELECT sum(precip_mm) AS mm FROM weather_forecast WHERE point=%s
+                            AND issue_time=(SELECT max(issue_time) FROM weather_forecast)
+                            AND valid_time BETWEEN now() AND now() + interval '24 hours'""", (pt,)).fetchone()["mm"]
+    out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1))
+    out["rain_point"] = pt
+    return _json(out)
+
+
+@app.get("/api/summary")
+def summary():
+    """One deterministic Thai sentence for the header and for sharing. Never AI-written (D-022)."""
+    return _json({"text": ai.summary_text(_stats_data()), "by": "template"})
 
 
 @app.get("/")

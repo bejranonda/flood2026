@@ -1,5 +1,13 @@
 # BKK FloodWatch — single-server stack (D-013). Start: docker compose up -d --build
 name: floodwatch
+x-appenv: &appenv
+  DATABASE_URL: postgresql://floodwatch:${POSTGRES_PASSWORD}@db:5432/floodwatch
+  FEEDBACK_SALT: ${FEEDBACK_SALT:-}
+  TELEMETRY_ARCHIVE_PATH: /data/raw_archive
+  HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)}
+  THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}   # e.g. http://vpn:8888 with --profile vpn
+  MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
+
 services:
   db:
     image: postgres:16-alpine
@@ -21,13 +29,15 @@ services:
     build: .
     restart: unless-stopped
     command: ["python", "-m", "floodwatch.worker"]
-    environment: &appenv
-      DATABASE_URL: postgresql://floodwatch:${POSTGRES_PASSWORD}@db:5432/floodwatch
-      FEEDBACK_SALT: ${FEEDBACK_SALT:-}
-      TELEMETRY_ARCHIVE_PATH: /data/raw_archive
-      HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)}
-      THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}   # e.g. http://vpn:8888 with --profile vpn
-      MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
+    environment:
+      <<: *appenv
+      # Optional Workers AI (D-022), worker only: the web app never calls AI. Prefer a token scoped to
+      # "Workers AI: Read" (CF_AI_TOKEN); falls back to the general API token.
+      CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
+      CF_AI_TOKEN: ${CF_AI_TOKEN:-${CLOUDFLARE_API_TOKEN:-}}
+      AI_ENABLED: ${AI_ENABLED:-1}
+      AI_MODEL: ${AI_MODEL:-@cf/aisingapore/gemma-sea-lion-v4-27b-it}
+      AI_DAILY_NEURON_BUDGET: ${AI_DAILY_NEURON_BUDGET:-3000}
     volumes:
       - ./data/raw_archive:/data/raw_archive
     depends_on:

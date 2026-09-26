@@ -13,9 +13,9 @@
 | Code hosting: [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) | ✅ published **private** 2026-09-26 ([D-011](DECISIONS.md)) |
 | **MVP live** (collectors, raw archive, Postgres, baseline forecasts, API, Thai web) | ✅ 2026-09-26, https://flood.autobahn.bot (D-012, D-013, D-017) |
 | Phase 0 — sources | 🟡 HII, Open-Meteo and Traffy in production; BMA needs a Thai egress (D-014); RID C.29A and the Navy tide are still open |
-| Phase 1 — ingestion | 🟡 running; **100 focus stations** (D-015, KI-209); **1-year hourly backfill** from `waterlevel_graph` (D-018); missing: R2 off-site backup (blocked on R2 S3 credentials) and ~54 stations the chart endpoint won't serve (incl. GLF001, CPY013; all workarounds tested, KI-207) |
+| Phase 1 — ingestion | 🟡 running; **110 focus stations**, whole BMR (D-015, D-023, KI-209/210); **1-year hourly backfill** from `waterlevel_graph` (D-018); missing: R2 off-site backup (blocked on R2 S3 credentials) and ~54 stations the chart endpoint won't serve (incl. GLF001, CPY013; all workarounds tested, KI-207) |
 | Phase 2 — forecasting | 🟡 L0/L1 + damped trend; tide fitted on up to a year, backtest on the last 45 days (D-018); 24 h outlook (peak window, chance of reaching the bank); interpolation assessed (D-019). L3–L5 and polder-aware depth are next |
-| Phase 3 — web | 🟡 MVP live, **mobile-first redesign** (tabs, bottom sheet, search, share/deep links, summary statistics, Chao Phraya profile) and **citizen feedback** (D-020). Reviewed in [UX_VALIDATION](../UX_VALIDATION.md). Next: polder-aware "near me", alerts (Q7), model page |
+| Phase 3 — web | 🟡 MVP live, **mobile-first redesign** (tabs, bottom sheet, search, share/deep links, summary statistics, Chao Phraya profile) and **citizen feedback** (D-020), **point check** for places with no gauge (D-021), optional **Workers AI** triage (D-022). Reviewed in [UX_VALIDATION](../UX_VALIDATION.md). Next: polder-aware "near me", alerts (Q7), model page |
 | Phase 4 — ops | 🟡 **Cloudflare Tunnel live** (no inbound ports); Thai VPN sidecar (D-016); monitoring alerts and R2 backups are next (KI-504, KI-505) |
 
 ## Phases and gates

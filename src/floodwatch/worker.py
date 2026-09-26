@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import time
 
-from floodwatch import archive, collectors, db, forecast
+from floodwatch import ai, archive, collectors, db, forecast
 from floodwatch.config import settings
 
 log = logging.getLogger("floodwatch.worker")
@@ -23,6 +23,7 @@ TASKS = [
     ("hii_backfill", 600),  # a few stations per run until the 1-year backfill is complete (D-018)
     ("bma_dds", 3 * 3600),
     ("forecast", 1800),
+    ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),
 ]
 
@@ -47,6 +48,13 @@ def run_task(name: str) -> None:
             db.record_health("forecast", False, error=str(e))
     elif name == "disk":
         disk_check()
+    elif name == "ai_triage":
+        try:  # never let AI problems touch the collectors
+            n = ai.triage_pending()
+            if n:
+                log.info("ai_triage: labelled %d notes", n)
+        except Exception:
+            log.exception("ai_triage failed (ignored)")
     else:
         collectors.run(name)
 

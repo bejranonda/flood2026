@@ -25,6 +25,7 @@
 | KI-206 | Sentinel values, stale stations, spikes | Data quality | 🟡 |
 | KI-208 | HII `ground_level` at river gauges is the channel bed, not land | Data quality | ℹ️ |
 | KI-209 | HII test gauges (`TEST*`) appear in station lists | Data quality | 🟢 |
+| KI-210 | GLF002 (Tha Chin mouth) values are not m MSL | Data quality | 🔴 (excluded) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -41,6 +42,8 @@
 | KI-505 | Public VPN relay is untrusted and flaky | Infrastructure | 🟡 |
 | KI-506 | `autobahn.bot` zone challenges non-browser clients (new main domain) | Infrastructure | 🟡 |
 | KI-507 | User feedback can be wrong or manipulated | Data quality | 🟡 |
+| KI-307 | Point check is not a depth or level at the pin | Modelling | ℹ️ |
+| KI-508 | Workers AI quota, outages and wording drift | Infrastructure | 🟢 (mitigated) |
 
 ---
 
@@ -110,7 +113,7 @@ C.29A (Bang Sai), Memorial Bridge / Pak Khlong Talat (C.4 or C.22 ⚠️) and Fo
     - `queryStation`'s `water1` has no timestamp, and for GLF001 it read **0.03 m at 08:30 and at 09:04 UTC**. A tide gauge doesn't stay flat for 35 minutes, so the value is frozen; not ingested.
     - **Remaining routes:** Navy/HII direct contact (Q17), or the RID/Navy Fort Chula series if published elsewhere.
   - Known-500 codes are now retried **once a day** instead of three times on every 6 h run (`collector_state.hii_chart_unavailable`).
-  - **34 focus stations have no coordinates** (the map feed covers only 107 stations) → listed but not on the map, and excluded from "near me".
+  - **34 focus stations had no coordinates** (the map feed covers only ~110 stations). **2026-09-26 (D-023):** the map feed now also fills existing stations, which fixed BKK008. **29 remain** (all absent from the feed): ATG011 ATG021 ATG031 ATG032 ATG042 ATG051 ATG052 ATG081 ATG082 ATG091 ATG092 ATG101 ATG111 ATG112 ATG122 ATG151 ATG152 ATG161 ATG162 ATG171 ATG181 ATG182 BKC006 FROC02 HDA001 HDA002 HDA003 TBW014 TCP013. Most are Ayutthaya gate pairs (upstream/downstream, e.g. ATG081/082 at ปตร.พระธรรมราชา), so geocoding the gate name (OSM) is the likely fix, flagged as approximate.
   - **28 focus stations have no bank level** → status "unknown", no recovery estimate.
   - Chart placeholders `bank=0, ground=0` mean *unknown* (now treated as such).
 - **Not the cause:** BKK021 was already served (the owner's example page); it is critical (2.82 m vs bank 2.20).
@@ -166,6 +169,9 @@ Store UTC and display Asia/Bangkok. Never use naive `datetime.now()`.
 
 ### KI-208 — HII `ground_level` at river gauges is the channel bed · ℹ️
 `ground_level` is the **bed of the channel**, not the land around the gauge. Examples: CPY015 −15.70, C.12 −14.52, CPY014 −13.31 m MSL. It is correct for the status percentage (depth relative to bank depth). It **must not** be used as terrain or to interpolate a land surface ([APPROACH §2.9](APPROACH_AND_METHODS.md)).
+
+### KI-210 — GLF002 (Tha Chin mouth) values are not m MSL · 🔴 (excluded)
+`getGraphFirst/GLF002` serves 4,410 values over 30 days with a **median of 5.53 m, a maximum of 7.40 m and spikes to −28.59 m**. The map feed's latest was 6.816. At a river mouth, MSL values should be around 0–2 m (CPY015 over the same period: −0.94 to 1.58, median 0.44). So the series is on another datum (LLW or gauge zero, KI-201), with bad spikes. **Excluded** via `DATUM_SUSPECT` in `config.py`: not collected, not shown. It would be a valuable tide reference for the western side once HII confirms its datum offset. Same gauge family as GLF001 (Fort Chula, HTTP 500).
 
 ### KI-209 — HII test gauges in station lists · 🟢
 `queryStation` lists test gauges (`TEST02` and three more `TEST*` codes in Bangkok). **Fixed:** `hii_stations` skips `TEST*`, the API filters them out, and the 4 existing rows were set to `in_focus=false`.
@@ -280,3 +286,18 @@ Feedback (`/api/feedback`, [APPROACH §3.5](APPROACH_AND_METHODS.md)) is subject
   - counts only in public, notes never published;
   - the `review` flag drives **human review, never an automatic model change**.
 - **Open:** no moderation UI yet; operators read `user_feedback` in SQL.
+
+### KI-307 — Point check is not a depth or level at the pin · ℹ️
+`/api/point` summarises gauges *around* a pin as a status category (D-021). It can't know the ground height, drains, walls or polder of the pin itself: Bangkok is not flat (KI-202, [APPROACH §2.10](APPROACH_AND_METHODS.md)).
+- **Mitigations:** confidence is never "high"; at very low confidence no verdict is shown; four warnings are always visible; citizen reports near the pin are shown.
+- **Fix path:** polder polygons → controlling gauge; FABDEM + σ → probability categories calibrated with user depth reports.
+
+### KI-508 — Workers AI quota, outages and wording drift · 🟢 (mitigated)
+- The free allocation is 10,000 neurons/day. When exhausted, Workers AI returns error 3036 (HTTP 429) until 00:00 UTC.
+- **Mitigations:**
+  - AI is used only in the worker (`ai_triage`, D-022);
+  - a daily budget (3,000) and a circuit breaker (3 failures → 1 h; 3036 → until 00:05 UTC);
+  - rule labels always exist.
+  - Tested 2026-09-26: budget 0 and an invalid token both leave the site unaffected (HTTP 200).
+- **Wording drift:** tested models mislabelled warning levels in free-text summaries, so AI writes no status text.
+- **Token scope:** the fallback token also has DNS rights. Use a dedicated `CF_AI_TOKEN` (Q21).

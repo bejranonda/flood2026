@@ -8,7 +8,7 @@ import time
 import urllib.parse
 
 from floodwatch import archive, db
-from floodwatch.config import EXTRA_STATIONS, FOCUS_PROVINCES, RAIN_POINTS, settings
+from floodwatch.config import DATUM_SUSPECT, EXTRA_STATIONS, FOCUS_PROVINCES, RAIN_POINTS, settings
 from floodwatch.collectors import parsing
 from floodwatch.httpclient import fetch
 
@@ -156,7 +156,7 @@ def hii_stations() -> dt.datetime | None:
                                "https://tiwrm.hii.or.th/thaiwater_l5/public/queryStation?" + urllib.parse.urlencode({"prov": province}))
         for item in listing:
             code = (item.get("code") or "").strip()
-            if not code or code in have or code.startswith("TEST"):  # HII test gauges (seen: TEST02)
+            if not code or code in have or code.startswith("TEST") or code in DATUM_SUSPECT:  # KI-209, KI-210
                 continue
             if unavailable.get(code, "") > retry_before:  # known-broken codes: retry once a day, not every run
                 skipped += 1
@@ -188,7 +188,22 @@ def hii_stations() -> dt.datetime | None:
             time.sleep(0.5)
     with db.connect() as c:
         db.set_state(c, "hii_chart_unavailable", unavailable)
+        # Existing stations without coordinates (e.g. BKK008, added from the chart list) take them from the map
+        # feed too; name/amphoe/bank only fill gaps. Every change is versioned in station_version.
+        located = 0
+        for code, m in coords.items():
+            r = c.execute("""UPDATE station SET lat=%(lat)s, lon=%(lon)s, name_th=COALESCE(name_th, %(name_th)s),
+                               amphoe=COALESCE(amphoe, %(amphoe)s), bank_msl=COALESCE(bank_msl, %(bank_msl)s),
+                               ground_msl=COALESCE(ground_msl, %(ground_msl)s), updated_at=now()
+                             WHERE code=%(code)s AND lat IS NULL RETURNING bank_msl, ground_msl""", m).fetchone()
+            if r:
+                located += 1
+                c.execute("""INSERT INTO station_version (code, bank_msl, ground_msl, lat, lon, source)
+                             VALUES (%s,%s,%s,%s,%s,'hii_map_feed') ON CONFLICT DO NOTHING""",
+                          (code, r["bank_msl"], r["ground_msl"], m["lat"], m["lon"]))
         c.commit()
+    if located:
+        log.info("hii_stations: coordinates added from the map feed for %d existing stations", located)
     log.info("hii_stations: added %d chart-only stations (%d with coordinates); %d unavailable via chart, "
              "%d skipped (failed < 24 h ago)", added, coordinated, failed, skipped)
     return None

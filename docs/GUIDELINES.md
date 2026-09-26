@@ -132,8 +132,17 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 9. **Compact statistics only:** status counts (tap to filter), rising/falling counts, 24 h rain, and data freshness. Anything more goes to `/api/health`.
 10. **No invented surfaces:** never interpolate water levels across land, walls or polders (D-019). Don't draw lines across data gaps > 90 min. A reading older than 24 h shows status "unknown".
 11. **"Nearest gauge" isn't "your home":** say so wherever distance-based results appear (Bangkok isn't flat; walls split areas).
+12. **Point check (D-021):** show a category with its range and confidence, never a level or depth at the pin. The four warnings are always visible. No verdict at very low confidence. Put citizen reports next to the gauges.
+13. **Charts need a rough time axis:** day markers with short Thai dates (owner feedback 2026-09-26); no fine ticks.
+14. **Urgent notes:** if a note matches emergency keywords, show 1669 / 1784 / 191 immediately, and say the site has no responders.
 
 ---
+
+## 6b. AI usage (D-022)
+- **The site must work identically without AI.** Only the worker calls AI, in the background, with a daily budget and a circuit breaker.
+- **AI never writes safety facts** (status, levels, times, advice). Those come from templates and the forecast code.
+- AI output must match a strict schema (`parse_label`) or it is discarded. AI may add urgency, never remove it.
+- **No personal data to AI** beyond the note text the user chose to send; no locations or hashes. Use a token scoped to Workers AI only.
 
 ## 7. Code and security standards
 

@@ -108,3 +108,32 @@
   - `POST /api/feedback` collects a verdict on what was shown, the water depth where the user is, a short note, and an opt-in location rounded to ~100 m. The server stores a snapshot of what was displayed.
   - Privacy: no names or contacts; the IP is never stored (a salted daily hash for rate limiting); notes are never published; the public sees counts only.
   - Feedback drives **verification metrics, data-quality review and future depth-model labels** ([APPROACH §3.5](../APPROACH_AND_METHODS.md)). It **never automatically changes a forecast or a status** ([KI-507](../KNOWN_ISSUES.md)).
+
+### D-021 — Point check: evidence card instead of an interpolated level
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "If I am user, I would like to check the area which has no station by his own pinpoint … propose like interpolation with note and warning?")
+- **Decision:**
+  - Tapping the map, or "สถานีใกล้ฉัน", opens a point card (`/api/point`) with an **IDW area category of gauge *status*** (not a level), its min–max range, a confidence level that is never "high", nearby gauges labelled river/khlong, Traffy and user reports within ~1 km, the 24 h rain forecast, and **always-on warnings**.
+  - At very low confidence **no area verdict** is shown.
+  - Pins are shareable (`#p=lat,lon`), and reports from a pin are stored with `loc_source = pin`.
+- **Why:** it keeps D-019 (no water surface over land) while answering the user's question with what we actually know. Method: [APPROACH §2.10](../APPROACH_AND_METHODS.md).
+
+### D-022 — Cloudflare Workers AI only for background triage; never for safety facts; the site never depends on it
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "Cloudflare has AI, how can we apply it? If the Cloudflare quota is full, the app must continue working as normal.")
+- **Decision:**
+  - SEA-LION v4 (Thai-capable) labels feedback notes in a worker task (every 15 min, ≤ 20 notes, budget 3,000 neurons/day, circuit breaker).
+  - Instant urgency detection and the situation summary are **deterministic** (keyword rules, template).
+  - The web app never calls AI.
+  - Tested models paraphrased warning levels incorrectly, so AI must not write status text.
+- **Evidence and future uses:** [APPROACH §3.6](../APPROACH_AND_METHODS.md). **Security:** prefer a dedicated token with only Workers AI rights (`CF_AI_TOKEN`, Q21); until then the worker falls back to the general API token (worker container only).
+
+### D-023 — Focus = the whole Bangkok Metropolitan Region + lower Chao Phraya; map-feed coordinates for every station
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "Consider integrating this station in the map … BKK008 … Any other missing stations?")
+- **Findings (HII map feed `json/telemetering/wl/warning`, 110 rows, 2026-09-26 ~10:35 UTC):**
+  - BKK008 was in our data but **had no coordinates**. The map feed has them (13.7613, 100.6160). Map-feed coordinates were only applied to newly added chart-only stations.
+  - **8 gauges within 60 km of central Bangkok were outside our focus.** All are in **Samut Sakhon and Nakhon Pathom**, the two Bangkok Metropolitan Region (BMR) provinces we didn't cover: BKK006, VLGE20, BKK019, THA008, THA009, THA007, MKG005, and GLF002 (Tha Chin mouth).
+- **Decision:**
+  - `FOCUS_PROVINCES` += สมุทรสาคร, นครปฐม, plus an Open-Meteo point for them.
+  - `hii_stations` now fills coordinates, and missing name, amphoe and bank, for **any** station lacking coordinates, versioned in `station_version`.
+  - **GLF002 is excluded** because its values are not m MSL ([KI-210](../KNOWN_ISSUES.md)).
+- **Result:** 110 focus stations (81 on the map). BKK008 is on the map as ล้นตลิ่ง (1.18 m vs bank 0.88 m), matching HII's own page (104.72 % of capacity).
+- **Owner follow-up ("find coordinates from the map inside the warning page"):** that page's map loads only the same 110-station feed, plus boundary and river layers. **It has no coordinates for the 29 remaining stations** (KI-207). Its river layer did provide the Chao Phraya centreline, now used for river km ([APPROACH §2.9](../APPROACH_AND_METHODS.md)).

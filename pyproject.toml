@@ -22,7 +22,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-floodwatch = ["db/schema.sql"]
+floodwatch = ["db/schema.sql", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -17,6 +17,9 @@ A mobile-first, calm and accessible Thai app that answers the two golden questio
 - [x] **Mobile:** tabs, bottom-sheet detail, ≥ 44 px targets, search, share + deep link `#s=CODE`
 - [x] **Chao Phraya profile** tab (gauges only, north → south, D-019)
 - [x] **Citizen feedback** in the station detail and "near me" (D-020)
+- [x] **Point check** for places with no gauge: tap the map or use GPS (D-021); shareable `#p=` links
+- [x] Chart day markers (rough time axis)
+- [x] Optional Workers AI triage of notes (D-022); site independent of AI
 - [~] "ใกล้บ้านฉัน": nearest gauges by distance with a caveat (done); **still to do:** GPS or address → **controlling water body** (polder or river), then the trend with a range, the recovery date range and conditions, and a probabilistic depth category; optional floor height
 - [~] Station detail: observed levels + bank line + forecast fan (72 h), 24 h outlook (peak window, chance of reaching the bank), recovery range (done); upstream flow and rain panels still to do
 - [ ] Citizen mode (default) and expert mode

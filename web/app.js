@@ -25,7 +25,7 @@ const norm = (s) => String(s ?? "").toLowerCase().replace(/\s+/g, "");
 
 let stations = [];
 let statusFilter = null;
-let map, layer, legend, meMarker;
+let map, layer, legend;
 let lastPos = null;
 
 async function getJSON(url, opts) {
@@ -103,16 +103,20 @@ function renderMap() {
       return d;
     };
     legend.addTo(map);
+    const hint = L.control({ position: "topright" });
+    hint.onAdd = () => { const d = L.DomUtil.create("div", "legend"); d.textContent = "👆 แตะจุดใดก็ได้บนแผนที่ เพื่อดูข้อมูลรอบจุดนั้น"; return d; };
+    hint.addTo(map);
+    map.on("click", (e) => checkPoint(e.latlng.lat, e.latlng.lng, "pin"));
   }
   if (layer) layer.remove();
   layer = L.layerGroup().addTo(map);
   getJSON("/api/reports?hours=6").then((r) => r.cells.forEach(([lat, lon, n]) => {
-    L.circle([lat, lon], { radius: 300 + 120 * Math.min(n, 20), color: "#7b1fa2", weight: 0, fillOpacity: 0.18 })
+    L.circle([lat, lon], { radius: 300 + 120 * Math.min(n, 20), color: "#7b1fa2", weight: 0, fillOpacity: 0.18, bubblingMouseEvents: false })
       .bindTooltip(`รายงานน้ำท่วมจากประชาชน ${Number(n)} รายการ ใน 6 ชม. (Traffy Fondue)`).addTo(layer);
   })).catch(() => {});
   stations.filter((s) => s.lat && s.lon).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
     const st = STATUS[s.status] || STATUS.unknown;
-    L.circleMarker([s.lat, s.lon], { radius: s.status === "critical" ? 9 : 7, color: "#fff", weight: 1.5, fillColor: st.color, fillOpacity: s.stale ? 0.45 : 0.95 })
+    L.circleMarker([s.lat, s.lon], { radius: s.status === "critical" ? 9 : 7, color: "#fff", weight: 1.5, fillColor: st.color, fillOpacity: s.stale ? 0.45 : 0.95, bubblingMouseEvents: false })
       .bindTooltip(`${esc(s.name_th)} — ${esc(st.th)} ${esc(freeboardText(s.freeboard_m))}`)
       .on("click", () => showDetail(s.code)).addTo(layer);
   });
@@ -128,12 +132,12 @@ async function renderRiver() {
       const st = STATUS[s.status] || STATUS.unknown;
       const pct = s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
       return `<div class="prow" data-code="${esc(s.code)}" role="button" tabindex="0">
-        <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")} · ~${Math.round(s.dist_km)} กม.</small></span>
+        <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}${s.chainage_km != null ? ` · ~${Math.round(s.chainage_km)} กม. จากปากแม่น้ำ` : ""}</small></span>
         <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${st.color}"></span></span>
         <span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span></div>`;
     }).join("");
     box.innerHTML = `<p class="muted">แม่น้ำเจ้าพระยา จากเหนือ (นครสวรรค์) ลงใต้ (ปากอ่าว) · แถบ = ความลึกน้ำเทียบตลิ่ง ·
-      ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง) · ระยะทางเป็นเส้นตรงระหว่างสถานีโดยประมาณ ไม่ใช่ระยะตามลำน้ำ ·
+      ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง) · ระยะทางตามลำน้ำจากปากแม่น้ำโดยประมาณ (คลาดเคลื่อนได้ ~10 กม.) ·
       ค่าระหว่างสถานีไม่ได้ประมาณ เพราะตลิ่งและคันกั้นน้ำแต่ละช่วงสูงไม่เท่ากัน</p>${rows}`;
     box.querySelectorAll(".prow").forEach((r) => {
       r.addEventListener("click", () => showDetail(r.dataset.code));
@@ -145,6 +149,17 @@ async function renderRiver() {
 }
 
 /* ---------- chart ---------- */
+// Light midnight (Bangkok time) markers with a short date, so people can read rough times without detail.
+function dayTicks(tmin, tmax, x, H) {
+  const DAY = 864e5, ICT = 7 * 3600e3;
+  const first = Math.ceil((tmin + ICT) / DAY) * DAY - ICT;
+  const days = [];
+  for (let t = first; t <= tmax; t += DAY) days.push(t);
+  const step = days.length > 6 ? 2 : 1;
+  return days.map((t, i) => `<line x1="${x(t).toFixed(1)}" x2="${x(t).toFixed(1)}" y1="14" y2="${H - 20}" stroke="#dde3ea" stroke-width=".8"/>`
+    + (i % step ? "" : `<text x="${(x(t) + 2).toFixed(1)}" y="${H - 6}" font-size="10" fill="#5b6573">${esc(new Date(t).toLocaleDateString("th-TH", { ...TZ, day: "numeric", month: "short" }))}</text>`)).join("");
+}
+
 function chartSVG(obs, fc, bank) {
   const W = 400, H = 200, P = 34, GAP_MS = 90 * 60e3;  // gaps longer than 90 min are not bridged
   const pts = obs.filter((o) => o[1] != null).map((o) => [Date.parse(o[0]), o[1]]);
@@ -166,8 +181,9 @@ function chartSVG(obs, fc, bank) {
     ${band.length ? `<path d="${area(0, 4)}" fill="#1565c0" opacity=".12"/><path d="${area(1, 3)}" fill="#1565c0" opacity=".22"/>` : ""}
     ${bankLine}<path d="${line}" fill="none" stroke="#0d3b66" stroke-width="1.6"/>
     ${med ? `<path d="${med}" fill="none" stroke="#1565c0" stroke-width="1.6" stroke-dasharray="4 3"/>` : ""}
-    <line x1="${x(t0)}" x2="${x(t0)}" y1="8" y2="${H - 20}" stroke="#999" stroke-width=".6"/>
-    <text x="${x(t0) + 3}" y="${H - 6}" font-size="10" fill="#5b6573">ตอนนี้</text></svg>
+    ${dayTicks(tmin, tmax, x, H)}
+    <line x1="${x(t0)}" x2="${x(t0)}" y1="8" y2="${H - 20}" stroke="#555" stroke-width=".8"/>
+    <text x="${x(t0)}" y="9" font-size="10" text-anchor="middle" fill="#333" font-weight="600">ตอนนี้</text></svg>
     <p class="muted">เส้นทึบ = ค่าตรวจวัด (ช่วงที่ขาดหายไม่ได้ลากเส้นเชื่อม) · เส้นประน้ำเงิน = ค่ากลางคาดการณ์ · แถบเข้ม/อ่อน = ช่วง 50%/90% · หน่วย ม.รทก.</p>`;
 }
 
@@ -208,15 +224,15 @@ function feedbackCounts(fb) {
   return `<p class="muted">ความเห็นผู้ใช้ 7 วัน: ${esc(txt || `${Number(fb.n)} รายการ`)}${fb.review ? " · ⚠️ ผู้ใช้หลายคนรายงานว่าไม่ตรง ทีมงานกำลังตรวจสอบ" : ""}</p>`;
 }
 
-function feedbackForm(code) {
-  return `<form class="feedback" data-code="${esc(code || "")}">
+function feedbackForm(code, loc) {
+  return `<form class="feedback" data-code="${esc(code || "")}"${loc ? ` data-lat="${loc.lat}" data-lon="${loc.lon}" data-src="${esc(loc.src)}"` : ""}>
     <strong>${code ? "ข้อมูลนี้ตรงกับที่คุณเห็นไหม?" : "รายงานน้ำที่จุดของคุณ"}</strong>
     ${code ? `<div class="opts">${Object.entries(VERDICT).map(([k, t]) => `<button type="button" class="btn" data-verdict="${k}" aria-pressed="false">${t}</button>`).join("")}</div>` : ""}
     <label>น้ำที่จุดของคุณตอนนี้ (ไม่บังคับ)
       <select name="depth"><option value="">— ไม่ระบุ —</option>${Object.entries(DEPTH).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></label>
     <label>ข้อมูลเพิ่มเติม (ไม่บังคับ, ไม่เกิน 280 ตัวอักษร)
       <textarea name="note" maxlength="280" placeholder="เช่น น้ำเริ่มเอ่อจากท่อในซอย / ประตูระบายน้ำปิด"></textarea></label>
-    <label><input type="checkbox" name="loc"> แนบตำแหน่งโดยประมาณ (ปัดเป็น ~100 ม.)</label>
+    <label><input type="checkbox" name="loc"${loc ? " checked" : ""}> แนบตำแหน่ง${loc ? (loc.src === "pin" ? "ของหมุดนี้" : "ของคุณ") : ""}โดยประมาณ (ปัดเป็น ~100 ม.)</label>
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <p class="muted">ไม่เก็บชื่อหรือเบอร์โทร · ข้อความไม่แสดงต่อสาธารณะ · ใช้ตรวจสอบและปรับปรุงการคาดการณ์เท่านั้น ·
       <b>ไม่ใช่ช่องทางขอความช่วยเหลือ</b> เหตุฉุกเฉินโทร 1784 / 1555</p>
@@ -238,14 +254,20 @@ function bindFeedback(form) {
     if (!body.verdict && !body.depth && !body.note) { msg.textContent = "กรุณาเลือกอย่างน้อยหนึ่งข้อ"; return; }
     const send = async () => {
       try {
-        await getJSON("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-        form.innerHTML = "<p>🙏 ขอบคุณ ความเห็นของคุณช่วยให้การคาดการณ์แม่นยำขึ้น</p>";
+        const r = await getJSON("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        form.innerHTML = (r.urgent ? `<div class="urgent">🚨 หากมีผู้ตกอยู่ในอันตราย โทรทันที: <a href="tel:1669">1669</a> (เจ็บป่วยฉุกเฉิน) ·
+          <a href="tel:1784">1784</a> (ปภ.) · <a href="tel:191">191</a> (ตำรวจ) — เว็บนี้ไม่มีเจ้าหน้าที่ตอบกลับหรือส่งความช่วยเหลือ</div>` : "")
+          + "<p>🙏 ขอบคุณ ความเห็นของคุณช่วยให้การคาดการณ์แม่นยำขึ้น</p>";
       } catch (err) {
         msg.textContent = err.message === "429" ? "ส่งบ่อยเกินไป กรุณาลองใหม่ภายหลัง" : "ส่งไม่สำเร็จ กรุณาลองใหม่";
       }
     };
+    if (form.loc.checked && form.dataset.lat) {
+      body.lat = Number(form.dataset.lat); body.lon = Number(form.dataset.lon); body.loc_source = form.dataset.src;
+      return send();
+    }
     if (form.loc.checked) {
-      const useLoc = (p) => { body.lat = p.lat; body.lon = p.lon; send(); };
+      const useLoc = (p) => { body.lat = p.lat; body.lon = p.lon; body.loc_source = "gps"; send(); };
       if (lastPos) return useLoc(lastPos);
       if (!navigator.geolocation) return send();
       msg.textContent = "กำลังหาตำแหน่ง…";
@@ -305,31 +327,71 @@ async function share(s) {
   } catch (_) { /* user cancelled */ }
 }
 
+/* ---------- point check: a place with no gauge (D-021) ---------- */
+const WARN = {
+  no_gauge_at_point: "นี่<b>ไม่ใช่ระดับน้ำที่จุดนี้</b> สถานีวัดน้ำในคลองหรือแม่น้ำ ไม่ได้วัดบนถนนหรือในบ้าน",
+  terrain_not_flat: "กรุงเทพฯ สูงต่ำไม่เท่ากัน จุดที่อยู่ใกล้กันอาจท่วมไม่เท่ากัน",
+  walls_and_polders: "คันกั้นน้ำและประตูระบายน้ำแบ่งพื้นที่ ถ้าอยู่นอกคันริมแม่น้ำให้ดูสถานี “แม่น้ำ” ถ้าอยู่ด้านในให้ดูสถานี “คลอง”",
+  gauges_far_or_disagree: "สถานีรอบ ๆ อยู่ไกลหรือให้ผลต่างกันมาก ใช้ประกอบเท่านั้น",
+  nearest_gauge_far: "สถานีที่ใกล้ที่สุดอยู่ห่างเกิน 3 กม.",
+};
+const CONF = { medium: "ปานกลาง", low: "ต่ำ", very_low: "ต่ำมาก", none: "ประเมินไม่ได้" };
+let pinMarker = null;
+
+function pointHTML(d, src) {
+  const a = d.area, ev = d.evidence;
+  const area = a.category && a.confidence === "very_low"
+    ? `<div class="box">ข้อมูลรอบจุดนี้<b>น้อยหรือขัดกัน</b> จึงไม่สรุปสภาพพื้นที่ · สถานีในรัศมี 8 กม. (${a.n} สถานี, ใกล้สุด ${a.nearest_km} กม.)
+        อยู่ระหว่าง “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” — ดูรายสถานีด้านล่างและรายงานจากประชาชนประกอบ</div>`
+    : a.category
+    ? `<div class="box">สภาพน้ำในคลอง/แม่น้ำ<b>รอบ</b>จุดนี้: <b style="color:${STATUS[a.category].color}">${esc(STATUS[a.category].long)}</b>
+        <br><span class="muted">จาก ${a.n} สถานีในรัศมี 8 กม. (ใกล้สุด ${a.nearest_km} กม.) · สถานีรอบ ๆ อยู่ระหว่าง
+        “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” · ความเชื่อมั่น: ${esc(CONF[a.confidence])}</span></div>`
+    : `<div class="box">ไม่มีสถานีที่ส่งข้อมูลล่าสุดในรัศมี 8 กม. — <b>ประเมินสภาพน้ำรอบจุดนี้ไม่ได้</b></div>`;
+  const depths = Object.entries(ev.user_depth_reports_1km_24h || {}).map(([k, n]) => `${esc(DEPTH[k] || k)} ${Number(n)}`).join(" · ");
+  return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : "📌 จุดที่เลือก"} <span class="muted">${d.lat}, ${d.lon}</span></h2>
+    ${area}
+    <div class="warnbox">${d.warnings.map((w) => `⚠️ ${WARN[w] || esc(w)}`).join("<br>")}</div>
+    <p>👥 รอบจุดนี้ (~1 กม.): รายงานน้ำท่วม Traffy ${Number(ev.traffy_flood_reports_1km_6h)} เรื่องใน 6 ชม.
+      ${depths ? ` · ผู้ใช้รายงานใน 24 ชม.: ${depths}` : " · ยังไม่มีผู้ใช้รายงานใน 24 ชม."}</p>
+    ${d.rain_next24_mm != null ? `<p>🌧️ ฝนคาดการณ์ 24 ชม. บริเวณนี้ ~${Math.round(d.rain_next24_mm)} มม. <span class="muted">(Open-Meteo, ความละเอียดหยาบ)</span></p>` : ""}
+    <strong>สถานีใกล้จุดนี้</strong>
+    <ul class="list">${d.stations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("") || "<li class='muted'>ไม่มีสถานีในรัศมี 15 กม.</li>"}</ul>
+    ${feedbackForm(null, { lat: d.lat, lon: d.lon, src })}`;
+}
+
+async function checkPoint(lat, lon, src) {
+  const sheet = document.getElementById("sheet"), box = document.getElementById("detail");
+  sheet.hidden = false;
+  box.innerHTML = "<p class='muted'>กำลังโหลด…</p>";
+  if (src === "pin") history.replaceState(null, "", `#p=${lat.toFixed(4)},${lon.toFixed(4)}`);  // shareable, ~10 m
+  if (map) {
+    if (pinMarker) pinMarker.remove();
+    pinMarker = L.marker([lat, lon], { title: src === "gps" ? "ตำแหน่งของคุณ" : "จุดที่เลือก" }).addTo(map);
+  }
+  try {
+    const d = await getJSON(`/api/point?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`);
+    box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div>${pointHTML(d, src)}`;
+    bindItems(box);
+    bindFeedback(box.querySelector(".feedback"));
+  } catch (e) {
+    box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div><p>โหลดข้อมูลไม่สำเร็จ (${esc(e.message)})</p>`;
+  }
+  box.querySelector(".close").addEventListener("click", closeDetail);
+  sheet.scrollTop = 0;
+}
+
 /* ---------- near me ---------- */
 function locate() {
   const out = document.getElementById("near");
-  if (!navigator.geolocation) { out.innerHTML = "<p class='muted'>อุปกรณ์ไม่รองรับการระบุตำแหน่ง</p>"; return; }
+  if (!navigator.geolocation) { out.innerHTML = "<p class='muted'>อุปกรณ์ไม่รองรับการระบุตำแหน่ง แตะบนแผนที่เพื่อเลือกจุดแทนได้</p>"; return; }
   out.innerHTML = "<p class='muted'>กำลังหาตำแหน่ง…</p>";
-  navigator.geolocation.getCurrentPosition(async (pos) => {
+  navigator.geolocation.getCurrentPosition((pos) => {
     lastPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-    try {
-      const d = await getJSON(`/api/near?lat=${lastPos.lat}&lon=${lastPos.lon}&n=3`);
-      out.innerHTML = `<div class="near-box"><strong>สถานีใกล้คุณ</strong>
-        <span class="muted">(ตามระยะทาง ยังไม่ได้พิจารณาแนวคันกั้นน้ำ/พื้นที่ปิดล้อม และพื้นที่ กทม. สูงต่ำไม่เท่ากัน
-        สถานีที่ใกล้ที่สุดจึงอาจไม่ใช่ตัวแทนน้ำที่บ้านคุณ)</span>
-        <ul class="list">${d.stations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม.</div>`)).join("")}</ul>
-        <details><summary>💧 รายงานน้ำที่จุดของฉัน</summary>${feedbackForm(null)}</details></div>`;
-      bindItems(out);
-      const f = out.querySelector(".feedback");
-      f.loc.checked = true;
-      bindFeedback(f);
-      if (map) {
-        if (meMarker) meMarker.remove();
-        meMarker = L.circleMarker([lastPos.lat, lastPos.lon], { radius: 6, color: "#1565c0" }).addTo(map).bindTooltip("ตำแหน่งของคุณ");
-        map.setView([lastPos.lat, lastPos.lon], 11);
-      }
-    } catch (e) { out.innerHTML = `<p class='muted'>โหลดไม่สำเร็จ (${esc(e.message)})</p>`; }
-  }, () => { out.innerHTML = "<p class='muted'>ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง</p>"; }, { enableHighAccuracy: false, timeout: 10000 });
+    out.innerHTML = "";
+    if (map) map.setView([lastPos.lat, lastPos.lon], 12);
+    checkPoint(lastPos.lat, lastPos.lon, "gps");
+  }, () => { out.innerHTML = "<p class='muted'>ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง แตะบนแผนที่เพื่อเลือกจุดแทนได้</p>"; }, { enableHighAccuracy: false, timeout: 10000 });
 }
 
 /* ---------- tabs ---------- */
@@ -358,7 +420,9 @@ async function load() {
 
 function openFromHash() {
   const m = location.hash.match(/^#s=([^&]+)/);
-  if (m) showDetail(decodeURIComponent(m[1]));
+  if (m) return showDetail(decodeURIComponent(m[1]));
+  const p = location.hash.match(/^#p=(-?[\d.]+),(-?[\d.]+)/);
+  if (p) checkPoint(Number(p[1]), Number(p[2]), "pin");
 }
 
 document.getElementById("q").addEventListener("input", renderList);

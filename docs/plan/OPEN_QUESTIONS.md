@@ -35,6 +35,12 @@
 | Q19 | **Who reads user feedback** (notes) and how often during the flood? Should we add a small password-protected review page, or is SQL access enough? | Feedback is only useful if someone acts on it ([D-020](DECISIONS.md)) |
 | Q20 | **Old tunnel `ecd8a7b9…`** stopped when the token changed. Did anything else use it? It can be deleted in the dashboard if not. | Housekeeping |
 
+## New (2026-09-26, point check and Cloudflare AI)
+| # | Question | Why it matters |
+|---|---|---|
+| Q21 | Please create a **Cloudflare API token with only "Workers AI: Read"** and put it in `.env` as `CF_AI_TOKEN`. Today the worker falls back to the general token, which can also edit DNS. | Least privilege ([KI-508](../KNOWN_ISSUES.md)) |
+| Q22 | Do you want **Traffy text labelling** or **voice reports** (Whisper) with Workers AI? Either may need the **Workers Paid** plan ($5/month) if volume exceeds the free 10,000 neurons/day. | Cost vs value ([APPROACH §3.6](../APPROACH_AND_METHODS.md)) |
+
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
@@ -49,3 +55,5 @@
 | A9 | Q14 (Thai collector node) | The owner added an OpenVPN (VPN Gate, Thailand) config (2026-09-26) | [D-016](DECISIONS.md) |
 | A10 | Q2 (what the domain serves; tunnel config) | Main domain is now `flood.autobahn.bot`; new tunnel token supplied (2026-09-26) | [D-017](DECISIONS.md) |
 | A11 | Can users give feedback on predictions? | Yes: collect privately and feed evaluation and review (2026-09-26) | [D-020](DECISIONS.md) |
+| A12 | How to answer a pin with no station? | An evidence card, no interpolated level (2026-09-26) | [D-021](DECISIONS.md) |
+| A13 | How to use Cloudflare AI safely? | Background triage only; the site never depends on it (2026-09-26) | [D-022](DECISIONS.md) |

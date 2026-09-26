@@ -13,12 +13,12 @@
 > **Current status (2026-09-26): MVP live at https://flood.autobahn.bot** (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
 >
 > It collects:
-> - HII telemetry (805 stations in the main feed plus chart-only stations → **100 in focus**, with up to **one year** of hourly history);
+> - HII telemetry (805 stations in the main feed plus chart-only stations → **110 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya, with up to **one year** of hourly history);
 > - Open-Meteo rain forecasts;
 > - Traffy reports;
 > - **citizen feedback** from the site itself.
 >
-> It keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list, map, the Chao Phraya profile, and share links. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
+> It keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list, map, the Chao Phraya profile, share links, and a **point check** (tap anywhere: gauges around the pin, citizen reports and warnings; no invented water level). **Cloudflare Workers AI** triages feedback notes in the background, and the site works the same without it. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
 
 ---
 
@@ -70,7 +70,7 @@ docs/        maintained docs: PLAN, SOURCES, KNOWLEDGE, KNOWN_ISSUES, GUIDELINES
 research/    research snapshots (claude.ai / Gemini), VALIDATION report, validation/ script
 src/floodwatch/{collectors,archive,db,forecast,api}/   Python backend (MVP)
 web/                                                   Thai frontend (vanilla JS + Leaflet)
-infra/ (vpn/ sidecar, legacy Caddyfile)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
+infra/ (vpn/ sidecar, legacy Caddyfile)  scripts/ (build_chainage.py)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
 ```
 
 ## Documentation
@@ -80,9 +80,9 @@ infra/ (vpn/ sidecar, legacy Caddyfile)  tests/  docker-compose.yml  Dockerfile 
 | [docs/plan/PLAN.md](docs/plan/PLAN.md) | Roadmap, gates, risks · [DECISIONS](docs/plan/DECISIONS.md) · [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md) |
 | [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) | Three Waters, datums, stations (HII live metadata), polders, the 2026 event, contacts |
 | [docs/SOURCES.md](docs/SOURCES.md) | Source registry with probe results; refuted endpoints |
-| [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md) | Spatio-temporal framework (incl. **§2.9 is interpolation useful?**), model ladder L0–L7, statistics (§3.4), **feedback loop (§3.5)**, tide, routing, polders, conformal, recovery, depth |
+| [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md) | Spatio-temporal framework (incl. **§2.9 is interpolation useful?**, **§2.10 point check**), model ladder L0–L7, statistics (§3.4), **feedback loop (§3.5)**, **Workers AI (§3.6)**, tide, routing, polders, conformal, recovery, depth |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Phase gates, evidence rule, data ethics, UX, code and security |
-| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-507 with status |
+| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-508 with status |
 | [docs/UX_VALIDATION.md](docs/UX_VALIDATION.md) | Resident personas, UX findings, what changed, what's still missing |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, storage, security, deployment, adding a source |
 | [research/README.md](research/README.md) | Research validity index · [VALIDATION report](research/VALIDATION_2026-09-26.md) |
