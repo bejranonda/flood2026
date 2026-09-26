@@ -45,7 +45,7 @@
 | KI-503 | No license; repository is public | Infrastructure | 🟢 (all rights reserved by owner choice, D-028) |
 | KI-504 | R2 off-site backup | Infrastructure | 🟢 (kept disabled by owner choice, D-029) |
 | KI-505 | Public VPN relay is untrusted and flaky | Infrastructure | 🟡 |
-| KI-506 | `autobahn.bot` zone challenges non-browser clients (new main domain) | Infrastructure | 🟡 |
+| KI-506 | `autobahn.bot` zone challenges non-browser clients (new main domain); since D-034 old links land there too | Infrastructure | 🟠 (owner action Q18) |
 | KI-507 | User feedback can be wrong or manipulated | Data quality | 🟡 |
 | KI-212 | A worker restart reset the schedule, so the backfill never advanced | Infrastructure | 🟢 (fixed v0.2.1) |
 | KI-213 | A slow-failing upstream steals the single worker loop (Traffy HTTP 502) | Infrastructure | 🟢 (mitigated v0.2.1) |
@@ -305,6 +305,7 @@ The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Ri
 - 2026-09-26 ~09:30 UTC: the exit IP was up (49.48.220.198), but `dds.bangkok.go.th` **timed out** through it; `bma_dds` had 2 consecutive proxy failures ("Tunnel connection failed: 500"). Treat BMA collection as best-effort until a better Thai egress exists.
 
 ### KI-506 — `autobahn.bot` zone challenges non-browser clients · 🟡
+**Update 2026-09-26 16:58 UTC (D-034):** the owner moved everything to the main domain, so the alias's pages now 301 there; `/api/*` stays on the alias. A headless browser following an old link got the interactive "Verify you are human" checkbox. The token cannot see zone security settings, so the cause (Bot Fight Mode, most likely) can only be checked and switched off in the dashboard.
 The main domain `flood.autobahn.bot` answers **HTTP 403 with `cf-mitigated: challenge`** ("Just a moment…") to `curl`, headless Chrome and the Facebook and LINE user agents. The same happens on every proxied host of the zone (`autobahn.bot`, `www`). Status: **still open at ~11:20 UTC** ([OWNER_ACTIONS](OWNER_ACTIONS.md) Q18).
 - **Evidence 2026-09-26:**
   - `/` and `/api/*` are challenged, `/static/*` is not.

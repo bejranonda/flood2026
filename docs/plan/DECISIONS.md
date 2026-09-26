@@ -210,3 +210,10 @@
 ### D-033 — Bangkok is the default list region (this week)
 - **Date:** 2026-09-26 · **Status:** accepted, **revisit 2026-10-03** (owner, Q26: "Bangkok as default this week")
 - **Decision:** the list opens on "กทม."; a tapped region is remembered on the device. A search always looks in every region.
+
+### D-034 — Everything moves to flood.autobahn.bot (pages redirect; the API stays reachable on the alias)
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "move all to flood.autobahn.bot"), supersedes the "off until Q18" part of D-027
+- **Decision:** `REDIRECT_LEGACY_HOST=1` in production: pages and static files on `flood.bejranonda.com` answer **301 → `flood.autobahn.bot`** (path and query kept; browsers keep `#s=` / `#p=` fragments). **`/api/*` is not redirected**: scripts, monitors and other non-browser clients cannot pass the main domain's bot challenge (KI-506).
+- **Consequence, verified 16:58 UTC:** a browser following an old link reaches Cloudflare's "Performing security verification / Verify you are human" page on the main domain (headless Chromium; real phones usually pass without a click, not verified here). Link previews (LINE, Facebook) of either domain now depend on the challenge. **Fix is owner-side only (Q18):** turn Bot Fight Mode off for the zone, or Pro + skip rule. Our API token cannot read or change zone security settings (checked: `bot_management`, `security_level`, rulesets → unauthorised).
+- **Token check after the owner added Zone Settings / Firewall Services / Page Rules edit (17:00 UTC):** security level medium, Browser Integrity Check on, no firewall/access/UA rules; Bot Fight Mode and rulesets still unreadable. A flood-only page rule lowering security (OWNER_ACTIONS option D) was prepared, not applied: lowering security is the owner's call.
+- **Rollback:** set `REDIRECT_LEGACY_HOST=0` in `.env` and `docker compose up -d app` (seconds). Browsers may cache the 301.

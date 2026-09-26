@@ -22,17 +22,20 @@
 
 ## 2. Actions in priority order
 
-### Priority 1 · Q18 — let non-browser clients reach flood.autobahn.bot
+### Priority 1 · Q18 — let non-browser clients reach flood.autobahn.bot (**more urgent since D-034**)
+**Since 2026-09-26 16:58 UTC every old `flood.bejranonda.com` link redirects to the main domain (your "move all" request).** Visitors therefore meet the challenge page; a headless browser got the "Verify you are human" checkbox. For elderly users on slow phones that is a real barrier during a flood. One click fixes it (option A below). Rollback if needed: `REDIRECT_LEGACY_HOST=0` in `.env`, `docker compose up -d app`.
 **Why:** LINE and Facebook link previews, uptime monitors and API users get Cloudflare's "Just a moment…" page (`cf-mitigated: challenge`). Phones with a normal browser pass after a few seconds, but a flood site should open instantly and be shareable.
 **Evidence (2026-09-26):** `/` and `/api/*` are challenged, `/static/*` isn't, and the result depends on the client's TLS fingerprint. That fits **Bot Fight Mode**, the free zone-wide product. The zone hosts your other apps too (`shirt.`, `mutelu.`, `persona.`, … all proxied). Cloudflare's docs say Bot Fight Mode **can't be skipped with WAF rules or Page Rules**. This corrects my earlier advice about a Configuration Rule / WAF skip, which would not work for it ([KI-506](KNOWN_ISSUES.md)).
+**What the token showed after you added Zone Settings / Firewall Services / Page Rules edit (2026-09-26 17:00 UTC, read-only):** security level **medium**, Browser Integrity Check **on**, challenge TTL 1800 s; **no** legacy firewall rules, IP access rules or UA rules; page rules: `www.autobahn.bot/*` → 301 and `*autobahn.bot/api/*` → cache bypass. Bot Fight Mode and WAF custom rules (rulesets) are still **not readable** with these permissions, so the source of the challenge is still unconfirmed.
+**Option D (scoped, free, affects only flood):** a third page rule `flood.autobahn.bot/*` → *Security Level: Essentially Off* + *Browser Integrity Check: Off*. If the challenge comes from the security level (our tests run from a datacenter IP with a poor reputation), this removes it for flood only. If it comes from Bot Fight Mode, it won't help (page rules can't skip BFM) and option A remains. The agent prepared this but **did not apply it**: its safety system classes lowering security settings as a change the owner must make or explicitly approve. Say "apply option D" or add it in the dashboard (Rules → Page Rules).
 **Confirm first (30 s):** Cloudflare dashboard → `autobahn.bot` → **Security → Analytics → Events**, find a blocked request for `flood.autobahn.bot`, and read the **Service** field. It should say *Bot Fight Mode*.
 **Options (pick one):**
 | | What | Trade-off |
 |---|---|---|
 | **A** | **Turn Bot Fight Mode off** for the zone: Security → Settings → filter "Bot traffic" → Bot fight mode → **Off** | Free, one click. Affects **all** `*.autobahn.bot` sites, so decide whether your other apps rely on it |
 | B | Upgrade the zone to **Pro** and use *Super Bot Fight Mode* with a Skip rule for `http.host eq "flood.autobahn.bot"` | Keeps protection elsewhere; costs a plan upgrade |
-| C | Do nothing; share links with **`flood.bejranonda.com`** | That domain has no challenge and its page now declares itself canonical (v0.2.1), so previews should work (not tested with LINE or Facebook). The "main domain" then isn't the shared one |
-**Then tell the agent.** It will run `scripts/owner_status.py` (Q18 turns ✅), set `REDIRECT_LEGACY_HOST=1` in `.env` to 301 the old domain to the new one (built and tested, off by default), and update the docs.
+| C | ~~Share `flood.bejranonda.com`~~ | No longer possible: since D-034 its pages redirect to the main domain |
+**Then tell the agent.** It will run `scripts/owner_status.py` (Q18 turns ✅), then also redirect `/api/*` from the alias (today excluded, D-034), and re-test link previews.
 
 ### Priority 2 · Q15b / Q16 — enable R2 and give the server backup credentials
 **Why:** everything (database and raw archive) lives on **one disk**. If it fails, the flood record is gone. R2 is the off-site copy.

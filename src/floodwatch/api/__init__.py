@@ -385,7 +385,7 @@ def summary():
 CANONICAL_HOST = "flood.autobahn.bot"      # main domain (D-017)
 LEGACY_HOST = "flood.bejranonda.com"       # alias, same tunnel
 # Off by default: while the main domain challenges non-browser clients (KI-506) a redirect would send link-preview
-# crawlers and API users from the working alias into the challenge. Set REDIRECT_LEGACY_HOST=1 once Q18 is done.
+# crawlers and API users from the working alias into the challenge. On since 2026-09-26 for pages only (D-034).
 REDIRECT_LEGACY = os.environ.get("REDIRECT_LEGACY_HOST", "0") == "1"
 
 
@@ -401,8 +401,10 @@ def page_for_host(html: str, host: str) -> str:
 
 
 def legacy_redirect_target(host: str, path: str, query: str) -> str | None:
-    """301 target for the legacy host when enabled. /api/health stays reachable for uptime monitors."""
-    if not REDIRECT_LEGACY or host != LEGACY_HOST or path == "/api/health":
+    """301 target for the legacy host when enabled (owner, 2026-09-26: "move all to flood.autobahn.bot", D-034).
+    Pages and static files move; /api/* keeps answering on the alias because scripts, monitors and other non-browser
+    clients cannot pass the main domain's bot challenge (KI-506) and would otherwise break."""
+    if not REDIRECT_LEGACY or host != LEGACY_HOST or path.startswith("/api/"):
         return None
     return f"https://{CANONICAL_HOST}{path}" + (f"?{query}" if query else "")
 

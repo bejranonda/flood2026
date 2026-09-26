@@ -7,7 +7,7 @@ x-appenv: &appenv
   HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BKK-FloodWatch/0.2 (+https://flood.autobahn.bot)}
   THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}   # e.g. http://vpn:8888 with --profile vpn
   MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
-  REDIRECT_LEGACY_HOST: ${REDIRECT_LEGACY_HOST:-0}   # 1 = 301 flood.bejranonda.com -> flood.autobahn.bot (only after Q18)
+  REDIRECT_LEGACY_HOST: ${REDIRECT_LEGACY_HOST:-0}   # 1 = 301 flood.bejranonda.com pages -> flood.autobahn.bot; /api/* stays (D-034)
   GISTDA_API_KEY: ${GISTDA_API_KEY:-}
   GISTDA_API_ENDPOINT: ${GISTDA_API_ENDPOINT:-https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day}
 

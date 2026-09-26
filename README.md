@@ -10,7 +10,7 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): v0.3.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). ⚠️ Non-browser clients are still challenged there; `flood.bejranonda.com` works for everyone.
+> **Current status (2026-09-26): v0.3.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). `flood.bejranonda.com` pages now redirect there (D-034); its `/api/*` still answers directly. ⚠️ The main domain challenges non-browser clients (Q18).
 > **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) (bot challenge, R2 backups, tokens, gate coordinates, license). Status: `python3 scripts/owner_status.py`. (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
 >
 > It collects:

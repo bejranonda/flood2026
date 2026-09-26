@@ -55,16 +55,20 @@ def test_misleading_values_are_filtered_but_the_station_is_kept():
     assert "no_location" in api._station_row({**base, "code": "X", "lat": None})["notes"]
 
 
-def test_alias_page_declares_itself_canonical_and_redirect_is_off_by_default():
+def test_alias_page_declares_itself_canonical_and_redirect_is_off_by_default(monkeypatch):
+    monkeypatch.setattr(api, "REDIRECT_LEGACY", False)  # the default when REDIRECT_LEGACY_HOST is unset (production sets 1, D-034)
     html = '<link rel="canonical" href="https://flood.autobahn.bot/"><meta property="og:url" content="https://flood.autobahn.bot/">'
     assert "flood.bejranonda.com" in api.page_for_host(html, "flood.bejranonda.com")
     assert api.page_for_host(html, "flood.autobahn.bot") == html
-    assert api.legacy_redirect_target("flood.bejranonda.com", "/", "") is None  # REDIRECT_LEGACY_HOST unset
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/", "") is None  # switch off
 
 
 def test_legacy_redirect_when_enabled(monkeypatch):
     monkeypatch.setattr(api, "REDIRECT_LEGACY", True)
-    assert api.legacy_redirect_target("flood.bejranonda.com", "/api/stations", "scope=all") == "https://flood.autobahn.bot/api/stations?scope=all"
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/", "") == "https://flood.autobahn.bot/"
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/static/app.js", "v=10") == "https://flood.autobahn.bot/static/app.js?v=10"
+    # the API stays on the alias: non-browser clients cannot pass the main domain's bot challenge (D-034)
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/api/stations", "scope=all") is None
     assert api.legacy_redirect_target("flood.bejranonda.com", "/api/health", "") is None
     assert api.legacy_redirect_target("flood.autobahn.bot", "/", "") is None
 
