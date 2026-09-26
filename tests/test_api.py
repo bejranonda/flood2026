@@ -67,3 +67,16 @@ def test_legacy_redirect_when_enabled(monkeypatch):
     assert api.legacy_redirect_target("flood.bejranonda.com", "/api/stations", "scope=all") == "https://flood.autobahn.bot/api/stations?scope=all"
     assert api.legacy_redirect_target("flood.bejranonda.com", "/api/health", "") is None
     assert api.legacy_redirect_target("flood.autobahn.bot", "/", "") is None
+
+
+def test_favicon_and_apple_touch_icon_endpoints():
+    r_ico = api.favicon()
+    assert r_ico.status_code == 200
+    assert "image" in r_ico.media_type
+    r_apple = api.apple_touch_icon()
+    assert r_apple.status_code == 200
+    assert r_apple.media_type == "image/png"
+    assert (api.WEB_DIR / "favicon.svg").exists()
+    assert (api.WEB_DIR / "favicon.ico").exists()
+    assert (api.WEB_DIR / "apple-touch-icon.png").exists()
+

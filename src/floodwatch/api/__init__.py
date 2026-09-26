@@ -397,5 +397,20 @@ def index(request: Request):
     return HTMLResponse(html, headers={"Cache-Control": "public, max-age=300"})
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    ico = WEB_DIR / "favicon.ico"
+    if ico.exists():
+        return FileResponse(ico, media_type="image/x-icon", headers={"Cache-Control": "public, max-age=86400"})
+    return FileResponse(WEB_DIR / "favicon.svg", media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+@app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+def apple_touch_icon():
+    return FileResponse(WEB_DIR / "apple-touch-icon.png", media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+
+
 if WEB_DIR.exists():
     app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+
