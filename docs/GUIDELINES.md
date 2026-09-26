@@ -38,10 +38,16 @@
 | A source was tested, changed or failed | [SOURCES.md](SOURCES.md) |
 | A method or model changed | [APPROACH_AND_METHODS.md](APPROACH_AND_METHODS.md) |
 | An architectural or product decision | [plan/DECISIONS.md](plan/DECISIONS.md) (new D-ID) |
-| A question only the owner can answer | [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md) |
+| Something you need from the owner (a key, a dashboard change, a decision) | [OWNER_ACTIONS.md](OWNER_ACTIONS.md) first, then [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md) for the history |
 | Task progress | The relevant `plan/phase-*.md` checklist |
 
 Update `Last updated` on each file you touch. Docs are written in English; Thai is used for UI strings and domain terms.
+
+### 2.4 Owner dependencies (D-026)
+- **Track them in [OWNER_ACTIONS.md](OWNER_ACTIONS.md) first** (why, exact steps, cost, how you'll verify), then mention them briefly in chat. Run `python3 scripts/owner_status.py` before asking.
+- **Secrets only in `.env` on the server.** Ask the owner for the key *name* to be set; check the value works without printing it.
+- **Check reachability with the client that matters** (curl for crawlers and monitors, a real browser for people). A single Python check once gave a false "fixed" (KI-506).
+- **Interval timers need a startup run.** Anything on an interval must also run once at start, or frequent deploys starve it (KI-212).
 
 ---
 
@@ -154,9 +160,9 @@ Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGEL
 ### 7.1 Security
 - `.env`, `certs/` and `*.pem` are git-ignored. Commit only `.env.example` with placeholders.
 - Services bind to **127.0.0.1**. Public traffic enters only through the Cloudflare Tunnel. No open 80/443.
-- SSH by key only, with password and root login disabled.
+- SSH: root login is key-only (`PermitRootLogin without-password`) and every login in practice uses a key; password authentication is still enabled globally, but no account except root has a usable password ([KI-214](KNOWN_ISSUES.md)). Recommended: `PasswordAuthentication no` and `fail2ban` (owner's call on this shared host).
 - Least-privilege Cloudflare and R2 tokens ([KI-501](KNOWN_ISSUES.md)).
-- **Publishing:** the repo is private by default ([D-011](plan/DECISIONS.md)). Before any visibility change or push of new history, scan the full history for secrets. Adding a license or making the repo public needs the owner's explicit approval.
+- **Publishing:** the repository is **public** (owner's action, 2026-09-26; [D-028](plan/DECISIONS.md)). Everything committed is world-readable, including docs and commit messages, so **never write secrets, IP addresses, account ids, emails, or feedback content** into files or commit messages. Scan before any push if in doubt. Adding a license, rewriting history or force-pushing needs the owner's explicit approval.
 
 ### 7.2 Python (backend, collectors, models)
 - Python ≥ 3.11. Type hints with built-in generics (`dict[str, float]`, `list[Reading]`, `X | None`).

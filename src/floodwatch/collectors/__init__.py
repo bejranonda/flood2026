@@ -252,7 +252,8 @@ def openmeteo() -> dt.datetime | None:
 
 
 def traffy() -> dt.datetime | None:
-    payload, _ = _get_json("traffy_public", "https://publicapi.traffy.in.th/share/teamchadchart/search?limit=500")
+    payload, _ = _get_json("traffy_public", "https://publicapi.traffy.in.th/share/teamchadchart/search?limit=500",
+                           retries=1)  # optional layer, polled again in 10 min: never hold the worker loop
     rows = parsing.parse_traffy(payload)
     with db.connect() as c, c.cursor() as cur:
         cur.executemany(

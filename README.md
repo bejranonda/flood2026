@@ -10,7 +10,8 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): v0.2.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)) (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
+> **Current status (2026-09-26): v0.2.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). ⚠️ Non-browser clients are still challenged there; `flood.bejranonda.com` works for everyone.
+> **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) (bot challenge, R2 backups, tokens, gate coordinates, license). Status: `python3 scripts/owner_status.py`. (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
 >
 > It collects:
 > - HII telemetry (805 stations in the main feed plus chart-only stations → **111 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya; **every station is on the map or listed**, and misleading values are hidden with a note, with up to **one year** of hourly history);
@@ -70,26 +71,27 @@ docs/        maintained docs: PLAN, SOURCES, KNOWLEDGE, KNOWN_ISSUES, GUIDELINES
 research/    research snapshots (claude.ai / Gemini), VALIDATION report, validation/ script
 src/floodwatch/{collectors,archive,db,forecast,api}/   Python backend (MVP)
 web/                                                   Thai frontend (vanilla JS + Leaflet)
-infra/ (vpn/ sidecar, legacy Caddyfile)  scripts/ (build_chainage.py)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
+infra/ (vpn/ sidecar, legacy Caddyfile)  scripts/ (build_chainage.py, owner_status.py)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
 ```
 
 ## Documentation
 | Doc | What's inside |
 |---|---|
-| [CHANGELOG.md](CHANGELOG.md) | Releases (v0.1.0, v0.2.0) |
+| [CHANGELOG.md](CHANGELOG.md) | Releases (v0.1.0, v0.2.0, v0.2.1) |
+| [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) | **What the owner needs to do** (with steps and cost), and how to check it |
 | [docs/README.md](docs/README.md) | Index, reading order, evidence markers |
 | [docs/plan/PLAN.md](docs/plan/PLAN.md) | Roadmap, gates, risks · [DECISIONS](docs/plan/DECISIONS.md) · [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md) |
 | [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) | Three Waters, datums, stations (HII live metadata), polders, the 2026 event, contacts |
 | [docs/SOURCES.md](docs/SOURCES.md) | Source registry with probe results; refuted endpoints |
 | [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md) | Spatio-temporal framework (incl. **§2.9 is interpolation useful?**, **§2.10 point check**), model ladder L0–L7, statistics (§3.4), **feedback loop (§3.5)**, **Workers AI (§3.6)**, tide, routing, polders, conformal, recovery, depth |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Phase gates, evidence rule, data ethics, UX, code and security |
-| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-508 with status |
+| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-508 and KI-210…212 with status |
 | [docs/UX_VALIDATION.md](docs/UX_VALIDATION.md) | Resident personas, UX findings, what changed, what's still missing |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, storage, security, deployment, adding a source |
 | [research/README.md](research/README.md) | Research validity index · [VALIDATION report](research/VALIDATION_2026-09-26.md) |
 
 ## Repository and license
-Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) (created **private**; visibility is the owner's call, see [OPEN_QUESTIONS Q10](docs/plan/OPEN_QUESTIONS.md)). **No license has been chosen yet**, so all rights are reserved by default. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
+Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) — **public** (the owner changed the visibility on 2026-09-26; the full history was scanned first, see [D-028](docs/plan/DECISIONS.md)). **No license has been chosen yet** ([OWNER_ACTIONS](docs/OWNER_ACTIONS.md), Q10), so all rights are reserved by default: you may read and fork on GitHub, but reuse needs the owner's permission. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
 
 ## Configuration
 Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/`, `*.pem` and `infra/openvpn/*.ovpn` are git-ignored; never commit secrets. v1 needs **no data API keys**. Cloudflare (tunnel token) is required for publishing; **R2 S3 credentials** are still missing ([KI-504](docs/KNOWN_ISSUES.md)); TMD and GISTDA keys are optional.

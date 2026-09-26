@@ -55,7 +55,7 @@
 - **Decision:** use the Navy tables (converted to MSL) or our own `utide` fits on archived HII tidal stations (interim 30-day fits, then ≥ 1 year). Every tide prediction records its method and fit window.
 
 ### D-011 — Publish to GitHub as a private repository first
-- **Date:** 2026-09-26 · **Status:** accepted (owner asked to publish to https://github.com/bejranonda; visibility was not specified)
+- **Date:** 2026-09-26 · **Status:** accepted, **superseded by D-028** (the owner made it public) (owner asked to publish to https://github.com/bejranonda; visibility was not specified)
 - **Context:** the owner asked to publish the repo with `gh`. The history was scanned first: no keys, tokens or secret files were ever committed (`.env`, `certs/` and `*.pem` are git-ignored). Making a repository public can't be undone once it's been indexed and cloned, and two things are still open: the license and permission from HII, BMA and Traffy for redistribution ([OPEN_QUESTIONS](OPEN_QUESTIONS.md) Q3, Q10).
 - **Decision:** create `bejranonda/flood2026` as **private** and push `main`. Going public is a one-line change once Q10 is answered: `gh repo edit bejranonda/flood2026 --visibility public --accept-visibility-change-consequences`.
 - **Consequences:** collaborators can be added right away; a public launch needs a LICENSE file and a final secrets scan first.
@@ -67,7 +67,7 @@
 
 ### D-013 — Single server; plain PostgreSQL for the MVP
 - **Date:** 2026-09-26 · **Status:** accepted (owner: "we have only single server here")
-- **Decision:** everything runs on the one host (Hetzner DE, 178.104.238.220) with `docker compose`. The DB is **postgres:16-alpine** (already on disk; ~11–13 GB free). TimescaleDB and PostGIS are deferred until disk and volume require them. Spatial work (nearest station) is done in Python for now.
+- **Decision:** everything runs on the one host (Hetzner, Germany; the IP is deliberately not written in the docs) with `docker compose`. The DB is **postgres:16-alpine** (already on disk; ~11–13 GB free). TimescaleDB and PostGIS are deferred until disk and volume require them. Spatial work (nearest station) is done in Python for now.
 - **Consequences:** no off-site copy until R2 is configured (HANDOFF §4.2). BMA is unreachable from this IP (see D-014).
 
 ### D-014 — Don't wait for agencies; public data only, optional Thai egress (refines D-004)
@@ -154,3 +154,28 @@
   - The single source is `floodwatch.__version__` (plus `pyproject.toml`). `/api/health` and `/api/stats` return it, and the UI shows it in the header badge and footer.
   - Each release gets a [CHANGELOG.md](../../CHANGELOG.md) entry, a `vX.Y.Z` git tag and a GitHub release (private repo).
   - `v0.1.0` (by another session) = `b78869c`; **`v0.2.0`** = this release.
+
+### D-026 — One owner-action tracker with a read-only status script
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "Keep/record what I need from you for later")
+- **Decision:**
+  - [OWNER_ACTIONS.md](../OWNER_ACTIONS.md) is the single place for anything needed from the owner, with why, exact steps, cost and how it is verified.
+  - [scripts/owner_status.py](../../scripts/owner_status.py) checks it read-only (curl for the challenge, Cloudflare API GETs, `.env` key presence, one tiny AI call) and **never prints a secret**.
+  - Agents run it before asking, because the owner may already have acted. On 2026-09-26 the owner had already deleted the old tunnel and fixed tunnel rights.
+- **Lesson recorded:** never test reachability with one client. A Python urllib check reported the bot challenge as "fixed" while curl, browsers and crawlers were still challenged.
+
+### D-027 — Host-aware canonical now; legacy-domain redirect built but off until Q18
+- **Date:** 2026-09-26 · **Status:** accepted
+- **Context:** the alias `flood.bejranonda.com` works for every client, while the main domain challenges non-browsers (KI-506). The page's `canonical` and `og:url` pointed crawlers from the alias to the challenged domain.
+- **Decision:**
+  - The alias page declares **itself** canonical, so the shareable link works today.
+  - `REDIRECT_LEGACY_HOST=1` (301 to the main domain, keeping path and query; `/api/health` excluded) is implemented and tested (temporary server, four cases) but **off**. It must be enabled only after Q18, or crawlers and API users would be redirected into the challenge.
+- **Also (v0.2.1):** the worker runs a `hii_backfill` batch at startup ([KI-212](../KNOWN_ISSUES.md)).
+
+### D-028 — The repository is public: scan, keep the docs safe, do not add a license unasked
+- **Date:** 2026-09-26 · **Status:** accepted. The owner changed the visibility to public (seen at 15:20 UTC, `gh repo view` → `PUBLIC`, 0 stars, 0 forks); this supersedes D-011.
+- **Done on discovery:** a full-history scan (every commit, secret values compared without printing them) found no credentials, data or personal email. Findings and residual risks are in [KI-214](../KNOWN_ISSUES.md), including the server IP that remains in 8 old commits.
+- **Rules from now on:**
+  - nothing secret, no IPs, account ids, emails or feedback content in files or commit messages ([GUIDELINES §7.1](../GUIDELINES.md));
+  - **no LICENSE is added without the owner's choice** (Q10: all rights reserved until then);
+  - history is never rewritten or force-pushed without the owner's go-ahead.
+- **Also:** the SSH and password findings are recorded as an optional owner action, not changed by an agent (KI-214).

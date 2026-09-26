@@ -13,6 +13,7 @@
 8. [GUIDELINES.md](GUIDELINES.md): rules for engineering, modelling, data ethics and UX
 9. [KNOWN_ISSUES.md](KNOWN_ISSUES.md): limitations and workarounds (KI-IDs)
 10. [UX_VALIDATION.md](UX_VALIDATION.md): resident personas, UX findings and what's still missing
+11. [OWNER_ACTIONS.md](OWNER_ACTIONS.md): what the project needs from the owner, with steps and status
 
 ## Map
 | File | Purpose | Update when… |
@@ -28,6 +29,7 @@
 | [GUIDELINES.md](GUIDELINES.md) | Standards | A standard changes |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System design, live API, storage, security, repo layout | The architecture changes |
 | [UX_VALIDATION.md](UX_VALIDATION.md) | Personas, UX review findings, gaps | The UI changes, or user feedback arrives |
+| [OWNER_ACTIONS.md](OWNER_ACTIONS.md) | Everything needed from the owner, with steps, cost and verification | You need something from the owner, or they did it |
 
 ## Evidence markers used across the docs
 | Mark | Meaning |

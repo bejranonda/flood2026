@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
@@ -358,9 +358,43 @@ def summary():
     return _json({"text": ai.summary_text(_stats_data()), "by": "template"})
 
 
+CANONICAL_HOST = "flood.autobahn.bot"      # main domain (D-017)
+LEGACY_HOST = "flood.bejranonda.com"       # alias, same tunnel
+# Off by default: while the main domain challenges non-browser clients (KI-506) a redirect would send link-preview
+# crawlers and API users from the working alias into the challenge. Set REDIRECT_LEGACY_HOST=1 once Q18 is done.
+REDIRECT_LEGACY = os.environ.get("REDIRECT_LEGACY_HOST", "0") == "1"
+
+
+def _host(request: Request) -> str:
+    return request.headers.get("host", "").split(":")[0].lower()
+
+
+def page_for_host(html: str, host: str) -> str:
+    """The alias declares itself canonical, so crawlers that open it are not sent to a host that challenges them."""
+    if host == LEGACY_HOST:
+        return html.replace(f"https://{CANONICAL_HOST}/", f"https://{LEGACY_HOST}/")
+    return html
+
+
+def legacy_redirect_target(host: str, path: str, query: str) -> str | None:
+    """301 target for the legacy host when enabled. /api/health stays reachable for uptime monitors."""
+    if not REDIRECT_LEGACY or host != LEGACY_HOST or path == "/api/health":
+        return None
+    return f"https://{CANONICAL_HOST}{path}" + (f"?{query}" if query else "")
+
+
+@app.middleware("http")
+async def legacy_redirect(request: Request, call_next):
+    target = legacy_redirect_target(_host(request), request.url.path, request.url.query)
+    if target:
+        return RedirectResponse(target, status_code=301)
+    return await call_next(request)
+
+
 @app.get("/")
-def index():
-    return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "public, max-age=300"})
+def index(request: Request):
+    html = page_for_host((WEB_DIR / "index.html").read_text(), _host(request))
+    return HTMLResponse(html, headers={"Cache-Control": "public, max-age=300"})
 
 
 if WEB_DIR.exists():

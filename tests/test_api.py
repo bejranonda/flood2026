@@ -53,3 +53,17 @@ def test_misleading_values_are_filtered_but_the_station_is_kept():
     r = api._station_row({**base, "code": "ATG151", "coord_source": "osm_approx", "coord_precision_km": 5, "bank_msl": 3.0})
     assert r["level_msl"] == 6.8 and "approx_location" in r["notes"]
     assert "no_location" in api._station_row({**base, "code": "X", "lat": None})["notes"]
+
+
+def test_alias_page_declares_itself_canonical_and_redirect_is_off_by_default():
+    html = '<link rel="canonical" href="https://flood.autobahn.bot/"><meta property="og:url" content="https://flood.autobahn.bot/">'
+    assert "flood.bejranonda.com" in api.page_for_host(html, "flood.bejranonda.com")
+    assert api.page_for_host(html, "flood.autobahn.bot") == html
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/", "") is None  # REDIRECT_LEGACY_HOST unset
+
+
+def test_legacy_redirect_when_enabled(monkeypatch):
+    monkeypatch.setattr(api, "REDIRECT_LEGACY", True)
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/api/stations", "scope=all") == "https://flood.autobahn.bot/api/stations?scope=all"
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/api/health", "") is None
+    assert api.legacy_redirect_target("flood.autobahn.bot", "/", "") is None

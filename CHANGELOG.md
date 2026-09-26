@@ -2,6 +2,35 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.2.1 — 2026-09-26
+Patch release: an owner tracker, a safer alias, and a worker fix. **Live at https://flood.autobahn.bot** (alias https://flood.bejranonda.com).
+
+### Owner tracker (D-026)
+- New [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md): everything needed from the owner, with why, exact steps, cost and how it is verified.
+  - R2 is not enabled, and the measured archive growth is ~100 MB/day, so the free tier lasts about two months.
+  - The bot-challenge fix is corrected: Bot Fight Mode can't be skipped by WAF rules.
+- New `scripts/owner_status.py`: a read-only status check that never prints a secret. It checks the challenge with curl, the Cloudflare API, `.env` keys and one tiny AI call.
+- The OPEN_QUESTIONS list is cleaned up (answered items moved).
+
+### Web and API
+- **The alias page declares itself canonical** (D-027). Before, `flood.bejranonda.com` told crawlers to use the challenged main domain.
+- A tested **`REDIRECT_LEGACY_HOST=1`** switch (301 to the main domain, `/api/health` excluded) is off until the bot challenge is relaxed.
+- Version 0.2.1 in the header badge, the footer, `/api/health` and `/api/stats`.
+
+### Fixes
+- The worker runs a backfill batch at startup. Frequent deploys had stalled the backfill at 34 of 79 stations (KI-212). **After the fix it completed: 79 of 79.**
+- **Traffy outage handling (KI-213):** Traffy answered HTTP 502 for ~2.5 h and each failing run held the single worker loop for over 2 minutes. Traffy now makes one attempt per run, and repeatedly failing tasks back off (×2, ×4, ×6; core HII tasks capped at ×2).
+- **Result of the full-year history:** 57 of 107 stations now serve a tide-based forecast (44 of 95 before).
+
+### Public repository (D-028)
+- The owner made the repository **public**. A full-history scan found no credentials, data or personal email (KI-214). The server IP was removed from the current docs (it remains in 8 old commits; low risk behind the tunnel).
+- Docs corrected: SSH is key-only for root, but password authentication is still enabled globally (KI-214). No LICENSE yet (Q10, all rights reserved).
+- KI-506 and KI-504 corrected and updated (the tunnel rights are fixed, the old tunnel is deleted, R2 is not enabled).
+
+### Known limits
+- Q18 (bot challenge), R2 (Q15b/Q16), the RID gate coordinates, and the license are open on the owner side. See OWNER_ACTIONS.
+- **Tests:** 33 passing.
+
 ## v0.2.0 — 2026-09-26
 **Live at https://flood.autobahn.bot** (alias https://flood.bejranonda.com).
 

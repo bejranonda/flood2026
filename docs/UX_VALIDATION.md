@@ -37,6 +37,8 @@
 | 17 | "BKK008 Saen Saep isn't on the map" (owner) | Coordinates from HII's map feed for every station lacking them (D-023); BKK008 now shows as ล้นตลิ่ง. Samut Sakhon and Nakhon Pathom added (whole BMR) |
 | 18 | "I can't tap the station, the Traffy circle catches it" (owner) | Stations on a top map layer; Traffy cells smaller and non-interactive (a tap opens the point check, which lists the counts) |
 | 19 | "Show all stations; hide bad data with a note" (owner) | Every station listed and, where possible, placed; dashed markers = approximate position; notes for hidden values; whole-country toggle; version shown (D-024, D-025) |
+| 20 | "I shared the link on LINE and no preview appeared" (expected, not yet reported) | The main domain challenges crawlers (KI-506). Until Q18 is fixed, share **flood.bejranonda.com**: its page declares itself canonical (v0.2.1, D-027). ⚠️ Not tested with LINE or Facebook themselves |
+| 21 | Real usage (owner asked what users actually do) | 10 reports in ~4.5 h from 8 senders: **7 from map pins, 10/10 with a location, 6 street-drainage notes, 0 used the station verdict buttons** ([APPROACH §3.5](APPROACH_AND_METHODS.md)). The pin flow works and is used; the "does this match?" question is ignored, so it needs a stronger prompt or a rethink |
 | 16 | "What if someone writes that they're trapped?" | Keyword rules flag emergency notes instantly, and the page shows **1669 / 1784 / 191** with "this site has no responders" |
 
 ## 3. Still missing (prioritised)

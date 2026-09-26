@@ -20,7 +20,7 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | Application | **Live MVP**: collectors, raw archive, forecasts, FastAPI + Thai web app, all in `docker compose` (`db`, `worker`, `app`, `cloudflared`, `vpn`) |
 | Database | Plain PostgreSQL 16; TimescaleDB/PostGIS deferred ([D-013](plan/DECISIONS.md)) |
 | Off-site backup (R2) | **Not yet** (owner: Q15/Q16) |
-| Repo | Private GitHub `bejranonda/flood2026` ([D-011](plan/DECISIONS.md)) |
+| Repo | **Public** GitHub `bejranonda/flood2026` ([D-028](plan/DECISIONS.md)); no license yet |
 
 ### 1.1 Live API (FastAPI, `/api/docs`)
 | Endpoint | Purpose |
@@ -165,4 +165,6 @@ flood2026/
 
 ## 9. Backups and restore
 - **Nightly:** `pg_dump` → R2. **Weekly:** Parquet export of the normalised tables → R2. **Continuous:** raw archive replication → R2.
+- **Sizing (measured 2026-09-26):** the raw archive grows **3–5 MB/hour (~100 MB/day)** in steady state, ~45 MB after the first 4 hours (including the one-off backfill); the database directory is 724 MB. A year of raw archive is roughly 35–45 GB. R2 free tier: 10 GB-month, 1 M writes, 10 M reads, free egress; then $0.015/GB-month.
+- **Blocked on the owner:** R2 is not enabled and there are no S3 credentials yet ([OWNER_ACTIONS](OWNER_ACTIONS.md), [KI-504](KNOWN_ISSUES.md)). Until then the archive and the database exist only on this disk.
 - **Restore drill:** document it and **test it** (in Phase 1, then monthly). Record the time taken, with a target under 1 hour.

@@ -38,11 +38,14 @@
 | KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
 | KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
 | KI-502 | Single server; this host is production | Infrastructure | 🟢 |
-| KI-503 | No license; repository is private | Infrastructure | 🟡 |
-| KI-504 | Tunnel live; API token lacks Tunnel/R2 rights; no off-site backup | Infrastructure | 🟡 |
+| KI-503 | No license; repository is public | Infrastructure | 🟡 |
+| KI-504 | Tunnel live; **R2 not enabled**; no off-site backup | Infrastructure | 🟡 |
 | KI-505 | Public VPN relay is untrusted and flaky | Infrastructure | 🟡 |
 | KI-506 | `autobahn.bot` zone challenges non-browser clients (new main domain) | Infrastructure | 🟡 |
 | KI-507 | User feedback can be wrong or manipulated | Data quality | 🟡 |
+| KI-212 | A worker restart reset the schedule, so the backfill never advanced | Infrastructure | 🟢 (fixed v0.2.1) |
+| KI-213 | A slow-failing upstream steals the single worker loop (Traffy HTTP 502) | Infrastructure | 🟢 (mitigated v0.2.1) |
+| KI-214 | Public repository: what history reveals; SSH exposure of the host | Infrastructure | 🟡 |
 | KI-307 | Point check is not a depth or level at the pin | Modelling | ℹ️ |
 | KI-508 | Workers AI quota, outages and wording drift | Infrastructure | 🟢 (mitigated) |
 
@@ -262,31 +265,33 @@ The API token needs: Account → Cloudflare Tunnel: Edit, Workers/Pages: Edit; Z
 ### KI-502 — Single server (resolved: this host *is* production) · 🟢
 This repo's working host (`HZ-Agent`) is in **Germany**, with 4 vCPU, 7 GB RAM, **~11 GB free disk** and no `cloudflared`. That isn't enough to hold the archive, and it is blocked by BMA. **Phase 0 tests must run on the production VPS** (region and specs in [OPEN_QUESTIONS](plan/OPEN_QUESTIONS.md)).
 
-### KI-503 — No license; repository is private · 🟡
-The GitHub repo `bejranonda/flood2026` was created **private** (D-011), and there is no LICENSE file, so all rights are reserved by default. The old README's MIT badge was removed because no license had been chosen. **Before going public:** the owner picks a license ([OPEN_QUESTIONS Q10](plan/OPEN_QUESTIONS.md)), a fresh secrets scan of the full history runs, and permissions from HII, BMA and Traffy are considered (Q3). Third-party data keeps its own terms regardless of the code license ([SOURCES §7](SOURCES.md)).
+### KI-503 — No license; repository is public · 🟡
+The owner made `bejranonda/flood2026` **public** (verified 2026-09-26 15:20 UTC). There is **no LICENSE file**, so all rights are reserved: people may view and fork it on GitHub but have no permission to reuse it. The old README's MIT badge was removed earlier. Choosing a license is the owner's call (Q10, [OWNER_ACTIONS](OWNER_ACTIONS.md)); an agent must not add one.
 
-> **Update 2026-09-26 (KI-502):** the owner confirmed there is only one server, so this host is production (D-013). The remaining risks are disk space (~13 GB free, shared with other projects) and BMA blocking the German IP (D-014).
-
-### KI-504 — Tunnel live; API token lacks Tunnel/R2 rights; no off-site backup · 🟡
-- **Done:** the Cloudflare Tunnel is running (`cloudflared` container, `--url http://app:3000`), the DNS record is a proxied CNAME to the tunnel, ports 80/443 are closed and the Caddy origin is retired. Verified 2026-09-26.
-- **Open:** the `CLOUDFLARE_API_TOKEN` in `.env` is *active* but **can't manage the tunnel** (get-by-id → "Not authorized") and **R2 returns HTTP 403**, although the owner reported adding both permissions. Either a different token was edited, or `.env` still holds the old value.
-- **R2 also needs S3 API credentials** (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`), separate from the API token, and neither exists yet → the raw archive and DB are **only on this disk**.
-- **Fixed:** `CLOUDFLARE_ACCOUNT_ID` in `.env` belonged to another account; the zone and tunnel token belong to account `6914a3…1a45` (corrected).
-- **Legacy:** `infra/Caddyfile` and the `caddy` service (profile `origin`) are no longer used.
-- **2026-09-26 09:19 UTC:** the owner replaced `CLOUDFLARE_TUNNEL_TOKEN`. The new token runs tunnel `d62b426d…`, and the old `ecd8a7b9…` stopped. `flood.bejranonda.com` briefly returned **HTTP 530** until both CNAMEs were re-pointed to the new tunnel (the API token has DNS edit on both zones). **Lesson:** when the tunnel token changes, update every CNAME that targets `<old-id>.cfargotunnel.com` in the same step.
+### KI-504 — Tunnel live; R2 not enabled; no off-site backup · 🟡
+- **Done:** the Cloudflare Tunnel runs (`cloudflared`, `--url http://app:3000`); both hostnames are proxied CNAMEs to it; ports 80/443 are closed; the Caddy origin is retired. Verified 2026-09-26.
+- **Fixed by the owner (verified 11:15 UTC):** the API token can now manage tunnels, and the old tunnel `ecd8a7b9…` is deleted.
+- **Open:** **R2 is not enabled** on the account. The API answers *"Please enable R2 through the Cloudflare Dashboard."* Cloudflare requires R2 to be enabled ("purchased") before an S3 token can be created. Neither `R2_ACCESS_KEY_ID` nor `R2_SECRET_ACCESS_KEY` exists, so the raw archive and the database are **only on this disk** (12 GB free). Steps and cost: [OWNER_ACTIONS](OWNER_ACTIONS.md) priority 2.
+  - **Measured growth (2026-09-26):** the raw archive is 45 MB after about 4 hours and grows **3–5 MB/hour in steady state** (~100 MB/day); the database directory is 724 MB. A year of archive is roughly 35–45 GB, so R2's free 10 GB covers about two months and the rest costs about $0.015/GB-month.
+- **Fixed earlier:** `CLOUDFLARE_ACCOUNT_ID` in `.env` belonged to another account; the zone and tunnel belong to `6914a3…1a45`.
+- **Legacy:** `infra/Caddyfile` and the `caddy` service (profile `origin`) are unused.
+- **Lesson (tunnel token change, 09:19 UTC):** the old domain returned HTTP 530 until both CNAMEs were re-pointed to the new tunnel. When the token changes, update every CNAME that targets `<old-id>.cfargotunnel.com` in the same step.
 
 ### KI-505 — Public VPN relay is untrusted and flaky · 🟡
 The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Risks: the operator can see destinations and unencrypted metadata; the relay can drop or throttle (it needed one restart during testing); its IP class is blocked by some sites; legacy AES-128-CBC/SHA1. **Mitigations:** the proxy is opt-in per request; HTTPS certificates are verified; no credentials or personal data go through it; a watchdog restarts the tunnel; the `.ovpn` is git-ignored. **Better:** an owner-controlled Thai host (SSH SOCKS) or a paid VPN with a Thai exit.
 - 2026-09-26 ~09:30 UTC: the exit IP was up (49.48.220.198), but `dds.bangkok.go.th` **timed out** through it; `bma_dds` had 2 consecutive proxy failures ("Tunnel connection failed: 500"). Treat BMA collection as best-effort until a better Thai egress exists.
 
 ### KI-506 — `autobahn.bot` zone challenges non-browser clients · 🟡
-The new main domain `flood.autobahn.bot` (proxied CNAME → tunnel, created 2026-09-26) answers **HTTP 403 "Just a moment…"** to `curl` and to headless Chrome. **Every** proxied host in the `autobahn.bot` zone does the same (`autobahn.bot`, `www`), so it is a zone-wide security setting (Bot Fight Mode, Security Level or a WAF rule). The API token can't read it (`Authentication error` on `bot_management` and rulesets).
-- **Impact:**
-  - People on phones probably pass after a short interstitial.
-  - **Link previews** (LINE, Facebook), API users, uptime monitors and search engines are **blocked**.
-  - A flood site must load instantly on slow phones.
-- **Fix (owner, dashboard):** for `flood.autobahn.bot`, add a Configuration Rule "Security Level: Essentially Off" and a WAF skip for managed challenges, or turn off Bot Fight Mode for the zone. Bot Fight Mode can't be skipped per host on the Free plan.
-- **Until then:** `flood.bejranonda.com` stays a full alias (same tunnel, no redirect), and the page declares `rel=canonical` → `flood.autobahn.bot`.
+The main domain `flood.autobahn.bot` answers **HTTP 403 with `cf-mitigated: challenge`** ("Just a moment…") to `curl`, headless Chrome and the Facebook and LINE user agents. The same happens on every proxied host of the zone (`autobahn.bot`, `www`). Status: **still open at ~11:20 UTC** ([OWNER_ACTIONS](OWNER_ACTIONS.md) Q18).
+- **Evidence 2026-09-26:**
+  - `/` and `/api/*` are challenged, `/static/*` is not.
+  - The result **depends on the client's TLS fingerprint**: Python's urllib got HTTP 200 seconds after curl got 403. A status script that used urllib once reported "fixed" wrongly, so it now uses curl and reads the `cf-mitigated` header.
+  - This fits **Bot Fight Mode**. Cloudflare's docs say it is zone-wide, **can't be skipped by WAF rules or Page Rules**, and enables JavaScript detections that can't be turned off. The API token can't read the zone's bot settings. To confirm: dashboard → Security → Analytics → Events → the *Service* field.
+- **Correction:** my earlier advice (a Configuration Rule "Security Level: Essentially Off" plus a WAF skip) does **not** apply to Bot Fight Mode. The options are: turn Bot Fight Mode off for the zone (free, affects all `*.autobahn.bot` sites), upgrade to Pro for Super Bot Fight Mode with a Skip rule, or share the alias.
+- **Impact:** LINE and Facebook link previews, uptime monitors, API users and crawlers are blocked. Phones with a normal browser probably pass after a short interstitial.
+- **Mitigation shipped (v0.2.1):**
+  - `flood.bejranonda.com` (no challenge) serves a page whose `canonical` and `og:url` point **to itself**. Before, the alias page pointed crawlers at the challenged host.
+  - A tested **`REDIRECT_LEGACY_HOST=1`** switch (301 to the main domain, `/api/health` excluded) is ready but **off**, because redirecting now would send crawlers into the challenge.
 
 ### KI-507 — User feedback can be wrong or manipulated · 🟡
 Feedback (`/api/feedback`, [APPROACH §3.5](APPROACH_AND_METHODS.md)) is subjective and position-dependent: people report their own street, not the gauge. It is also open to brigading.
@@ -311,3 +316,27 @@ Feedback (`/api/feedback`, [APPROACH §3.5](APPROACH_AND_METHODS.md)) is subject
   - Tested 2026-09-26: budget 0 and an invalid token both leave the site unaffected (HTTP 200).
 - **Wording drift:** tested models mislabelled warning levels in free-text summaries, so AI writes no status text.
 - **Token scope:** the fallback token also has DNS rights. Use a dedicated `CF_AI_TOKEN` (Q21).
+
+### KI-212 — A worker restart reset the schedule, so the backfill never advanced · 🟢 (fixed v0.2.1)
+The single worker loop schedules every task at *start + interval*. `hii_backfill` (every 10 min) was not in the startup sequence, and the startup pass takes about 5 minutes, so each restart pushed the next batch to roughly 10–15 minutes later. During the 2026-09-26 releases the worker was restarted with every deploy; the backfill count sat at 34 of 79 stations from 11:09 UTC until the fix. **Fix:** a `hii_backfill` batch (6 stations) now runs in the startup sequence. **Lesson:** anything driven by an interval timer must also run once at start, or it starves during frequent deployments.
+- **Result (verified 15:20 UTC):** after the fix the backfill completed, **79 of 79** stations, without further intervention.
+
+### KI-213 — A slow-failing upstream steals the single worker loop · 🟢 (mitigated v0.2.1)
+The Traffy public API answered **HTTP 502 for about 2.5 hours** on 2026-09-26 (12 failed runs from ~12:10 UTC; back to normal by 15:11 with 500 reports). Each failing run made 3 attempts of about a minute each, so **every 10-minute run tied up the single worker loop for over 2 minutes**, delaying HII and the other collectors. The failure itself was handled correctly (isolated, recorded in `/api/health`, recovered by itself).
+- **Mitigation (v0.2.1):**
+  - Traffy makes **one attempt** per run (it is polled again 10 minutes later);
+  - any task that fails ≥ 3 times in a row backs off ×2, ×4, ×6 (cap);
+  - the core `hii_waterlevel` and `hii_history` tasks are capped at ×2, so an HII outage never delays recovery by more than one extra interval;
+  - tested in `tests/test_worker.py`.
+- **Still true:** one worker thread runs everything, so a slow *first* attempt can still delay others by up to the HTTP timeout (120 s). Threads or separate workers are the structural fix (Phase 4).
+
+### KI-214 — Public repository: what history reveals; SSH exposure · 🟡
+**Full-history scan (2026-09-26 15:20 UTC, every commit, values checked without printing them):**
+- **Clean:**
+  - none of the Cloudflare API token, tunnel token, feedback salt or database password ever appeared in history;
+  - no `.env`, `.ovpn`, certificate, key, data or archive file was ever tracked;
+  - the owner's email is in no commit (author `dev@flood2026.local`);
+  - the only other `.env` value found, `THAI_EGRESS_PROXY`, is `http://vpn:8888` (an internal Docker name, no credentials);
+  - the Cloudflare account id and tunnel ids appear only in truncated form, in the current docs.
+- **Exposed (low risk):** the host's **IP address** is in 8 old commits ([D-013](plan/DECISIONS.md) had it). It was removed from the current files. Removing it from history needs `git filter-repo` plus a force-push, which breaks clones and forks and needs the owner's go-ahead. Risk is low: the site is reachable only through the Cloudflare Tunnel, and no web ports are open.
+- **SSH (host, not repo):** 15,754 failed SSH logins in 24 hours (ordinary internet scanning). `sshd -T` shows `passwordauthentication yes`, `permitrootlogin without-password` (key only), and **no account with a usable password except root**, whose password login SSH refuses. Every successful login in the last 7 days used a public key. So password guessing cannot succeed today. **This contradicts the earlier guideline "SSH by key only, password and root login disabled"**, which is now corrected. Optional hardening for the owner ([OWNER_ACTIONS](OWNER_ACTIONS.md)): `PasswordAuthentication no`, `PermitRootLogin prohibit-password` (already), and `fail2ban` to cut the log noise. An agent should not change sshd on this shared host unasked (lockout risk).

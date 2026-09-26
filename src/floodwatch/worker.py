@@ -28,6 +28,26 @@ TASKS = [
 ]
 
 
+BACKOFF_CAP = {"hii_waterlevel": 2, "hii_history": 2}  # core telemetry: never fall more than 2 intervals behind
+                                                       # (default cap 6 for optional sources such as Traffy)
+
+
+def backoff_factor(failures: int, cap: int = 6) -> int:
+    """Interval multiplier for a task that keeps failing: none below 3 consecutive failures, then x2, x4, x6 (cap).
+    A dead upstream (Traffy answered HTTP 502 for ~2.5 h on 2026-09-26) otherwise costs the single worker loop
+    minutes per run, delaying the collectors that work (KI-213)."""
+    return 1 if failures < 3 else min(cap, 2 ** (failures - 2))
+
+
+def failures_of(name: str) -> int:
+    try:
+        with db.connect() as c:
+            row = c.execute("SELECT consecutive_failures FROM source_health WHERE source=%s", (name,)).fetchone()
+        return row["consecutive_failures"] if row else 0
+    except Exception:
+        return 0
+
+
 def disk_check() -> None:
     free = archive.free_disk_gb()
     if free < settings.min_free_disk_gb:
@@ -69,7 +89,7 @@ def main() -> None:
             log.warning("db not ready (%s), retrying", e)
             time.sleep(2)
     # First run order: latest values -> history -> weather -> forecast.
-    for name in ("hii_waterlevel", "hii_stations", "hii_history", "openmeteo", "traffy", "hii_rain", "forecast", "disk"):
+    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "traffy", "hii_rain", "forecast", "disk"):
         run_task(name)
     active = [(n, i) for n, i in TASKS if n != "bma_dds" or settings.thai_egress_proxy]
     next_run = {name: time.time() + interval for name, interval in active}
@@ -78,7 +98,7 @@ def main() -> None:
         for name, interval in active:
             if now >= next_run[name]:
                 run_task(name)
-                next_run[name] = time.time() + interval
+                next_run[name] = time.time() + interval * backoff_factor(failures_of(name), BACKOFF_CAP.get(name, 6))
         time.sleep(15)
 
 

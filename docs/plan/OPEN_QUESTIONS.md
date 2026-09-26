@@ -4,42 +4,26 @@
 > When one is answered, move it to "Answered" with the date, and record any resulting decision in [DECISIONS.md](DECISIONS.md).
 
 ## Open
+> **Steps, costs and verification for each item are in [../OWNER_ACTIONS.md](../OWNER_ACTIONS.md)** (D-026). Check status with `python3 scripts/owner_status.py`. Last verified 2026-09-26 ~11:20 UTC.
 
-| # | Question | Why it matters | Blocks |
+| # | Question | Why it matters | Priority |
 |---|---|---|---|
-| Q1 | **Production VPS details:** provider, region (Singapore or Thailand?), vCPU/RAM/**disk**, OS, egress IP. Is it separate from this dev host (`HZ-Agent`, Germany, ~11 GB free, no `cloudflared`)? | Phase 0 tests must run on the VPS. BMA blocks the German host. Disk sizing for the archive | Phase 0 |
-| Q3 | Who contacts **HII**, **BMA DDS** and **BMA/NECTEC (Traffy)** about permission and official feeds, ideally in Thai from a named person or organisation? | Public redistribution depends on it | Public launch |
-| Q4 | Will you register **TMD** (uid/ukey), **GISTDA**, **Copernicus GFM** and **NASA Earthdata**? The keys go in `.env` on the VPS | P2 sources | Phase 1 (optional) |
-| Q5 | Confirm the **v1 area**: Bangkok + Nonthaburi, Pathum Thani, Samut Prakan, Ayutthaya, Ang Thong, Sing Buri, Chai Nat, Nakhon Sawan? Any specific neighbourhoods to prioritise? | Station inventory and polder mapping effort | G0 |
-| Q6 | Will the app ever be **commercial** (ads, sponsorship, paid tier)? | Open-Meteo and FABDEM are non-commercial ([KI-106](../KNOWN_ISSUES.md)) | Launch |
-| Q7 | **Notifications:** LINE (OA / Messaging API) or Web Push, in v1 or later? | Scope, and whether user data needs storing | Phase 3 |
-| Q8 | Dates in the **Buddhist era (พ.ศ.)** by default, or the Gregorian year? | UI | Phase 3 |
-| Q9 | Any **frontend framework** preference (Next.js, SvelteKit, Astro/static, plain)? The recommendation is a small static-first build on Cloudflare Pages | Phase 3 setup | Phase 3 |
-| Q10 | **Repository license** and visibility. The repo was published to GitHub as **private** on 2026-09-26 (D-011). Make it public? If so, which license (MIT, Apache-2.0, AGPL-3.0 …)? There is no LICENSE file yet | Legal, contributions, and whether third parties may reuse the code | Going public |
-| Q11 | **Budget** for R2 storage and the VPS, and how long to keep the raw archive (default: forever)? | Sizing and retention | Phase 1 |
-| Q12 | **Operations:** who is on call during a flood, and how many maintainers? | Alert routing, runbooks | Phase 4 |
-| Q13 | During the **current event**, do you want an **interim "observed levels only" public page** before the forecasts pass G2? This would be an exception to D-002 | Possible new decision | — |
-| Q14 | If BMA also blocks the VPS, may we run a **small collector on a Thai IP** (e.g. a Thai cloud provider or a home connection), after asking BMA? | BMA khlong coverage | Phase 1 |
-
-## New (2026-09-26, after the tunnel and VPN work)
-| # | Question | Why it matters |
-|---|---|---|
-| Q15 | **Cloudflare token:** which token did you add Tunnel + R2 permissions to? The one in `.env` gets "Not authorized" on the tunnel and 403 on R2. Please re-paste the updated token. | Managing the tunnel via API; R2 |
-| Q16 | **R2 backups:** please create an R2 bucket and an **S3 API token** (Access Key ID + Secret) and put `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET` in `.env`. | Off-site copy of the archive and database |
-| Q17 | **Thai IP for BMA:** the VPN relay reaches `dds.bangkok.go.th`, but `weather.bangkok.go.th` still returns 403. Do you have a Thai server or home connection we can use as an SSH SOCKS exit (`ssh -N -D`)? | BMA khlong data |
-
-## New (2026-09-26, domain, feedback and UX work)
-| # | Question | Why it matters |
-|---|---|---|
-| Q18 | **`autobahn.bot` bot challenge:** please relax it for `flood.autobahn.bot` (Configuration Rule: Security Level "Essentially Off" + WAF skip, or turn off Bot Fight Mode for the zone). Until then the old domain stays a full alias ([KI-506](../KNOWN_ISSUES.md)). May we add a 301 from `flood.bejranonda.com` once it's fixed? | Slow phones, LINE link previews, API users |
-| Q19 | **Who reads user feedback** (notes) and how often during the flood? Should we add a small password-protected review page, or is SQL access enough? | Feedback is only useful if someone acts on it ([D-020](DECISIONS.md)) |
-| Q20 | **Old tunnel `ecd8a7b9…`** stopped when the token changed. Did anything else use it? It can be deleted in the dashboard if not. | Housekeeping |
-
-## New (2026-09-26, point check and Cloudflare AI)
-| # | Question | Why it matters |
-|---|---|---|
-| Q21 | Please create a **Cloudflare API token with only "Workers AI: Read"** and put it in `.env` as `CF_AI_TOKEN`. Today the worker falls back to the general token, which can also edit DNS. | Least privilege ([KI-508](../KNOWN_ISSUES.md)) |
-| Q22 | Do you want **Traffy text labelling** or **voice reports** (Whisper) with Workers AI? Either may need the **Workers Paid** plan ($5/month) if volume exceeds the free 10,000 neurons/day. | Cost vs value ([APPROACH §3.6](../APPROACH_AND_METHODS.md)) |
+| **Q18** | **`autobahn.bot` bot challenge** (`cf-mitigated: challenge`, evidence points to Bot Fight Mode, which WAF rules can't skip): turn Bot Fight Mode off for the zone, upgrade to Pro (Super Bot Fight Mode + Skip), or keep sharing the alias? Then: may we 301 the old domain (`REDIRECT_LEGACY_HOST=1`, built and tested, off)? ([KI-506](../KNOWN_ISSUES.md)) | LINE/Facebook previews, monitors, API users | **1** |
+| **Q15b / Q16** | **Enable R2** (the API says "Please enable R2 through the Cloudflare Dashboard"), create a bucket and an R2 S3 token, and put `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT` in `.env`. Free tier covers ~2 months, then well under $1/month | Off-site backup; today everything is on one disk ([KI-504](../KNOWN_ISSUES.md)) | **2** |
+| Q21 | A Cloudflare token limited to **Workers AI** as `CF_AI_TOKEN` (the worker uses the general token today) | Least privilege ([KI-508](../KNOWN_ISSUES.md)) | 3 |
+| RID | **Gate coordinates** (`code,lat,lon`) for the 15 unplaced and 14 approximate stations | Exact map positions, point checks ([KI-207](../KNOWN_ISSUES.md)) | 4 |
+| Q10 | **Repository license.** Visibility was answered by the owner's action (**public**, 2026-09-26; scanned, [D-028](DECISIONS.md)); there is still **no LICENSE**, so all rights are reserved | Legal; whether others may reuse the code | 5 |
+| Q19 | Who reads **feedback notes**, how often; a review page or SQL? (first real report arrived 10:17 UTC) | Feedback is only useful if someone acts on it ([D-020](DECISIONS.md)) | — |
+| Q17 | A **Thai server/home connection** as an SSH SOCKS exit for BMA sites? | BMA khlong data; the VPN relay is flaky | — |
+| Q22 | Workers AI for **Traffy text labelling** or **voice reports**? ($5/month Workers Paid if over the free quota) | Cost vs value ([APPROACH §3.6](../APPROACH_AND_METHODS.md)) | — |
+| Q7 | **Notifications:** LINE or Web Push? | Scope; whether user data must be stored | — |
+| Q8 | Dates in the **Buddhist era (พ.ศ.)**? | UI | — |
+| Q11 | **Budget/retention** for R2 and the raw archive | Sizing | — |
+| Q12 | **Who is on call** during a flood? | Alert routing | — |
+| Q3 | Permission mails to **HII / BMA / Traffy**? (optional since D-014) | Public redistribution | — |
+| Q4 | **TMD / GISTDA / Copernicus GFM / NASA** keys? | Optional P2 sources | — |
+| Q6 | Will the app ever be **commercial**? | Open-Meteo and FABDEM are non-commercial ([KI-106](../KNOWN_ISSUES.md)) | — |
+| Q9 | **Frontend framework** preference? | The plain-JS app is enough so far | — |
 
 ## Answered
 | # | Question | Answer (date) | Decision |
@@ -57,3 +41,9 @@
 | A11 | Can users give feedback on predictions? | Yes: collect privately and feed evaluation and review (2026-09-26) | [D-020](DECISIONS.md) |
 | A12 | How to answer a pin with no station? | An evidence card, no interpolated level (2026-09-26) | [D-021](DECISIONS.md) |
 | A13 | How to use Cloudflare AI safely? | Background triage only; the site never depends on it (2026-09-26) | [D-022](DECISIONS.md) |
+| A14 | Q5 (v1 area) | Whole Bangkok Metropolitan Region + the lower Chao Phraya, and show every station (2026-09-26) | [D-023](DECISIONS.md), [D-024](DECISIONS.md) |
+| A15 | Q15a (tunnel rights on the API token) | Fixed by the owner; verified 11:15 UTC | [KI-504](../KNOWN_ISSUES.md) |
+| A16 | Q20 (old tunnel `ecd8a7b9…`) | Deleted by the owner; verified 11:15 UTC | [KI-504](../KNOWN_ISSUES.md) |
+| A17 | Release cadence / version on screen | Versioned releases with the version in the UI (2026-09-26) | [D-025](DECISIONS.md) |
+| A18 | Q1, Q3, Q13, Q14 | Answered earlier as A6–A9 (single server; don't wait for agencies; ship now; OpenVPN added). Removed from the open list on 2026-09-26 | D-012…D-016 |
+| A19 | Q10 (visibility) | The owner made the repository public (seen 2026-09-26 15:20 UTC) | [D-028](DECISIONS.md) |
