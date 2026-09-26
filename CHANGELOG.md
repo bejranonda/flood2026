@@ -2,6 +2,10 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## Unreleased
+- **Web:** region chips on the list (Bangkok / suburbs / upstream), remembered per device; the footer's sources and methods collapse behind one tap; "ระดับเท่าตลิ่ง" instead of "0 cm below the bank" under an overflow badge (KI-216). `app.js?v=8`, `style.css?v=6`.
+- **Research:** BMA khlong data found via the People's Party relay (199 gauges, not integrated, Q24); BMA road-flood artifact is a static snapshot; its sensor host is private (SOURCES §2c, KI-215).
+
 ## v0.2.1 — 2026-09-26
 Patch release: an owner tracker, a safer alias, and a worker fix. **Live at https://flood.autobahn.bot** (alias https://flood.bejranonda.com).
 

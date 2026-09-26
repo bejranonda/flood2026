@@ -41,6 +41,15 @@
 | 21 | Real usage (owner asked what users actually do) | 10 reports in ~4.5 h from 8 senders: **7 from map pins, 10/10 with a location, 6 street-drainage notes, 0 used the station verdict buttons** ([APPROACH §3.5](APPROACH_AND_METHODS.md)). The pin flow works and is used; the "does this match?" question is ignored, so it needs a stronger prompt or a rethink |
 | 16 | "What if someone writes that they're trapped?" | Keyword rules flag emergency notes instantly, and the page shows **1669 / 1784 / 191** with "this site has no responders" |
 
+### Round 3 (2026-09-26 ~16:20 UTC, live site at 390 px and 1366 px, headless Chromium)
+| # | Finding (as a Bangkok resident) | Done |
+|---|---|---|
+| 22 | "The footer about sources and methods is too long" (owner) | One short line stays (status is vs the station's bank, **not your street**); sources and methods open on tap (`<details>`) |
+| 23 | "The first 7 cards are Ayutthaya, Nakhon Pathom, Samut Prakan: where is **Bangkok**?" Only **10 of 111** gauges are in Bangkok; 74 are upstream | **Region chips**: ทั้งหมด 111 · กทม. 10 · ปริมณฑล 27 · เหนือ กทม. 74, one scrollable row, choice remembered on the device. Default stays "all" until Q26 |
+| 24 | BKK009 showed a red "ล้นตลิ่ง" badge with "ต่ำกว่าตลิ่ง 0 ซม." | Fixed: "ระดับเท่าตลิ่ง" (KI-216) |
+| 25 | A 502 page appeared for a few seconds during a redeploy by a parallel session | Known: a single app container restarts in ~5 s. Not fixed (zero-downtime deploys need two app containers) |
+| 26 | Bangkok has too few gauges for a "my soi" answer (P2) | Needs the BMA khlong network ([SOURCES §2c](SOURCES.md), Q24) |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

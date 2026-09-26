@@ -27,6 +27,8 @@
 | KI-209 | HII test gauges (`TEST*`) appear in station lists | Data quality | 🟢 |
 | KI-210 | GLF002 (Tha Chin mouth) values are not m MSL | Data quality | 🟡 (shown, values hidden) |
 | KI-211 | Implausible readings far above bank (sensor ceiling, spikes) | Data quality | 🟢 (flagged) |
+| KI-215 | BMA `warning`/`critical` are operating levels, not banks (⚠️ hypothesis) | Data quality | ⚠️ open (before any BMA use) |
+| KI-216 | A freeboard of −0.4 cm displayed as "0 cm below the bank" next to "overflowing" | UI | 🟢 fixed |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -185,6 +187,12 @@ BKK003 (คลองมหาสวัสดิ์ บางกรวย-สว�
 - **Evidence:** over 30 days of all focus gauges, genuine maxima reach +1.90 m (C.67); above +3 m there were only BKK003 (2,798 readings), BKK006 (4 spikes) and CPY012 (3). 3,104 stored readings were re-flagged, not deleted.
 - **UI:** the last plausible value is shown, marked stale, with the note "ค่าล่าสุดผิดปกติ … จึงซ่อนไว้".
 - **Open:** spikes below the ceiling and stuck values within range (flatline and rate-of-change rules still to add, KI-206).
+
+### KI-215 — BMA `warning`/`critical` are not bank levels (⚠️ hypothesis) · open
+In the BMA KlongMap data (via the flood69 relay, 2026-09-26 16:12 UTC), **84 of 199 stations are at or above `critical`**, yet their banks are far higher: WL.BPM.03 has `critical` 0.70 m, `left_bank` 1.91 m, level 1.10 m. So `critical` looks like BMA's **drainage operating target** (the level at which they run pumps), not overflow. ⚠️ Not confirmed by BMA. **Rule before any BMA use:** status and "cm to the bank" come from `min(left_bank, right_bank)`, never from `critical`. Also unconfirmed: that BMA levels are m MSL; check the five co-located pairs with HII gauges (SOURCES §2c) first. At gates, `wl_in` is inside and `wl_out01` outside; don't mix them.
+
+### KI-216 — "0 cm below the bank" next to "overflowing" · 🟢 fixed
+BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded to −0, and `-0 < 0` is false in JavaScript, so the text said "ต่ำกว่าตลิ่ง 0 ซม." under a red "ล้นตลิ่ง" badge. **Fix:** round first; 0 cm reads "ระดับเท่าตลิ่ง".
 
 ### KI-209 — HII test gauges in station lists · 🟢
 `queryStation` lists test gauges (`TEST02` and three more `TEST*` codes in Bangkok). **Fixed:** `hii_stations` skips `TEST*`, the API filters them out, and the 4 existing rows were set to `in_focus=false`.

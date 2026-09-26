@@ -20,7 +20,20 @@ const fmtTime = (iso) => iso ? new Date(iso).toLocaleString("th-TH", { ...TZ, da
 const fmtHour = (ms) => new Date(ms).toLocaleTimeString("th-TH", { ...TZ, hour: "2-digit", minute: "2-digit" });
 const fmtAge = (m) => m == null ? "-" : m < 60 ? `${Math.round(m)} นาทีที่แล้ว` : m < 1440 ? `${Math.round(m / 60)} ชม.ที่แล้ว` : `${Math.round(m / 1440)} วันที่แล้ว`;
 const cm = (m) => m == null ? "-" : `${m > 0 ? "+" : ""}${Math.round(m * 100)} ซม.`;
-const freeboardText = (fb) => fb == null ? "" : fb < 0 ? `สูงกว่าตลิ่ง ${Math.abs(Math.round(fb * 100))} ซม.` : `ต่ำกว่าตลิ่ง ${Math.round(fb * 100)} ซม.`;
+// Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
+const freeboardText = (fb) => {
+  if (fb == null) return "";
+  const c = Math.round(fb * 100);
+  return c === 0 ? "ระดับเท่าตลิ่ง" : c < 0 ? `สูงกว่าตลิ่ง ${-c} ซม.` : `ต่ำกว่าตลิ่ง ${c} ซม.`;
+};
+// Region filter for the list: only 10 of ~111 gauges are in Bangkok, so severity sorting put Ayutthaya first.
+const REGIONS = {
+  all: { th: "ทั้งหมด", test: () => true },
+  bkk: { th: "กทม.", test: (p) => p === "กรุงเทพมหานคร" },
+  metro: { th: "ปริมณฑล", test: (p) => ["นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"].includes(p) },
+  up: { th: "เหนือ กทม.", test: (p) => !["กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"].includes(p) },
+};
+let region = (() => { try { return REGIONS[localStorage.getItem("region")] ? localStorage.getItem("region") : "all"; } catch { return "all"; } })();
 const NOTE = {
   datum_suspect: "ค่าระดับน้ำของสถานีนี้ไม่ได้อยู่ในหน่วย ม.รทก. (ตรวจพบค่าผิดปกติ) จึงไม่แสดงค่า",
   no_recent_data: "ไม่มีข้อมูลใหม่เกิน 24 ชม. สถานะจึงเป็น “ไม่ทราบ”",
@@ -89,9 +102,25 @@ function bindItems(root) {
   });
 }
 
+function renderRegions() {
+  const el = document.getElementById("regions");
+  if (!el) return;
+  el.innerHTML = Object.entries(REGIONS).map(([k, r]) => {
+    const n = stations.filter((s) => r.test(s.province || "")).length;
+    return `<button type="button" class="rchip" data-region="${k}" aria-pressed="${k === region}">${esc(r.th)} <b>${n}</b></button>`;
+  }).join("");
+  el.querySelectorAll(".rchip").forEach((b) => b.addEventListener("click", () => {
+    region = b.dataset.region;
+    try { localStorage.setItem("region", region); } catch { /* private mode */ }
+    renderList();
+  }));
+}
+
 function renderList() {
   const q = norm(document.getElementById("q").value);
+  renderRegions();
   const rows = stations
+    .filter((s) => REGIONS[region].test(s.province || ""))
     .filter((s) => !statusFilter || s.status === statusFilter)
     .filter((s) => !q || norm([s.name_th, s.code, s.amphoe, s.province, s.river].join(" ")).includes(q))
     .sort((a, b) => (RANK[a.status] - RANK[b.status]) || ((a.freeboard_m ?? 99) - (b.freeboard_m ?? 99)));
