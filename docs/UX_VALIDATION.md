@@ -67,6 +67,8 @@
 | 34 | 42 gauges with no data for > 24 h mixed into the list and map | Folded into "สถานีที่ไม่มีข้อมูลล่าสุด (N)" at the end (13 in Bangkok); hidden on the map unless "แสดงสถานีที่ไม่มีข้อมูล" is ticked; still reachable via the "ไม่ทราบ" chip and search |
 | 35 | "Show only what can be predicted" | Chip "📈 เฉพาะที่คาดการณ์ได้" (Bangkok: 10 of 196 live gauges). Off by default, otherwise Bangkok residents lose the canal network |
 | 36 | Street data silently 3 h old (Traffy outage) | Age shown on cards, in the detail and the map legend when > 60 min |
+| 38 | Owner: "users like to see the trend; separate the non-predictable from the map, with an option" | Map default = 81 forecastable gauges; switch shows 214 more (D-037). Observed 1–3 h change on every gauge without a forecast |
+| 39 | Map switches were under the legend and below the fold on a phone (found by the test) | Moved to the top left; verified at 390 and 1366 px |
 | 37 | Redundant text in a new gauge's sheet | Trend line hidden when the 🆕 box explains it |
 
 ## 3. Still missing (prioritised)

@@ -233,3 +233,8 @@
   3. **Freshness of the street layer is always stated** when Traffy is > 60 min old ("ข้อมูล Traffy ล่าสุด 3 ชม.ที่แล้ว").
   4. **Filtering:** gauges with no data for 24 h are folded into a closed "ไม่มีข้อมูลล่าสุด (N)" group at the end of the list and hidden on the map (checkbox to show). A **"📈 เฉพาะที่คาดการณ์ได้" chip** (off by default) hides gauges without a tested forecast. Not on by default: it would hide 186 of 209 Bangkok gauges, the reason residents come (Q27).
 - **Not done:** merging Traffy into gauge status (reports lag, cluster where people are, and describe streets), or hiding BMA gauges that disagree with reports.
+
+### D-037 — The map shows forecastable gauges by default; every gauge shows a trend
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "users like to see the trend; separate the non-predictable from the map, but with an option to show"), refines D-036 item 4
+- **Decision:** the map shows only gauges with a tested forecast and fresh data (81 at 18:30 UTC); a switch at the top left, "แสดงสถานีที่ยังคาดการณ์ไม่ได้ (214)", shows the rest. The **list and the point check still use every gauge.** Gauges without a forecast show an **observed trend** from our own readings (`change_m` over 1–3 h: "↗️ สูงขึ้น 12 ซม. ใน 2 ชม.ที่ผ่านมา"), labelled as past, not a prediction; available ~1 h after a gauge starts reporting (170 BMA gauges at 18:30 UTC).
+- **Trade-off stated to the owner:** the default Bangkok map is sparse (most Bangkok gauges are BMA, forecastable from ~3 Oct); the list stays the Bangkok view.

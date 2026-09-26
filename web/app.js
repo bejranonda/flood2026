@@ -56,6 +56,15 @@ let streetSrc = null;       // {hours, km, last_update_age_min} of the street-re
 let forecastOnly = false;   // list chip: only gauges with a tested forecast
 let showNoData = false;     // map: gauges without data for 24 h are hidden unless asked for
 const hasForecast = (s) => ["rising", "falling", "steady"].includes(s.trend12);
+// Observed change from readings (1-3 h), shown when there is no forecast yet: a trend, not a prediction.
+const observedText = (s) => {
+  if (s.change_m == null || s.change_hours == null) return "";
+  const c = Math.round(s.change_m * 100), h = s.change_hours >= 1.5 ? `${Math.round(s.change_hours)} ชม.` : "1 ชม.";
+  return Math.abs(c) <= 2 ? `➖ ทรงตัวใน ${h}ที่ผ่านมา` : c > 0 ? `↗️ สูงขึ้น ${c} ซม. ใน ${h}ที่ผ่านมา` : `↘️ ลดลง ${-c} ซม. ใน ${h}ที่ผ่านมา`;
+};
+const trendLine = (s) => hasForecast(s)
+  ? `${TREND[s.trend12]}${s.delta12_median != null && s.trend12 !== "steady" ? ` ${cm(s.delta12_median)} ใน 12 ชม.` : ""}`
+  : observedText(s) || (isNew(s) ? `🆕 สถานีใหม่ เริ่มเก็บข้อมูล ${new Date(s.history_since).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" })}` : TREND.unknown);
 const STREET_MIN = 3;       // street-flood reports within 1 km worth showing on a gauge
 const streetAge = () => streetSrc?.last_update_age_min != null && streetSrc.last_update_age_min > 60
   ? ` (ข้อมูล Traffy ล่าสุด ${fmtAge(streetSrc.last_update_age_min)})` : "";
@@ -102,7 +111,7 @@ function itemHTML(s, extra = "") {
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(freeboardText(s.freeboard_m))}</span></div>
-    <div class="meta">${isNew(s) && (!s.trend12 || s.trend12 === "unknown") ? "🆕 สถานีใหม่ เริ่มเก็บข้อมูล " + esc(new Date(s.history_since).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" })) : esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null && s.trend12 !== "steady" ? " " + esc(cm(s.delta12_median)) + " ใน 12 ชม." : ""}
+    <div class="meta">${esc(trendLine(s))}
       · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${(s.street_reports_6h || 0) >= STREET_MIN
         ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
 }
@@ -195,11 +204,11 @@ function renderMap() {
     const hint = L.control({ position: "topright" });
     hint.onAdd = () => { const d = L.DomUtil.create("div", "legend"); d.textContent = "👆 แตะจุดใดก็ได้บนแผนที่ เพื่อดูข้อมูลรอบจุดนั้น"; return d; };
     hint.addTo(map);
-    const opts = L.control({ position: "bottomleft" });
+    const opts = L.control({ position: "topleft" });  // bottom-left sat under the legend and below the fold at 390 px
     opts.onAdd = () => {
       const d = L.DomUtil.create("div", "legend");
       d.innerHTML = `<label><input type="checkbox" id="all-th"> แสดงสถานีทั่วประเทศ</label>
-        <label><input type="checkbox" id="nodata"> แสดงสถานีที่ไม่มีข้อมูล</label><div id="unplaced" class="muted"></div>`;
+        <label><input type="checkbox" id="nodata"> แสดงสถานีที่ยังคาดการณ์ไม่ได้ <span id="hidden-n"></span></label><div id="unplaced" class="muted"></div>`;
       L.DomEvent.disableClickPropagation(d);
       d.querySelector("#nodata").addEventListener("change", (e) => { showNoData = e.target.checked; renderMap(); });
       d.querySelector("#all-th").addEventListener("change", (e) => toggleNational(e.target.checked));
@@ -216,7 +225,12 @@ function renderMap() {
   })).catch(() => {});
   const sa = document.getElementById("street-age");
   if (sa) sa.textContent = streetAge();
-  stations.filter((s) => s.lat && s.lon && (showNoData || s.status !== "unknown")).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
+  // Map default: gauges with a tested forecast and fresh data (owner, 2026-09-26: "separate the non-predictable from
+  // the map, with an option to show"). The list and the point check still use every gauge.
+  const onMap = (s) => showNoData || (hasForecast(s) && s.status !== "unknown");
+  const hn = document.getElementById("hidden-n");
+  if (hn) hn.textContent = `(${stations.filter((s) => s.lat && !onMap(s)).length})`;
+  stations.filter((s) => s.lat && s.lon && onMap(s)).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
     const st = STATUS[s.status] || STATUS.unknown;
     const approx = (s.notes || []).includes("approx_location");
     L.circleMarker([s.lat, s.lon], { pane: "stations", radius: s.status === "critical" ? 10 : 8, color: approx ? "#333" : "#fff",
@@ -448,7 +462,7 @@ async function showDetail(code) {
       ${notesText(s) ? `<div class="warnbox">ℹ️ ${esc(notesText(s))}</div>` : ""}
       ${bma ? `<div class="warnbox">ℹ️ สถานีของสำนักการระบายน้ำ กทม. ดึงผ่านเว็บ <a href="https://flood69.peoplesparty.or.th/#klong" target="_blank" rel="noopener">flood69 (พรรคประชาชน)</a> ซึ่งสำเนาข้อมูล กทม. ทุก 5 นาที ·
         ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ที่อยู่ใกล้กัน 30–60 ซม. จึงเทียบกับตลิ่งของสถานีนี้เท่านั้น · ประวัติย้อนหลังเริ่มเก็บ 26 ก.ย.</div>` : ""}
-      <p class="big"${isNew(s) && !hasForecast(s) ? " hidden" : ""}>${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
+      <p class="big"${!hasForecast(s) && !observedText(s) && isNew(s) ? " hidden" : ""}>${esc(hasForecast(s) ? TREND[s.trend12] : observedText(s) || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl)}

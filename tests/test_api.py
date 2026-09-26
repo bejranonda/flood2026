@@ -103,3 +103,11 @@ def test_street_counts_within_one_km_only():
     reports = [(13.7651, 100.6451), (13.7700, 100.6450), (13.7800, 100.6450), (13.9, 100.9)]  # 0.01, 0.55, 1.67 km, far
     api.street_counts(items, reports)
     assert items[0]["street_reports_6h"] == 2 and items[1]["street_reports_6h"] is None
+
+
+def test_observed_change_is_from_readings_and_needs_both_ends():
+    import datetime as dt
+    t = dt.datetime(2026, 9, 26, 18, 0, tzinfo=dt.timezone.utc)
+    r = {"level_msl": 1.55, "prev_level": 1.43, "obs_time": t, "prev_time": t - dt.timedelta(hours=2)}
+    assert api._observed_change(r) == {"change_m": 0.12, "change_hours": 2.0}
+    assert api._observed_change({**r, "prev_level": None}) == {"change_m": None, "change_hours": None}

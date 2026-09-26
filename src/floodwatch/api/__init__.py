@@ -54,7 +54,8 @@ STATIONS_SQL = """
 SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.agency, s.province, s.amphoe,
        s.river, s.coord_source, s.coord_precision_km, o.obs_time, o.level_msl, o.discharge, o.situation_level,
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
-       f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time
+       f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time,
+       p.prev_time, p.prev_level
 FROM station s
 LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM observation
                    WHERE code=s.code AND level_msl IS NOT NULL AND quality_flag='ok'
@@ -65,8 +66,19 @@ LEFT JOIN LATERAL (SELECT obs_time AS raw_time, quality_flag AS raw_flag FROM ob
                    ORDER BY obs_time DESC LIMIT 1) q ON true
 LEFT JOIN LATERAL (SELECT obs_time AS first_time FROM observation WHERE code=s.code
                    ORDER BY obs_time ASC LIMIT 1) h ON true
+LEFT JOIN LATERAL (SELECT obs_time AS prev_time, level_msl AS prev_level FROM observation
+                   WHERE code=s.code AND quality_flag='ok' AND level_msl IS NOT NULL
+                     AND obs_time BETWEEN o.obs_time - interval '3 hours' AND o.obs_time - interval '1 hour'
+                   ORDER BY obs_time ASC LIMIT 1) p ON true
 WHERE (%(all)s OR s.in_focus) AND s.code !~ '^TEST'
 """
+
+
+def _observed_change(r: dict) -> dict:
+    lvl, prev, t, tp = r.get("level_msl"), r.get("prev_level"), r.get("obs_time"), r.get("prev_time")
+    if lvl is None or prev is None or t is None or tp is None:
+        return {"change_m": None, "change_hours": None}
+    return {"change_m": round(lvl - prev, 2), "change_hours": round((t - tp).total_seconds() / 3600, 1)}
 
 
 def _station_row(r: dict) -> dict:
@@ -104,6 +116,9 @@ def _station_row(r: dict) -> dict:
         # When our record of this gauge begins. New gauges (e.g. BMA since 2026-09-26) have no chart or forecast yet;
         # the UI says so instead of showing an empty chart that looks like lost data.
         "history_since": _iso(r.get("first_time")),
+        # Observed change over the last 1-3 h: a trend from readings, available after an hour, long before a
+        # forecast (which needs 7 days). Not a prediction; the UI says "ที่ผ่านมา" (owner: users want the trend).
+        **_observed_change(r),
         "history_days": None if r.get("first_time") is None else round(_age_min(r["first_time"]) / 1440, 1),
     }
 
