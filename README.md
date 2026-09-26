@@ -10,8 +10,8 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): v0.3.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). `flood.bejranonda.com` pages now redirect there (D-034); its `/api/*` still answers directly. ⚠️ The main domain challenges non-browser clients (Q18).
-> **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) (bot challenge, R2 backups, tokens, gate coordinates, license). Status: `python3 scripts/owner_status.py`. (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
+> **Current status (2026-09-26): v0.3.2 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); the bot challenge is off, so link previews and API clients work.
+> **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) (gate coordinates, a courtesy note to the BMA relay, decisions). Status: `python3 scripts/owner_status.py`.
 >
 > It collects:
 > - HII telemetry (805 stations in the main feed plus chart-only stations → **111 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya; **every station is on the map or listed**, and misleading values are hidden with a note, with up to **one year** of hourly history);

@@ -307,6 +307,7 @@ Why these and not more: status and trend answer the citizen's question; freshnes
 - **Gates (45) with inside and outside levels:** the raw archive keeps both; only the inside level (`wl_in`) is stored as the gauge's level. Next, store the outside level too: `outside − inside` is the head across the gate, which says whether gravity drainage is possible (KNOWLEDGE §4.3). That is the missing input for **polder-aware near-me** (§2.10) and for a Regime C drainage model (§8).
 - **BMA's daily tide table** (`dailyheightwater`: two highs and lows per day): an independent check on our harmonic tide fit at the river gauges.
 - **Never** mix BMA and HII levels (KI-217): IDW over status ranks is fine, averaging levels is not.
+- **Old vs new records are one table, labelled by age:** observations stay in one `observation` table (a gauge's history is simply its rows); each station carries `history_since`, and the UI labels gauges with < 7 days as new instead of splitting storage. Faster start for BMA is possible with `max_in_day` / `max_in_yesterday` in the payload (today's and yesterday's maxima, not stored yet).
 
 **Road water levels (the BMA "roads to avoid" page), assessed, not integrated:**
 - *Would it help?* In principle, yes, a lot. Street depth is the quantity residents care about and the one no gauge measures: it would validate the point check (which today only has Traffy counts and our users' depth reports) and could train a rain → street-ponding model per district.

@@ -1,7 +1,7 @@
 # CLAUDE.md — Working rules for AI agents in this repo
 
 **Project:** BKK FloodWatch 2026. Thai-language water-level monitoring and forecasting for Bangkok and the lower Chao Phraya, built during an active flood.
-**Current state:** MVP live at https://flood.autobahn.bot (alias flood.bejranonda.com; single server, docker compose). **Start with [HANDOFF.md](HANDOFF.md)**, then [docs/plan/PLAN.md](docs/plan/PLAN.md).
+**Current state:** MVP live at https://flood.autobahn.bot (the only domain; flood.bejranonda.com just redirects there; single server, docker compose). **Start with [HANDOFF.md](HANDOFF.md)**, then [docs/plan/PLAN.md](docs/plan/PLAN.md).
 
 ## Before you do anything
 1. Read [docs/README.md](docs/README.md) (index), [docs/plan/PLAN.md](docs/plan/PLAN.md) (phase and gates) and [docs/GUIDELINES.md](docs/GUIDELINES.md) (rules).

@@ -101,8 +101,11 @@ def hii_history(pause_s: float = 0.7) -> dt.datetime | None:
     numeric id) for the last 3 days, plus the 10-min chart XHR for the tidal BKK/CPY/BKC/AIT gauges and for
     stations missing from the latest-values feed. The one-year backfill is hii_backfill."""
     with db.connect() as c:
+        # HII stations only: BMA gauges (agency BMA, codes WL.*) have no HII chart and come from bma_klong. Without this
+        # filter the 199 BMA codes each cost ~10 s of HTTP 500 retries and starved the worker loop (2026-09-26).
         stations = c.execute(
-            "SELECT code, hii_id, bank_msl, ground_msl FROM station WHERE in_focus AND code !~ '^TEST' ORDER BY code").fetchall()
+            "SELECT code, hii_id, bank_msl, ground_msl FROM station WHERE in_focus AND code !~ '^TEST' "
+            "AND agency IS DISTINCT FROM 'BMA' ORDER BY code").fetchall()
     known = {s["code"] for s in stations}
     end = dt.datetime.now(parsing.ICT)
     total, latest = 0, None

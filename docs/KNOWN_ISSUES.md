@@ -31,6 +31,7 @@
 | KI-216 | A freeboard of −0.4 cm displayed as "0 cm below the bank" next to "overflowing" | UI | 🟢 fixed |
 | KI-217 | BMA and HII gauges 7–100 m apart disagree by 0.3–0.6 m (level and bank) | Data quality | 🟡 open (handled: never mixed) |
 | KI-218 | BMA data depends on a third-party political relay | Data access | 🟡 accepted (D-031) |
+| KI-219 | BMA codes sent to HII's chart endpoint stalled the worker ~1 h | Infrastructure | 🟢 fixed v0.3.2 |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -45,7 +46,7 @@
 | KI-503 | No license; repository is public | Infrastructure | 🟢 (all rights reserved by owner choice, D-028) |
 | KI-504 | R2 off-site backup | Infrastructure | 🟢 (kept disabled by owner choice, D-029) |
 | KI-505 | Public VPN relay is untrusted and flaky | Infrastructure | 🟡 |
-| KI-506 | `autobahn.bot` zone challenges non-browser clients (new main domain); since D-034 old links land there too | Infrastructure | 🟠 (owner action Q18) |
+| KI-506 | `autobahn.bot` zone challenged non-browser clients (Bot Fight Mode) | Infrastructure | 🟢 fixed 2026-09-26 (owner, D-035) |
 | KI-507 | User feedback can be wrong or manipulated | Data quality | 🟡 |
 | KI-212 | A worker restart reset the schedule, so the backfill never advanced | Infrastructure | 🟢 (fixed v0.2.1) |
 | KI-213 | A slow-failing upstream steals the single worker loop (Traffy HTTP 502) | Infrastructure | 🟢 (mitigated v0.2.1) |
@@ -207,6 +208,9 @@ Datums, sensor placement or bank definitions differ, and HII's BKK005 value itse
 ### KI-218 — BMA data comes through a third-party relay · 🟡 accepted
 `flood69.peoplesparty.or.th/api/klongmap` is run by a political party and has no stated licence. If it changes shape the collector fails loudly (< 50 stations) and keeps the last good data; after 24 h the BMA gauges show "unknown". Mitigations: attribution on every BMA detail, a courtesy note (OWNER_ACTIONS), and BMA direct access if a Thai egress ever works (Q17: none available).
 
+### KI-219 — A new source's stations leaked into another collector's query · 🟢 fixed
+`hii_history` selected *all* focus stations. After v0.3.0 added 199 BMA gauges (`WL.*`, no `hii_id`), it asked HII's chart endpoint for each: HTTP 500 with 3 retries ≈ 10 s per code ≈ 33 min, on the single worker loop. Result 16:33–17:46 UTC: no BMA readings, no forecast refresh. The owner saw BMA gauges with near-empty charts and read it as "history and forecasts lost" (nothing was deleted: 3.2 M observations intact, HII gauges kept their year of history). **Fix:** `agency IS DISTINCT FROM 'BMA'` in the query + a regression test. **Rule:** when adding a source, check every collector's and the forecaster's station query (GUIDELINES §3).
+
 ### KI-216 — "0 cm below the bank" next to "overflowing" · 🟢 fixed
 BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded to −0, and `-0 < 0` is false in JavaScript, so the text said "ต่ำกว่าตลิ่ง 0 ซม." under a red "ล้นตลิ่ง" badge. **Fix:** round first; 0 cm reads "ระดับเท่าตลิ่ง".
 
@@ -305,6 +309,7 @@ The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Ri
 - 2026-09-26 ~09:30 UTC: the exit IP was up (49.48.220.198), but `dds.bangkok.go.th` **timed out** through it; `bma_dds` had 2 consecutive proxy failures ("Tunnel connection failed: 500"). Treat BMA collection as best-effort until a better Thai egress exists.
 
 ### KI-506 — `autobahn.bot` zone challenges non-browser clients · 🟡
+**RESOLVED 17:33 UTC (D-035):** the owner turned Bot Fight Mode off; curl, Facebook and LINE user agents get HTTP 200 and the alias now redirects everything, API included. Lesson: page rules and security-level changes could not remove a Bot Fight Mode challenge (tried, no effect).
 **Update 2026-09-26 16:58 UTC (D-034):** the owner moved everything to the main domain, so the alias's pages now 301 there; `/api/*` stays on the alias. A headless browser following an old link got the interactive "Verify you are human" checkbox. The token cannot see zone security settings, so the cause (Bot Fight Mode, most likely) can only be checked and switched off in the dashboard.
 **17:11–17:15 UTC:** with new token rights (Zone Settings, Firewall Services, Page Rules edit) the zone showed security level medium, Browser Integrity Check on, no firewall/IP/UA rules. A flood-only page rule turning both off (owner-approved) **did not remove the challenge** → the cause is Bot Fight Mode or a WAF custom rule (neither readable with this token). Fix: Bot Fight Mode off (owner, OWNER_ACTIONS Q18 option A).
 The main domain `flood.autobahn.bot` answers **HTTP 403 with `cf-mitigated: challenge`** ("Just a moment…") to `curl`, headless Chrome and the Facebook and LINE user agents. The same happens on every proxied host of the zone (`autobahn.bot`, `www`). Status: **still open at ~11:20 UTC** ([OWNER_ACTIONS](OWNER_ACTIONS.md) Q18).

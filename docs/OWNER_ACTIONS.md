@@ -7,7 +7,7 @@
 ## 1. Status now
 | # | Item | Status | Priority |
 |---|---|---|---|
-| **Q18** | `flood.autobahn.bot` challenges non-browser clients (`cf-mitigated: challenge`) | ⬜ **open** | **1** |
+| Q18 | `flood.autobahn.bot` challenged non-browser clients | ✅ **done** (owner turned Bot Fight Mode off, verified 17:33 UTC) | |
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
 | **GISTDA** | GISTDA API key (`GISTDA_API_KEY` in `.env`) for satellite flood extent | ✅ **configured** (verified in `.env`) | |
@@ -22,7 +22,8 @@
 
 ## 2. Actions in priority order
 
-### Priority 1 · Q18 — let non-browser clients reach flood.autobahn.bot (**more urgent since D-034**)
+### ✅ Done · Q18 — non-browser clients reach flood.autobahn.bot (2026-09-26 17:33 UTC)
+**Resolved:** Bot Fight Mode was the cause; the owner switched it off. curl, Facebook and LINE user agents now get HTTP 200; the API moved to the main domain (D-035). The text below is the history.
 **Since 2026-09-26 16:58 UTC every old `flood.bejranonda.com` link redirects to the main domain (your "move all" request).** Visitors therefore meet the challenge page; a headless browser got the "Verify you are human" checkbox. For elderly users on slow phones that is a real barrier during a flood. One click fixes it (option A below). Rollback if needed: `REDIRECT_LEGACY_HOST=0` in `.env`, `docker compose up -d app`.
 **Why:** LINE and Facebook link previews, uptime monitors and API users get Cloudflare's "Just a moment…" page (`cf-mitigated: challenge`). Phones with a normal browser pass after a few seconds, but a flood site should open instantly and be shareable.
 **Evidence (2026-09-26):** `/` and `/api/*` are challenged, `/static/*` isn't, and the result depends on the client's TLS fingerprint. That fits **Bot Fight Mode**, the free zone-wide product. The zone hosts your other apps too (`shirt.`, `mutelu.`, `persona.`, … all proxied). Cloudflare's docs say Bot Fight Mode **can't be skipped with WAF rules or Page Rules**. This corrects my earlier advice about a Configuration Rule / WAF skip, which would not work for it ([KI-506](KNOWN_ISSUES.md)).
@@ -88,6 +89,8 @@ You made the repository **public** (seen 2026-09-26 15:20 UTC). I scanned the wh
 |---|---|---|
 | 09:19 | New tunnel token (tunnel `d62b426d…`) | `cloudflared` registered 4 connections; both CNAMEs re-pointed |
 | 09:19 | Main domain `flood.autobahn.bot` | DNS record created; site served (behind the challenge, Q18) |
+| 17:33 | Bot Fight Mode off (Q18) | `owner_status.py` Q18 ✅; curl/Facebook/LINE UAs → 200 |
+| ~17:00 | Token rights: Zone Settings, Firewall Services, Page Rules (edit) | zone settings readable; flood-only page rule created |
 | ~11:15 | Tunnel rights on the API token | `scripts/owner_status.py` Q15a ✅ |
 | ~11:15 | Old tunnel `ecd8a7b9…` deleted | Not in the tunnel list |
 | by 15:20 | Repository visibility set to public | `gh repo view` → PUBLIC; history scan clean (KI-214) |

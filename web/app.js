@@ -93,7 +93,7 @@ function itemHTML(s, extra = "") {
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(freeboardText(s.freeboard_m))}</span></div>
-    <div class="meta">${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null && s.trend12 !== "steady" ? " " + esc(cm(s.delta12_median)) + " ใน 12 ชม." : ""}
+    <div class="meta">${isNew(s) && (!s.trend12 || s.trend12 === "unknown") ? "🆕 สถานีใหม่ เริ่มเก็บข้อมูล " + esc(new Date(s.history_since).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" })) : esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null && s.trend12 !== "steady" ? " " + esc(cm(s.delta12_median)) + " ใน 12 ชม." : ""}
       · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
 }
 
@@ -259,6 +259,19 @@ function dayTicks(tmin, tmax, x, H) {
     + (i % step ? "" : `<text x="${(x(t) + 2).toFixed(1)}" y="${H - 6}" font-size="10" fill="#5b6573">${esc(new Date(t).toLocaleDateString("th-TH", { ...TZ, day: "numeric", month: "short" }))}</text>`)).join("");
 }
 
+// New gauges (history < 7 days, e.g. BMA from 26 Sep): say why the chart is short and when a forecast can start,
+// so a short chart is not mistaken for lost data (owner, 2026-09-26).
+const NEW_DAYS = 7;
+const isNew = (s) => s.history_days != null && s.history_days < NEW_DAYS;
+function newGaugeNote(s, fc) {
+  if (!isNew(s) || Object.keys(fc?.skill || {}).length) return "";  // a placeholder forecast exists without any tested skill
+  const since = new Date(s.history_since), ready = new Date(since.getTime() + NEW_DAYS * 864e5);
+  const d = (t) => t.toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" });
+  return `<div class="warnbox">🆕 <strong>สถานีใหม่ในระบบ</strong> เริ่มเก็บข้อมูล ${esc(fmtTime(s.history_since))} ·
+    กราฟจะยาวขึ้นทุก 10 นาที · การคาดการณ์จะเริ่มเมื่อมีข้อมูลครบ ${NEW_DAYS} วัน (ราว ${esc(d(ready))})
+    <span class="muted">ข้อมูลเดิมของสถานีอื่นไม่ได้หายไป</span></div>`;
+}
+
 function chartSVG(obs, fc, bank) {
   const W = 400, H = 200, P = 34, GAP_MS = 90 * 60e3;  // gaps longer than 90 min are not bridged
   const pts = obs.filter((o) => o[1] != null).map((o) => [Date.parse(o[0]), o[1]]);
@@ -405,7 +418,7 @@ async function showDetail(code) {
       <p class="big">${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
-      ${chartSVG(d.observations, fc, s.bank_msl)}
+      ${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl)}
       <p class="muted">วิธีคาดการณ์: ${esc(methods.join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
         · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p>
       ${feedbackCounts(d.feedback7d)}

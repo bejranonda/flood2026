@@ -54,7 +54,7 @@ STATIONS_SQL = """
 SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.agency, s.province, s.amphoe,
        s.river, s.coord_source, s.coord_precision_km, o.obs_time, o.level_msl, o.discharge, o.situation_level,
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
-       f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag
+       f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time
 FROM station s
 LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM observation
                    WHERE code=s.code AND level_msl IS NOT NULL AND quality_flag='ok'
@@ -63,6 +63,8 @@ LEFT JOIN LATERAL (SELECT payload, issue_time FROM forecast_run WHERE code=s.cod
                    ORDER BY issue_time DESC LIMIT 1) f ON true
 LEFT JOIN LATERAL (SELECT obs_time AS raw_time, quality_flag AS raw_flag FROM observation WHERE code=s.code
                    ORDER BY obs_time DESC LIMIT 1) q ON true
+LEFT JOIN LATERAL (SELECT obs_time AS first_time FROM observation WHERE code=s.code
+                   ORDER BY obs_time ASC LIMIT 1) h ON true
 WHERE (%(all)s OR s.in_focus) AND s.code !~ '^TEST'
 """
 
@@ -99,6 +101,10 @@ def _station_row(r: dict) -> dict:
         "trend12": r["trend12"], "delta12_median": r["delta12"], "recovery": r["recovery"],
         "forecast_time": _iso(r["forecast_time"]), "notes": notes,
         "coord_precision_km": r.get("coord_precision_km"),
+        # When our record of this gauge begins. New gauges (e.g. BMA since 2026-09-26) have no chart or forecast yet;
+        # the UI says so instead of showing an empty chart that looks like lost data.
+        "history_since": _iso(r.get("first_time")),
+        "history_days": None if r.get("first_time") is None else round(_age_min(r["first_time"]) / 1440, 1),
     }
 
 
@@ -401,10 +407,10 @@ def page_for_host(html: str, host: str) -> str:
 
 
 def legacy_redirect_target(host: str, path: str, query: str) -> str | None:
-    """301 target for the legacy host when enabled (owner, 2026-09-26: "move all to flood.autobahn.bot", D-034).
-    Pages and static files move; /api/* keeps answering on the alias because scripts, monitors and other non-browser
-    clients cannot pass the main domain's bot challenge (KI-506) and would otherwise break."""
-    if not REDIRECT_LEGACY or host != LEGACY_HOST or path.startswith("/api/"):
+    """301 target for the legacy host when enabled (owner, 2026-09-26: "move all to flood.autobahn.bot", D-034/D-035).
+    Everything moves, API included (the main domain's bot challenge is off since 17:33 UTC). Only /api/health stays
+    on the alias so an uptime monitor pointed at the old host keeps working."""
+    if not REDIRECT_LEGACY or host != LEGACY_HOST or path == "/api/health":
         return None
     return f"https://{CANONICAL_HOST}{path}" + (f"?{query}" if query else "")
 

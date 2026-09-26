@@ -58,6 +58,7 @@
 | 29 | Bangkok first (owner: "Bangkok as default this week") | The list opens on กทม. (209 gauges) |
 | 30 | "Which data is this?" on BMA gauges | Card: "ข้อมูล กทม."; detail: BMA via flood69 credited, unit "ม. (หมุด กทม.)", "compare only with this gauge's bank" |
 | 31 | Commuters: "which roads to avoid?" | Link to BMA's road page in the point card (a snapshot, not a feed) |
+| 32 | Owner: "the historic graph and forecasting all lost, what happened? Should we separate old and new info?" | Nothing was lost: the Bangkok list now opens on BMA gauges that only started today, and a worker stall (KI-219) made their charts even shorter. **Separated in the display, not the storage:** gauges with < 7 days of history are labelled "🆕 สถานีใหม่" with the start date and the expected forecast date |
 
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.

@@ -67,8 +67,7 @@ def test_legacy_redirect_when_enabled(monkeypatch):
     monkeypatch.setattr(api, "REDIRECT_LEGACY", True)
     assert api.legacy_redirect_target("flood.bejranonda.com", "/", "") == "https://flood.autobahn.bot/"
     assert api.legacy_redirect_target("flood.bejranonda.com", "/static/app.js", "v=10") == "https://flood.autobahn.bot/static/app.js?v=10"
-    # the API stays on the alias: non-browser clients cannot pass the main domain's bot challenge (D-034)
-    assert api.legacy_redirect_target("flood.bejranonda.com", "/api/stations", "scope=all") is None
+    assert api.legacy_redirect_target("flood.bejranonda.com", "/api/stations", "scope=all") == "https://flood.autobahn.bot/api/stations?scope=all"
     assert api.legacy_redirect_target("flood.bejranonda.com", "/api/health", "") is None
     assert api.legacy_redirect_target("flood.autobahn.bot", "/", "") is None
 
@@ -84,3 +83,16 @@ def test_favicon_and_apple_touch_icon_endpoints():
     assert (api.WEB_DIR / "favicon.ico").exists()
     assert (api.WEB_DIR / "apple-touch-icon.png").exists()
 
+
+
+def test_station_row_reports_history_start_for_new_gauges():
+    import datetime as dt
+    now = dt.datetime.now(dt.timezone.utc)
+    row = {"code": "WL.KSG.01", "name_th": "x", "name_en": None, "lat": 13.9, "lon": 100.6, "bank_msl": 1.25,
+           "ground_msl": None, "agency": "BMA", "province": "กรุงเทพมหานคร", "amphoe": None, "river": "คลองสอง",
+           "coord_source": None, "coord_precision_km": None, "obs_time": now, "level_msl": 1.55, "discharge": None,
+           "situation_level": None, "trend12": None, "delta12": None, "recovery": None, "forecast_time": None,
+           "raw_time": now, "raw_flag": "ok", "first_time": now - dt.timedelta(hours=36)}
+    r = api._station_row(row)
+    assert r["history_days"] == 1.5 and r["history_since"].startswith(str((now - dt.timedelta(hours=36)).date()))
+    assert api._station_row({**row, "first_time": None})["history_days"] is None

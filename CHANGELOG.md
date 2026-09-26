@@ -2,6 +2,11 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.3.2 — 2026-09-26
+- **Only flood.autobahn.bot remains** (D-035): the owner turned Bot Fight Mode off, so `flood.bejranonda.com` now 301s every path, `/api/*` included (only `/api/health` still answers there for old monitors). curl, Facebook and LINE user agents get HTTP 200 on the main domain; an old `#s=` link lands on the station (tested in a browser). Q18 and KI-506 closed.
+- **Fix (KI-219):** since v0.3.0 the HII history job also asked HII's chart endpoint for the 199 BMA gauges (HTTP 500 ×3 each), stalling the single worker loop for ~1 h (no BMA readings or forecast refresh 16:33–17:46 UTC). BMA stations are now excluded; a regression test guards it. No data was deleted.
+- **New gauges say they are new** (owner: "the historic graph and forecasting all lost?"): `/api/stations` returns `history_since` / `history_days`; cards of gauges with < 7 days of history show "🆕 สถานีใหม่ เริ่มเก็บข้อมูล …", and the detail sheet explains the short chart and when a forecast starts (~3 Oct for BMA). HII gauges keep their year of history. `app.js?v=12`.
+
 ## v0.3.1 — 2026-09-26
 - **Everything moves to https://flood.autobahn.bot** (owner request, D-034): pages and static files on `flood.bejranonda.com` answer 301 to the main domain (path, query and `#` fragment kept). `/api/*` stays on the alias because non-browser clients can't pass the main domain's bot challenge.
 - ⚠️ Visitors from old links now meet that challenge; the fix is owner-side (Q18, OWNER_ACTIONS priority 1, new scoped option D).

@@ -10,3 +10,12 @@ def test_core_telemetry_backs_off_at_most_twofold():
     cap = worker.BACKOFF_CAP["hii_waterlevel"]
     assert max(worker.backoff_factor(n, cap) for n in range(0, 50)) == 2
     assert worker.BACKOFF_CAP.get("traffy", 6) == 6
+
+
+def test_hii_history_never_asks_hii_for_bma_stations():
+    # 2026-09-26: the 199 BMA gauges (WL.*, no hii_id) were sent to HII's chart endpoint, HTTP 500 x3 retries each,
+    # and starved the single worker loop for 30+ minutes. The query must exclude agency BMA.
+    import inspect
+    from floodwatch import collectors
+    src = inspect.getsource(collectors.hii_history)
+    assert "agency IS DISTINCT FROM 'BMA'" in src
