@@ -5,6 +5,8 @@
 [![Status: Phase 0](https://img.shields.io/badge/status-Phase%200%20%E2%80%94%20source%20verification-yellow.svg)](docs/plan/PLAN.md)
 [![Infra: Cloudflare Tunnel live](https://img.shields.io/badge/infra-Cloudflare%20Tunnel%20live%2C%20app%20not%20deployed-orange.svg)](docs/ARCHITECTURE.md)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](docs/GUIDELINES.md)
+[![Domain: Hydrology & Flood Forecasting](https://img.shields.io/badge/domain-hydrology%20%26%20flood%20forecast-0077b6.svg)](docs/APPROACH_AND_METHODS.md)
+[![Coverage: Bangkok & Chao Phraya](https://img.shields.io/badge/coverage-Bangkok%20%26%20Chao%20Phraya-023e8a.svg)](docs/KNOWLEDGE.md)
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
@@ -87,6 +89,17 @@ pip install numpy   # only dependency
 python3 research/validation/validate_research_claims.py
 ```
 Results depend on the host's country. Run it on the production VPS for Phase 0 ([KI-101](docs/KNOWN_ISSUES.md)).
+
+## Search & AI discovery index
+
+| Category | Keywords (EN / TH) |
+|---|---|
+| **Core Domain** | Bangkok flood monitoring, Chao Phraya flood forecasting, water-level prediction, urban flood risk, early warning system, ระบบติดตามน้ำท่วม, พยากรณ์ระดับน้ำ, คาดการณ์น้ำท่วม กรุงเทพมหานคร |
+| **Geographic Coverage** | Bangkok (BMA), lower Chao Phraya river basin, Ayutthaya, Nonthaburi, Pathum Thani, Khlong Saen Saep (คลองแสนแสบ), Khlong Lat Phrao (คลองลาดพร้าว), Gulf of Thailand |
+| **Key Hydrological Stations** | C.2 (Nakhon Sawan), C.13 (Chao Phraya Dam), C.35 (Ayutthaya), C.29A (Bang Sai / บางไทร), Fort Chula (ป้อมพระจุลฯ), BKK008, BKK021 |
+| **Hydrological Phenomena** | The Three Waters (น้ำสามน้ำ): น้ำเหนือ (upstream river discharge), น้ำหนุน (Gulf tidal surge & harmonic tide), น้ำฝน (urban convective precipitation & polder drainage) |
+| **Data Providers** | HII (สสน. / ThaiWater), Royal Irrigation Department (RID / กรมชลประทาน), BMA Department of Drainage and Sewerage (สำนักการระบายน้ำ กทม.), Royal Thai Navy Hydrographic Dept (กรมอุทกศาสตร์ กองทัพเรือ), Open-Meteo GloFAS |
+| **Architecture & Modeling** | Spatio-temporal graph modeling, lag routing, quantile regression, conformal prediction calibration, TimescaleDB, PostGIS, FastAPI, Cloudflare Tunnel & Pages |
 
 ## Safety notice and official contacts
 This project **doesn't replace official warnings**. Always follow BMA, DDPM, RID and HII announcements.
