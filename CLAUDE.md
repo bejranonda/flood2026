@@ -11,7 +11,8 @@
 - **Parallel workstreams (D-012, supersedes D-002):** keep the live site working; every change goes through the tests (`docker compose run --rm --no-deps worker pytest -q`) and a health check before redeploying.
 - **Evidence rule:** never invent endpoints, field names, constants or data. Every claim in `docs/` needs evidence (a live call with date and host, observed data, or a citation), or a ⚠️ label. Sample outputs must come from running code (D-003).
 - **Research is input, not truth:** validate claims before use, following [research/README.md](research/README.md). Endpoints listed as refuted in [docs/SOURCES.md §3](docs/SOURCES.md) must not be used.
-- **Honest User-Agent; no bot-challenge solving or free public proxies.** A Thai egress the owner controls is allowed for geo-blocked public data (D-014).
+- **Honest User-Agent; no bot-challenge solving, no evading blocks.** The owner's OpenVPN Thai egress (`vpn` sidecar) may be used for geo-blocked **public** pages only, never for credentials (D-014, D-016). Check owner statements against evidence too and report discrepancies (HANDOFF §2).
+- Several sessions work on this repo: `git pull --ff-only` and read `git log` before editing.
 - **Datums and time:** everything is in m MSL (Ko Lak) and stored in UTC. Know each source's timezone convention (KI-201, KI-205).
 - **Space and time are explicit:** station graph, polders, lags, issue time vs valid time (D-008, [APPROACH §2](docs/APPROACH_AND_METHODS.md)).
 - **No secrets in git** (`.env`, `certs/`, `*.pem`). Don't read or print secret values.

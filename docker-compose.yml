@@ -25,7 +25,7 @@ services:
       DATABASE_URL: postgresql://floodwatch:${POSTGRES_PASSWORD}@db:5432/floodwatch
       TELEMETRY_ARCHIVE_PATH: /data/raw_archive
       HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BKK-FloodWatch/0.1 (+https://flood.bejranonda.com)}
-      THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}
+      THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}   # e.g. http://vpn:8888 with --profile vpn
       MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
     volumes:
       - ./data/raw_archive:/data/raw_archive
@@ -63,3 +63,15 @@ services:
       - ./certs:/certs:ro
     depends_on: [app]
     profiles: ["origin"]
+
+  # Thai egress for geo-blocked public pages (D-014). Isolated network namespace: only traffic sent to
+  # http://vpn:8888 leaves via the OpenVPN relay; host routes are untouched. Start: --profile vpn
+  vpn:
+    build: ./infra/vpn
+    restart: unless-stopped
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun:/dev/net/tun"]
+    volumes:
+      - ./infra/openvpn:/vpn:ro
+    mem_limit: 128m
+    profiles: ["vpn"]

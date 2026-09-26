@@ -25,6 +25,7 @@
 ### 2.2 Evidence rule (D-003)
 - Every number, endpoint, constant or station attribute in `docs/` carries **evidence**: a live call (with date and host), observed data, or a cited source. Otherwise it is marked **⚠️** and gets a Phase 0 or Phase 2 task.
 - **Never invent** endpoints, field names, constants or data. When something fails, say so and propose alternatives.
+- **Check owner statements too.** When the owner reports a state ("token has R2 permission", "stations are missing"), verify it with a call and report any discrepancy politely, with the evidence (the 2026-09-26 HANDOFF has an example table).
 - **Sample outputs must be produced by running the code** in the same change. Never write expected-looking numbers by hand.
 - AI-assisted research (claude.ai, Gemini, and so on) is welcome as **input**. It is validated claim by claim before use ([research/README.md](../research/README.md)).
 - Silent fallbacks to made-up values (e.g. "default Bang Sai flow 2,450 m³/s") are forbidden. Missing data is shown as missing.
@@ -77,6 +78,7 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
 
 ## 5. Data-source etiquette and legal (D-004)
 - **Owner decision D-014 (2026-09-26):** don't wait for agency replies. For geo-blocked **public** data, a Thai egress the owner controls (SSH SOCKS or a paid VPN) is allowed. Free public proxies and bot-challenge solving are not.
+- **Thai egress limits (D-016):** the OpenVPN proxy (`THAI_EGRESS_PROXY`) is opt-in per request and only for **public pages** of sources that geo-block. **Never send credentials, tokens or personal data through it.** Always verify HTTPS certificates. Don't rotate relays or solve bot challenges to get past a block; if an IP class stays blocked, use an owner-controlled Thai host.
 - **Identify honestly:** `User-Agent: BKK-FloodWatch/<version> (+https://flood.bejranonda.com; <contact>)`. **Never spoof a browser**, rotate proxies, or otherwise get around blocks, bot challenges or rate limits. If blocked, ask the agency or use the approved Thai collector node ([KI-101](KNOWN_ISSUES.md)).
 - **Be polite:** poll no more often than the source updates (≥10 min for telemetry), cache aggressively, and back off under errors. Their servers are under flood load too.
 - **Respect ToS and robots.txt.** Ask HII, BMA and BMA/NECTEC (Traffy) for permission before public redistribution.

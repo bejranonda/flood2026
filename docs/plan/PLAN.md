@@ -13,10 +13,10 @@
 | Code hosting: [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) | ✅ published **private** 2026-09-26 ([D-011](DECISIONS.md)) |
 | **MVP live** (collectors, raw archive, Postgres, baseline forecasts, API, Thai web) | ✅ 2026-09-26, https://flood.bejranonda.com (D-012, D-013) |
 | Phase 0 — sources | 🟡 HII, Open-Meteo and Traffy in production; BMA needs a Thai egress (D-014); RID C.29A and the Navy tide are still open |
-| Phase 1 — ingestion | 🟡 running; missing: R2 off-site backup, deeper backfill |
+| Phase 1 — ingestion | 🟡 running; **104 focus stations** (chart-only stations added, D-015); missing: R2 off-site backup (blocked on R2 S3 credentials) and 56 stations the chart endpoint won't serve |
 | Phase 2 — forecasting | 🟡 L0/L1 + damped trend with backtest and conformal bands; L3–L5 are next |
 | Phase 3 — web | 🟡 MVP live; polder-aware "near me" and model page are next |
-| Phase 4 — ops | 🟡 Caddy origin (Cloudflare-only); tunnel, monitoring alerts and backups are next (KI-504) |
+| Phase 4 — ops | 🟡 **Cloudflare Tunnel live** (no inbound ports); Thai VPN sidecar (D-016); monitoring alerts and R2 backups are next (KI-504, KI-505) |
 
 ## Phases and gates
 

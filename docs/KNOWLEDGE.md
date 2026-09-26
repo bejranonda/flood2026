@@ -82,6 +82,14 @@ C.2  ค่ายจิรประวัติ, Nakhon Sawan ─► C.13 ท้
   ─► CPY015 สะพานกรุงเทพ ─► BKC003 ปตร.คลองลัดบางยอ 1 ─► Fort Phra Chulachomklao (mouth, ≈ km 0)
 ```
 
+### 3.1b HII has two station catalogues (verified 2026-09-26)
+| Catalogue | Endpoint | Stations | Coordinates | Bank / ground | History |
+|---|---|---|---|---|---|
+| Latest-values feed | `api-v3…/public/waterlevel_load` | 805 (nationwide) | ✅ | ✅ | via `waterlevel_graph` (numeric id) |
+| **Chart site list** | `tiwrm…/queryStation?prov=<Thai province name>` (e.g. `prov=กรุงเทพมหานคร`; numeric codes return `[]`) | **+162 stations** in our 18 nearest provinces that the feed lacks (BKK004/007/011/012, `ATG*`, `MOU*`, …) | ❌ (only in the map feed for 107 stations: `json/telemetering/wl/warning`) | partly (chart `0/0` = unknown) | `getGraphFirst/{code}` ≈ 30 days, 10 min. **HTTP 500 for many codes** ([KI-207](KNOWN_ISSUES.md)) |
+
+The chart list includes the **Fort Chula tide gauge (GLF001 ป้อมพระจุลจอมเกล้า)** and **Bang Sai (CPY013 บางไทร)**: the two key stations missing from the main feed. Their history isn't retrievable yet. Coverage now: **104 focus stations** (Ayutthaya 32, Nakhon Sawan 16, Chai Nat 13, Bangkok 13, Sing Buri 10, Pathum Thani 8, Samut Prakan 5, Ang Thong 4, Nonthaburi 3).
+
 ### 3.2 Station metadata (HII live, 2026-09-26)
 Bank = HII `min_bank` (m MSL). This is the operational reference; older DWR report values differ by up to 1.5 m (see [validation §E](../research/VALIDATION_2026-09-26.md)).
 
@@ -100,7 +108,8 @@ Bank = HII `min_bank` (m MSL). This is the operational reference; older DWR repo
 | BKK008 | คลองแสนแสบ บางกะปิ | ⚠️ TBD | **0.88** (chart API) | **1.18 m (above bank)** | HII | East Bangkok khlong (user's example) |
 | AIT001 | อโศก (คลองแสนแสบ) | 13.74325, 100.56216 | 2.39 | WL 1.77 | HII | Saen Saep, central |
 | BKK021 | **คลองลาดพร้าว วัดบางบัว** | 13.85402, 100.58746 | **2.20** | **WL 2.82 (situation 5, ล้นตลิ่ง)** | HII | North Bangkok khlong (user's example) |
-| Fort Chula | ป้อมพระจุลจอมเกล้า | – | – | Navy tide station | Navy | Seaward boundary ⚠️ feed needed |
+| GLF001 (Fort Chula) | ป้อมพระจุลจอมเกล้า, สมุทรปราการ | ⚠️ not in map feed | – | latest 0.03 (queryStation `water1`); chart data HTTP 500 | HII chart list | Seaward boundary / tide gauge ⚠️ history needed |
+| CPY013 | บางไทร (Bang Sai), อยุธยา | ⚠️ | – | latest 1.46 (`water1`); chart HTTP 500 | HII chart list | Gateway to Bangkok ⚠️ history needed |
 
 ---
 

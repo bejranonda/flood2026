@@ -8,7 +8,7 @@ import time
 import urllib.parse
 
 from floodwatch import archive, db
-from floodwatch.config import EXTRA_STATIONS, RAIN_POINTS, settings
+from floodwatch.config import EXTRA_STATIONS, FOCUS_PROVINCES, RAIN_POINTS, settings
 from floodwatch.collectors import parsing
 from floodwatch.httpclient import fetch
 
@@ -60,7 +60,7 @@ def hii_rain() -> dt.datetime | None:
     return max((r["obs_time"] for r in rows), default=None)
 
 
-def hii_history(days: int = 30, pause_s: float = 1.5) -> dt.datetime | None:
+def hii_history(days: int = 30, pause_s: float = 0.7) -> dt.datetime | None:
     """Backfill/refresh history for focus stations: waterlevel_graph (hourly, with discharge) by numeric id,
     or the chart XHR (10-min) for stations missing from the latest-values feed (e.g. BKK008)."""
     with db.connect() as c:
@@ -73,7 +73,7 @@ def hii_history(days: int = 30, pause_s: float = 1.5) -> dt.datetime | None:
     total, latest = 0, None
     for s in stations:
         try:
-            if s["code"].startswith(("BKK", "CPY", "BKC", "AIT")):
+            if s["code"].startswith(("BKK", "CPY", "BKC", "AIT")) or not s["hii_id"]:
                 rows, sha = _get_json("hii_chart", f"{CHART}/{urllib.parse.quote(s['code'])}")
                 obs, _, _ = parsing.parse_chart(s["code"], rows, sha)
             elif s["hii_id"]:
@@ -81,8 +81,6 @@ def hii_history(days: int = 30, pause_s: float = 1.5) -> dt.datetime | None:
                        f"&start_date={start}&end_date={end_s}")
                 payload, sha = _get_json("hii_waterlevel_graph", url)
                 obs = parsing.parse_waterlevel_graph(s["code"], payload, s["bank_msl"], s["ground_msl"], sha)
-            else:
-                continue
         except Exception as e:
             log.warning("history %s failed: %s", s["code"], e)
             continue
@@ -107,6 +105,48 @@ def hii_history(days: int = 30, pause_s: float = 1.5) -> dt.datetime | None:
             c.commit()
     log.info("hii_history: %d rows for %d stations", total, len(stations))
     return latest
+
+
+def hii_stations() -> dt.datetime | None:
+    """Add stations that only the HII chart site serves (missing from waterlevel_load: e.g. BKK004, BKK007,
+    ATG*, MOU*), and take coordinates for them from the HII map feed. See docs/KNOWN_ISSUES.md KI-207."""
+    map_rows, _ = _get_json("hii_map_feed", "https://tiwrm.hii.or.th/thaiwater_l5/public/json/telemetering/wl/warning")
+    coords = {m["code"]: m for m in parsing.parse_map_feed(map_rows)}
+    with db.connect() as c:
+        have = {r["code"] for r in c.execute("SELECT code FROM station").fetchall()}
+    added = coordinated = failed = 0
+    for province in FOCUS_PROVINCES:
+        listing, _ = _get_json("hii_chart_stationlist",
+                               "https://tiwrm.hii.or.th/thaiwater_l5/public/queryStation?" + urllib.parse.urlencode({"prov": province}))
+        for item in listing:
+            code = (item.get("code") or "").strip()
+            if not code or code in have:
+                continue
+            try:
+                rows, sha = _get_json("hii_chart", f"{CHART}/{urllib.parse.quote(code)}")
+            except Exception:
+                failed += 1  # the chart endpoint answers HTTP 500 for many codes (e.g. GLF001, CPY013): KI-207
+                continue
+            obs, bank, ground = parsing.parse_chart(code, rows, sha)
+            if not any(o["level_msl"] is not None for o in obs):
+                failed += 1
+                continue
+            m = coords.get(code, {})
+            with db.connect() as c:
+                db.upsert_station(c, {"code": code, "hii_id": None, "name_th": item.get("name"), "name_en": None,
+                                      "lat": m.get("lat"), "lon": m.get("lon"),
+                                      "bank_msl": m.get("bank_msl") or bank, "ground_msl": m.get("ground_msl") or ground,
+                                      "critical_msl": None, "agency": "HII", "province": province,
+                                      "amphoe": m.get("amphoe"), "river": None, "basin": m.get("basin"),
+                                      "in_focus": True, "meta_source": "hii_chart"})
+                db.insert_observations(c, obs)
+                c.commit()
+            added += 1
+            coordinated += 1 if m else 0
+            have.add(code)
+            time.sleep(0.5)
+    log.info("hii_stations: added %d chart-only stations (%d with coordinates); %d unavailable via chart", added, coordinated, failed)
+    return None
 
 
 def openmeteo() -> dt.datetime | None:
@@ -155,5 +195,5 @@ def bma_dds() -> dt.datetime | None:
 
 
 def run(source: str) -> None:
-    _run(source, {"hii_waterlevel": hii_waterlevel, "hii_rain": hii_rain, "hii_history": hii_history,
+    _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_dds": bma_dds}[source])

@@ -157,6 +157,8 @@ Gaps: short gaps (≤ 30 min) can be interpolated for features, with a flag. Lon
 - **Trend (12 h):** "steady" if the median change is within max(2 cm, half the 50 % band).
 - **Recovery:** first crossing below bank of the q25/q50/q75 paths (≤ 72 h), otherwise extrapolation of the 24 h recession rate (low confidence). "Not estimable" when ≥ 30 mm of rain is forecast for the next 24 h at the nearest Open-Meteo point, or when the water isn't falling.
 - **Status:** ≥ bank → วิกฤต; ≥ 90 % of ground→bank range → เตือนภัย; ≥ 70 % → เฝ้าระวัง; otherwise ปกติ (⚠️ heuristic, to be calibrated against official warning levels).
+- **Coverage (2026-09-26 09:00 UTC):** 104 focus stations. **28 have no bank level** (status "unknown", no recovery) and **34 have no coordinates** (not on the map, excluded from "near me"): [KI-207](KNOWN_ISSUES.md). Stations that only the chart site serves have about 30 days of 10-min data, so the tide fit (needs ≥ 15 days) is available; a station with less data stays on persistence without intervals.
+- **Tide reference gap:** the Fort Chula gauge (GLF001) and Bang Sai (CPY013) exist in the HII chart list but their history isn't retrievable yet. Until then regime B relies on each station's own tide fit; getting GLF001 history is the highest-value data task ([HANDOFF §5](../HANDOFF.md)).
 - Not yet implemented: routing (L3), polder storage, ML (L4/L5), ensembles, and polder-aware "near me" (nearest by distance only).
 
 ## 4. Derived quantities (shown in the UI and used as features)

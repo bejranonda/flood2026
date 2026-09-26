@@ -38,3 +38,16 @@ def test_traffy_drops_text_and_photos():
                             "state": "รอรับเรื่อง"}]}
     r = parsing.parse_traffy(payload)[0]
     assert r["is_flood"] and r["lat"] == 13.8 and "description" not in r and "photo_url" not in r
+
+
+def test_chart_zero_bank_ground_are_unknown_not_zero():
+    obs, bank, ground = parsing.parse_chart("ATG011", [[1790410200000, 17.203, 0, 0, "17.203"]], "sha")
+    assert bank is None and ground is None and obs[0]["level_msl"] == 17.203
+
+
+def test_map_feed_gives_coordinates_and_skips_missing():
+    rows = [{"code": "BKK001 ", "name": "x", "lat": "13.92", "lng": "100.63", "bank": "2.563", "ground_level": "-1.9",
+             "province_name": "กรุงเทพมหานคร", "amphoe_name": "สายไหม", "basin": "b"},
+            {"code": "ZZZ", "lat": None, "lng": None}]
+    out = parsing.parse_map_feed(rows)
+    assert len(out) == 1 and out[0]["code"] == "BKK001" and out[0]["lat"] == 13.92 and out[0]["bank_msl"] == 2.563

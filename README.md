@@ -10,7 +10,7 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): MVP live at https://flood.bejranonda.com** (ฉบับทดลอง). It collects HII telemetry (805 stations; 69 in focus), Open-Meteo rain forecasts and Traffy reports, keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands, and shows a Thai map and list. Runs on a single server with `docker compose` ([D-012, D-013](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
+> **Current status (2026-09-26): MVP live at https://flood.bejranonda.com** (ฉบับทดลอง). It collects HII telemetry (805 stations in the main feed plus 34 chart-only stations → **104 in focus**), Open-Meteo rain forecasts and Traffy reports, keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands, and shows a Thai map and list. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
 
 ---
 
@@ -45,11 +45,11 @@ Strict gates: each phase stops for the owner's approval ([D-002](docs/plan/DECIS
 ## Data sources (v1, keyless)
 | Source | Status (probe 2026-09-26) | Use |
 |---|---|---|
-| HII ThaiWater public API + chart XHR | ✅ live (805 stations; 30-day history per station) | Levels, bank, discharge (RID stations), rain |
+| HII ThaiWater public API + chart site | ✅ live (805 stations + **162 chart-only candidates**, 34 added; 30-day history per station; ~56 return HTTP 500, incl. Fort Chula and Bang Sai) | Levels, bank, discharge (RID stations), rain |
 | Open-Meteo forecast / ensemble / flood (GloFAS) | ✅ live | Rain forcing, upstream prior |
 | RID portals | 🟡 reachable; Bang Sai (C.29A) feed still to find | Upstream boundary, releases |
 | Navy tide tables | 🔴 URL moved + bot challenge → our own harmonic fit as the interim | Tide |
-| BMA DDS | 🔴 blocked from non-Thai IPs; test from the VPS | Bangkok khlongs |
+| BMA DDS / DWR EWS | 🟡 open through the Thai egress (`dds.`, `ews.dwr`); `weather.bangkok.go.th` still 403 | Bangkok khlongs (pending) |
 | Traffy Fondue public API | ✅ live (privacy rules apply) | Validation, "reported nearby" |
 
 Full registry, including endpoints that were tested and **refuted**: [docs/SOURCES.md](docs/SOURCES.md).
@@ -62,7 +62,7 @@ docs/        maintained docs: PLAN, SOURCES, KNOWLEDGE, KNOWN_ISSUES, GUIDELINES
 research/    research snapshots (claude.ai / Gemini), VALIDATION report, validation/ script
 src/floodwatch/{collectors,archive,db,forecast,api}/   Python backend (MVP)
 web/                                                   Thai frontend (vanilla JS + Leaflet)
-infra/ (Caddyfile)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
+infra/ (vpn/ sidecar, legacy Caddyfile)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
 ```
 
 ## Documentation
@@ -82,13 +82,12 @@ infra/ (Caddyfile)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
 Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) (created **private**; visibility is the owner's call, see [OPEN_QUESTIONS Q10](docs/plan/OPEN_QUESTIONS.md)). **No license has been chosen yet**, so all rights are reserved by default. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
 
 ## Configuration
-Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/` and `*.pem` are git-ignored; never commit secrets. v1 needs **no data API keys**. Only Cloudflare and R2 credentials are required; TMD and GISTDA keys are optional.
+Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/`, `*.pem` and `infra/openvpn/*.ovpn` are git-ignored; never commit secrets. v1 needs **no data API keys**. Cloudflare (tunnel token) is required for publishing; **R2 S3 credentials** are still missing ([KI-504](docs/KNOWN_ISSUES.md)); TMD and GISTDA keys are optional.
 
 ## Run it
 ```bash
 cp .env.example .env    # then set POSTGRES_PASSWORD (and the Cloudflare values if publishing)
-docker compose up -d --build                      # db + worker + app on 127.0.0.1:3000
-docker compose --profile origin up -d caddy       # public origin behind Cloudflare (Cloudflare IPs only)
+docker compose --profile public --profile vpn up -d --build   # db, worker, app, Cloudflare Tunnel, Thai VPN egress
 docker compose run --rm --no-deps worker pytest -q
 ```
 Operations and next steps: [HANDOFF.md](HANDOFF.md).

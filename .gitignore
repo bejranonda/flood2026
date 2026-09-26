@@ -79,3 +79,6 @@ certs/
 
 # Local .env backups (contain secrets)
 .env.backup*
+
+# VPN client configs (contain the relay client key)
+infra/openvpn/*.ovpn

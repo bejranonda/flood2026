@@ -7,7 +7,7 @@
 
 | ID | Title | Area | Status |
 |---|---|---|---|
-| KI-101 | Geo/datacenter IP blocking (BMA yes, HII no) | Data access | 🟡 |
+| KI-101 | Geo/datacenter IP blocking (BMA yes, HII no; VPN partly helps) | Data access | 🟡 |
 | KI-102 | Navy tide tables: PDF moved (404) and bot challenge | Data access | 🔴 |
 | KI-103 | BMA DDS has no API and isn't mirrored in HII | Data access | 🔴 |
 | KI-104 | Short history retention at sources | Data access | 🟡 |
@@ -16,6 +16,7 @@
 | KI-107 | Traffy data contains personal data; report time ≠ flood time | Data access | 🟡 |
 | KI-108 | Large, slow HII payloads | Data access | 🟡 |
 | KI-109 | Key stations missing from HII (C.29A, Memorial Bridge, Fort Chula) | Data access | 🔴 |
+| KI-207 | Chart-only stations: missing from the main feed, HTTP 500, no coordinates or bank | Data access | 🟡 |
 | KI-201 | Datum mixing (MSL / LLW / gauge zero / EGM2008); LLW offsets unknown | Data quality | 🔴 |
 | KI-202 | DEM vertical error ≫ flood depth | Data quality | ℹ️ |
 | KI-203 | Station code and metadata ambiguity | Data quality | 🔴 |
@@ -34,7 +35,8 @@
 | KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
 | KI-502 | Single server; this host is production | Infrastructure | 🟢 |
 | KI-503 | No license; repository is private | Infrastructure | 🟡 |
-| KI-504 | MVP served via Caddy origin, not a tunnel; no off-site backup yet | Infrastructure | 🟡 |
+| KI-504 | Tunnel live; API token lacks Tunnel/R2 rights; no off-site backup | Infrastructure | 🟡 |
+| KI-505 | Public VPN relay is untrusted and flaky | Infrastructure | 🟡 |
 
 ---
 
@@ -42,6 +44,7 @@
 
 ### KI-101 — Geo/datacenter IP blocking · 🟡
 **Probe (2026-09-26, from Germany):** HII `api-v3` and `tiwrm` work. **All BMA hosts** (`dds.bangkok.go.th`, `weather.bangkok.go.th`) reset the connection, and `www.bangkok.go.th` returns 403. `ews.dwr.go.th` timed out. The earlier claim that HII returns 403 to foreign datacenters is **not** supported. That 403 came from a sandbox with restricted egress.
+**Update 2026-09-26 (D-016):** a Thai VPN egress was tested. Exit 49.48.220.198 (Ayutthaya, TH). **Opens from it:** `ews.dwr.go.th` (timed out from DE), `hydro.navy.mi.th` (bot wall from DE), `dds.bangkok.go.th`. **Still blocked:** `weather.bangkok.go.th` returns an IIS 403 even with a browser User-Agent → an IP-class block on that relay. It's not being evaded; get an owner-controlled Thai host instead.
 **Workaround:**
 - Run the collectors from the production VPS in Singapore or Thailand, and **re-test everything there** (Phase 0).
 - If BMA still blocks the VPS, use a **small collector node on a Thai IP**, as the brief suggests, and **ask BMA for access**.
@@ -89,10 +92,20 @@ The report timestamp is **when someone reported**, not when the water peaked, so
 `waterlevel_load` is ~1.4 MB and takes ~9 s; `rain_24h` is several MB and took >60 s (from Germany). **Workaround:** `Accept-Encoding: gzip`, timeouts ≥120 s, one call per cycle, and **never** on the user request path.
 
 ### KI-109 — Key stations missing from HII · 🔴
-C.29A (Bang Sai), Memorial Bridge / Pak Khlong Talat (C.4 or C.22 ⚠️) and Fort Phra Chulachomklao are **not** in `waterlevel_load`.
+C.29A (Bang Sai), Memorial Bridge / Pak Khlong Talat (C.4 or C.22 ⚠️) and Fort Phra Chulachomklao are **not** in `waterlevel_load`. **Update 2026-09-26:** the HII chart station lists do contain **CPY013 บางไทร** and **GLF001 ป้อมพระจุลจอมเกล้า** (Fort Chula), but their chart data answers HTTP 500 ([KI-207](#ki-207--chart-only-stations--)).
 **Workaround:** find RID and Navy feeds in Phase 0. In the meantime, estimate Bang Sai from C.35 + S.26 with routing, and use CPY015 / C.12 as the Bangkok river references.
 
 ---
+
+### KI-207 — Chart-only stations · 🟡
+**Found 2026-09-26 (owner report "many stations are missing").** The HII chart site (`tiwrm.hii.or.th`) serves stations that `waterlevel_load` doesn't: **162 candidates** in 18 nearby provinces at first count (Bangkok: BKK004, BKK007, BKK011, BKK012, …; Ayutthaya, Chai Nat, Nakhon Sawan: many `ATG*`, `MOU*`, …).
+- **Fixed (D-015):** the `hii_stations` collector added **34** of them, so the focus set went **69 → 104**.
+- **Still open:**
+  - **56 candidates return HTTP 500** from `getGraphFirst` (stable across retries) or contain only `999999`. They include **GLF001 ป้อมพระจุลจอมเกล้า (Fort Chula tide gauge, latest 0.03)**, **CPY013 บางไทร (Bang Sai, latest 1.46)**, BKK004, BKC001 and FROC01. Untested workaround: the page's `POST /getGraph` with a CSRF token; `queryStation` also returns the latest `water1` (no timestamp).
+  - **34 focus stations have no coordinates** (the map feed covers only 107 stations) → listed but not on the map, and excluded from "near me".
+  - **28 focus stations have no bank level** → status "unknown", no recovery estimate.
+  - Chart placeholders `bank=0, ground=0` mean *unknown* (now treated as such).
+- **Not the cause:** BKK021 was already served (the owner's example page); it is critical (2.82 m vs bank 2.20).
 
 ## 2. Data quality and datums
 
@@ -223,5 +236,12 @@ The GitHub repo `bejranonda/flood2026` was created **private** (D-011), and ther
 
 > **Update 2026-09-26 (KI-502):** the owner confirmed there is only one server, so this host is production (D-013). The remaining risks are disk space (~13 GB free, shared with other projects) and BMA blocking the German IP (D-014).
 
-### KI-504 — MVP served via Caddy origin, not a tunnel; no off-site backup · 🟡
-The Cloudflare API token can read tunnels but **can't create them** (403), and the old `CLOUDFLARE_TUNNEL_TOKEN` value is not a real tunnel token. The MVP is therefore served as Cloudflare proxy → **Caddy on :80/:443 of this host, which drops every non-Cloudflare IP** ([infra/Caddyfile](../infra/Caddyfile)), using the self-signed origin cert. It works with Cloudflare SSL modes Full and Flexible. The Cloudflare IP ranges need refreshing now and then (`infra/update-cloudflare-ips.sh`). The raw archive and DB are **only on this disk** until R2 credentials exist. Steps to switch to the tunnel: [HANDOFF.md §4](../HANDOFF.md).
+### KI-504 — Tunnel live; API token lacks Tunnel/R2 rights; no off-site backup · 🟡
+- **Done:** the Cloudflare Tunnel is running (`cloudflared` container, `--url http://app:3000`), the DNS record is a proxied CNAME to the tunnel, ports 80/443 are closed and the Caddy origin is retired. Verified 2026-09-26.
+- **Open:** the `CLOUDFLARE_API_TOKEN` in `.env` is *active* but **can't manage the tunnel** (get-by-id → "Not authorized") and **R2 returns HTTP 403**, although the owner reported adding both permissions. Either a different token was edited, or `.env` still holds the old value.
+- **R2 also needs S3 API credentials** (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`), separate from the API token, and neither exists yet → the raw archive and DB are **only on this disk**.
+- **Fixed:** `CLOUDFLARE_ACCOUNT_ID` in `.env` belonged to another account; the zone and tunnel token belong to account `6914a3…1a45` (corrected).
+- **Legacy:** `infra/Caddyfile` and the `caddy` service (profile `origin`) are no longer used.
+
+### KI-505 — Public VPN relay is untrusted and flaky · 🟡
+The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Risks: the operator can see destinations and unencrypted metadata; the relay can drop or throttle (it needed one restart during testing); its IP class is blocked by some sites; legacy AES-128-CBC/SHA1. **Mitigations:** the proxy is opt-in per request; HTTPS certificates are verified; no credentials or personal data go through it; a watchdog restarts the tunnel; the `.ovpn` is git-ignored. **Better:** an owner-controlled Thai host (SSH SOCKS) or a paid VPN with a Thai exit.

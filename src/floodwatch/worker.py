@@ -18,8 +18,9 @@ TASKS = [
     ("traffy", 600),
     ("hii_rain", 1800),
     ("openmeteo", 3600),
+    ("hii_stations", 6 * 3600),
     ("hii_history", 6 * 3600),
-    ("bma_dds", 1800),
+    ("bma_dds", 3 * 3600),
     ("forecast", 1800),
     ("disk", 3600),
 ]
@@ -59,12 +60,13 @@ def main() -> None:
             log.warning("db not ready (%s), retrying", e)
             time.sleep(2)
     # First run order: latest values -> history -> weather -> forecast.
-    for name in ("hii_waterlevel", "hii_history", "openmeteo", "traffy", "hii_rain", "forecast", "disk"):
+    for name in ("hii_waterlevel", "hii_stations", "hii_history", "openmeteo", "traffy", "hii_rain", "forecast", "disk"):
         run_task(name)
-    next_run = {name: time.time() + interval for name, interval in TASKS}
+    active = [(n, i) for n, i in TASKS if n != "bma_dds" or settings.thai_egress_proxy]
+    next_run = {name: time.time() + interval for name, interval in active}
     while True:
         now = time.time()
-        for name, interval in TASKS:
+        for name, interval in active:
             if now >= next_run[name]:
                 run_task(name)
                 next_run[name] = time.time() + interval

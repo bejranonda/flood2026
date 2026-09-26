@@ -26,18 +26,18 @@
 | Priority | Source | Data | Access | Key | Status | Use in app |
 |---|---|---|---|---|---|---|
 | **P1** | HII ThaiWater public API (สสน.) | Latest WL (805 stations: HII, RID, FOP, EGAT), bank level, **discharge** for RID stations, rain, metadata | JSON | none | ✅ live | Real-time map, model inputs |
-| **P1** | HII chart XHR (`tiwrm.hii.or.th`) | **~30 days of 10-min history per station**; custom ranges via POST | JSON | none | ✅ live | Backfill, charts, tide fitting |
+| **P1** | HII chart site (`tiwrm.hii.or.th`): `queryStation`, `getGraphFirst`, map feed | **+162 stations not in `waterlevel_load`**; ~30 days of 10-min history per station (HTTP 500 for ~56 codes); coordinates only in the map feed (107 stations) | JSON | none | ✅ live / 🟡 partial | Backfill, charts, tide fitting, station coverage ([KI-207](KNOWN_ISSUES.md)) |
 | **P1** | Open-Meteo Forecast + Ensemble | Hourly rain (ECMWF, GFS, ICON…), ensemble members | JSON | none (non-commercial) | ✅ live | Rain forcing, uncertainty |
 | **P1** | Open-Meteo Flood API (GloFAS v4) | Daily discharge 1984→, forecast ≤16 d | JSON | none (non-commercial) | ✅ live | Upstream prior, backfill |
 | **P1** | RID (กรมชลประทาน) | C-stations (partly in HII, **but not C.29A**), dam releases, diversions | Web/PDF | none | 🟡 portals reachable | Upstream boundary, Bang Sai |
 | **P1** | Navy Hydrographic Dept. (กรมอุทกศาสตร์) | Hourly astronomical tide predictions | PDF | none | 🔴 **URL now 404 + bot challenge** | Tide component, fallback to own fit |
-| **P2** | BMA DDS (สำนักการระบายน้ำ) | Khlong and river levels, rain gauges, 3 h nowcast, radar, flow and pump stations | Web pages | none | 🔴 **blocked from non-Thai IPs** | Bangkok khlongs (**not mirrored in HII**) |
+| **P2** | BMA DDS (สำนักการระบายน้ำ) | Khlong and river levels, rain gauges, 3 h nowcast, radar, flow and pump stations | Web pages | none | 🟡 `dds.` opens via the Thai VPN egress; **`weather.bangkok.go.th` returns 403 even from Thailand (IP class)** | Bangkok khlongs (**not mirrored in HII**) |
 | **P2** | Traffy Fondue public API | Citizen flood reports with coordinates, text, photos, state | JSON (undocumented) | none | ✅ live | Validation and "reported nearby" layer (privacy rules, KI-107) |
 | **P2** | TMD (กรมอุตุนิยมวิทยา) | Observations, forecasts, AWS | REST | 🔑 free | 🟡 portal reachable | Observation validation |
 | **P2** | GISTDA API Gateway | Daily satellite flood extent, 2011–2023 recurrence | REST | 🔑 free | 🟡 portal reachable | Flood extent layer, validation |
 | **P2** | Copernicus GFM | Sentinel-1 flood masks | REST | free account | ✅ live (Swagger) | Fallback for GISTDA |
 | **P3** | DEMs (FABDEM, Copernicus GLO-30, GEDTM30); Open-Meteo elevation | Ground elevation | COG / JSON | none | ✅ live (Open-Meteo) | **Probabilistic** depth only (KI-202) |
-| **P3** | DWR EWS, DWR/ONWR PDFs, CCTV | Tributary telemetry, historical tables | Web/PDF | none | ⚠️ `ews.dwr.go.th` timed out from Germany | Backfill C-stations |
+| **P3** | DWR EWS, DWR/ONWR PDFs, CCTV | Tributary telemetry, historical tables | Web/PDF | none | 🟡 `ews.dwr.go.th` timed out from Germany; **200 through the Thai egress** (content not yet explored) | Backfill C-stations |
 | **P3** | Google Flood Hub, NASA GPM IMERG | Forecast cross-check; satellite rain | Web / files | application / Earthdata | ⚠️ | Cross-check, upstream rain |
 
 ---
@@ -68,6 +68,16 @@
 | DEM files | Elevation | Global 30 m | COG | FABDEM, Copernicus GLO-30, GEDTM30 | ✅ doc | static | – | none | **EGM2008 → Ko Lak offset** | FABDEM is non-commercial | RMSE ≥ 1 m in Bangkok | n/a |
 
 ---
+
+### 2b. Thai egress probe (2026-09-26 08:30 UTC, exit 49.48.220.198, Ayutthaya TH, via [D-016](plan/DECISIONS.md))
+| URL | From Germany | Via Thai egress |
+|---|---|---|
+| `https://ews.dwr.go.th/` | timeout | **200** (348 B, to explore) |
+| `https://hydro.navy.mi.th/` | 403 bot challenge | **200** |
+| `…/download/Water_lever69/LLW/TT2026.pdf` | 404 | **404** (URL moved, not blocked) |
+| `https://dds.bangkok.go.th/` | connection reset | **redirect → 200** (news page) |
+| `https://weather.bangkok.go.th/` (+ `StationDetailFlow`) | reset / 403 | **403 IIS "Access is denied"**; a browser UA doesn't change it → IP-class block |
+| `https://tiwrm.hii.or.th/` | 200 | 200 |
 
 ## 3. Refuted endpoints — do **not** use
 

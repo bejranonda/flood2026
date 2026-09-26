@@ -74,3 +74,15 @@
 - **Date:** 2026-09-26 · **Status:** accepted (owner: "We cannot expect the response from government, please find the solutions and alternatives ourselves? proxy, VPN?")
 - **Decision:** use publicly served data now, with attribution and polite polling, without waiting for permission replies. For sources that geo-block non-Thai IPs (BMA), a **Thai egress** is allowed: an SSH SOCKS tunnel to a Thai host the owner controls, or a paid VPN with a Thai exit, set as `THAI_EGRESS_PROXY`. **Still not allowed:** free or open public proxies (tampering and abuse risk), solving bot challenges (Navy site), spoofing identity, or going beyond public pages.
 - **Consequences:** the BMA collector is ready but inactive until a Thai egress exists. Navy tide stays on our own harmonic fits.
+
+### D-015 — Sync the station list from the HII chart site, not only `waterlevel_load`
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "Many stations are missing")
+- **Context:** `waterlevel_load` has 805 stations, but the HII chart site lists **162 more stations** in our provinces (BKK004/007/011/012, ATG\*, MOU\*, …). Verified by calling `queryStation?prov=<Thai province name>` for 18 provinces and diffing against the database.
+- **Decision:** the `hii_stations` collector (every 6 h) lists the chart stations per focus province, fetches each one's 30-day chart series, and adds it as a focus station. Coordinates and bank/ground come from the HII map feed (`json/telemetering/wl/warning`, 107 stations) when present. Chart `bank=0, ground=0` is treated as **unknown**, not zero.
+- **Result:** focus stations 69 → 104. **56 candidates stay unavailable** (chart endpoint answers HTTP 500, or only `999999`), including Fort Chula (GLF001) and Bang Sai (CPY013): tracked in [KI-207](../KNOWN_ISSUES.md) and [HANDOFF §5](../../HANDOFF.md).
+
+### D-016 — Thai egress = OpenVPN sidecar in an isolated network namespace (refines D-014)
+- **Date:** 2026-09-26 · **Status:** accepted (owner added a VPN Gate config: "I have added openvpn from vpngate.net")
+- **Decision:** the `vpn` compose service (profile `vpn`) runs the owner's OpenVPN client plus a small HTTP proxy in **one** container. Only requests that explicitly use `THAI_EGRESS_PROXY=http://vpn:8888` leave through it. **Host routing and SSH are untouched.** A watchdog restarts the tunnel when it stops carrying traffic.
+- **Limits (public relay = untrusted and flaky):** public pages only; **never send credentials, tokens or personal data through it**; HTTPS is always verified; used only for sources that geo-block (BMA/DWR/Navy); no bot-challenge solving; if a site still blocks the relay's IP class (as `weather.bangkok.go.th` does), don't rotate through relays to evade it: get an owner-controlled Thai host instead.
+- **Evidence:** exit IP 49.48.220.198 (Ayutthaya, TH, 3BB); DWR EWS and the Navy home page open from it; BMA `weather.` still 403 ([KI-101](../KNOWN_ISSUES.md)).

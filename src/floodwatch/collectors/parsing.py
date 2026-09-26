@@ -103,8 +103,11 @@ def parse_chart(code: str, rows: list, raw_ref: str) -> tuple[list[dict], float 
     for r in rows or []:
         if not isinstance(r, list) or len(r) < 2:
             continue
-        bank = to_float(r[2]) if len(r) > 2 else bank
-        ground = to_float(r[3]) if len(r) > 3 else ground
+        b = to_float(r[2]) if len(r) > 2 else None
+        g = to_float(r[3]) if len(r) > 3 else None
+        if b == 0 and g == 0:  # chart placeholders for "unknown" (seen at ATG011)
+            b = g = None
+        bank, ground = b if b is not None else bank, g if g is not None else ground
         t = dt.datetime.fromtimestamp(r[0] / 1000.0, tz=dt.timezone.utc)
         level, flag = qc_level(to_float(r[1]), bank, ground)
         out.append({"code": code, "obs_time": t, "level_msl": level, "discharge": None, "situation_level": None,
@@ -163,4 +166,18 @@ def parse_openmeteo(point: str, payload: dict, issue_time: dt.datetime, model: s
         vt = (dt.datetime.fromisoformat(t) - offset).replace(tzinfo=dt.timezone.utc)
         out.append({"point": point, "issue_time": issue_time, "valid_time": vt, "model": model,
                     "precip_mm": to_float(p)})
+    return out
+
+
+def parse_map_feed(rows: list) -> list[dict]:
+    """HII map feed json/telemetering/wl/warning: the only place chart-only stations expose coordinates."""
+    out = []
+    for r in rows or []:
+        code = (r.get("code") or "").strip()
+        lat, lon = to_float(r.get("lat")), to_float(r.get("lng"))
+        if not code or lat in (None, 0.0) or lon in (None, 0.0):
+            continue
+        out.append({"code": code, "name_th": r.get("name"), "lat": lat, "lon": lon,
+                    "bank_msl": to_float(r.get("bank")), "ground_msl": to_float(r.get("ground_level")),
+                    "province": r.get("province_name"), "amphoe": r.get("amphoe_name"), "basin": r.get("basin")})
     return out

@@ -22,6 +22,13 @@
 | Q13 | During the **current event**, do you want an **interim "observed levels only" public page** before the forecasts pass G2? This would be an exception to D-002 | Possible new decision | — |
 | Q14 | If BMA also blocks the VPS, may we run a **small collector on a Thai IP** (e.g. a Thai cloud provider or a home connection), after asking BMA? | BMA khlong coverage | Phase 1 |
 
+## New (2026-09-26, after the tunnel and VPN work)
+| # | Question | Why it matters |
+|---|---|---|
+| Q15 | **Cloudflare token:** which token did you add Tunnel + R2 permissions to? The one in `.env` gets "Not authorized" on the tunnel and 403 on R2. Please re-paste the updated token. | Managing the tunnel via API; R2 |
+| Q16 | **R2 backups:** please create an R2 bucket and an **S3 API token** (Access Key ID + Secret) and put `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET` in `.env`. | Off-site copy of the archive and database |
+| Q17 | **Thai IP for BMA:** the VPN relay reaches `dds.bangkok.go.th`, but `weather.bangkok.go.th` still returns 403. Do you have a Thai server or home connection we can use as an SSH SOCKS exit (`ssh -N -D`)? | BMA khlong data |
+
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
@@ -30,3 +37,7 @@
 | A3 | How far to go with the folder reorganisation | Also scaffold code folders (2026-09-26) | [D-006](DECISIONS.md) |
 | A4 | Infrastructure status | VPS + tunnel live; app not deployed (2026-09-26) | [ARCHITECTURE §1](../ARCHITECTURE.md) |
 | A5 | Should space and time be considered in calculations and models? | Yes, explicitly (2026-09-26) | [D-008](DECISIONS.md) |
+| A6 | Q1 (VPS details) | There is only this single server (2026-09-26) | [D-013](DECISIONS.md) |
+| A7 | Q3 (permissions from agencies) | Don't wait; find alternatives (proxy/VPN/scripts) (2026-09-26) | [D-014](DECISIONS.md), [D-016](DECISIONS.md) |
+| A8 | Q13 (interim public page) | Yes, build everything in parallel and ship now (2026-09-26) | [D-012](DECISIONS.md) |
+| A9 | Q14 (Thai collector node) | The owner added an OpenVPN (VPN Gate, Thailand) config (2026-09-26) | [D-016](DECISIONS.md) |
