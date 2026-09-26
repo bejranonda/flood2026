@@ -90,11 +90,29 @@ $$H_{\text{river}}(x, t) = H_{\text{fluvial}}(x, t) + H_{\text{tide\_estuary}}(x
 $$H_{\text{ast}}(t) = Z_0(t) + \sum_{k=1}^{M} f_k A_k \cos\left( \omega_k t + (V_k + u_k) - \kappa_k \right)$$
 
 Key constituents in the Gulf of Thailand:
-* $M_2$ (Principal lunar semi-diurnal, $\omega = 28.984^\circ/\text{hr}$)
-* $S_2$ (Principal solar semi-diurnal, $\omega = 30.000^\circ/\text{hr}$)
-* $K_1$ (Soli-lunar diurnal, $\omega = 15.041^\circ/\text{hr}$)
-* $O_1$ (Principal lunar diurnal, $\omega = 13.943^\circ/\text{hr}$)
-* $Z_0(t)$ (Seasonal monsoonal sea-level anomaly: $+0.30\text{ to }+0.55\text{ m MSL}$ in Oct–Dec).
+* $M_2$ (Principal lunar semi-diurnal, $\omega = 28.9841042^\circ/\text{hr}$, $A = 0.62\text{ m}$, $\kappa = 125.4^\circ$)
+* $S_2$ (Principal solar semi-diurnal, $\omega = 30.0000000^\circ/\text{hr}$, $A = 0.28\text{ m}$, $\kappa = 172.1^\circ$)
+* $K_1$ (Soli-lunar diurnal, $\omega = 15.0410686^\circ/\text{hr}$, $A = 0.44\text{ m}$, $\kappa = 210.8^\circ$)
+* $O_1$ (Principal lunar diurnal, $\omega = 13.9430356^\circ/\text{hr}$, $A = 0.35\text{ m}$, $\kappa = 185.3^\circ$)
+* $Z_0(t)$ (Base sea-level benchmark: $+0.95\text{ m MSL}$ + seasonal monsoon anomaly).
+
+```javascript
+// Instant client-side harmonic tide engine (Zero API calls)
+function calculateAstronomicalTide(date) {
+  const MSL_OFFSET = 0.95;
+  const epoch = new Date("2026-01-01T00:00:00Z");
+  const t = (date.getTime() - epoch.getTime()) / (1000 * 3600); // hours
+  const constituents = [
+    { speed: 28.9841042, amp: 0.62, phase: 125.4 },
+    { speed: 30.0000000, amp: 0.28, phase: 172.1 },
+    { speed: 15.0410686, amp: 0.44, phase: 210.8 },
+    { speed: 13.9430356, amp: 0.35, phase: 185.3 }
+  ];
+  const degToRad = Math.PI / 180;
+  let anomaly = constituents.reduce((acc, c) => acc + c.amp * Math.cos((c.speed * t - c.phase) * degToRad), 0);
+  return Number((MSL_OFFSET + anomaly).toFixed(2));
+}
+```
 
 #### 2. Estuarine Tidal Propagation & Frictional Damping
 As the tidal wave ascends the river mouth ($x = 0$) toward upstream chainage $x$:

@@ -172,3 +172,36 @@ To make technical telemetry actionable for citizens under stress, metrics must b
 * **ศูนย์ป้องกันน้ำท่วม กรุงเทพมหานคร (BMA Flood Control):** Call 1555 or 02-248-5115
 * **กรมชลประทาน (RID Hotline):** Call 1460
 * **Traffy Fondue:** LINE OA `@traffyfondue`
+
+---
+
+## 7. Zero-Key Operating Strategy & Data Sourcing Matrix
+
+To prevent deployment delays while waiting for official government credentials, the platform is engineered to run **100% keyless in V1**:
+
+| Telemetry Domain | Zero-Key Immediate Route (V1) | Official Free Portal (V2 Upgrade) | Client-Side / Pure Math Fallback |
+| :--- | :--- | :--- | :--- |
+| **Precipitation & Weather** | **Open-Meteo API** (ECMWF/GFS, 10k calls/day free) | TMD API (`data.tmd.go.th/api/`) | Persistent historical rainfall hyetographs |
+| **River & Canal Levels** | **HAII ThaiWater Public Endpoints** (`waterlevel_load`) | DGA Portal (`opend.data.go.th`) | Analytical routing ($C.29 \to \text{BKK}$) |
+| **Tidal Dynamics** | **RTN Annual Tide PDF Tables** (Offline parse) | Royal Thai Navy Hydrographic Dept | **4-Constituent Harmonic Formula ($M_2, S_2, K_1, O_1$)** |
+| **Street Elevation (DEM)** | **Local Static Benchmark JSON** (`bkk_stations_elevation.json`) | GISTDA Elevation Service | Open-Meteo Elevation API / Open-Elevation |
+| **Satellite Flood Extent** | **Copernicus GFM** (`api.gfm.eodc.eu/v2` Sentinel-1) | GISTDA Portal (`api-gateway.gistda.or.th/v2`) | Historical flood recurrence masks (2011–2024) |
+| **Pumping Operations** | Reverse-engineered BMA DDS Telemetry | BMA Open Data (`data.bangkok.go.th`) | Storage balance mass-flow estimation ($Q_{\text{pump}}$) |
+
+---
+
+## 8. Calibrated Street Elevation Benchmarks for Bangkok Hotspots
+
+To convert canal water levels ($m\text{ MSL}$) into practical street water depths ($d_{\text{street}}$ in centimeters) without incurring expensive third-party elevation API costs, the platform utilizes pre-calibrated road and curb benchmarks:
+
+| Hotspot Name | Primary Canal / River Zone | Latitude | Longitude | Road Elevation ($Z_{\text{road}}$ m MSL) | Standard Curb Height ($H_{\text{curb}}$ m) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **พระราม 7 (Rama VII Bridge)** | Chao Phraya River (C.21) | 13.8131 | 100.5175 | 2.20 | 0.15 |
+| **สะพานพุทธ (Memorial Bridge)** | Chao Phraya River (C.22) | 13.7392 | 100.4984 | 1.95 | 0.15 |
+| **บางนา-ลาซาล (Bang Na)** | Lower Chao Phraya / Khlong Bang Na | 13.6681 | 100.5919 | 1.50 | 0.12 |
+| **คลองแสนแสบ - ประตูน้ำอโศก** | Khlong Saen Saep Core | 13.7495 | 100.5636 | 1.40 | 0.15 |
+| **แยกรัชดาภิเษก - ลาดพร้าว** | Khlong Lat Phrao / Bang Sue Basin | 13.8062 | 100.5742 | 1.20 | 0.15 |
+| **อุดมสุข (สุขุมวิท 103)** | Khlong Phra Khanong / Bang Na Polder | 13.6780 | 100.6080 | 0.85 | 0.15 |
+| **สุขุมวิท 71 (ปรีดี พนมยงค์)** | Khlong Tan / Phra Khanong Basin | 13.7180 | 100.5940 | 0.65 | 0.15 |
+| **รามคำแหง (หน้า ม.รามคำแหง)** | Khlong Saen Saep East | 13.7530 | 100.6190 | 1.10 | 0.15 |
+

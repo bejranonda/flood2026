@@ -26,6 +26,7 @@ All endpoints must be re-tested **from the production VPS** before building on t
 3. **BKK008 (user's example) = คลองแสนแสบ บางกะปิ** — a khlong station, i.e. exactly the rain-driven case above.
 4. **Tide matters for everything below Bang Sai.** Royal Thai Navy publishes hourly harmonic predictions (112 constituents) for Chao Phraya stations; 2026 tables exist as PDF.
 5. **HII's official exchange-standard API only guarantees 7 days of history** → start our own archive and backfill **immediately**.
+6. **Zero-Key Architecture (V1):** The system operates keyless using Open-Meteo, client-side astronomical tide harmonics ($M_2, S_2, K_1, O_1$), local static hotspot elevation benchmarks, and public reverse-engineered endpoints. Detailed keyless recipes and free registration portals are in [API_noKey-1.md](API_noKey-1.md) and [API_noKey-2.md](API_noKey-2.md).
 
 ---
 

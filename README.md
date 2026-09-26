@@ -2,11 +2,12 @@
 ### Bangkok & Central Thailand Flood Intelligence & Hydrodynamic Forecasting Platform
 > **ระบบพยากรณ์และเตือนภัยระดับน้ำท่วมขังกรุงเทพมหานครและลุ่มน้ำเจ้าพระยาตอนล่าง (พ.ศ. 2569)**
 
+[![Live Deployment](https://img.shields.io/badge/Live%20Deployment-flood.bejranonda.com-brightgreen.svg)](https://flood.bejranonda.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![Cloudflare: Edge + CDN](https://img.shields.io/badge/Cloudflare-Edge%20%2B%20R2%20%2B%20Tunnel-orange.svg)](https://cloudflare.com/)
-[![Hydroinformatics](https://img.shields.io/badge/Domain-Hydroinformatics%20%26%20Estuarine%20Hydraulics-darkgreen.svg)](#)
+[![Zero-Key Ready](https://img.shields.io/badge/V1%20Launch-Zero--Key%20Ready-success.svg)](#-zero-key-architecture--edge-micro-proxying)
 
 ---
 
@@ -136,7 +137,30 @@ Comprehensive technical guides and operational documentation are organized in [`
 | **[`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md)** | **Bottlenecks & Technical Workarounds:** Thai government API egress 403 firewalls, RTN Navy tide PDF parsing, DDS ASPX scraping, DEM vertical errors (FABDEM vs SRTM), and Cloudflare tunnel gotchas. |
 | **[`docs/GUIDELINES.md`](docs/GUIDELINES.md)** | **Engineering & UX Standards:** Hybrid architecture rules, immutability of raw data, walk-forward testing gates (skill vs persistence), zero-trust security, and citizen communication ethics. |
 | **[`docs/APPROACH_AND_METHODS.md`](docs/APPROACH_AND_METHODS.md)** | **Mathematical Modeling & ML:** Wave celerity equations, tidal harmonic formulation, polder continuity equations, street depth $d_{\text{street}}$, Time-to-Dry $T_{\text{dry}}$, LightGBM quantile regression, and conformal prediction. |
+| **[`research/API_noKey-1.md`](research/API_noKey-1.md)** | **Zero-Key Strategies & Micro-Proxying:** Complete guide to keyless deployment (Open-Meteo, client-side harmonic tides, static hotspot DEM lookup, and Cloudflare Worker CORS proxy). |
+| **[`research/API_noKey-2.md`](research/API_noKey-2.md)** | **Keyless vs Free Registration Portals:** Analysis of instant keyless sources vs free government registrations (TMD, GISTDA, Copernicus GFM, NASA GPM). |
 | **[`research/`](research/)** | Raw research source audits, extraction scripts, and hydrodynamic mathematical whitepapers. |
+
+---
+
+## ⚡ Zero-Key Architecture & Edge Micro-Proxying
+
+The platform does **not require gated government API keys to boot**. Version 1.0 runs completely on keyless feeds and client-side deterministic models:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              ZERO-KEY CLIENT-SIDE STACK (V1)                           │
+├──────────────────────────┬─────────────────────────────────────────────────────────────┤
+│ 1. Rainfall & Forecast   │ Open-Meteo API (Free, keyless, ECMWF/GFS 10k calls/day)     │
+│ 2. Astronomical Tides    │ Pure JS 4-constituent harmonic formula (M2, S2, K1, O1)      │
+│ 3. Street Elevations     │ Curated static benchmark lookup (bkk_stations_elevation.json)│
+│ 4. River/Canal Levels    │ Cloudflare Edge Worker micro-proxy (/api/water-levels)       │
+│ 5. Satellite Flood Maps  │ Copernicus GFM (Sentinel-1 automated radar flood masks)      │
+└──────────────────────────┴─────────────────────────────────────────────────────────────┘
+```
+
+* **Edge Micro-Proxying:** To bypass browser CORS policy restrictions on Thai endpoints, requests route through the Cloudflare edge (`/api/water-levels`), injecting CORS headers and maintaining a 5-minute edge cache (`Cache-Control: public, max-age=300`) to respect government server rate limits.
+* **Progressive Enhancement:** Free official API keys (TMD, GISTDA, DGA) are treated as V2 data upgrades rather than deployment blockers.
 
 ---
 

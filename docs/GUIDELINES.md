@@ -27,6 +27,15 @@ The platform operates on three non-negotiable principles:
    * Primary telemetry agency attribution (HAII, RID, BMA, RTN, TMD).
    * Direct emergency contact numbers (DDPM 1784, BMA Flood Center 1555).
 
+4. **Zero-Key First Architecture Principle:**
+   * **V1 Independence:** The system must boot and deliver full predictive functionality without requiring proprietary or gated API keys.
+   * **Keyless Stack:** Weather via Open-Meteo, astronomical tides via local harmonic calculation, street elevation via curated hotspot JSON (`bkk_stations_elevation.json`), and canal telemetry via public reverse-engineered endpoints.
+   * **Progressive Enhancement:** Official API keys (TMD, GISTDA, DGA) serve as progressive enhancements for V2, not hard deployment blockers.
+
+5. **Edge Micro-Proxy & CORS Compliance:**
+   * Frontend clients must never query external Thai government endpoints directly to avoid browser CORS blocks.
+   * All external telemetry is routed through the Cloudflare edge micro-proxy (`/api/water-levels`) or local VPS backend, applying strict 5-minute caching (`Cache-Control: public, max-age=300`) to safeguard origin servers.
+
 ---
 
 ## 2. Architecture & Hybrid Deployment Standards

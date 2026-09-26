@@ -153,3 +153,38 @@ When establishing Cloudflare Tunnels (`cloudflared`) or deploying edge functions
     * `Zone.Cache Purge`: Purge
 * **Zero-Expose Ingress Rule:**
   The production VPS should **never expose port 80/443 directly to the public internet**. Run `cloudflared tunnel run` locally on the VPS, routing inbound traffic from `flood.yourdomain.com` directly to `http://localhost:3000`. This completely shields the origin server from DDoS attacks and port scanning.
+
+---
+
+## 8. Browser Cross-Origin (CORS) Restrictions on Thai Telemetry Endpoints
+
+### Symptom
+When calling `https://api-v3.thaiwater.net` or `https://weather.bangkok.go.th` directly from frontend browser JavaScript (`fetch()` or `axios`), browsers block the request:
+```text
+Access to fetch at 'https://api-v3.thaiwater.net/...' from origin 'https://flood.bejranonda.com'
+has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+### Technical Complications
+Thai government endpoints do not return permissive wildcard CORS headers (`Access-Control-Allow-Origin: *`). Direct frontend calls will always fail in modern browsers.
+
+### Solution & Workaround
+* **Never call external Thai endpoints directly from frontend clients.**
+* **Deploy Cloudflare Edge Micro-Proxy / Worker:**
+  * Route requests to `https://flood.bejranonda.com/api/water-levels`.
+  * The Cloudflare Worker / VPS backend fetches upstream data with appropriate `User-Agent` headers.
+  * Adds `Access-Control-Allow-Origin: *` and `Cache-Control: public, max-age=300`.
+  * Edge caches the response for 5 minutes, eliminating redundant external queries and protecting against rate limits.
+
+---
+
+## 9. Third-Party Elevation API Throttling & Cost Discrepancy
+
+### Symptom
+Calling commercial elevation services (e.g., Google Elevation API) for every user GPS coordinate query creates recurring API costs and latency spikes (> 1.5 seconds) during flood traffic surges.
+
+### Solution & Workaround
+1. **Pre-Compiled Benchmark Lookup:** Bundle `bkk_stations_elevation.json` covering the top 50 flood-prone road segments in Bangkok with sub-millisecond local RAM lookup.
+2. **Open-Meteo Elevation API:** For points outside the curated benchmark list, query `https://api.open-meteo.com/v1/elevation` (free, keyless).
+3. **Open-Elevation Open-Source Fallback:** Maintain an offline raster lookup using FABDEM COG tiles loaded locally on the VPS.
+
