@@ -67,3 +67,22 @@ def test_categorized_stations_and_stale_filtering():
     assert "LIVE_LOCAL" in near_codes
     assert "STALE_NEAR" not in fc_codes
     assert "STALE_NEAR" not in near_codes
+
+
+def test_point_forecast_synthesis():
+    # Scenario A: High rain and canal warning/critical
+    st_heavy = [
+        {"code": "BKK001", "lat": 13.87, "lon": 100.71, "status": "warning", "stale": False, "river": "คลองหกวา", "trend12": "steady", "delta12_median": 0.01}
+    ]
+    out_heavy = point.assess(13.87, 100.71, st_heavy, 0, {}, 53.0)
+    assert out_heavy["forecast"]["risk"] == "high"
+    assert "เสี่ยงน้ำท่วมขังเพิ่มขึ้น" in out_heavy["forecast"]["title"]
+    assert "53" in out_heavy["forecast"]["desc"]
+
+    # Scenario B: Calm conditions
+    st_calm = [
+        {"code": "BKK002", "lat": 13.87, "lon": 100.71, "status": "normal", "stale": False, "river": "คลองหกวา", "trend12": "steady", "delta12_median": 0.0}
+    ]
+    out_calm = point.assess(13.87, 100.71, st_calm, 0, {}, 2.0)
+    assert out_calm["forecast"]["risk"] == "low"
+    assert "ปกติ" in out_calm["forecast"]["title"]

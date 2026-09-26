@@ -92,9 +92,107 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
 
     combined = stations_forecast + stations_nearby
 
+    fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km)
+
     return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx,
+            "forecast": fc_outlook,
             "stations": combined,
             "stations_forecast": stations_forecast,
             "stations_nearby": stations_nearby,
             "evidence": {"traffy_flood_reports_1km_6h": reports_1km, "user_depth_reports_1km_24h": feedback_depths},
             "rain_next24_mm": rain_next24_mm, "warnings": warnings}
+
+
+def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
+                   rain_24h_mm: float | None, reports_1km: int) -> dict:
+    """Synthesize a forward-looking 12-24h forecast outlook for the clicked point (USP: D-041)."""
+    cat = area.get("category")
+    rain = rain_24h_mm or 0.0
+
+    # Hydrological channel trend from nearest forecastable gauges
+    trends = [s.get("trend12") for s in stations_forecast if s.get("trend12") in ("rising", "falling", "steady")]
+    deltas = [s.get("delta12_median") for s in stations_forecast if s.get("delta12_median") is not None]
+
+    if "rising" in trends or any(d >= 0.04 for d in deltas):
+        channel_trend = "rising"
+    elif "falling" in trends or any(d <= -0.04 for d in deltas):
+        channel_trend = "falling"
+    elif trends or deltas:
+        channel_trend = "steady"
+    else:
+        channel_trend = "unknown"
+
+    rain_round = round(rain)
+
+    # 1. High risk conditions
+    if reports_1km >= STREET_ALERT and rain >= 20:
+        return {
+            "risk": "high",
+            "channel_trend": channel_trend,
+            "title": "เฝ้าระวังน้ำท่วมขังบนถนนต่อเนื่อง",
+            "desc": f"มีรายงานน้ำรอระบายในพื้นที่ และมีฝนตกต่อเนื่อง ~{rain_round} มม. ใน 24 ชม."
+        }
+    if cat in ("critical", "warning") and rain >= 30:
+        return {
+            "risk": "high",
+            "channel_trend": channel_trend,
+            "title": "เสี่ยงน้ำท่วมขังเพิ่มขึ้นจากฝนตกหนัก",
+            "desc": f"คลองรอบจุดอยู่ในระดับสูง (ใกล้เต็ม) รองรับฝนตกหนัก ~{rain_round} มม. ได้จำกัด ระวังน้ำรอระบายบนถนน"
+        }
+    if cat == "critical":
+        return {
+            "risk": "high",
+            "channel_trend": channel_trend,
+            "title": "ระดับน้ำในคลองล้นตลิ่ง/วิกฤต",
+            "desc": "คลองสายหลักรอบจุดนี้ล้นตลิ่ง เฝ้าระวังน้ำเอ่อล้นพื้นที่ลุ่มต่ำริมตลิ่ง"
+        }
+
+    # 2. Moderate risk conditions
+    if channel_trend == "rising" and cat in ("warning", "watch"):
+        rain_str = f" และมีฝน ~{rain_round} มม." if rain >= 15 else ""
+        return {
+            "risk": "moderate",
+            "channel_trend": channel_trend,
+            "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นใน 12 ชม.",
+            "desc": f"สถานีคาดการณ์รอบจุดมีแนวโน้มสูงขึ้น{rain_str} โปรดติดตามสถานการณ์ใกล้ชิด"
+        }
+    if rain >= 35:
+        return {
+            "risk": "moderate",
+            "channel_trend": channel_trend,
+            "title": "เฝ้าระวังน้ำรอระบายจากฝนตกหนัก",
+            "desc": f"คาดการณ์ฝนสะสม ~{rain_round} มม. อาจมีน้ำท่วมขังชั่วคราวบนผิวถนนช่วงฝนตก"
+        }
+    if cat in ("warning", "watch"):
+        rain_str = f" มีฝนคาดการณ์ ~{rain_round} มม." if rain >= 15 else " หากไม่มีฝนตกหนักเพิ่มระดับน้ำจะค่อยๆ ทรงตัว"
+        return {
+            "risk": "moderate",
+            "channel_trend": channel_trend,
+            "title": "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว",
+            "desc": f"คลองยังระบายน้ำได้ต่อเนื่อง{rain_str}"
+        }
+    if channel_trend == "rising":
+        return {
+            "risk": "moderate",
+            "channel_trend": channel_trend,
+            "title": "ระดับน้ำคลองมีแนวโน้มสูงขึ้นเล็กน้อย",
+            "desc": "ระดับน้ำใน 12 ชม. มีแนวโน้มเพิ่มขึ้น แต่ยังอยู่ในเกณฑ์ที่คลองรับน้ำได้"
+        }
+
+    # 3. Low risk conditions
+    if channel_trend == "falling":
+        rain_str = f" ฝนน้อย (~{rain_round} มม.)" if rain < 15 else ""
+        return {
+            "risk": "low",
+            "channel_trend": channel_trend,
+            "title": "ระดับน้ำคลองมีแนวโน้มลดลง",
+            "desc": f"ระดับน้ำในคลองมีแนวโน้มลดลงต่อเนื่อง{rain_str} ความเสี่ยงน้ำล้นต่ำ"
+        }
+
+    # Default calm / steady
+    return {
+        "risk": "low",
+        "channel_trend": channel_trend,
+        "title": "สถานการณ์ปกติ / แนวโน้มทรงตัว",
+        "desc": f"คลองรอบจุดยังรับน้ำได้ดี คาดการณ์ฝนเบาบาง (~{rain_round} มม.) ความเสี่ยงน้ำท่วมต่ำ"
+    }

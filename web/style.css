@@ -159,3 +159,12 @@ a { color: var(--accent); }
 .overview-box .ov-item { padding: 4px 0; line-height: 1.5; }
 .sec-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 6px; font-size: 15px; font-weight: 700; color: var(--ink); }
 .sec-heading .sub { font-size: 12px; font-weight: normal; color: var(--muted); }
+
+/* Point Forecast Outlook Banner (USP: D-041) */
+.forecast-banner { border-radius: 12px; padding: 10px 14px; margin: 8px 0; border: 1px solid var(--line); border-left: 5px solid var(--accent); background: #f0f7ff; }
+.forecast-banner.risk-high { background: #fff5f5; border-color: #fca5a5; border-left-color: var(--critical); }
+.forecast-banner.risk-mod { background: #fffbeb; border-color: #fde68a; border-left-color: var(--warning); }
+.forecast-banner.risk-low { background: #f0fdf4; border-color: #bbf7d0; border-left-color: #16a34a; }
+.forecast-banner .fc-badge { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
+.forecast-banner .fc-title { font-size: 15px; font-weight: 700; color: var(--ink); margin: 2px 0 4px; }
+.forecast-banner .fc-desc { font-size: 13px; color: #374151; line-height: 1.45; }

@@ -276,3 +276,17 @@
   5. **Enhanced Traffy hotspots:** Changed circle styling to `weight: 1, opacity: 0.5, fillColor: "#7b1fa2", fillOpacity: 0.30–0.55` with subtle purple outline, giving instant visual clarity on street flood clusters.
   6. **Ultra-compact 1-line footer & viewport expansion:** Transformed the previously 3-line footer (which consumed ~20% of desktop viewport) into an ultra-compact ~28px flex bar with popover details for methodology/sources. Expanded desktop and mobile map and station card viewport height by 45–50px.
 
+### D-041 — Point forecast outlook synthesis & future trend warning (Core USP)
+- **Date:** 2026-09-26 · **Status:** accepted (owner prompt: "when click coordinate, users might expect short summary of forecasting future trend and warning of the clicked point, this might be our USP")
+- **Evidence & Need:**
+  1. Previously, clicking a point returned raw status of nearby stations and rainfall, but lacked an synthesized outlook of what will happen at this point over the next 12–24 hours.
+  2. BKK FloodWatch's unique advantage over raw government telemetry (ThaiWater / BMA DDS) is forward-looking ML hydrological forecasting and rain integration.
+- **Decision:**
+  1. Implement `point_forecast()` in `src/floodwatch/point.py` that synthesizes:
+     - Canal trend (`rising`, `steady`, `falling`) from nearest forecast models.
+     - Open-Meteo 24h precipitation forecast.
+     - Area channel stress (`normal`, `watch`, `warning`, `critical`).
+     - Real-time citizen street reports (Traffy Fondue).
+  2. Output a structured forecast outlook (`risk`: high/moderate/low, `channel_trend`, `title`, `desc`).
+  3. Render a prominent `.forecast-banner` at the top of the point sheet (`🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า`), immediately informing the user of upcoming flood risk.
+

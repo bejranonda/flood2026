@@ -548,6 +548,18 @@ function pointHTML(d, src, place = "") {
     canalSummary = `<span class="muted">ไม่มีสถานีในระยะ 8 กม.</span>`;
   }
 
+  // Point Forecast Outlook Banner (USP: D-041)
+  const fc = d.forecast || {};
+  const fcRiskClass = fc.risk === "high" ? "risk-high" : fc.risk === "moderate" ? "risk-mod" : "risk-low";
+  const fcIcon = fc.risk === "high" ? "⚠️" : fc.risk === "moderate" ? "🌧️" : "✅";
+
+  const forecastBanner = fc.title ? `
+    <div class="forecast-banner ${fcRiskClass}">
+      <div class="fc-badge">🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า</div>
+      <div class="fc-title">${fcIcon} ${esc(fc.title)}</div>
+      <div class="fc-desc">${esc(fc.desc)}</div>
+    </div>` : "";
+
   // Unified, clean overview card (no long academic walls of text or misleading dead links)
   const overviewCard = `
     <div class="overview-box">
@@ -585,6 +597,7 @@ function pointHTML(d, src, place = "") {
 
   return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : place ? `📌 ${esc(place)}` : "📌 จุดที่เลือก"} <span class="muted">${d.lat}, ${d.lon}</span></h2>
     ${urgentBanner}
+    ${forecastBanner}
     ${overviewCard}
     ${disclaimerBox}
     ${stationListHTML}
