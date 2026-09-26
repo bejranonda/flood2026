@@ -27,8 +27,10 @@
 | KI-209 | HII test gauges (`TEST*`) appear in station lists | Data quality | 🟢 |
 | KI-210 | GLF002 (Tha Chin mouth) values are not m MSL | Data quality | 🟡 (shown, values hidden) |
 | KI-211 | Implausible readings far above bank (sensor ceiling, spikes) | Data quality | 🟢 (flagged) |
-| KI-215 | BMA `warning`/`critical` are operating levels, not banks (⚠️ hypothesis) | Data quality | ⚠️ open (before any BMA use) |
+| KI-215 | BMA `warning`/`critical` are operating levels, not banks (⚠️ hypothesis) | Data quality | 🟢 handled (never used, D-031) |
 | KI-216 | A freeboard of −0.4 cm displayed as "0 cm below the bank" next to "overflowing" | UI | 🟢 fixed |
+| KI-217 | BMA and HII gauges 7–100 m apart disagree by 0.3–0.6 m (level and bank) | Data quality | 🟡 open (handled: never mixed) |
+| KI-218 | BMA data depends on a third-party political relay | Data access | 🟡 accepted (D-031) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -188,8 +190,22 @@ BKK003 (คลองมหาสวัสดิ์ บางกรวย-สว�
 - **UI:** the last plausible value is shown, marked stale, with the note "ค่าล่าสุดผิดปกติ … จึงซ่อนไว้".
 - **Open:** spikes below the ceiling and stuck values within range (flatline and rate-of-change rules still to add, KI-206).
 
-### KI-215 — BMA `warning`/`critical` are not bank levels (⚠️ hypothesis) · open
+### KI-215 — BMA `warning`/`critical` are not bank levels (⚠️ hypothesis) · 🟢 handled in v0.3.0
 In the BMA KlongMap data (via the flood69 relay, 2026-09-26 16:12 UTC), **84 of 199 stations are at or above `critical`**, yet their banks are far higher: WL.BPM.03 has `critical` 0.70 m, `left_bank` 1.91 m, level 1.10 m. So `critical` looks like BMA's **drainage operating target** (the level at which they run pumps), not overflow. ⚠️ Not confirmed by BMA. **Rule before any BMA use:** status and "cm to the bank" come from `min(left_bank, right_bank)`, never from `critical`. Also unconfirmed: that BMA levels are m MSL; check the five co-located pairs with HII gauges (SOURCES §2c) first. At gates, `wl_in` is inside and `wl_out01` outside; don't mix them.
+
+### KI-217 — BMA and HII disagree at the same place · 🟡
+Co-located pairs, latest values on 2026-09-26 ~16:20 UTC:
+
+| Pair (distance) | HII level / bank | BMA level / bank |
+|---|---|---|
+| BKK008 ↔ WL.SSB.06 Saen Saep (76 m) | 1.15 / 0.88 (27 cm over) | 0.53 / 0.65 (12 cm under) |
+| BKK009 ↔ WL.LPT.03 Lam Pla Thio (7 m) | 0.62 / 0.62 (at bank) | 0.96 / 0.50 (46 cm over) |
+| BKK005 ↔ WL.TWW.05 (23 m) | **−1.87** / 1.42 | 1.00 / 1.20 |
+
+Datums, sensor placement or bank definitions differ, and HII's BKK005 value itself looks wrong. **Rule (D-031):** never compare, average or interpolate levels across agencies; status is each gauge against its own bank; the point check mixes only status ranks. **Next:** once a week of BMA history exists, compare the pairs' *changes* (not levels) to see whether they are the same water.
+
+### KI-218 — BMA data comes through a third-party relay · 🟡 accepted
+`flood69.peoplesparty.or.th/api/klongmap` is run by a political party and has no stated licence. If it changes shape the collector fails loudly (< 50 stations) and keeps the last good data; after 24 h the BMA gauges show "unknown". Mitigations: attribution on every BMA detail, a courtesy note (OWNER_ACTIONS), and BMA direct access if a Thai egress ever works (Q17: none available).
 
 ### KI-216 — "0 cm below the bank" next to "overflowing" · 🟢 fixed
 BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded to −0, and `-0 < 0` is false in JavaScript, so the text said "ต่ำกว่าตลิ่ง 0 ซม." under a red "ล้นตลิ่ง" badge. **Fix:** round first; 0 cm reads "ระดับเท่าตลิ่ง".

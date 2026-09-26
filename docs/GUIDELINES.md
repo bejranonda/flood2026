@@ -98,7 +98,9 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
   - every form says it is **not an emergency channel** and shows 1784 / 1555.
 - **Be polite on failures too:** remember endpoints that fail deterministically (e.g. chart HTTP 500s) and retry them once a day, not on every run.
 - **Licensing:** Open-Meteo and FABDEM are non-commercial; a paid plan is needed if the app is monetised ([KI-106](KNOWN_ISSUES.md)).
-- **Attribution** on every screen.
+- **Attribution** on every screen. Relayed data names both the owner and the relay (BMA via flood69, D-031).
+- **Never mix levels across agencies** (KI-217): a BMA level and an HII level at the same place can differ by 0.3–0.6 m. Compare each gauge only with its own bank; combine agencies only as status ranks. Never use BMA `warning`/`critical` as a bank (KI-215).
+- **What users type is private:** place-search queries are never logged, stored or sent anywhere except the geocoder (D-032). The same goes for error messages that might contain them.
 
 ---
 

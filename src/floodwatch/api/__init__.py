@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
-from floodwatch import __version__, ai, db, point
+from floodwatch import __version__, ai, db, geocode, point
 from floodwatch.config import DATUM_SUSPECT, RAIN_POINTS
 from floodwatch.forecast import classify_status
 
@@ -350,6 +350,30 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
     out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1))
     out["rain_point"] = pt
     return _json(out)
+
+
+GEOCODE_PER_HOUR = 30
+_geo_hits: dict[str, list[float]] = {}  # per process, in memory: client hash -> recent call times (never the query)
+
+
+@app.get("/api/geocode")
+def geocode_search(request: Request, q: str = Query(..., min_length=2, max_length=100)):
+    """Find a place (ซอย, ถนน, ย่าน) in the Bangkok region so the point check can open there. OpenStreetMap
+    Nominatim via our server; the query is neither logged nor stored (geocode.py)."""
+    who, now = _client_hash(request), dt.datetime.now().timestamp()
+    recent = [t for t in _geo_hits.get(who, []) if now - t < 3600]
+    if len(recent) >= GEOCODE_PER_HOUR:
+        raise HTTPException(429, "too many searches, please try later")
+    _geo_hits[who] = recent + [now]
+    if len(_geo_hits) > 5000:
+        _geo_hits.clear()
+    try:
+        with db.connect() as c:
+            results = geocode.search(q.strip(), c)
+    except Exception:
+        raise HTTPException(503, "place search unavailable")  # deliberately without the query or the error text
+    return JSONResponse({"results": results, "attribution": "© OpenStreetMap contributors"},
+                        headers={"Cache-Control": "private, max-age=3600"})
 
 
 @app.get("/api/summary")

@@ -33,7 +33,9 @@ const REGIONS = {
   metro: { th: "ปริมณฑล", test: (p) => ["นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"].includes(p) },
   up: { th: "เหนือ กทม.", test: (p) => !["กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"].includes(p) },
 };
-let region = (() => { try { return REGIONS[localStorage.getItem("region")] ? localStorage.getItem("region") : "all"; } catch { return "all"; } })();
+// Default "bkk" (owner, 2026-09-26: "Bangkok as default this week"; revisit 2026-10-03). A tapped choice is remembered.
+const DEFAULT_REGION = "bkk";
+let region = (() => { try { return REGIONS[localStorage.getItem("region")] ? localStorage.getItem("region") : DEFAULT_REGION; } catch { return DEFAULT_REGION; } })();
 const NOTE = {
   datum_suspect: "ค่าระดับน้ำของสถานีนี้ไม่ได้อยู่ในหน่วย ม.รทก. (ตรวจพบค่าผิดปกติ) จึงไม่แสดงค่า",
   no_recent_data: "ไม่มีข้อมูลใหม่เกิน 24 ชม. สถานะจึงเป็น “ไม่ทราบ”",
@@ -90,7 +92,7 @@ function itemHTML(s, extra = "") {
   return `<li class="item s-${esc(s.status)} ${s.stale ? "stale" : ""}" data-code="${esc(s.code)}" tabindex="0">
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
-    <div class="row"><span class="meta">${esc(s.amphoe || "")} ${esc(s.province || "")}</span><span class="fb">${esc(freeboardText(s.freeboard_m))}</span></div>
+    <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(freeboardText(s.freeboard_m))}</span></div>
     <div class="meta">${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null && s.trend12 !== "steady" ? " " + esc(cm(s.delta12_median)) + " ใน 12 ชม." : ""}
       · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
 }
@@ -120,13 +122,38 @@ function renderList() {
   const q = norm(document.getElementById("q").value);
   renderRegions();
   const rows = stations
-    .filter((s) => REGIONS[region].test(s.province || ""))
+    .filter((s) => q || REGIONS[region].test(s.province || ""))  // a search looks in every region
     .filter((s) => !statusFilter || s.status === statusFilter)
     .filter((s) => !q || norm([s.name_th, s.code, s.amphoe, s.province, s.river].join(" ")).includes(q))
     .sort((a, b) => (RANK[a.status] - RANK[b.status]) || ((a.freeboard_m ?? 99) - (b.freeboard_m ?? 99)));
   const ul = document.getElementById("list");
-  ul.innerHTML = rows.map((s) => itemHTML(s)).join("") || "<li class='muted'>ไม่พบสถานีตามเงื่อนไข</li>";
+  const raw = document.getElementById("q").value.trim();
+  const place = raw.length >= 2 ? `<li class="placeq"><button type="button" class="btn placebtn">🔎 ค้นหาสถานที่ “${esc(raw)}” (ซอย ถนน ย่าน)</button><div class="placeres"></div></li>` : "";
+  ul.innerHTML = place + (rows.map((s) => itemHTML(s)).join("") || "<li class='muted'>ไม่พบสถานีชื่อนี้ ลองค้นหาเป็นสถานที่ด้านบน</li>");
+  ul.querySelector(".placebtn")?.addEventListener("click", () => placeSearch(raw));
   bindItems(ul);
+}
+
+// Place search (ซอย/ถนน/ย่าน) for areas without a gauge: our server asks OpenStreetMap Nominatim (Bangkok region
+// only, cached, ≤ 1 request/s) and the result opens the point check. No AI needed: OSM knows sois by name.
+async function placeSearch(q) {
+  const box = document.querySelector("#list .placeres");
+  if (!box) return;
+  box.innerHTML = "<p class='muted'>กำลังค้นหา…</p>";
+  try {
+    const d = await getJSON(`/api/geocode?q=${encodeURIComponent(q)}`);
+    box.innerHTML = d.results.length
+      ? d.results.map((r, i) => `<button type="button" class="btn placehit" data-i="${i}">📌 ${esc(r.name)} <span class="muted">${esc(r.area)}</span></button>`).join("")
+        + "<p class='muted'>© ผู้ร่วมสร้าง OpenStreetMap</p>"
+      : "<p class='muted'>ไม่พบสถานที่นี้ในกรุงเทพฯ และปริมณฑล ลองชื่อซอย ถนน หรือแตะบนแผนที่แทน</p>";
+    box.querySelectorAll(".placehit").forEach((b) => b.addEventListener("click", () => {
+      const r = d.results[+b.dataset.i];
+      if (map) map.setView([r.lat, r.lon], 14);
+      checkPoint(r.lat, r.lon, "pin", r.name);
+    }));
+  } catch (e) {
+    box.innerHTML = `<p class='muted'>ค้นหาไม่สำเร็จ (${esc(e.message)}) ลองอีกครั้ง หรือแตะบนแผนที่แทน</p>`;
+  }
 }
 
 /* ---------- map ---------- */
@@ -365,13 +392,16 @@ async function showDetail(code) {
     const s = d.station, st = STATUS[s.status] || STATUS.unknown, fc = d.forecast;
     const methods = fc ? [...new Set(Object.values(fc.skill || {}).map((k) => k.method))] : [];
     const skill12 = fc?.skill?.["12"];
+    const bma = s.agency === "BMA", unit = bma ? "ม. (หมุด กทม.)" : "ม.รทก.";  // BMA datum unverified vs HII (KI-217)
     box.innerHTML = `<div class="tools"><button class="btn share" aria-label="แชร์">🔗 แชร์</button><button class="btn close" aria-label="ปิด">✕</button></div>
       <h2 id="sheet-title">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></h2>
       <div class="muted">${esc(s.river || "")} · ${esc(s.amphoe || "")} ${esc(s.province || "")} · ${esc(s.agency || "")}</div>
       <p class="headline" style="color:${st.color}">${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}</p>
-      <p class="muted">ระดับน้ำ ${s.level_msl?.toFixed(2) ?? "-"} ม.รทก. · ตลิ่ง ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ม.รทก. ·
+      <p class="muted">ระดับน้ำ ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit} ·
         ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})${s.stale ? " ⚠️ ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว" : ""}</p>
       ${notesText(s) ? `<div class="warnbox">ℹ️ ${esc(notesText(s))}</div>` : ""}
+      ${bma ? `<div class="warnbox">ℹ️ สถานีของสำนักการระบายน้ำ กทม. ดึงผ่านเว็บ <a href="https://flood69.peoplesparty.or.th/#klong" target="_blank" rel="noopener">flood69 (พรรคประชาชน)</a> ซึ่งสำเนาข้อมูล กทม. ทุก 5 นาที ·
+        ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ที่อยู่ใกล้กัน 30–60 ซม. จึงเทียบกับตลิ่งของสถานีนี้เท่านั้น · ประวัติย้อนหลังเริ่มเก็บ 26 ก.ย.</div>` : ""}
       <p class="big">${esc(TREND[s.trend12] || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
@@ -411,7 +441,7 @@ const WARN = {
 const CONF = { medium: "ปานกลาง", low: "ต่ำ", very_low: "ต่ำมาก", none: "ประเมินไม่ได้" };
 let pinMarker = null;
 
-function pointHTML(d, src) {
+function pointHTML(d, src, place = "") {
   const a = d.area, ev = d.evidence;
   const area = a.category && a.confidence === "very_low"
     ? `<div class="box">ข้อมูลรอบจุดนี้<b>น้อยหรือขัดกัน</b> จึงไม่สรุปสภาพพื้นที่ · สถานีในรัศมี 8 กม. (${a.n} สถานี, ใกล้สุด ${a.nearest_km} กม.)
@@ -422,18 +452,19 @@ function pointHTML(d, src) {
         “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” · ความเชื่อมั่น: ${esc(CONF[a.confidence])}</span></div>`
     : `<div class="box">ไม่มีสถานีที่ส่งข้อมูลล่าสุดในรัศมี 8 กม. — <b>ประเมินสภาพน้ำรอบจุดนี้ไม่ได้</b></div>`;
   const depths = Object.entries(ev.user_depth_reports_1km_24h || {}).map(([k, n]) => `${esc(DEPTH[k] || k)} ${Number(n)}`).join(" · ");
-  return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : "📌 จุดที่เลือก"} <span class="muted">${d.lat}, ${d.lon}</span></h2>
+  return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : place ? `📌 ${esc(place)}` : "📌 จุดที่เลือก"} <span class="muted">${d.lat}, ${d.lon}</span></h2>
     ${area}
     <div class="warnbox">${d.warnings.map((w) => `⚠️ ${WARN[w] || esc(w)}`).join("<br>")}</div>
     <p>👥 รอบจุดนี้ (~1 กม.): รายงานน้ำท่วม Traffy ${Number(ev.traffy_flood_reports_1km_6h)} เรื่องใน 6 ชม.
       ${depths ? ` · ผู้ใช้รายงานใน 24 ชม.: ${depths}` : " · ยังไม่มีผู้ใช้รายงานใน 24 ชม."}</p>
     ${d.rain_next24_mm != null ? `<p>🌧️ ฝนคาดการณ์ 24 ชม. บริเวณนี้ ~${Math.round(d.rain_next24_mm)} มม. <span class="muted">(Open-Meteo, ความละเอียดหยาบ)</span></p>` : ""}
+    <p>🚗 ถนนที่ กทม. แจ้งให้เลี่ยง: <a href="https://claude.ai/artifact/N6umcENfSgoY6GMkhVKwZs" target="_blank" rel="noopener">หน้าของ กทม.</a> <span class="muted">(อัปเดตเป็นรอบ ตำแหน่งโดยประมาณ)</span></p>
     <strong>สถานีใกล้จุดนี้</strong>
     <ul class="list">${d.stations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("") || "<li class='muted'>ไม่มีสถานีในรัศมี 15 กม.</li>"}</ul>
     ${feedbackForm(null, { lat: d.lat, lon: d.lon, src })}`;
 }
 
-async function checkPoint(lat, lon, src) {
+async function checkPoint(lat, lon, src, place = "") {
   const sheet = document.getElementById("sheet"), box = document.getElementById("detail");
   sheet.hidden = false;
   box.innerHTML = "<p class='muted'>กำลังโหลด…</p>";
@@ -444,7 +475,7 @@ async function checkPoint(lat, lon, src) {
   }
   try {
     const d = await getJSON(`/api/point?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`);
-    box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div>${pointHTML(d, src)}`;
+    box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div>${pointHTML(d, src, place)}${place ? `<p class="muted">ตำแหน่งจากชื่อสถานที่ (OpenStreetMap) อาจคลาดเคลื่อนได้ แตะบนแผนที่เพื่อเลือกจุดที่ตรงกว่า</p>` : ""}`;
     bindItems(box);
     bindFeedback(box.querySelector(".feedback"));
   } catch (e) {
@@ -502,6 +533,9 @@ function openFromHash() {
 }
 
 document.getElementById("q").addEventListener("input", renderList);
+document.getElementById("q").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); const v = e.target.value.trim(); if (v.length >= 2) placeSearch(v); }
+});
 document.getElementById("gps").addEventListener("click", locate);
 document.querySelectorAll(".tabs [data-tab]").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });

@@ -265,6 +265,26 @@ def traffy() -> dt.datetime | None:
     return max((r["report_time"] for r in rows), default=None)
 
 
+BMA_RELAY = "https://flood69.peoplesparty.or.th/api/klongmap"
+
+
+def bma_klong() -> dt.datetime | None:
+    """BMA khlong gauges (~199, Bangkok) via the People's Party relay, which copies BMA's KlongMap every 5 min.
+    BMA itself is unreachable from this host (SOURCES §2c); the owner chose to use and show the relay (Q24, D-031).
+    Latest values only: history builds up from our own polling. Attribution to BMA and the relay in the UI."""
+    payload, sha = _get_json("bma_klong", BMA_RELAY, retries=1)  # optional layer: never hold the worker loop
+    stations, obs = parsing.parse_bma_klongmap(payload, sha)
+    if len(stations) < 50:  # a relay change or an error page in JSON clothing: keep the last good data
+        raise RuntimeError(f"only {len(stations)} BMA stations in the relay payload")
+    with db.connect() as c:
+        for s in stations:
+            db.upsert_station(c, s)
+        db.insert_observations(c, obs)
+        c.commit()
+    log.info("bma_klong: %d stations, %d readings", len(stations), len(obs))
+    return max((o["obs_time"] for o in obs), default=None)
+
+
 def bma_dds() -> dt.datetime | None:
     """BMA blocks non-Thai IPs (KI-101). Only runs through a configured Thai egress (D-014).
     Archives the raw page so a parser can be written once the real format is visible."""
@@ -279,4 +299,4 @@ def bma_dds() -> dt.datetime | None:
 
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
-                  "openmeteo": openmeteo, "traffy": traffy, "bma_dds": bma_dds}[source])
+                  "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds}[source])

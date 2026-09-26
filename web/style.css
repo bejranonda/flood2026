@@ -124,3 +124,6 @@ a { color: var(--accent); }
 .leaflet-container { cursor: crosshair; }
 .item .note { color: #6d4c00; }
 .legend label { cursor: pointer; }
+.placeq { list-style: none; margin: 0 0 8px; }
+.placebtn, .placehit { width: 100%; text-align: left; min-height: 44px; margin: 0 0 6px; }
+.placehit .muted { display: block; font-size: 12px; }

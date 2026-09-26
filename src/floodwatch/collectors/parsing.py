@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime as dt
 import math
+import re
 from typing import Any
 
 from floodwatch.config import FOCUS_PROVINCES
@@ -184,3 +185,45 @@ def parse_map_feed(rows: list) -> list[dict]:
                     "bank_msl": to_float(r.get("bank")), "ground_msl": to_float(r.get("ground_level")),
                     "province": r.get("province_name"), "amphoe": r.get("amphoe_name"), "basin": r.get("basin")})
     return out
+
+
+BMA_MISSING = -99.0  # BMA KlongMap marks absent readings (e.g. no outside gauge) with -99
+
+
+def _ms_date(v: str | None) -> dt.datetime | None:
+    """BMA/.NET '/Date(1790438700000)/' -> aware UTC datetime (epoch milliseconds)."""
+    m = re.fullmatch(r"/Date\((-?\d+)\)/", v or "")
+    return dt.datetime.fromtimestamp(int(m.group(1)) / 1000, dt.timezone.utc) if m else None
+
+
+def parse_bma_klongmap(payload: dict, raw_ref: str) -> tuple[list[dict], list[dict]]:
+    """BMA DDS KlongMap JSON (as relayed by flood69.peoplesparty.or.th/api/klongmap, SOURCES §2c).
+
+    Stations: `water_station_info` (code WL.xxx.nn, lat/lon, left/right bank). Latest reading: `water_level_last`
+    (`wl_in`; at gates `wl_out01` is the outside level, archived raw only for now). The bank is the lower of the two
+    banks. BMA's `warning`/`critical` are operating levels, not banks, and are deliberately not used (KI-215).
+    Levels are BMA's own datum: never compare them with HII levels directly (KI-217)."""
+    stations: dict[str, dict] = {}
+    obs: list[dict] = []
+    for w in payload.get("waterStation") or []:
+        info, last = w.get("water_station_info"), w.get("water_level_last")
+        if not info or not info.get("water_code"):
+            continue
+        code = info["water_code"].strip()
+        banks = [b for b in (to_float(info.get("left_bank")), to_float(info.get("right_bank"))) if b is not None]
+        bank = min(banks) if banks else None
+        lat, lon = to_float(info.get("latitude")), to_float(info.get("longitude"))
+        stations[code] = {
+            "code": code, "hii_id": None, "name_th": info.get("water_shortname") or info.get("water_name"),
+            "name_en": info.get("water_shortname_en"), "lat": lat if lat else None, "lon": lon if lon else None,
+            "bank_msl": bank, "ground_msl": None, "critical_msl": None, "agency": "BMA",
+            "province": "กรุงเทพมหานคร", "amphoe": None, "river": info.get("river_name"), "basin": None,
+            "in_focus": True, "meta_source": "bma_klongmap"}
+        t = _ms_date((last or {}).get("site_timestamp"))
+        raw = to_float((last or {}).get("wl_in"))
+        if t is None or raw is None or raw == BMA_MISSING:
+            continue
+        level, flag = qc_level(raw, bank, to_float(info.get("bed_bank")))
+        obs.append({"code": code, "obs_time": t, "level_msl": level, "discharge": None, "situation_level": None,
+                    "source": "bma_klongmap", "quality_flag": flag, "raw_ref": raw_ref})
+    return list(stations.values()), obs

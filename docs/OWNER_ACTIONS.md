@@ -13,7 +13,8 @@
 | **GISTDA** | GISTDA API key (`GISTDA_API_KEY` in `.env`) for satellite flood extent | ✅ **configured** (verified in `.env`) | |
 | Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
 | Q10 | Repository license | ✅ **closed** (all rights reserved, no LICENSE added; D-028) | — |
-| Q19 / Q17 / Q22 / Q7 / Q8 / Q11 / Q12 | Decisions and answers (no work) | 🖐️ open | see §3 |
+| BMA | Courtesy note to the flood69 relay (and BMA) that we show their copy of BMA data, with attribution (D-031, KI-218) | ⬜ optional | 3 |
+| Q19 / Q22 / Q7 / Q8 / Q11 / Q12 | Decisions and answers (no work) | 🖐️ open | see §3 |
 | Q15a | Tunnel rights on the API token | ✅ works (verified 11:15 UTC) | |
 | Q20 | Old tunnel `ecd8a7b9…` | ✅ deleted (verified) | |
 | — | New tunnel token, main domain `flood.autobahn.bot`, OpenVPN file, Tunnel edits | ✅ done | |
@@ -71,7 +72,6 @@ You made the repository **public** (seen 2026-09-26 15:20 UTC). I scanned the wh
 | # | Question | Default if you don't answer |
 |---|---|---|
 | **Q19** | Who reads user feedback notes, and how often? A password-protected review page, or is SQL/CLI enough? **Real reports have arrived:** 10 in ~4.5 h from 8 senders (7 "ankle", 3 "knee"; 7 from a map pin; 6 with a note, all classified street-level drainage by the AI triage, none urgent) | Notes stay private in the database; the operator queries SQL ([HANDOFF §3](../HANDOFF.md)) |
-| **Q17** | Do you have a Thai server or home connection we can use as an SSH SOCKS exit (`ssh -N -D`) for BMA sites? The VPN relay is flaky and `weather.bangkok.go.th` still returns 403 | BMA khlong data stays missing |
 | **Q22** | Use Workers AI for **Traffy text labelling** or **Thai voice reports**? May need Workers Paid ($5/month) beyond 10,000 free neurons/day ([APPROACH §3.6](APPROACH_AND_METHODS.md)) | Not used |
 | **Q7** | Alerts by **LINE** or **Web Push**? | No alerts |
 | **Q8** | Show **Buddhist-era (พ.ศ.)** dates? | Day and month only |

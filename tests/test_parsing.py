@@ -57,3 +57,42 @@ def test_level_far_above_bank_is_flagged_not_deleted():
     # BKK003 sat at a 7.45 m ceiling with a 2.07 m bank (+5.4 m); genuine flood maxima were <= +1.9 m.
     assert parsing.qc_level(7.45, 2.07, -3.1) == (7.45, "out_of_range")
     assert parsing.qc_level(4.0, 2.07, -3.1) == (4.0, "ok")
+
+
+def test_bma_klongmap_bank_is_lower_bank_not_critical_and_missing_dropped():
+    # Shape as served by the flood69 relay of BMA KlongMap (2026-09-26); values from WL.BPM.03 and a gate.
+    payload = {"waterStation": [
+        {"water_station_info": None},  # layout-only entries carry no station
+        {"water_station_info": {"water_code": "WL.BPM.03", "water_shortname": "ค.บางพรม ถ.กาญจนาฯ", "latitude": 13.76264,
+                                "longitude": 100.39624, "left_bank": 1.91, "right_bank": 2.0, "bed_bank": -2.0,
+                                "warning": 0.6, "critical": 0.7, "river_name": "คลองบางพรม"},
+         "water_level_last": {"site_timestamp": "/Date(1790438700000)/", "wl_in": 1.1, "wl_out01": -99}},
+        {"water_station_info": {"water_code": "WL.OFF.01", "latitude": 13.7, "longitude": 100.5, "left_bank": 1.0},
+         "water_level_last": {"site_timestamp": "/Date(1790438700000)/", "wl_in": -99}},
+    ]}
+    stations, obs = parsing.parse_bma_klongmap(payload, "sha")
+    s = {x["code"]: x for x in stations}
+    assert s["WL.BPM.03"]["bank_msl"] == 1.91 and s["WL.BPM.03"]["critical_msl"] is None  # KI-215
+    assert s["WL.BPM.03"]["agency"] == "BMA" and "WL.OFF.01" in s  # the station is kept even without a reading
+    assert [(o["code"], o["level_msl"], o["quality_flag"]) for o in obs] == [("WL.BPM.03", 1.1, "ok")]
+    assert obs[0]["obs_time"].isoformat() == "2026-09-26T16:05:00+00:00"
+
+
+def test_geocode_parse_name_area_and_dedup():
+    from floodwatch import geocode
+    rows = [{"display_name": "ซอยลาดพร้าว 71, แขวงจรเข้บัว, เขตลาดพร้าว, กรุงเทพมหานคร, 10230, ประเทศไทย",
+             "lat": "13.8123", "lon": "100.6061"},
+            {"display_name": "ซอยลาดพร้าว 71, แขวงจรเข้บัว", "lat": "13.81231", "lon": "100.60611"},
+            {"display_name": "", "lat": "1", "lon": "2"}, {"display_name": "x"}]
+    assert geocode.parse(rows) == [{"name": "ซอยลาดพร้าว 71", "area": "แขวงจรเข้บัว, เขตลาดพร้าว, กรุงเทพมหานคร",
+                                    "lat": 13.8123, "lon": 100.6061}]
+
+
+def test_geocode_variants_and_rank():
+    from floodwatch import geocode
+    assert geocode.variants("ลาดพร้าว 71") == ["ลาดพร้าว 71", "ซอยลาดพร้าว 71"]
+    assert geocode.variants("ซ.ลาดพร้าว 71") == ["ซอยลาดพร้าว 71"]
+    assert geocode.variants("พหล 24") == ["พหลโยธิน 24", "ซอยพหลโยธิน 24"]
+    assert geocode.variants("สะพานใหม่") == ["สะพานใหม่"]
+    hits = [{"name": "ถนนจรัญสนิทวงศ์"}, {"name": "ซอยลาดพร้าว 71"}]
+    assert geocode.rank(geocode.variants("ลาดพร้าว 71"), hits)[0]["name"] == "ซอยลาดพร้าว 71"

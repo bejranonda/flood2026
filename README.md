@@ -10,16 +10,17 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): v0.2.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). ⚠️ Non-browser clients are still challenged there; `flood.bejranonda.com` works for everyone.
+> **Current status (2026-09-26): v0.3.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). ⚠️ Non-browser clients are still challenged there; `flood.bejranonda.com` works for everyone.
 > **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) (bot challenge, R2 backups, tokens, gate coordinates, license). Status: `python3 scripts/owner_status.py`. (ฉบับทดลอง; alias `flood.bejranonda.com`). ⚠️ The new domain currently shows a Cloudflare bot check to non-browser clients ([KI-506](docs/KNOWN_ISSUES.md)).
 >
 > It collects:
 > - HII telemetry (805 stations in the main feed plus chart-only stations → **111 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya; **every station is on the map or listed**, and misleading values are hidden with a note, with up to **one year** of hourly history);
+> - **BMA khlong gauges (199, Bangkok)** via the People's Party relay of BMA's KlongMap (D-031);
 > - Open-Meteo rain forecasts;
 > - Traffy reports;
 > - **citizen feedback** from the site itself.
 >
-> It keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list, map, the Chao Phraya profile, share links, and a **point check** (tap anywhere: gauges around the pin, citizen reports and warnings; no invented water level). **Cloudflare Workers AI** triages feedback notes in the background, and the site works the same without it. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
+> It keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list (region chips, Bangkok first), **place search** (ซอย/ถนน/ย่าน via OpenStreetMap), map, the Chao Phraya profile, share links, and a **point check** (tap anywhere: gauges around the pin, citizen reports and warnings; no invented water level). **Cloudflare Workers AI** triages feedback notes in the background, and the site works the same without it. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
 
 ---
 
@@ -58,7 +59,9 @@ All workstreams run in parallel during the flood ([D-012](docs/plan/DECISIONS.md
 | Open-Meteo forecast / ensemble / flood (GloFAS) | ✅ live | Rain forcing, upstream prior |
 | RID portals | 🟡 reachable; Bang Sai (C.29A) feed still to find | Upstream boundary, releases |
 | Navy tide tables | 🔴 URL moved + bot challenge → our own harmonic fit as the interim | Tide |
-| BMA DDS / DWR EWS | 🟡 open through the Thai egress (`dds.`, `ews.dwr`); `weather.bangkok.go.th` still 403 | Bangkok khlongs (pending) |
+| BMA KlongMap via flood69 relay | ✅ live since v0.3.0: 199 Bangkok gauges, 5-min copies; BMA direct is unreachable from here | Bangkok khlongs, gates (inside/outside) |
+| BMA DDS / DWR EWS | 🟡 `weather.bangkok.go.th` unreachable (reset / relay can't connect) | — |
+| OSM Nominatim | ✅ place search only, on demand | Find a soi, open the point check |
 | Traffy Fondue public API | ✅ live (privacy rules apply) | Validation, "reported nearby" |
 
 Full registry, including endpoints that were tested and **refuted**: [docs/SOURCES.md](docs/SOURCES.md).

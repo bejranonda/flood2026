@@ -32,6 +32,7 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | `GET /api/profile` | Chao Phraya main-stem gauges north → south with freeboard (no interpolation, D-019) |
 | `GET /api/reports?hours=`, `GET /api/rain` | Aggregated Traffy flood reports (counts per ~1 km cell); Open-Meteo rain totals |
 | `POST /api/feedback`, `GET /api/feedback/summary` | Citizen feedback (private; rate-limited; instant rule-based `urgent` flag) and public counts ([D-020](plan/DECISIONS.md)) |
+| `GET /api/geocode?q=` | Place search (ซอย, ถนน, ย่าน) in the Bangkok region via OSM Nominatim, ≤ 1 req/s across workers, 30/h per visitor, queries never logged ([D-032](plan/DECISIONS.md)) |
 | `GET /api/point?lat=&lon=` | Point check for places without a gauge: area category, nearby gauges, citizen evidence, warnings ([D-021](plan/DECISIONS.md)) |
 | `GET /api/summary` | One deterministic Thai situation sentence (template, not AI) |
 
@@ -48,7 +49,7 @@ The worker task `ai_triage` (every 15 min) sends new feedback notes to Workers A
  │ HII api-v3 + chart XHR    │───────────────►│ collectors/ (one adapter per source)           │
  │ Open-Meteo fcst/ens/flood │   hourly       │   fetch ─► archive raw ─► parse ─► QC flags    │
  │ RID pages/PDF, Traffy     │   daily/yearly │        │            │                          │
- │ BMA DDS* (Thai IP), Navy* │                │        ▼            ▼                          │
+ │ BMA KlongMap via flood69  │                │        ▼            ▼                          │
  └──────────────────────────┘                │  ┌───────────┐  ┌─────────────────────────┐    │     ┌───────────────┐
         * see KNOWN_ISSUES                   │  │ Raw archive│  │ Postgres + Timescale    │    │     │ R2: raw replica│
                                              │  │ gzip+SHA256│─►│ + PostGIS (normalised)  │    │────►│ + DB backups   │

@@ -11,12 +11,7 @@
 | **Q18** | **`autobahn.bot` bot challenge** (`cf-mitigated: challenge`, evidence points to Bot Fight Mode, which WAF rules can't skip): turn Bot Fight Mode off for the zone, upgrade to Pro (Super Bot Fight Mode + Skip), or keep sharing the alias? Then: may we 301 the old domain (`REDIRECT_LEGACY_HOST=1`, built and tested, off)? ([KI-506](../KNOWN_ISSUES.md)) | LINE/Facebook previews, monitors, API users | **1** |
 | RID | **Gate coordinates** (`code,lat,lon`) for the 15 unplaced and 14 approximate stations | Exact map positions, point checks ([KI-207](../KNOWN_ISSUES.md)) | 2 |
 | Q23 | **GLM API Key** (`GLM_API_KEY` in `.env`) when ready for AI triage of citizen feedback notes | Enables background AI classification of feedback notes | 3 |
-| **Q24** | **BMA khlong data via the People's Party relay** (`flood69.peoplesparty.or.th/api/klongmap`, 199 Bangkok gauges, [SOURCES §2c](../SOURCES.md)): use it? If yes, show it (with attribution to BMA and the relay) or only use it internally? Ask BMA/the party first? | Would take Bangkok from 10 to ~200 gauges; third-party, political, no licence | **1** |
-| **Q25** | BMA **"roads to avoid" artifact**: only a link in our app, or nothing? (static hand-made snapshot, approximate positions) | Useful for commuters; not a data feed | 2 |
-| **Q26** | **What should the Bangkok resident see first?** The list now has region chips (ทั้งหมด / กทม. / ปริมณฑล / เหนือ กทม.); default is still "all" (severity sort puts Ayutthaya first) | First-screen relevance vs. hiding the upstream flood wave | 2 |
-| **Q27** | **Who is the app for** in the next two weeks: residents, volunteers/community leaders, or you as an analyst? | Decides whether BMA data goes into the UI, the forecasts, or both | 1 |
 | Q19 | Who reads **feedback notes**, how often; a review page or SQL? (first real report arrived 10:17 UTC) | Feedback is only useful if someone acts on it ([D-020](DECISIONS.md)) | — |
-| Q17 | A **Thai server/home connection** as an SSH SOCKS exit for BMA sites? | BMA khlong data; the VPN relay is flaky | — |
 | Q22 | Workers AI for **Traffy text labelling** or **voice reports**? ($5/month Workers Paid if over the free quota) | Cost vs value ([APPROACH §3.6](../APPROACH_AND_METHODS.md)) | — |
 | Q7 | **Notifications:** LINE or Web Push? | Scope; whether user data must be stored | — |
 | Q8 | Dates in the **Buddhist era (พ.ศ.)**? | UI | — |
@@ -30,6 +25,11 @@
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
+| A22 | Q24: BMA khlong data via the People's Party relay? | **Use and show it**, credit BMA and the relay (2026-09-26) | [D-031](DECISIONS.md) |
+| A23 | Q27: Who is the app for in the next two weeks? | **Bangkok residents** (2026-09-26) | D-031, D-033 |
+| A24 | Q26: Default list region? | **Bangkok, this week**; revisit 2026-10-03 (2026-09-26) | [D-033](DECISIONS.md) |
+| A25 | Q17: A Thai machine as an SSH SOCKS exit for BMA? | **No** (2026-09-26): BMA only via the relay | [D-031](DECISIONS.md) |
+| A26 | Q25: Integrate the BMA road-flood artifact? | Owner asked for advice; answer: **link only** (static hand-made snapshot, approximate positions, private sensor host) (2026-09-26) | [APPROACH §3.7](../APPROACH_AND_METHODS.md) |
 | A1 | How to treat research of uncertain validity | Validate claim by claim, don't blanket-quarantine (2026-09-26) | [D-003](DECISIONS.md) |
 | A2 | Priority for the first weeks | Archive-first, strict phases (2026-09-26) | [D-002](DECISIONS.md) |
 | A3 | How far to go with the folder reorganisation | Also scaffold code folders (2026-09-26) | [D-006](DECISIONS.md) |

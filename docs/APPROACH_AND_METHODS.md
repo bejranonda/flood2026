@@ -300,6 +300,21 @@ Why these and not more: status and trend answer the citizen's question; freshnes
 - Circuit breaker: 3 consecutive failures pause AI for 1 hour.
 - Deterministic rule labels remain active for all feedback reports.
 
+### 3.7 New Bangkok sources (v0.3.0): what they can and cannot do for the model
+**BMA khlong gauges (D-031), used now:**
+- **Display and point check:** 199 gauges inside Bangkok's polders (the list went from 10 to 209 Bangkok gauges). A pin in Sai Mai (near Saphan Mai), the first real place request, now sees BMA's Khlong Song at Phahonyothin 1.8 km away instead of HII's BKK001 at ~3.5 km.
+- **Forecasts:** none yet. The relay serves the latest value only, so history starts with our own polling (2026-09-26 16:30 UTC). The ladder needs `MIN_HOURS` = 7 days, and the tide fit much more; BMA gauges get persistence/trend forecasts from ~2026-10-03.
+- **Gates (45) with inside and outside levels:** the raw archive keeps both; only the inside level (`wl_in`) is stored as the gauge's level. Next, store the outside level too: `outside − inside` is the head across the gate, which says whether gravity drainage is possible (KNOWLEDGE §4.3). That is the missing input for **polder-aware near-me** (§2.10) and for a Regime C drainage model (§8).
+- **BMA's daily tide table** (`dailyheightwater`: two highs and lows per day): an independent check on our harmonic tide fit at the river gauges.
+- **Never** mix BMA and HII levels (KI-217): IDW over status ranks is fine, averaging levels is not.
+
+**Road water levels (the BMA "roads to avoid" page), assessed, not integrated:**
+- *Would it help?* In principle, yes, a lot. Street depth is the quantity residents care about and the one no gauge measures: it would validate the point check (which today only has Traffy counts and our users' depth reports) and could train a rain → street-ponding model per district.
+- *In practice, not from this page:* it is a static page updated by hand (135 district reports from a spreadsheet + 55 sensor readings), positions are geocoded from street names (approximate), and there is no feed or licence. The sensors' own host is a private VPN portal (SOURCES §2c), which we must not touch. Scraping hand-made snapshots gives irregular, unrepeatable data: bad for training, fine for humans.
+- *Decision:* **a link in the point card**, nothing more. If BMA ever publishes the road-sensor feed (55 points, depth in cm), it becomes the best validation set for §2.10: collect it like any gauge, but as depth above road, never converted to m MSL.
+
+**Place search (D-032):** OSM Nominatim, not AI. The point check's 8 km radius was set when Bangkok had 10 gauges; with ~200 it mixes too many (at that Sai Mai pin: 21 gauges from normal to critical → very low confidence, no verdict). **Next:** a density-adaptive radius (e.g. the 5 nearest fresh gauges within 3 km when available), tested against user depth reports before shipping.
+
 ## 4. Derived quantities (shown in the UI and used as features)
 | Quantity | Formula | Notes |
 |---|---|---|

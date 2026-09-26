@@ -1,6 +1,6 @@
 [project]
 name = "floodwatch"
-version = "0.2.1"
+version = "0.3.0"
 description = "BKK FloodWatch 2026 — water-level monitoring and forecasting for Bangkok and the lower Chao Phraya"
 requires-python = ">=3.11"
 dependencies = [

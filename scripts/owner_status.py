@@ -111,9 +111,10 @@ def main() -> None:
     rid = (ROOT / "src/floodwatch/data/station_coords_rid.json").exists()
     rows.append(("RID", "RID gate coordinates imported (exact positions for ATG*/HDA*/TCP*)", "done" if rid else "open",
                  "station_coords_rid.json present" if rid else "not provided"))
-    for qid, title in (("Q17", "Thai server/home connection as SSH SOCKS exit for BMA"), ("Q19", "Who reads user feedback (notes), how often"),
+    for qid, title in (("Q19", "Who reads user feedback (notes), how often"),
                        ("Q7", "Notifications (LINE / Web Push) wanted?"), ("Q22", "Traffy text labelling / voice reports with Workers AI?"),
-                       ("Q3", "Permission mails to HII / BMA / Traffy (optional, D-014)")):
+                       ("Q3", "Permission mails to HII / BMA / Traffy (optional, D-014)"),
+                       ("BMA", "Courtesy note to the flood69 relay / BMA about showing their data (D-031)")):
         rows.append((qid, title, "manual", "answer in chat or in docs/plan/OPEN_QUESTIONS.md"))
 
     if "--json" in sys.argv:

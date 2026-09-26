@@ -50,6 +50,15 @@
 | 25 | A 502 page appeared for a few seconds during a redeploy by a parallel session | Known: a single app container restarts in ~5 s. Not fixed (zero-downtime deploys need two app containers) |
 | 26 | Bangkok has too few gauges for a "my soi" answer (P2) | Needs the BMA khlong network ([SOURCES §2c](SOURCES.md), Q24) |
 
+### Round 4 (2026-09-26 ~16:45 UTC): a real request and the owner's answers (audience: Bangkok residents)
+| # | Finding | Done |
+|---|---|---|
+| 27 | A real user asked for data for their soi in Sai Mai (near Saphan Mai), where water was rising. Searching "สะพานใหม่" found nothing | **Place search**: typing shows "🔎 ค้นหาสถานที่ …"; Enter or tap asks OSM; a soi name without "ซอย" (e.g. "ลาดพร้าว 71") → the soi first; the point check opens there. A search looks in every region |
+| 28 | At that soi the nearest gauge was HII BKK001, ~3.5 km | With BMA gauges: **Khlong Song at Phahonyothin, 1.8 km, 30 cm over its bank**, which matches the report. The area card still says "no verdict" (21 gauges within 8 km disagree): radius to tune (APPROACH §3.7) |
+| 29 | Bangkok first (owner: "Bangkok as default this week") | The list opens on กทม. (209 gauges) |
+| 30 | "Which data is this?" on BMA gauges | Card: "ข้อมูล กทม."; detail: BMA via flood69 credited, unit "ม. (หมุด กทม.)", "compare only with this gauge's bank" |
+| 31 | Commuters: "which roads to avoid?" | Link to BMA's road page in the point card (a snapshot, not a feed) |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

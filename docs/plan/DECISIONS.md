@@ -196,3 +196,17 @@
   - When `GLM_API_KEY` is empty, the system gracefully falls back to deterministic rule-based triage without error.
   - Once the owner populates `GLM_API_KEY` in `.env`, the worker automatically begins classifying feedback notes with `glm-4-flash`.
 
+### D-031 — Use and show BMA khlong gauges via the People's Party relay
+- **Date:** 2026-09-26 · **Status:** accepted (owner, Q24: "a" = use it and show it, crediting BMA and the relay; Q27: the audience is **Bangkok residents**; Q17: no Thai machine is available)
+- **Why:** only 10 of 111 gauges were in Bangkok; BMA's own site is unreachable from this host (SOURCES §2c); the relay serves BMA's KlongMap (199 gauges, 147 of them ≥ 3 km from any HII gauge) every 5 min.
+- **Decision:** collector `bma_klong` (10 min, one attempt, raw payload archived, ≥ 50 stations or the run fails and the last good data stays). Stations `agency=BMA`, codes `WL.xxx.nn`, `in_focus`. **Bank = lower of left/right bank; BMA `warning`/`critical` never used (KI-215). Levels never compared with HII levels (KI-217): each gauge is judged only against its own bank.** The UI credits BMA and the relay on every BMA detail and labels the unit "ม. (หมุด กทม.)".
+- **Risks accepted:** a third-party, political relay without a stated licence may change or vanish (then BMA gauges go "unknown" after 24 h; HII is unaffected). A courtesy note to the relay and BMA is in [OWNER_ACTIONS](../OWNER_ACTIONS.md).
+
+### D-032 — Place search through OpenStreetMap Nominatim, not AI
+- **Date:** 2026-09-26 · **Status:** accepted (a real user asked for data for their soi near สะพานใหม่ and search found nothing; the owner asked whether to put AI in the search bar)
+- **Decision:** `/api/geocode` asks Nominatim (Bangkok region box, `accept-language=th`) **only when the user presses search**, ≤ 1 request/s across workers (Postgres advisory lock), 30 searches/h per visitor, in-memory cache. Thai abbreviations (ซ., ถ., พหล) are expanded, and "name + number" is also tried as "ซอย…" with exact name matches ranked first. The chosen place opens the point check. **Queries are never logged or stored** (people type their own street).
+- **Why not AI:** Nominatim found all three places in the request exactly (tested 16:26 UTC); an LLM would add cost, latency and invented coordinates. AI could later rewrite messy free text into a query, never produce coordinates.
+
+### D-033 — Bangkok is the default list region (this week)
+- **Date:** 2026-09-26 · **Status:** accepted, **revisit 2026-10-03** (owner, Q26: "Bangkok as default this week")
+- **Decision:** the list opens on "กทม."; a tapped region is remembered on the device. A search always looks in every region.

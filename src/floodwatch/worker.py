@@ -16,6 +16,7 @@ log = logging.getLogger("floodwatch.worker")
 TASKS = [
     ("hii_waterlevel", 600),
     ("traffy", 600),
+    ("bma_klong", 600),  # BMA khlong gauges via the flood69 relay (relay refreshes every 5 min)
     ("hii_rain", 1800),
     ("openmeteo", 3600),
     ("hii_stations", 6 * 3600),
@@ -89,7 +90,7 @@ def main() -> None:
             log.warning("db not ready (%s), retrying", e)
             time.sleep(2)
     # First run order: latest values -> history -> weather -> forecast.
-    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "traffy", "hii_rain", "forecast", "disk"):
+    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "traffy", "bma_klong", "hii_rain", "forecast", "disk"):
         run_task(name)
     active = [(n, i) for n, i in TASKS if n != "bma_dds" or settings.thai_egress_proxy]
     next_run = {name: time.time() + interval for name, interval in active}

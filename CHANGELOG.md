@@ -2,9 +2,25 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## Unreleased
-- **Web:** region chips on the list (Bangkok / suburbs / upstream), remembered per device; the footer's sources and methods collapse behind one tap; "ระดับเท่าตลิ่ง" instead of "0 cm below the bank" under an overflow badge (KI-216). `app.js?v=8`, `style.css?v=6`.
-- **Research:** BMA khlong data found via the People's Party relay (199 gauges, not integrated, Q24); BMA road-flood artifact is a static snapshot; its sensor host is private (SOURCES §2c, KI-215).
+## v0.3.0 — 2026-09-26
+Bangkok release: from 10 to 209 Bangkok gauges, and a way to find your soi. Audience: Bangkok residents (owner, Q27).
+
+### Data
+- **BMA khlong gauges (199)** via the People's Party relay of BMA's KlongMap, every 10 min, raw payload archived (D-031). Bank = lower bank; BMA `warning`/`critical` not used (KI-215); never compared with HII levels (KI-217); relay risk KI-218. History starts 2026-09-26 16:30 UTC.
+
+### Web and API
+- **Place search** `/api/geocode` (OSM Nominatim, Bangkok region, ≤ 1 req/s, queries never logged; ซ./ถ./พหล expanded, "name + number" also tried as ซอย) → opens the point check (D-032). No AI needed.
+- **Region chips** (ทั้งหมด / กทม. / ปริมณฑล / เหนือ กทม.), **Bangkok by default this week** (D-033), remembered per device; a search looks everywhere.
+- BMA gauges credited on the card and the detail sheet; unit "ม. (หมุด กทม.)".
+- The footer's sources and methods collapse behind a tap.
+- Link to BMA's "roads to avoid" page in the point card.
+- `app.js?v=10`, `style.css?v=7`.
+
+### Fixes
+- "ต่ำกว่าตลิ่ง 0 ซม." under an overflow badge → "ระดับเท่าตลิ่ง" (KI-216).
+
+### Research
+- BMA KlongMap and road pages unreachable from this host; the BMA road artifact is a static snapshot; its sensor host is a private VPN portal (SOURCES §2c, APPROACH §3.7).
 
 ## v0.2.1 — 2026-09-26
 Patch release: an owner tracker, a safer alias, and a worker fix. **Live at https://flood.autobahn.bot** (alias https://flood.bejranonda.com).
