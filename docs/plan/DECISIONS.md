@@ -274,4 +274,5 @@
      - `stations_nearby`: Top 2–3 closest active local canal/river gauges (deduplicated against forecast).
   4. **Stale gauge suppression:** Gauges with no data > 24 hours are excluded from the point check list.
   5. **Enhanced Traffy hotspots:** Changed circle styling to `weight: 1, opacity: 0.5, fillColor: "#7b1fa2", fillOpacity: 0.30–0.55` with subtle purple outline, giving instant visual clarity on street flood clusters.
+  6. **Ultra-compact 1-line footer & viewport expansion:** Transformed the previously 3-line footer (which consumed ~20% of desktop viewport) into an ultra-compact ~28px flex bar with popover details for methodology/sources. Expanded desktop and mobile map and station card viewport height by 45–50px.
 

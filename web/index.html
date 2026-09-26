@@ -17,7 +17,7 @@
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
 <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=3">
-<link rel="stylesheet" href="/static/style.css?v=11">
+<link rel="stylesheet" href="/static/style.css?v=12">
 </head>
 <body>
 <header class="top">
@@ -60,19 +60,23 @@
 </div>
 
 <footer class="foot">
-  <p>สถานะเทียบกับตลิ่งของสถานี <strong>ไม่ใช่ระดับถนนหรือบ้านของคุณ</strong> · เวลาประเทศไทย</p>
-  <details class="more">
-    <summary>ที่มาของข้อมูลและวิธีคาดการณ์</summary>
-    <p><strong>ที่มาของข้อมูล:</strong> สถาบันสารสนเทศทรัพยากรน้ำ (สสน./HII ThaiWater) รวมข้อมูลกรมชลประทาน ·
-      พยากรณ์ฝน Open-Meteo · รายงานประชาชน Traffy Fondue (วงสีม่วงบนแผนที่ แสดงเป็นจำนวนรวมเท่านั้น)</p>
-    <p><strong>วิธีคาดการณ์:</strong> แต่ละสถานีทดสอบย้อนหลังกับข้อมูลจริงของตัวเอง (ค่าคงที่, ค่าคงที่+น้ำขึ้นน้ำลง,
-      +แนวโน้ม) แล้วเลือกวิธีที่แม่นกว่าการใช้ค่าปัจจุบันเกิน 10% เท่านั้น ช่วงคาดการณ์คำนวณจากความคลาดเคลื่อนจริงในอดีต ·
-      พื้นที่ กทม. สูงต่ำไม่เท่ากัน สถานีที่ใกล้ที่สุดอาจอยู่คนละฝั่งคันกั้นน้ำกับบ้านคุณ</p>
-  </details>
-  <p class="muted">โครงการอาสา ไม่แสวงหากำไร · เวอร์ชัน <span class="ver">-</span> · <a href="/api/docs">API</a> · <a href="/api/health">สถานะระบบ</a></p>
+  <div class="foot-left">
+    <span>⚠️ ระดับเทียบตลิ่ง <strong>ไม่ใช่ระดับถนน</strong></span> · 
+    <details class="more-inline">
+      <summary>ที่มาข้อมูลและวิธีคาดการณ์</summary>
+      <div class="more-popup">
+        <p><strong>ที่มาของข้อมูล:</strong> สถาบันสารสนเทศทรัพยากรน้ำ (สสน./HII ThaiWater) รวมข้อมูลกรมชลประทาน · กทม. (สำนักการระบายน้ำ) · พยากรณ์ฝน Open-Meteo · รายงานประชาชน Traffy Fondue</p>
+        <p><strong>วิธีคาดการณ์:</strong> แต่ละสถานีทดสอบย้อนหลังกับข้อมูลจริงของตัวเอง (ค่าคงที่, ค่าคงที่+น้ำขึ้นน้ำลง, +แนวโน้ม) แล้วเลือกวิธีที่แม่นกว่าการใช้ค่าปัจจุบันเกิน 10% เท่านั้น</p>
+        <p class="muted">พื้นที่ กทม. สูงต่ำไม่เท่ากัน สถานีที่ใกล้ที่สุดอาจอยู่คนละฝั่งคันกั้นน้ำกับบ้านคุณ</p>
+      </div>
+    </details>
+  </div>
+  <div class="foot-right">
+    <span>โครงการอาสา <span class="ver">-</span></span> · <a href="/api/docs">API</a> · <a href="/api/health">สถานะระบบ</a>
+  </div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="/static/app.js?v=20"></script>
+<script src="/static/app.js?v=21"></script>
 </body>
 </html>

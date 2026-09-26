@@ -521,7 +521,7 @@ const WARN = {
   walls_and_polders: "คันกั้นน้ำและประตูระบายน้ำแบ่งพื้นที่ ถ้าอยู่นอกคันริมแม่น้ำให้ดูสถานี “แม่น้ำ” ถ้าอยู่ด้านในให้ดูสถานี “คลอง”",
   gauges_far_or_disagree: "สถานีรอบ ๆ อยู่ไกลหรือให้ผลต่างกันมาก ใช้ประกอบเท่านั้น",
   nearest_gauge_far: "สถานีที่ใกล้ที่สุดอยู่ห่างเกิน 3 กม.",
-  street_flooding_despite_channels: "<b>มีรายงานน้ำท่วมบนถนนรอบจุดนี้</b> แม้น้ำในคลองใกล้เคียงยังต่ำกว่าตลิ่ง: ถนนท่วมจากฝนที่ท่อระบายไม่ทัน ไม่ใช่คลองล้น เชื่อรายงานบนถนนก่อน",
+  street_flooding_despite_channels: "<b>มีรายงานน้ำท่วมขังบนถนนรอบจุดนี้</b> (น้ำรอระบาย) — โปรดระวังการเดินทาง แม้คลองใกล้เคียงยังไม่ล้น",
 };
 const CONF = { medium: "ปานกลาง", low: "ต่ำ", very_low: "ต่ำมาก", none: "ประเมินไม่ได้" };
 let pinMarker = null;
@@ -535,7 +535,7 @@ function pointHTML(d, src, place = "") {
   const staticWarnings = (d.warnings || []).filter((w) => w !== "street_flooding_despite_channels");
 
   const urgentBanner = hasStreetFlood
-    ? `<div class="urgent">🚗 ${WARN.street_flooding_despite_channels}</div>`
+    ? `<div class="urgent">⚠️ ${WARN.street_flooding_despite_channels}</div>`
     : "";
 
   // Concise canal status summary for the area
@@ -548,13 +548,12 @@ function pointHTML(d, src, place = "") {
     canalSummary = `<span class="muted">ไม่มีสถานีในระยะ 8 กม.</span>`;
   }
 
-  // Unified, clean overview card (no long academic walls of text)
+  // Unified, clean overview card (no long academic walls of text or misleading dead links)
   const overviewCard = `
     <div class="overview-box">
       <div class="ov-item">🌊 <b>คลองรอบจุด</b>: ${canalSummary}</div>
       <div class="ov-item">🌧️ <b>ฝน 24 ชม.</b>: ~${d.rain_next24_mm != null ? Math.round(d.rain_next24_mm) : 0} มม. <span class="muted">(Open-Meteo)</span></div>
-      <div class="ov-item">👥 <b>น้ำท่วมถนน (Traffy 1 กม.)</b>: ${ev.traffy_flood_reports_1km_6h ? `<b>${Number(ev.traffy_flood_reports_1km_6h)}</b> เรื่องใน 6 ชม.` : "ไม่มีรายงานใน 6 ชม."}${depths ? ` · แจ้งระดับ: ${depths}` : ""}</div>
-      <div class="ov-item">🚗 <b>จุดน้ำท่วมบนถนน</b>: <a href="https://dds.bangkok.go.th/" target="_blank" rel="noopener">ประกาศเตือน กทม. ↗</a></div>
+      <div class="ov-item">🚗 <b>น้ำท่วมบนถนน (1 กม.)</b>: ${ev.traffy_flood_reports_1km_6h ? `มีแจ้ง <b>${Number(ev.traffy_flood_reports_1km_6h)} จุด</b> (ดูจุดสีม่วงบนแผนที่)` : "ยังไม่มีรายงานใน 6 ชม."}${depths ? ` <span class="muted">· แจ้งระดับ: ${depths}</span>` : ""}</div>
     </div>`;
 
   const disclaimerBox = staticWarnings.length
