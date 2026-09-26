@@ -199,6 +199,12 @@ The owner asked what a user should see when they pin a place that has no station
 6c. **Observed trend ≠ forecast (D-037):** `change_m` is the difference between the latest reading and the earliest reading 1–3 h before it; it is labelled "ที่ผ่านมา" (past) and never extrapolated. The ladder's `trend12` remains the only forward-looking trend.
 6b. **Street reports beat a calm channel picture (D-036):** when ≥ 3 Traffy flood reports lie within ~1 km in 6 h and the area category is normal/watch (or none), the warning `street_flooding_despite_channels` is shown and users are told to trust street reports first. The category itself is not changed: gauges and reports measure different things and are shown side by side.
 7. **Report from the pin:** the feedback form attaches the pin's location with `loc_source = pin` (vs `gps`), so pin reports can be weighted lower. A pin can be placed anywhere.
+8. **Point Forecast Outlook & Trend Synthesis (USP: D-041):** Clicking any coordinate synthesizes a 12–24h forward-looking hydrological and street flood risk forecast (`/api/point` field `forecast`), combining:
+   - Nearest ML channel trends (`trend12` and `delta12_median`)
+   - 24h accumulated precipitation from Open-Meteo
+   - Surrounding channel capacity / stress index (`normal`, `watch`, `warning`, `critical`)
+   - Crowdsourced street flooding reports (Traffy Fondue within 1 km)
+   - Outputs risk category (`high`, `moderate`, `low`), title, and human-readable explanation rendered as an actionable `.forecast-banner` before raw telemetry.
 
 **Not done, and why:** a depth at the pin needs ground elevation. Available DEMs (Copernicus GLO-30/90, FABDEM) have errors ≥ 1–2 m in Bangkok, larger than flood depths (KI-202), and GLO is a surface model (buildings). Planned (§13): polder polygons → the controlling gauge; FABDEM + σ → a probability category; calibrated against user depth reports.
 

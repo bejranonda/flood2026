@@ -34,6 +34,7 @@
 | KI-219 | BMA codes sent to HII's chart endpoint stalled the worker ~1 h | Infrastructure | 🟢 fixed v0.3.2 |
 | KI-220 | Canal "normal" next to flooded streets read as a contradiction; Traffy overloaded | UX / Data access | 🟢 relabelled (D-036); 🟡 Traffy down |
 | KI-221 | Favicon unrecognizable at 16×16 and blends into dark-mode browser tabs | UI / Brand | 🟢 redesigned with Flood Droplet & Wave (D-039) |
+| KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -231,6 +232,14 @@ BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded
   - Redesigned with bold, ultra-simple geometry: vibrant royal blue squircle (`#0284c7` to `#0369a1`) filling the 14×14 area, with ONE bold white wave crest (`#ffffff`) over electric cyan water (`#38bdf8`), directly matching the `🌊` brand.
   - Zero tiny dots, zero rings, zero micro-clutter.
   - 2×2 supersampled pure Python generator in `scripts/generate_favicon.py` outputs `web/favicon.svg`, dual-resolution `web/favicon.ico` (16×16 and 32×32), `web/apple-touch-icon.png` (180×180), and `web/icon-192.png`. Cache-busters bumped to `?v=3`.
+
+### KI-222 — Point check lacked localized 12–24h forecast summary; static BMA link was misleading · 🟢 fixed (D-040, D-041)
+- **Problem (owner UX validation, 2026-09-26):**
+  1. Clicking a coordinate displayed only current canal status and 24h precipitation, missing an actionable forward-looking synthesis ("Will it flood at my location in the next 12–24 hours?").
+  2. The point card included a static link to BMA DDS portal (`dds.bangkok.go.th`) which led to a generic news homepage without specific street flood alerts for the clicked coordinates, creating user confusion.
+- **Resolution:**
+  1. Implemented `point_forecast()` in `src/floodwatch/point.py` synthesizing channel ML trend, rain forcing, canal capacity, and citizen street reports into a prominent `.forecast-banner` (D-041).
+  2. Removed misleading static BMA homepage link; replaced with direct map-guided Traffy status (`🚗 น้ำท่วมบนถนน (1 กม.): มีแจ้ง N จุด (ดูจุดสีม่วงบนแผนที่)`).
 
 ### KI-209 — HII test gauges in station lists · 🟢
 `queryStation` lists test gauges (`TEST02` and three more `TEST*` codes in Bangkok). **Fixed:** `hii_stations` skips `TEST*`, the API filters them out, and the 4 existing rows were set to `in_focus=false`.

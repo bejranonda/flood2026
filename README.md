@@ -10,8 +10,14 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): v0.6.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); the bot challenge is off, so link previews and API clients work. **Point check redesigned (D-040)**: collapsed educational disclaimers, prominent dynamic street flood alerts, stations categorized into 📈 Predictable (12–72h ML forecast) and 📍 Nearest active canal/river gauges, stale stations filtered out, and Traffy street flood hotspots enhanced with high visibility.
-> **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) (gate coordinates, a courtesy note to the BMA relay, decisions). Status: `python3 scripts/owner_status.py`.
+> **Current status (2026-09-26): v0.6.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
+>
+> **Core USP & v0.6.0 Highlights:**
+> - **🔮 Point Forecast Outlook (D-041, Core USP):** Tap any coordinate in Bangkok/BMR to get an instant 12–24h synthesized forecast outlook combining nearest ML channel trends, 24h precipitation, canal drainage capacity, and citizen street reports.
+> - **Categorized Station Detail (D-040):** Stations split into 📈 Predictable (12–72h ML forecast) and 📍 Nearest active canal/river gauges. Stale gauges (>24h inactive) are filtered out.
+> - **Enhanced Street Flooding Hotspots:** Traffy Fondue citizen reports rendered with high contrast over Leaflet map tiles.
+> - **Ultra-compact Footer:** Reclaims ~50px of vertical map viewport.
+> - **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md). Status: `python3 scripts/owner_status.py`.
 >
 > It collects:
 > - HII telemetry (805 stations in the main feed plus chart-only stations → **111 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya; **every station is on the map or listed**, and misleading values are hidden with a note, with up to **one year** of hourly history);
@@ -107,6 +113,54 @@ docker compose run --rm --no-deps worker pytest -q
 ```
 Operations and next steps: [HANDOFF.md](HANDOFF.md).
 
+## 🤖 Agentic & API Integration (Machine-Readable Endpoints)
+
+BKK FloodWatch exposes a clean, unauthenticated REST API designed for autonomous AI agents (Claude, Gemini, Auto-GPT, Perplexity, LangChain), disaster response bots, and civic tech dashboards. No API key is required.
+
+### Key Endpoints for Agents
+
+| Endpoint | Method | Key Parameters | Agent Capability & Use Case |
+|---|---|---|---|
+| `/api/point` | `GET` | `lat` (float), `lon` (float) | **Point flood assessment & 12–24h outlook (USP, D-041)**: Returns synthesized risk level (`high`, `moderate`, `low`), human-readable outlook, nearest canal telemetry, 24h precipitation, and Traffy street flood reports. |
+| `/api/stations` | `GET` | `all` (bool, default `false`) | **Full telemetry network**: Returns 310 telemetry gauges (209 in Bangkok) with latest level, bank margin, observed trends, and ML forecast metadata. |
+| `/api/stations/{code}` | `GET` | `days` (int, default `7`) | **Gauge deep dive**: Hourly historical hydrograph, metadata, and tested quantile forecasts (12h–72h). |
+| `/api/reports` | `GET` | `hours` (int, default `6`) | **Citizen street reports**: Spatial grid of crowdsourced street flooding reports from Traffy Fondue. |
+| `/api/rain` | `GET` | — | **Precipitation nowcast**: 24h and 72h accumulated rainfall forecast across 8 sub-basin points. |
+| `/api/profile` | `GET` | — | **Chao Phraya longitudinal profile**: Chainage (river km) from mouth with real-time water elevation. |
+| `/api/health` | `GET` | — | **Pipeline health**: Telemetry ingest freshness and latency per upstream source. |
+
+### Sample Agent Query: Point Forecast Outlook
+```bash
+curl -s "https://flood.autobahn.bot/api/point?lat=13.8700&lon=100.7170"
+```
+**Response Contract:**
+```json
+{
+  "lat": 13.87,
+  "lon": 100.717,
+  "forecast": {
+    "risk": "high",
+    "channel_trend": "steady",
+    "title": "เสี่ยงน้ำท่วมขังเพิ่มขึ้นจากฝนตกหนัก",
+    "desc": "คลองรอบจุดอยู่ในระดับสูง (ใกล้เต็ม) รองรับฝนตกหนัก ~53 มม. ได้จำกัด ระวังน้ำรอระบายบนถนน"
+  },
+  "area": {
+    "category": "warning",
+    "confidence": "low",
+    "nearest_km": 1.8,
+    "n": 5
+  },
+  "rain_next24_mm": 52.9,
+  "stations_forecast": [...],
+  "stations_nearby": [...],
+  "evidence": {
+    "traffy_flood_reports_1km_6h": 0,
+    "user_depth_reports_1km_24h": {}
+  }
+}
+```
+OpenAPI documentation is available live at [`/api/docs`](https://flood.autobahn.bot/api/docs).
+
 ## Reproduce the source validation
 ```bash
 pip install numpy   # only dependency
@@ -118,12 +172,12 @@ Results depend on the host's country (this host is in Germany; BMA blocks it) ([
 
 | Category | Keywords (EN / TH) |
 |---|---|
-| **Core Domain** | Bangkok flood monitoring, Chao Phraya flood forecasting, water-level prediction, urban flood risk, early warning system, ระบบติดตามน้ำท่วม, พยากรณ์ระดับน้ำ, คาดการณ์น้ำท่วม กรุงเทพมหานคร |
-| **Geographic Coverage** | Bangkok (BMA), lower Chao Phraya river basin, Ayutthaya, Nonthaburi, Pathum Thani, Khlong Saen Saep (คลองแสนแสบ), Khlong Lat Phrao (คลองลาดพร้าว), Gulf of Thailand |
-| **Key Hydrological Stations** | C.2 (Nakhon Sawan), C.13 (Chao Phraya Dam), C.35 (Ayutthaya), C.29A (Bang Sai / บางไทร), Fort Chula (ป้อมพระจุลฯ), BKK008, BKK021 |
-| **Hydrological Phenomena** | The Three Waters (น้ำสามน้ำ): น้ำเหนือ (upstream river discharge), น้ำหนุน (Gulf tidal surge & harmonic tide), น้ำฝน (urban convective precipitation & polder drainage) |
-| **Data Providers** | HII (สสน. / ThaiWater), Royal Irrigation Department (RID / กรมชลประทาน), BMA Department of Drainage and Sewerage (สำนักการระบายน้ำ กทม.), Royal Thai Navy Hydrographic Dept (กรมอุทกศาสตร์ กองทัพเรือ), Open-Meteo GloFAS |
-| **Architecture & Modeling** | Spatio-temporal graph modeling, lag routing, quantile regression, conformal prediction calibration, TimescaleDB, PostGIS, FastAPI, Cloudflare Tunnel & Pages |
+| **Core Domain** | Bangkok flood monitoring, Chao Phraya flood forecasting, water-level prediction, urban flood risk, early warning system, point forecast outlook, ระบบติดตามน้ำท่วม, พยากรณ์ระดับน้ำ, คาดการณ์น้ำท่วม กรุงเทพมหานคร, จุดเสี่ยงน้ำท่วม |
+| **Geographic Coverage** | Bangkok (BMA / กทม.), lower Chao Phraya river basin, Ayutthaya, Nonthaburi, Pathum Thani, Samut Prakan, Khlong Saen Saep (คลองแสนแสบ), Khlong Lat Phrao (คลองลาดพร้าว), Khlong Prem Prachakon (คลองเปรมประชากร), Gulf of Thailand |
+| **Key Hydrological Stations** | C.2 (Nakhon Sawan), C.13 (Chao Phraya Dam), C.35 (Ayutthaya), C.29A (Bang Sai / บางไทร), Fort Chula (ป้อมพระจุลฯ), BKK008, BKK021, WL.SWA.01, WL.PSR.03 |
+| **Hydrological Phenomena** | The Three Waters (น้ำสามน้ำ): น้ำเหนือ (upstream river discharge), น้ำหนุน (Gulf tidal surge & harmonic tide), น้ำฝน (urban convective precipitation & polder drainage), น้ำรอระบาย (street ponding) |
+| **Data Providers** | HII (สสน. / ThaiWater), Royal Irrigation Department (RID / กรมชลประทาน), BMA Department of Drainage and Sewerage (สำนักการระบายน้ำ กทม.), Royal Thai Navy Hydrographic Dept (กรมอุทกศาสตร์ กองทัพเรือ), Traffy Fondue (ทราฟฟี่ฟองดูว์), Open-Meteo GloFAS |
+| **Architecture & Modeling** | Spatio-temporal graph modeling, lag routing, quantile regression, conformal prediction calibration, TimescaleDB, PostGIS, FastAPI, Leaflet, Cloudflare Tunnel, REST API for AI agents |
 
 ## Safety notice and official contacts
 This project **doesn't replace official warnings**. Always follow BMA, DDPM, RID and HII announcements.
