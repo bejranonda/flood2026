@@ -66,6 +66,9 @@ Thumbs.db
 *.swp
 *.swo
 
-# Cloudflare Tunnel credentials
+# Cloudflare Tunnel credentials & TLS certificates
 .cloudflared/
-cert.pem
+certs/
+*.pem
+*.key
+*.crt
