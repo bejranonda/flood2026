@@ -47,3 +47,23 @@ def test_street_reports_override_a_calm_channel_picture():
     assert "street_flooding_despite_channels" in wet["warnings"]
     over = [{**s, "status": "critical"} for s in near]
     assert "street_flooding_despite_channels" not in point.assess(13.766, 100.646, over, 9, {}, None)["warnings"]
+
+
+def test_categorized_stations_and_stale_filtering():
+    # Stations around point:
+    # 1. Nearby but stale -> must be excluded from active recommendations
+    # 2. Nearby live BMA canal gauge without forecast -> should be in stations_nearby
+    # 3. Slightly further station with forecast -> should be in stations_forecast
+    st = [
+        {"code": "STALE_NEAR", "lat": 13.722, "lon": 100.696, "status": "unknown", "stale": True, "river": "คลองประเวศ"},
+        {"code": "LIVE_LOCAL", "lat": 13.725, "lon": 100.698, "status": "warning", "stale": False, "river": "คลองประเวศ", "trend12": "unknown"},
+        {"code": "LIVE_FC", "lat": 13.750, "lon": 100.710, "status": "critical", "stale": False, "river": "คลองแสนแสบ", "trend12": "steady", "delta12_median": 0.02},
+    ]
+    out = point.assess(13.720, 100.695, st, 0, {}, None)
+    fc_codes = [s["code"] for s in out["stations_forecast"]]
+    near_codes = [s["code"] for s in out["stations_nearby"]]
+
+    assert "LIVE_FC" in fc_codes
+    assert "LIVE_LOCAL" in near_codes
+    assert "STALE_NEAR" not in fc_codes
+    assert "STALE_NEAR" not in near_codes

@@ -260,3 +260,18 @@
   3. Asset generator `scripts/generate_favicon.py` rewritten in pure Python with 2×2 supersampling for subpixel antialiasing and zero external runtime dependencies (runs in Docker container without PIL).
   4. Generates `web/favicon.svg`, dual-resolution `web/favicon.ico` (16×16 and 32×32), `web/apple-touch-icon.png` (180×180 on deep oceanic squircle to avoid iOS black background), and `web/icon-192.png` (192×192 PWA). Cache buster bumped to `?v=2` in `web/index.html`.
 
+### D-040 — Point check redesign: collapsible disclaimers, categorized predictable vs local gauges, and enhanced Traffy layer
+- **Date:** 2026-09-26 · **Status:** accepted (owner prompt: "when select point on map, it shows a lot of text in sidebar, collapse which is extended by users; order showing stations, predictable first or categorize; decrease transparency of Traffy hotspots")
+- **Evidence & Problems Identified:**
+  1. The static yellow disclaimer box ("⚠️ นี่ไม่ใช่ระดับน้ำที่จุดนี้...") consumed 35–40% of the viewport on both mobile and desktop, repeating 4 generic educational cautions every time a user clicked any point, pushing actionable data far below the fold.
+  2. After ingesting 199 BMA stations, sorting strictly by distance resulted in the top 5 stations being newly added BMA gauges with no forecast models (`trend12: unknown`), high banks ("ต่ำกว่าตลิ่ง 60 ซม."), or stale data (e.g. `WL.JKK.01` with no data for 2 days). Stations with predictive models (HII/RID gauges) were completely pushed out.
+  3. Traffy flood hotspots on the map were rendered at `fillOpacity: 0.14` with zero stroke (`weight: 0`), rendering them almost invisible against standard OpenStreetMap tiles.
+- **Decision:**
+  1. **Collapsible static disclaimers:** Educational disclaimers are folded into `<details class="point-disclaimer">` with summary "ℹ️ ข้อจำกัดของข้อมูล (สถานีคลอง ≠ ระดับถนนหรือในบ้าน)".
+  2. **Prominent dynamic warnings:** If street flood reports are detected (`street_flooding_despite_channels`), an urgent alert banner is displayed immediately at the top of the card.
+  3. **Categorized station list:** Stations returned by `/api/point` are split into:
+     - `stations_forecast`: Top 2–3 closest stations with active ML forecasts / trend12.
+     - `stations_nearby`: Top 2–3 closest active local canal/river gauges (deduplicated against forecast).
+  4. **Stale gauge suppression:** Gauges with no data > 24 hours are excluded from the point check list.
+  5. **Enhanced Traffy hotspots:** Changed circle styling to `weight: 1, opacity: 0.5, fillColor: "#7b1fa2", fillOpacity: 0.30–0.55` with subtle purple outline, giving instant visual clarity on street flood clusters.
+

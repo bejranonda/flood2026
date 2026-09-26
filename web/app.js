@@ -233,8 +233,8 @@ function renderMap() {
   if (layer) layer.remove();
   layer = L.layerGroup().addTo(map);
   getJSON("/api/reports?hours=6").then((r) => r.cells.forEach(([lat, lon, n]) => {
-    L.circle([lat, lon], { pane: "reports", interactive: false, radius: 150 + 50 * Math.min(n, 20), color: "#7b1fa2",
-      weight: 0, fillOpacity: 0.14 }).addTo(layer);
+    L.circle([lat, lon], { pane: "reports", interactive: false, radius: 150 + 50 * Math.min(n, 20), color: "#6a1b9a",
+      weight: 1, opacity: 0.5, fillColor: "#7b1fa2", fillOpacity: Math.min(0.30 + n * 0.03, 0.55) }).addTo(layer);
   })).catch(() => {});
   const sa = document.getElementById("street-age");
   if (sa) sa.textContent = streetAge();
@@ -537,15 +537,52 @@ function pointHTML(d, src, place = "") {
         “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” · ความเชื่อมั่น: ${esc(CONF[a.confidence])}</span></div>`
     : `<div class="box">ไม่มีสถานีที่ส่งข้อมูลล่าสุดในรัศมี 8 กม. — <b>ประเมินสภาพน้ำรอบจุดนี้ไม่ได้</b></div>`;
   const depths = Object.entries(ev.user_depth_reports_1km_24h || {}).map(([k, n]) => `${esc(DEPTH[k] || k)} ${Number(n)}`).join(" · ");
+
+  // Separate dynamic warnings (street flood alerts) from static educational disclaimers
+  const hasStreetFlood = (d.warnings || []).includes("street_flooding_despite_channels");
+  const staticWarnings = (d.warnings || []).filter((w) => w !== "street_flooding_despite_channels");
+
+  const urgentBanner = hasStreetFlood
+    ? `<div class="urgent">🚗 ${WARN.street_flooding_despite_channels}</div>`
+    : "";
+
+  const disclaimerBox = staticWarnings.length
+    ? `<details class="point-disclaimer">
+        <summary>ℹ️ ข้อจำกัดของข้อมูล (สถานีคลอง ≠ ระดับถนนหรือในบ้าน)</summary>
+        <div class="disclaimer-body">
+          ${staticWarnings.map((w) => `<p>• ${WARN[w] || esc(w)}</p>`).join("")}
+        </div>
+      </details>`
+    : "";
+
+  // Categorize stations: predictable vs nearby
+  const fcStations = d.stations_forecast || (d.stations || []).filter(hasForecast);
+  const fcCodes = new Set(fcStations.map((s) => s.code));
+  const nearbyStations = d.stations_nearby || (d.stations || []).filter((s) => !fcCodes.has(s.code));
+
+  let stationListHTML = "";
+  if (fcStations.length) {
+    stationListHTML += `<div class="sec-heading"><span>📈 สถานีที่มีการคาดการณ์ (12–72 ชม.)</span> <span class="sub">ดูแนวโน้มล่วงหน้า</span></div>
+      <ul class="list">${fcStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("")}</ul>`;
+  }
+  if (nearbyStations.length) {
+    stationListHTML += `<div class="sec-heading"><span>📍 สถานีคลอง/แม่น้ำใกล้จุดนี้</span> <span class="sub">ระดับน้ำเรียลไทม์</span></div>
+      <ul class="list">${nearbyStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("")}</ul>`;
+  }
+  if (!fcStations.length && !nearbyStations.length) {
+    stationListHTML = `<p class="muted">ไม่มีสถานีที่ส่งข้อมูลในรัศมี 15 กม.</p>`;
+  }
+
   return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : place ? `📌 ${esc(place)}` : "📌 จุดที่เลือก"} <span class="muted">${d.lat}, ${d.lon}</span></h2>
+    ${urgentBanner}
     ${area}
-    <div class="warnbox">${d.warnings.map((w) => `⚠️ ${WARN[w] || esc(w)}`).join("<br>")}</div>
-    <p>👥 รอบจุดนี้ (~1 กม.): รายงานน้ำท่วม Traffy ${Number(ev.traffy_flood_reports_1km_6h)} เรื่องใน 6 ชม.
-      ${depths ? ` · ผู้ใช้รายงานใน 24 ชม.: ${depths}` : " · ยังไม่มีผู้ใช้รายงานใน 24 ชม."}</p>
-    ${d.rain_next24_mm != null ? `<p>🌧️ ฝนคาดการณ์ 24 ชม. บริเวณนี้ ~${Math.round(d.rain_next24_mm)} มม. <span class="muted">(Open-Meteo, ความละเอียดหยาบ)</span></p>` : ""}
-    <p>🚗 ถนนที่ กทม. แจ้งให้เลี่ยง: <a href="https://claude.ai/artifact/N6umcENfSgoY6GMkhVKwZs" target="_blank" rel="noopener">หน้าของ กทม.</a> <span class="muted">(อัปเดตเป็นรอบ ตำแหน่งโดยประมาณ)</span></p>
-    <strong>สถานีใกล้จุดนี้</strong>
-    <ul class="list">${d.stations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("") || "<li class='muted'>ไม่มีสถานีในรัศมี 15 กม.</li>"}</ul>
+    ${disclaimerBox}
+    <div class="point-context">
+      <div class="ctx-item">🌧️ <b>ฝนคาดการณ์ 24 ชม.</b>: ~${d.rain_next24_mm != null ? Math.round(d.rain_next24_mm) : 0} มม. <span class="muted">(Open-Meteo)</span></div>
+      <div class="ctx-item">👥 <b>รายงานน้ำท่วม Traffy (~1 กม.)</b>: ${Number(ev.traffy_flood_reports_1km_6h)} เรื่องใน 6 ชม.${depths ? ` · ผู้ใช้แจ้ง: ${depths}` : " · ยังไม่มีผู้ใช้แจ้ง 24 ชม."}</div>
+      <div class="ctx-item">🚗 <b>ถนนที่ กทม. แจ้งให้เลี่ยง</b>: <a href="https://dds.bangkok.go.th/" target="_blank" rel="noopener">ศูนย์ป้องกันน้ำท่วม กทม.</a> · <a href="https://claude.ai/artifact/N6umcENfSgoY6GMkhVKwZs" target="_blank" rel="noopener">สรุปจุดเสี่ยง กทม.</a></div>
+    </div>
+    ${stationListHTML}
     ${feedbackForm(null, { lat: d.lat, lon: d.lon, src })}`;
 }
 

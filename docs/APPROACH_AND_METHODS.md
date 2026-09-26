@@ -186,10 +186,15 @@ The owner asked what a user should see when they pin a place that has no station
    | none | no fresh gauge within 8 km: "ประเมินไม่ได้" |
 
    Example, pin at 13.82, 100.60: only BKK021, 4 km away → very low, no verdict.
-3. **Gauges nearby** (≤ 15 km, up to 5), each labelled **river** (outside the walls) or **khlong** (drainage inside polders). The user is told which kind applies to them.
+3. **Gauges nearby, categorized (D-040):** ≤ 15 km, separated into two clear groups:
+   - **📈 Stations with tested forecasts (12–72 h):** HII/RID gauges with ML forecasts, showing forward-looking trend and delta12.
+   - **📍 Nearest local canal/river gauges:** Active, fresh gauges (e.g. BMA canal sensors) showing real-time water level vs BMA threshold or bank.
+   - Gauges with no data for > 24 hours are suppressed so inactive stations (e.g. `WL.JKK.01`) do not crowd out actionable data.
 4. **Citizen evidence at the pin:** Traffy flood reports within ~1 km in 6 h, and our users' depth reports within ~1 km in 24 h. On the ground these beat any interpolation.
 5. **Rain:** the Open-Meteo total for the next 24 h at the nearest of 8 forecast points, labelled as coarse.
-6. **Warnings, always shown:** not the water level at this point; Bangkok isn't flat; walls and polders separate areas; plus "gauges far or disagreeing" and "nearest gauge > 3 km" when they apply.
+6. **Warnings & Disclaimers (D-040):**
+   - **Dynamic alerts:** when street flood reports conflict with calm canals (`street_flooding_despite_channels`), an urgent prominent alert banner appears at the very top.
+   - **Static disclaimers:** general educational disclaimers (canal ≠ street, Bangkok terrain variation, polders/gates) are collapsed into an expandable `<details>` accordion ("ℹ️ ข้อจำกัดของข้อมูล (สถานีคลอง ≠ ระดับถนนหรือในบ้าน)"), keeping >40% vertical space open for actionable data.
 6d. **Two yardsticks (D-038):** HII/RID status = level vs bank (§4). BMA status = level vs BMA warning/critical (drainage capacity), with over-bank still critical. The point check's area index mixes only status ranks, so the two combine without mixing levels (KI-217).
 6c. **Observed trend ≠ forecast (D-037):** `change_m` is the difference between the latest reading and the earliest reading 1–3 h before it; it is labelled "ที่ผ่านมา" (past) and never extrapolated. The ladder's `trend12` remains the only forward-looking trend.
 6b. **Street reports beat a calm channel picture (D-036):** when ≥ 3 Traffy flood reports lie within ~1 km in 6 h and the area category is normal/watch (or none), the warning `street_flooding_despite_channels` is shown and users are told to trust street reports first. The category itself is not changed: gauges and reports measure different things and are shown side by side.

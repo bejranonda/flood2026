@@ -2,6 +2,18 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.6.0 — 2026-09-26
+- **Point check redesigned for Bangkok resident clarity** (D-040, UX round 6):
+  - **Collapsed static disclaimers:** Educational disclaimers ("นี่ไม่ใช่ระดับน้ำที่จุดนี้...", terrain variation, polders/gates) are collapsed into an expandable `<details class="point-disclaimer">` ("ℹ️ ข้อจำกัดของข้อมูล (สถานีคลอง ≠ ระดับถนนหรือในบ้าน)"), freeing up >40% vertical space on mobile and desktop.
+  - **Prominent dynamic alerts:** When street flood reports conflict with calm canal readings (`street_flooding_despite_channels`), an urgent warning banner is displayed at the very top.
+  - **Categorized station list in point sheet:**
+    - 📈 **สถานีที่มีการคาดการณ์ (12–72 ชม.)**: Shows the nearest 2–3 stations with active ML forecasts (HII/RID gauges with trend and delta12), providing users with forward-looking hydrological trends.
+    - 📍 **สถานีคลอง/แม่น้ำใกล้จุดนี้**: Shows the closest 2–3 active real-time gauges (BMA canal gauges with BMA threshold or bank margins), keeping duplicates out.
+  - **Stale gauge suppression:** Gauges with no data for > 24 hours (such as `WL.JKK.01`) are automatically excluded from the point check recommendations, eliminating dead clutter.
+  - **Traffy flood hotspot visibility:** Increased fill opacity from 0.14 to 0.30–0.55 and added a distinct 1px purple stroke (`#6a1b9a`), making citizen-validated street flood reports immediately visible over map tiles.
+  - API `/api/point` now returns `stations_forecast` and `stations_nearby` alongside the backward-compatible `stations` list.
+  - Cache-busters bumped to `style.css?v=10` and `app.js?v=19`. All 47 tests pass.
+
 ## v0.5.1 — 2026-09-26
 - **Favicon & brand icon modernized for browser tab recognizability** (D-039, KI-221):
   - Solved browser tab visibility failure: the previous dark navy tile (`#0d3b66` to `#061c33`) had zero edge contrast against dark-mode browser tabs (`#202124` / `#1e1e1e`), and 6 micro-details (triple drop, sub-pixel beacon, 1px border, 3 side gauge ticks) collapsed into an unreadable blur at standard 16×16 CSS pixels.

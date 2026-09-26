@@ -73,6 +73,15 @@
 | 37 | Redundant text in a new gauge's sheet | Trend line hidden when the 🆕 box explains it |
 | 41 | Owner: "favicon not easy to recognize on browser, too much detail" (screenshot of 16px tab) | Redesigned with bold "Bold Wave Tile" (D-039): full 14×14 area, bold white wave crest (🌊) on electric cyan water + royal blue, zero micro-dots or rings. Razor-sharp on dark and light tabs |
 
+### Round 6 (2026-09-26 ~19:15 UTC): Point check streamlining, categorized stations & Traffy hotspots (v0.6.0, D-040)
+| # | Finding | Done (v0.6.0, D-040) |
+|---|---|---|
+| 42 | Wall of static text in point sheet ("⚠️ นี่ไม่ใช่ระดับน้ำที่จุดนี้...") pushing data below the fold | Static educational cautions collapsed into `<details class="point-disclaimer">` ("ℹ️ ข้อจำกัดของข้อมูล (สถานีคลอง ≠ ระดับถนนหรือในบ้าน)"); freed up >40% vertical viewport height |
+| 43 | Street flooding warning buried under generic cautions | Dynamic warning `street_flooding_despite_channels` separated into a prominent red/orange alert banner at the top |
+| 44 | Point check flooded with newly ingested BMA gauges lacking predictive models or stale (e.g. `WL.JKK.01` 2 days old) | Stale stations suppressed; point check categorizes stations into **📈 สถานีที่มีการคาดการณ์ (12–72 ชม.)** (HII/RID with ML forecast) and **📍 สถานีคลอง/แม่น้ำใกล้จุดนี้** (active local gauges) |
+| 45 | Traffy flood hotspot circles barely visible on map (`fillOpacity: 0.14`, `weight: 0`) | Opacity boosted to 0.30–0.55 with 1px `#6a1b9a` stroke: crowd-verified street flooding clusters now pop out distinctly on OpenStreetMap tiles |
+| 46 | Dead private artifact link in point card | Linked to official BMA drainage department (`dds.bangkok.go.th`) alongside curated route guidance |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

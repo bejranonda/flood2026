@@ -78,6 +78,23 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
         warnings.append("nearest_gauge_far")
     if reports_1km >= STREET_ALERT and idx.get("category") in ("normal", "watch", None):
         warnings.append("street_flooding_despite_channels")  # canals low, streets flooded: rain vs drains (D-036)
-    return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx, "stations": listed[:5],
+
+    # Filter active stations: exclude stale or unknown stations so dead gauges do not clutter the sheet
+    active = [s for s in listed if not s.get("stale") and s.get("status") not in (None, "unknown")]
+    candidates = active if active else listed
+
+    # Predictable stations: stations with tested forecast / trend12
+    stations_forecast = [s for s in candidates if s.get("trend12") in ("rising", "falling", "steady") or s.get("delta12_median") is not None][:3]
+    fc_codes = {s["code"] for s in stations_forecast}
+
+    # Nearby local stations (avoiding duplicate cards that already appear in forecast)
+    stations_nearby = [s for s in candidates if s["code"] not in fc_codes][:3]
+
+    combined = stations_forecast + stations_nearby
+
+    return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx,
+            "stations": combined,
+            "stations_forecast": stations_forecast,
+            "stations_nearby": stations_nearby,
             "evidence": {"traffy_flood_reports_1km_6h": reports_1km, "user_depth_reports_1km_24h": feedback_depths},
             "rain_next24_mm": rain_next24_mm, "warnings": warnings}
