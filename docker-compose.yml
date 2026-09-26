@@ -1,0 +1,65 @@
+# BKK FloodWatch — single-server stack (D-013). Start: docker compose up -d --build
+name: floodwatch
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: floodwatch
+      POSTGRES_USER: floodwatch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ./data/pg:/var/lib/postgresql/data
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "work_mem=16MB", "-c", "max_connections=40"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U floodwatch"]
+      interval: 10s
+      retries: 10
+    mem_limit: 1g
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "floodwatch.worker"]
+    environment: &appenv
+      DATABASE_URL: postgresql://floodwatch:${POSTGRES_PASSWORD}@db:5432/floodwatch
+      TELEMETRY_ARCHIVE_PATH: /data/raw_archive
+      HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BKK-FloodWatch/0.1 (+https://flood.bejranonda.com)}
+      THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}
+      MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
+    volumes:
+      - ./data/raw_archive:/data/raw_archive
+    depends_on:
+      db: { condition: service_healthy }
+    mem_limit: 1g
+
+  app:
+    build: .
+    restart: unless-stopped
+    command: ["uvicorn", "floodwatch.api:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2", "--proxy-headers"]
+    environment: *appenv
+    ports:
+      - "127.0.0.1:3000:3000"   # local only; public traffic comes through the tunnel
+    depends_on:
+      db: { condition: service_healthy }
+    mem_limit: 512m
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on: [app]
+    profiles: ["public"]
+
+  # Fallback while the API token lacks Tunnel:Edit (KI-501): serve the origin directly, Cloudflare IPs only.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+    depends_on: [app]
+    profiles: ["origin"]

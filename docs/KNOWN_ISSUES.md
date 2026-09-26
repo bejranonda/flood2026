@@ -32,8 +32,9 @@
 | KI-402 | Config contradictions (`.env.example` vs guidelines) | Docs integrity | 🟢 |
 | KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
 | KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
-| KI-502 | Dev host is not the production VPS | Infrastructure | 🔴 |
+| KI-502 | Single server; this host is production | Infrastructure | 🟢 |
 | KI-503 | No license; repository is private | Infrastructure | 🟡 |
+| KI-504 | MVP served via Caddy origin, not a tunnel; no off-site backup yet | Infrastructure | 🟡 |
 
 ---
 
@@ -214,8 +215,13 @@ The old README had:
 ### KI-501 — Cloudflare token scopes and tunnel config · 🟡
 The API token needs: Account → Cloudflare Tunnel: Edit, Workers/Pages: Edit; Zone → DNS: Edit, Cache Purge: Purge. The VPS never exposes 80/443. `cloudflared` routes `flood.bejranonda.com` to `http://127.0.0.1:${PORT}`. The live tunnel's configuration **isn't in this repo yet** (Phase 1/4 → `infra/`).
 
-### KI-502 — Dev host is not the production VPS · 🔴
+### KI-502 — Single server (resolved: this host *is* production) · 🟢
 This repo's working host (`HZ-Agent`) is in **Germany**, with 4 vCPU, 7 GB RAM, **~11 GB free disk** and no `cloudflared`. That isn't enough to hold the archive, and it is blocked by BMA. **Phase 0 tests must run on the production VPS** (region and specs in [OPEN_QUESTIONS](plan/OPEN_QUESTIONS.md)).
 
 ### KI-503 — No license; repository is private · 🟡
 The GitHub repo `bejranonda/flood2026` was created **private** (D-011), and there is no LICENSE file, so all rights are reserved by default. The old README's MIT badge was removed because no license had been chosen. **Before going public:** the owner picks a license ([OPEN_QUESTIONS Q10](plan/OPEN_QUESTIONS.md)), a fresh secrets scan of the full history runs, and permissions from HII, BMA and Traffy are considered (Q3). Third-party data keeps its own terms regardless of the code license ([SOURCES §7](SOURCES.md)).
+
+> **Update 2026-09-26 (KI-502):** the owner confirmed there is only one server, so this host is production (D-013). The remaining risks are disk space (~13 GB free, shared with other projects) and BMA blocking the German IP (D-014).
+
+### KI-504 — MVP served via Caddy origin, not a tunnel; no off-site backup · 🟡
+The Cloudflare API token can read tunnels but **can't create them** (403), and the old `CLOUDFLARE_TUNNEL_TOKEN` value is not a real tunnel token. The MVP is therefore served as Cloudflare proxy → **Caddy on :80/:443 of this host, which drops every non-Cloudflare IP** ([infra/Caddyfile](../infra/Caddyfile)), using the self-signed origin cert. It works with Cloudflare SSL modes Full and Flexible. The Cloudflare IP ranges need refreshing now and then (`infra/update-cloudflare-ips.sh`). The raw archive and DB are **only on this disk** until R2 credentials exist. Steps to switch to the tunnel: [HANDOFF.md §4](../HANDOFF.md).

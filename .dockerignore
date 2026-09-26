@@ -1,0 +1,9 @@
+.git
+data
+certs
+.env
+.env.*
+.remember
+research
+docs
+**/__pycache__

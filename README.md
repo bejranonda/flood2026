@@ -2,15 +2,15 @@
 ### Water-level monitoring and forecasting for Bangkok and the lower Chao Phraya
 > **ระบบติดตามและคาดการณ์ระดับน้ำ กรุงเทพมหานครและลุ่มเจ้าพระยาตอนล่าง (พ.ศ. 2569)**
 
-[![Status: Phase 0](https://img.shields.io/badge/status-Phase%200%20%E2%80%94%20source%20verification-yellow.svg)](docs/plan/PLAN.md)
-[![Infra: Cloudflare Tunnel live](https://img.shields.io/badge/infra-Cloudflare%20Tunnel%20live%2C%20app%20not%20deployed-orange.svg)](docs/ARCHITECTURE.md)
+[![Status: MVP live](https://img.shields.io/badge/status-MVP%20live%20(beta)-brightgreen.svg)](https://flood.bejranonda.com)
+[![Infra: single server + Cloudflare](https://img.shields.io/badge/infra-single%20server%20%2B%20Cloudflare-orange.svg)](HANDOFF.md)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](docs/GUIDELINES.md)
 [![Domain: Hydrology & Flood Forecasting](https://img.shields.io/badge/domain-hydrology%20%26%20flood%20forecast-0077b6.svg)](docs/APPROACH_AND_METHODS.md)
 [![Coverage: Bangkok & Chao Phraya](https://img.shields.io/badge/coverage-Bangkok%20%26%20Chao%20Phraya-023e8a.svg)](docs/KNOWLEDGE.md)
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26):** documentation and plan only; **no runnable code yet**. The VPS and the Cloudflare Tunnel for `flood.bejranonda.com` are live, but the application isn't deployed. Phase 0 (source verification) has started: the first live probes are in [research/VALIDATION_2026-09-26.md](research/VALIDATION_2026-09-26.md). **Next:** repeat the probes from the production VPS and deliver the Phase 0 report ([plan](docs/plan/phase-0-source-verification.md)).
+> **Current status (2026-09-26): MVP live at https://flood.bejranonda.com** (ฉบับทดลอง). It collects HII telemetry (805 stations; 69 in focus), Open-Meteo rain forecasts and Traffy reports, keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands, and shows a Thai map and list. Runs on a single server with `docker compose` ([D-012, D-013](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
 
 ---
 
@@ -60,8 +60,9 @@ docs/        maintained docs: PLAN, SOURCES, KNOWLEDGE, KNOWN_ISSUES, GUIDELINES
   brief/     the original project brief (first_prompt.md)
   plan/      roadmap, phase checklists, DECISIONS, OPEN_QUESTIONS
 research/    research snapshots (claude.ai / Gemini), VALIDATION report, validation/ script
-src/floodwatch/{collectors,archive,db,forecast,api}/   scaffold (READMEs only)
-web/  edge/  infra/  tests/                            scaffold (READMEs only)
+src/floodwatch/{collectors,archive,db,forecast,api}/   Python backend (MVP)
+web/                                                   Thai frontend (vanilla JS + Leaflet)
+infra/ (Caddyfile)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
 ```
 
 ## Documentation
@@ -82,6 +83,15 @@ Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2
 
 ## Configuration
 Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/` and `*.pem` are git-ignored; never commit secrets. v1 needs **no data API keys**. Only Cloudflare and R2 credentials are required; TMD and GISTDA keys are optional.
+
+## Run it
+```bash
+cp .env.example .env    # then set POSTGRES_PASSWORD (and the Cloudflare values if publishing)
+docker compose up -d --build                      # db + worker + app on 127.0.0.1:3000
+docker compose --profile origin up -d caddy       # public origin behind Cloudflare (Cloudflare IPs only)
+docker compose run --rm --no-deps worker pytest -q
+```
+Operations and next steps: [HANDOFF.md](HANDOFF.md).
 
 ## Reproduce the source validation
 ```bash

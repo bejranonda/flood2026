@@ -76,6 +76,7 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
 ---
 
 ## 5. Data-source etiquette and legal (D-004)
+- **Owner decision D-014 (2026-09-26):** don't wait for agency replies. For geo-blocked **public** data, a Thai egress the owner controls (SSH SOCKS or a paid VPN) is allowed. Free public proxies and bot-challenge solving are not.
 - **Identify honestly:** `User-Agent: BKK-FloodWatch/<version> (+https://flood.bejranonda.com; <contact>)`. **Never spoof a browser**, rotate proxies, or otherwise get around blocks, bot challenges or rate limits. If blocked, ask the agency or use the approved Thai collector node ([KI-101](KNOWN_ISSUES.md)).
 - **Be polite:** poll no more often than the source updates (≥10 min for telemetry), cache aggressively, and back off under errors. Their servers are under flood load too.
 - **Respect ToS and robots.txt.** Ask HII, BMA and BMA/NECTEC (Traffy) for permission before public redistribution.

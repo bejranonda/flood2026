@@ -76,3 +76,6 @@ certs/
 *.pem
 *.key
 *.crt
+
+# Local .env backups (contain secrets)
+.env.backup*

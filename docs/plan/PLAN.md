@@ -1,7 +1,7 @@
 # PLAN.md — Roadmap, phase gates and status
 
 > **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-26
-> **Mode:** archive-first, **strict phase gates**. Each phase ends with a report and **stops until the owner approves** (D-002).
+> **Mode (since 2026-09-26, D-012):** all workstreams run **in parallel**. An interim public MVP is live at https://flood.bejranonda.com. Gates G0–G4 are now quality reviews, not blockers. Current state and next steps: [HANDOFF.md](../../HANDOFF.md).
 > **Brief:** [docs/brief/first_prompt.md](../brief/first_prompt.md) (the "Option 2" prompt plus the updated Phase 1 and Phase 4)
 
 ## Where we are
@@ -11,8 +11,12 @@
 | Documentation reorganised and reconciled; research validated claim by claim | ✅ 2026-09-26 |
 | Infrastructure: VPS + Cloudflare Tunnel for flood.bejranonda.com | ✅ live (owner-reported); app not deployed |
 | Code hosting: [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) | ✅ published **private** 2026-09-26 ([D-011](DECISIONS.md)) |
-| **Phase 0 — source verification** | 🟡 **started**: first probes done from the dev host (Germany). **Still needed: the same tests from the production VPS, then the report** |
-| Phases 1–4 | ⏳ not started |
+| **MVP live** (collectors, raw archive, Postgres, baseline forecasts, API, Thai web) | ✅ 2026-09-26, https://flood.bejranonda.com (D-012, D-013) |
+| Phase 0 — sources | 🟡 HII, Open-Meteo and Traffy in production; BMA needs a Thai egress (D-014); RID C.29A and the Navy tide are still open |
+| Phase 1 — ingestion | 🟡 running; missing: R2 off-site backup, deeper backfill |
+| Phase 2 — forecasting | 🟡 L0/L1 + damped trend with backtest and conformal bands; L3–L5 are next |
+| Phase 3 — web | 🟡 MVP live; polder-aware "near me" and model page are next |
+| Phase 4 — ops | 🟡 Caddy origin (Cloudflare-only); tunnel, monitoring alerts and backups are next (KI-504) |
 
 ## Phases and gates
 

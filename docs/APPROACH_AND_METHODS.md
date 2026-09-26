@@ -150,6 +150,15 @@ Gaps: short gaps (≤ 30 min) can be interpolated for features, with a flag. Lon
 
 ---
 
+### 3.3 What the live MVP implements (2026-09-26, [forecast/](../src/floodwatch/forecast/__init__.py))
+- Candidates per station: **L0 persistence**, **L1 persistence + tide** (harmonic K1, O1, M2, S2, M4, MS4 fitted by least squares on the station's own 25 h-detrended data; only when ≥ 15 days of hourly data exist), and **L1 + damped 24 h trend** (trend only, for non-tidal stations).
+- **Rolling-origin backtest** on the last 40 % of up to 35 days, horizons 1, 3, 6, 12, 24, 48, 72 h. The best candidate is served **only if its skill vs persistence is > 0.10**, otherwise persistence.
+- **Intervals:** split-conformal, as empirical 5/25/50/75/95 % quantiles of the chosen method's backtest errors, interpolated between horizons. There are no intervals when the backtest has fewer than 30 errors.
+- **Trend (12 h):** "steady" if the median change is within max(2 cm, half the 50 % band).
+- **Recovery:** first crossing below bank of the q25/q50/q75 paths (≤ 72 h), otherwise extrapolation of the 24 h recession rate (low confidence). "Not estimable" when ≥ 30 mm of rain is forecast for the next 24 h at the nearest Open-Meteo point, or when the water isn't falling.
+- **Status:** ≥ bank → วิกฤต; ≥ 90 % of ground→bank range → เตือนภัย; ≥ 70 % → เฝ้าระวัง; otherwise ปกติ (⚠️ heuristic, to be calibrated against official warning levels).
+- Not yet implemented: routing (L3), polder storage, ML (L4/L5), ensembles, and polder-aware "near me" (nearest by distance only).
+
 ## 4. Derived quantities (shown in the UI and used as features)
 | Quantity | Formula | Notes |
 |---|---|---|

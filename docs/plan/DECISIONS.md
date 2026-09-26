@@ -59,3 +59,18 @@
 - **Context:** the owner asked to publish the repo with `gh`. The history was scanned first: no keys, tokens or secret files were ever committed (`.env`, `certs/` and `*.pem` are git-ignored). Making a repository public can't be undone once it's been indexed and cloned, and two things are still open: the license and permission from HII, BMA and Traffy for redistribution ([OPEN_QUESTIONS](OPEN_QUESTIONS.md) Q3, Q10).
 - **Decision:** create `bejranonda/flood2026` as **private** and push `main`. Going public is a one-line change once Q10 is answered: `gh repo edit bejranonda/flood2026 --visibility public --accept-visibility-change-consequences`.
 - **Consequences:** collaborators can be added right away; a public launch needs a LICENSE file and a final secrets scan first.
+
+### D-012 — Build all phases in parallel; ship an interim public MVP now
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "We need everything now, make all in parallel"). **Supersedes D-002** (strict phase gates) and answers Q13.
+- **Decision:** collectors, archive, database, baseline forecasts, API and the Thai web app were built together and published at https://flood.bejranonda.com the same day. Safeguards carried over from D-002/D-005: forecasts only where the backtest beats persistence by > 10 %, intervals taken from real backtest errors, stale data shown as stale, a disclaimer, and official hotlines on every screen.
+- **Consequences:** the phase checklists become parallel workstreams; gates G0–G4 become quality reviews rather than blockers.
+
+### D-013 — Single server; plain PostgreSQL for the MVP
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "we have only single server here")
+- **Decision:** everything runs on the one host (Hetzner DE, 178.104.238.220) with `docker compose`. The DB is **postgres:16-alpine** (already on disk; ~11–13 GB free). TimescaleDB and PostGIS are deferred until disk and volume require them. Spatial work (nearest station) is done in Python for now.
+- **Consequences:** no off-site copy until R2 is configured (HANDOFF §4.2). BMA is unreachable from this IP (see D-014).
+
+### D-014 — Don't wait for agencies; public data only, optional Thai egress (refines D-004)
+- **Date:** 2026-09-26 · **Status:** accepted (owner: "We cannot expect the response from government, please find the solutions and alternatives ourselves? proxy, VPN?")
+- **Decision:** use publicly served data now, with attribution and polite polling, without waiting for permission replies. For sources that geo-block non-Thai IPs (BMA), a **Thai egress** is allowed: an SSH SOCKS tunnel to a Thai host the owner controls, or a paid VPN with a Thai exit, set as `THAI_EGRESS_PROXY`. **Still not allowed:** free or open public proxies (tampering and abuse risk), solving bot challenges (Navy site), spoofing identity, or going beyond public pages.
+- **Consequences:** the BMA collector is ready but inactive until a Thai egress exists. Navy tide stays on our own harmonic fits.
