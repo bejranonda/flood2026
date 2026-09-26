@@ -187,6 +187,7 @@ def parse_map_feed(rows: list) -> list[dict]:
     return out
 
 
+FUTURE_TOLERANCE = dt.timedelta(minutes=15)
 BMA_MISSING = -99.0  # BMA KlongMap marks absent readings (e.g. no outside gauge) with -99
 
 
@@ -224,6 +225,8 @@ def parse_bma_klongmap(payload: dict, raw_ref: str) -> tuple[list[dict], list[di
         if t is None or raw is None or raw == BMA_MISSING:
             continue
         level, flag = qc_level(raw, bank, to_float(info.get("bed_bank")))
+        if flag == "ok" and t > dt.datetime.now(dt.timezone.utc) + FUTURE_TOLERANCE:
+            flag = "future_time"  # logger clock far ahead (a few minutes is normal: WL.KKD.04 +5 min, 2026-09-26)
         obs.append({"code": code, "obs_time": t, "level_msl": level, "discharge": None, "situation_level": None,
                     "source": "bma_klongmap", "quality_flag": flag, "raw_ref": raw_ref})
     return list(stations.values()), obs

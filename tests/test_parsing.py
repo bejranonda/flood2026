@@ -96,3 +96,12 @@ def test_geocode_variants_and_rank():
     assert geocode.variants("สะพานใหม่") == ["สะพานใหม่"]
     hits = [{"name": "ถนนจรัญสนิทวงศ์"}, {"name": "ซอยลาดพร้าว 71"}]
     assert geocode.rank(geocode.variants("ลาดพร้าว 71"), hits)[0]["name"] == "ซอยลาดพร้าว 71"
+
+
+def test_bma_reading_far_in_the_future_is_flagged():
+    import datetime as dt
+    ms = int((dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=2)).timestamp() * 1000)
+    payload = {"waterStation": [{"water_station_info": {"water_code": "WL.X.01", "latitude": 13.7, "longitude": 100.5,
+                                                        "left_bank": 1.0}, "water_level_last": {"site_timestamp": f"/Date({ms})/", "wl_in": 0.5}}]}
+    _, obs = parsing.parse_bma_klongmap(payload, "sha")
+    assert obs[0]["quality_flag"] == "future_time"

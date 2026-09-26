@@ -1,6 +1,6 @@
 # HANDOFF.md — State of the project and how to continue
 
-> Updated **2026-09-26 ~18:10 UTC (01:10 ICT 27 Sep)** so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. **Release v0.3.2** ([CHANGELOG](CHANGELOG.md)) · **What the owner needs to do: [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md)** (`python3 scripts/owner_status.py`) · Read this first, then [CLAUDE.md](CLAUDE.md) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions work on this repo: **always `git pull --ff-only` and check `git log` before editing**. **The repository is public: never commit secrets, IPs, account ids, emails or feedback content (D-028).**
+> Updated **2026-09-26 ~18:00 UTC (01:00 ICT 27 Sep)** so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. **Release v0.3.2** ([CHANGELOG](CHANGELOG.md)) · **What the owner needs to do: [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md)** (`python3 scripts/owner_status.py`) · Read this first, then [CLAUDE.md](CLAUDE.md) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions work on this repo: **always `git pull --ff-only` and check `git log` before editing**. **The repository is public: never commit secrets, IPs, account ids, emails or feedback content (D-028).**
 
 ## 1. What is live right now
 | Item | State |

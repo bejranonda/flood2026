@@ -210,6 +210,7 @@ Datums, sensor placement or bank definitions differ, and HII's BKK005 value itse
 
 ### KI-219 — A new source's stations leaked into another collector's query · 🟢 fixed
 `hii_history` selected *all* focus stations. After v0.3.0 added 199 BMA gauges (`WL.*`, no `hii_id`), it asked HII's chart endpoint for each: HTTP 500 with 3 retries ≈ 10 s per code ≈ 33 min, on the single worker loop. Result 16:33–17:46 UTC: no BMA readings, no forecast refresh. The owner saw BMA gauges with near-empty charts and read it as "history and forecasts lost" (nothing was deleted: 3.2 M observations intact, HII gauges kept their year of history). **Fix:** `agency IS DISTINCT FROM 'BMA'` in the query + a regression test. **Rule:** when adding a source, check every collector's and the forecaster's station query (GUIDELINES §3).
+**Related:** BMA logger clocks can run a few minutes ahead (WL.KKD.04 stamped 18:00 at 17:55 UTC, so `/api/health` showed a latest-observation age of −4 min). Readings more than 15 min in the future are flagged `future_time` and not shown.
 
 ### KI-216 — "0 cm below the bank" next to "overflowing" · 🟢 fixed
 BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded to −0, and `-0 < 0` is false in JavaScript, so the text said "ต่ำกว่าตลิ่ง 0 ซม." under a red "ล้นตลิ่ง" badge. **Fix:** round first; 0 cm reads "ระดับเท่าตลิ่ง".
