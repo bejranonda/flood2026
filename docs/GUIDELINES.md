@@ -146,11 +146,13 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 
 ---
 
-## 6b. AI usage (D-022)
-- **The site must work identically without AI.** Only the worker calls AI, in the background, with a daily budget and a circuit breaker.
-- **AI never writes safety facts** (status, levels, times, advice). Those come from templates and the forecast code.
+## 6b. AI usage (D-022, D-030)
+- **The site must work identically without AI.** Only the worker calls AI, in the background, with error isolation and circuit breakers.
+- **Provider options:** **GLM (`glm-5.3-flash`, D-030)** via Zhipu AI OpenAPI (`open.bigmodel.cn`) is supported and verified for Thai citizen note triage, alongside Cloudflare Workers AI.
+- **AI never writes safety facts** (status, levels, times, advice). Those come strictly from deterministic templates and the forecast code.
 - AI output must match a strict schema (`parse_label`) or it is discarded. AI may add urgency, never remove it.
-- **No personal data to AI** beyond the note text the user chose to send; no locations or hashes. Use a token scoped to Workers AI only.
+- **No personal data to AI** beyond the note text the user chose to send; no locations, IPs, or hashes.
+- **Instant fallback:** keyword-based deterministic rules (`triage_rules`) run without network dependencies and instantly trigger emergency hotlines (1669/1784/191) if needed.
 
 ## 6c. Releases (D-025)
 Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGELOG.md) entry, tag `vX.Y.Z`, publish a GitHub release, and bump the `?v=` asset query. The UI reads the version from `/api/stats`.
@@ -161,8 +163,8 @@ Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGEL
 - `.env`, `certs/` and `*.pem` are git-ignored. Commit only `.env.example` with placeholders.
 - Services bind to **127.0.0.1**. Public traffic enters only through the Cloudflare Tunnel. No open 80/443.
 - SSH: root login is key-only (`PermitRootLogin without-password`) and every login in practice uses a key; password authentication is still enabled globally, but no account except root has a usable password ([KI-214](KNOWN_ISSUES.md)). Recommended: `PasswordAuthentication no` and `fail2ban` (owner's call on this shared host).
-- Least-privilege Cloudflare and R2 tokens ([KI-501](KNOWN_ISSUES.md)).
-- **Publishing:** the repository is **public** (owner's action, 2026-09-26; [D-028](plan/DECISIONS.md)). Everything committed is world-readable, including docs and commit messages, so **never write secrets, IP addresses, account ids, emails, or feedback content** into files or commit messages. Scan before any push if in doubt. Adding a license, rewriting history or force-pushing needs the owner's explicit approval.
+- **Backups:** R2 off-site backups are kept disabled by owner choice ([D-029](plan/DECISIONS.md)); telemetry archive and database are kept locally on the server disk.
+- **Publishing & License:** the repository is **public** (owner's action, 2026-09-26; [D-028](plan/DECISIONS.md)). All rights are reserved by default (no LICENSE file added, by owner choice, Q10). Everything committed is world-readable, including docs and commit messages, so **never write secrets, IP addresses, account ids, emails, or feedback content** into files or commit messages. Scan before any push if in doubt. Adding a license, rewriting history or force-pushing needs the owner's explicit approval.
 
 ### 7.2 Python (backend, collectors, models)
 - Python ≥ 3.11. Type hints with built-in generics (`dict[str, float]`, `list[Reading]`, `X | None`).

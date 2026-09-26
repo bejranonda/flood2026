@@ -8,6 +8,8 @@ x-appenv: &appenv
   THAI_EGRESS_PROXY: ${THAI_EGRESS_PROXY:-}   # e.g. http://vpn:8888 with --profile vpn
   MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
   REDIRECT_LEGACY_HOST: ${REDIRECT_LEGACY_HOST:-0}   # 1 = 301 flood.bejranonda.com -> flood.autobahn.bot (only after Q18)
+  GISTDA_API_KEY: ${GISTDA_API_KEY:-}
+  GISTDA_API_ENDPOINT: ${GISTDA_API_ENDPOINT:-https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day}
 
 services:
   db:
@@ -37,7 +39,7 @@ services:
       AI_ENABLED: ${AI_ENABLED:-1}
       AI_PROVIDER: ${AI_PROVIDER:-glm}
       GLM_API_KEY: ${GLM_API_KEY:-}
-      GLM_MODEL: ${GLM_MODEL:-glm-4-flash}
+      GLM_MODEL: ${GLM_MODEL:-glm-5.3-flash}
       CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
       CF_AI_TOKEN: ${CF_AI_TOKEN:-${CLOUDFLARE_API_TOKEN:-}}
       AI_MODEL: ${AI_MODEL:-@cf/aisingapore/gemma-sea-lion-v4-27b-it}

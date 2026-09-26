@@ -9,7 +9,8 @@
 |---|---|---|---|
 | **Q18** | `flood.autobahn.bot` challenges non-browser clients (`cf-mitigated: challenge`) | ⬜ **open** | **1** |
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
-| **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage (fill in when ready) | ⬜ open | 3 |
+| **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
+| **GISTDA** | GISTDA API key (`GISTDA_API_KEY` in `.env`) for satellite flood extent | ✅ **configured** (verified in `.env`) | |
 | Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
 | Q10 | Repository license | ✅ **closed** (all rights reserved, no LICENSE added; D-028) | — |
 | Q19 / Q17 / Q22 / Q7 / Q8 / Q11 / Q12 | Decisions and answers (no work) | 🖐️ open | see §3 |

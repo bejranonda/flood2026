@@ -79,7 +79,7 @@ def _credentials() -> dict | None:
         return {
             "provider": "glm",
             "api_key": key,
-            "model": os.environ.get("GLM_MODEL", "glm-4-flash").strip() or "glm-4-flash",
+            "model": os.environ.get("GLM_MODEL", "glm-5.3-flash").strip() or "glm-5.3-flash",
             "endpoint": os.environ.get("GLM_ENDPOINT", "https://open.bigmodel.cn/api/paas/v4/chat/completions").strip(),
         }
     acct = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
@@ -124,20 +124,22 @@ def run(messages: list[dict], max_tokens: int = 60) -> str | None:
     ok, text, neurons, err = False, None, 0.0, ""
     try:
         if cred["provider"] == "glm":
+            glm_tokens = max(max_tokens, 500)
             r = requests.post(
                 cred["endpoint"],
                 headers={"Authorization": f"Bearer {cred['api_key']}", "Content-Type": "application/json"},
-                timeout=20,
+                timeout=25,
                 json={
                     "model": cred["model"],
                     "messages": messages,
-                    "max_tokens": max_tokens,
+                    "max_tokens": glm_tokens,
                     "temperature": 0.1,
                 },
             )
             d = r.json()
             if r.ok and "choices" in d and d["choices"]:
-                text = d["choices"][0]["message"]["content"]
+                choice = d["choices"][0]["message"]
+                text = choice.get("content") or choice.get("reasoning_content")
                 ok = True
             else:
                 err = (json.dumps(d.get("error")) if "error" in d else r.text)[:200]

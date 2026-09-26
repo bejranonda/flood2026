@@ -38,8 +38,8 @@
 | KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
 | KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
 | KI-502 | Single server; this host is production | Infrastructure | 🟢 |
-| KI-503 | No license; repository is public | Infrastructure | 🟡 |
-| KI-504 | Tunnel live; **R2 not enabled**; no off-site backup | Infrastructure | 🟡 |
+| KI-503 | No license; repository is public | Infrastructure | 🟢 (all rights reserved by owner choice, D-028) |
+| KI-504 | R2 off-site backup | Infrastructure | 🟢 (kept disabled by owner choice, D-029) |
 | KI-505 | Public VPN relay is untrusted and flaky | Infrastructure | 🟡 |
 | KI-506 | `autobahn.bot` zone challenges non-browser clients (new main domain) | Infrastructure | 🟡 |
 | KI-507 | User feedback can be wrong or manipulated | Data quality | 🟡 |
@@ -47,7 +47,7 @@
 | KI-213 | A slow-failing upstream steals the single worker loop (Traffy HTTP 502) | Infrastructure | 🟢 (mitigated v0.2.1) |
 | KI-214 | Public repository: what history reveals; SSH exposure of the host | Infrastructure | 🟡 |
 | KI-307 | Point check is not a depth or level at the pin | Modelling | ℹ️ |
-| KI-508 | Workers AI quota, outages and wording drift | Infrastructure | 🟢 (mitigated) |
+| KI-508 | AI triage provider (GLM / Workers AI) | Infrastructure | 🟢 (GLM live verified, D-030) |
 
 ---
 
@@ -268,11 +268,10 @@ This repo's working host (`HZ-Agent`) is in **Germany**, with 4 vCPU, 7 GB RAM, 
 ### KI-503 — No license; repository is public · 🟡
 The owner made `bejranonda/flood2026` **public** (verified 2026-09-26 15:20 UTC). There is **no LICENSE file**, so all rights are reserved: people may view and fork it on GitHub but have no permission to reuse it. The old README's MIT badge was removed earlier. Choosing a license is the owner's call (Q10, [OWNER_ACTIONS](OWNER_ACTIONS.md)); an agent must not add one.
 
-### KI-504 — Tunnel live; R2 not enabled; no off-site backup · 🟡
+### KI-504 — Tunnel live; R2 off-site backups kept disabled by owner choice · 🟢 (closed)
 - **Done:** the Cloudflare Tunnel runs (`cloudflared`, `--url http://app:3000`); both hostnames are proxied CNAMEs to it; ports 80/443 are closed; the Caddy origin is retired. Verified 2026-09-26.
 - **Fixed by the owner (verified 11:15 UTC):** the API token can now manage tunnels, and the old tunnel `ecd8a7b9…` is deleted.
-- **Open:** **R2 is not enabled** on the account. The API answers *"Please enable R2 through the Cloudflare Dashboard."* Cloudflare requires R2 to be enabled ("purchased") before an S3 token can be created. Neither `R2_ACCESS_KEY_ID` nor `R2_SECRET_ACCESS_KEY` exists, so the raw archive and the database are **only on this disk** (12 GB free). Steps and cost: [OWNER_ACTIONS](OWNER_ACTIONS.md) priority 2.
-  - **Measured growth (2026-09-26):** the raw archive is 45 MB after about 4 hours and grows **3–5 MB/hour in steady state** (~100 MB/day); the database directory is 724 MB. A year of archive is roughly 35–45 GB, so R2's free 10 GB covers about two months and the rest costs about $0.015/GB-month.
+- **Owner decision (2026-09-26, D-029):** the owner chose to **keep R2 disabled** (`keep disable`). Telemetry raw archive (`data/raw_archive`) and Postgres data (`data/pg`) remain stored on the local server disk (13+ GB free). Off-site R2 replication is not required, closing Q15b/Q16.
 - **Fixed earlier:** `CLOUDFLARE_ACCOUNT_ID` in `.env` belonged to another account; the zone and tunnel belong to `6914a3…1a45`.
 - **Legacy:** `infra/Caddyfile` and the `caddy` service (profile `origin`) are unused.
 - **Lesson (tunnel token change, 09:19 UTC):** the old domain returned HTTP 530 until both CNAMEs were re-pointed to the new tunnel. When the token changes, update every CNAME that targets `<old-id>.cfargotunnel.com` in the same step.
@@ -307,15 +306,14 @@ Feedback (`/api/feedback`, [APPROACH §3.5](APPROACH_AND_METHODS.md)) is subject
 - **Mitigations:** confidence is never "high"; at very low confidence no verdict is shown; four warnings are always visible; citizen reports near the pin are shown.
 - **Fix path:** polder polygons → controlling gauge; FABDEM + σ → probability categories calibrated with user depth reports.
 
-### KI-508 — Workers AI quota, outages and wording drift · 🟢 (mitigated)
-- The free allocation is 10,000 neurons/day. When exhausted, Workers AI returns error 3036 (HTTP 429) until 00:00 UTC.
-- **Mitigations:**
-  - AI is used only in the worker (`ai_triage`, D-022);
-  - a daily budget (3,000) and a circuit breaker (3 failures → 1 h; 3036 → until 00:05 UTC);
-  - rule labels always exist.
-  - Tested 2026-09-26: budget 0 and an invalid token both leave the site unaffected (HTTP 200).
-- **Wording drift:** tested models mislabelled warning levels in free-text summaries, so AI writes no status text.
-- **Token scope:** the fallback token also has DNS rights. Use a dedicated `CF_AI_TOKEN` (Q21).
+### KI-508 — AI triage provider: GLM and Cloudflare Workers AI · 🟢 (mitigated, D-030)
+- **GLM Integration (D-030):** The project now supports **GLM (`glm-5.3-flash`)** via Zhipu AI OpenAPI (`open.bigmodel.cn/api/paas/v4/chat/completions`) as the primary AI triage provider. Tested and verified live in the worker container (`Parsed: {'category': 'local_drainage', 'urgent': False}`). Reasoning tokens are handled smoothly.
+- **Workers AI fallback:** Cloudflare Workers AI remains supported if configured (`AI_PROVIDER=cloudflare`).
+- **Safety guarantees intact:**
+  - AI is used only in the background worker (`ai_triage`, D-022) to triage feedback notes; the public site and APIs never call AI.
+  - Instant urgency detection and situation summaries are **deterministic** (regex/keyword rules, templates).
+  - When AI is disabled, unconfigured, or failing, deterministic rules run seamlessly without interruption.
+  - Circuit breaker: 3 failures trigger a 1-hour backoff pause.
 
 ### KI-212 — A worker restart reset the schedule, so the backfill never advanced · 🟢 (fixed v0.2.1)
 The single worker loop schedules every task at *start + interval*. `hii_backfill` (every 10 min) was not in the startup sequence, and the startup pass takes about 5 minutes, so each restart pushed the next batch to roughly 10–15 minutes later. During the 2026-09-26 releases the worker was restarted with every deploy; the backfill count sat at 34 of 79 stations from 11:09 UTC until the fix. **Fix:** a `hii_backfill` batch (6 stations) now runs in the startup sequence. **Lesson:** anything driven by an interval timer must also run once at start, or it starves during frequent deployments.

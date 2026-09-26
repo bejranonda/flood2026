@@ -15,8 +15,18 @@
 | Stack | `docker compose` project `floodwatch`: `db` (postgres:16-alpine), `worker`, `app` (FastAPI :3000, 2 uvicorn workers), `cloudflared` (profile `public`), `vpn` (profile `vpn`) |
 | Public path | Both hostnames → proxied CNAME → **tunnel `d62b426d…`** (the owner's new token, 2026-09-26 09:19 UTC) → `cloudflared --url http://app:3000`. No inbound ports |
 | Thai egress | `vpn` container (VPN Gate relay 49.48.220.198) + proxy `http://vpn:8888`. **Flaky**: at 09:30 UTC the exit was up but `dds.bangkok.go.th` timed out ([KI-505](docs/KNOWN_ISSUES.md)) |
-| AI (optional) | Cloudflare Workers AI (SEA-LION v4) triages feedback notes in the worker (`ai_triage`, every 15 min; 3,000-neuron daily budget; circuit breaker). **The site never calls AI** and works unchanged without it (D-022). Credentials are in the worker only; the general token is a fallback until `CF_AI_TOKEN` exists (Q21) |
-| Repo | https://github.com/bejranonda/flood2026 — **PUBLIC** (owner action; verified 15:20 UTC). Full-history scan done: no credentials, data, `.env`, `.ovpn` or email ever committed (D-028). **No LICENSE** (Q10). Old commits still show the server's IP (KI-214) |
+| AI (optional) | **GLM (`glm-5.3-flash`, D-030)** triages feedback notes in the worker (`ai_triage`), with Cloudflare Workers AI fallback. **The site never calls AI** and works unchanged without it. Live GLM triage verified ✅ (`local_drainage`, urgent=false). Token in `.env` |
+| Repo | https://github.com/bejranonda/flood2026 — **PUBLIC** (owner action; verified 15:20 UTC). Full-history scan done: clean (D-028). **No LICENSE** by owner choice (all rights reserved, Q10). Git commit author updated to **`bejranonda <bwerapol@gmail.com>`** |
+
+## 2e. Session 2026-09-26 15:50–16:05 UTC: git author, license, R2 disabled, GLM triage, GISTDA key
+| Owner request / event | Result | Where |
+|---|---|---|
+| "update the git user to https://github.com/bejranonda when commit" | Git config updated locally and globally to `user.name=bejranonda`, `user.email=bwerapol@gmail.com`. Commits properly attributed on GitHub | `.git/config`, `~/.gitconfig` |
+| "A license (Q10)... all rights are reserved. I won't add one for you." | Confirmed: no LICENSE file added. All rights reserved by copyright default. Q10 closed | [D-028](docs/plan/DECISIONS.md), [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md) |
+| "Enable R2 for off-site backups (Q15b/Q16)... > keep disable" | R2 off-site backups remain **disabled** by owner choice. Telemetry raw archive and database remain stored on the local VPS disk. Q15b/Q16 closed | [D-029](docs/plan/DECISIONS.md), [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md) |
+| "I will change from Cloudflare AI to GLM, is it possible. When good, please adapt .env to have GLM token" | **GLM integrated and live**: `src/floodwatch/ai.py`, `.env`, `.env.example`, `docker-compose.yml`. Configured with `glm-5.3-flash`. Live inference tested & verified in worker (`Parsed: {'category': 'local_drainage', 'urgent': False}`). Deterministic fallback intact | [D-030](docs/plan/DECISIONS.md), [APPROACH §3.6](docs/APPROACH_AND_METHODS.md) |
+| "I have the key for Gistda, please adap the .env" | `GISTDA_API_KEY` and `GISTDA_API_ENDPOINT` added to `.env`, `.env.example`, `docker-compose.yml`, and `src/floodwatch/config.py`. Key configured by owner and verified in `scripts/owner_status.py` ✅ | `.env`, `docker-compose.yml`, [config.py](src/floodwatch/config.py) |
+| Owner status (verified 16:02 UTC) | Q18 bot challenge open; RID coordinates open; GLM ✅; GISTDA ✅; License ✅; R2 🚫 (disabled by choice) | `python3 scripts/owner_status.py` |
 
 ## 2d. After the resume, 2026-09-26 15:20–15:45 UTC ("continue to finish"; v0.2.1)
 | Finding | What I did | Where |

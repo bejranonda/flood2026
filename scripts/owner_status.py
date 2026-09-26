@@ -101,6 +101,11 @@ def main() -> None:
     rows.append(("GLM", "GLM API key for AI feedback triage (GLM_API_KEY in .env)", "done" if glm_key else "open",
                  "key configured" if glm_key else "empty (fill in later in .env, D-030)"))
 
+    gistda_key = e.get("GISTDA_API_KEY", "").strip()
+    rows.append(("GISTDA", "GISTDA Satellite Flood Extent key (GISTDA_API_KEY in .env)", "done" if gistda_key else "open",
+                 "key configured" if gistda_key else "empty (fill in when ready in .env)"))
+
+
     rows.append(("Q10", "Repository license (public, all rights reserved)", "done",
                  "all rights reserved by owner choice (no LICENSE file, D-028)"))
     rid = (ROOT / "src/floodwatch/data/station_coords_rid.json").exists()

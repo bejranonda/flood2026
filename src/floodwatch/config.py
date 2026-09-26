@@ -47,6 +47,10 @@ class Settings:
     # Optional egress through a Thai IP for sources that geo-block (BMA). D-014. Format: socks5h://host:port
     thai_egress_proxy: str = field(default_factory=lambda: _env("THAI_EGRESS_PROXY"))
     min_free_disk_gb: float = field(default_factory=lambda: float(_env("MIN_FREE_DISK_GB", "2")))
+    gistda_api_key: str = field(default_factory=lambda: _env("GISTDA_API_KEY"))
+    gistda_api_endpoint: str = field(default_factory=lambda: _env(
+        "GISTDA_API_ENDPOINT",
+        "https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day"))
 
 
 settings = Settings()

@@ -36,8 +36,7 @@
 | **P1** | Navy Hydrographic Dept. (กรมอุทกศาสตร์) | Hourly astronomical tide predictions | PDF | none | 🔴 **URL now 404 + bot challenge** | Tide component, fallback to own fit |
 | **P2** | BMA DDS (สำนักการระบายน้ำ) | Khlong and river levels, rain gauges, 3 h nowcast, radar, flow and pump stations | Web pages | none | 🟡 `dds.` opens via the Thai VPN egress; **`weather.bangkok.go.th` returns 403 even from Thailand (IP class)** | Bangkok khlongs (**not mirrored in HII**) |
 | **P2** | Traffy Fondue public API | Citizen flood reports with coordinates, text, photos, state | JSON (undocumented) | none | ✅ live | Validation and "reported nearby" layer (privacy rules, KI-107) |
-| **P2** | TMD (กรมอุตุนิยมวิทยา) | Observations, forecasts, AWS | REST | 🔑 free | 🟡 portal reachable | Observation validation |
-| **P2** | GISTDA API Gateway | Daily satellite flood extent, 2011–2023 recurrence | REST | 🔑 free | 🟡 portal reachable | Flood extent layer, validation |
+| **P2** | GISTDA API Gateway | Daily satellite flood extent, 2011–2023 recurrence | REST | 🔑 registered in `.env` | ✅ key configured | Flood extent layer, validation |
 | **P2** | Copernicus GFM | Sentinel-1 flood masks | REST | free account | ✅ live (Swagger) | Fallback for GISTDA |
 | **P3** | DEMs (FABDEM, Copernicus GLO-30, GEDTM30); Open-Meteo elevation | Ground elevation | COG / JSON | none | ✅ live (Open-Meteo) | **Probabilistic** depth only (KI-202) |
 | **P3** | DWR EWS, DWR/ONWR PDFs, CCTV | Tributary telemetry, historical tables | Web/PDF | none | 🟡 `ews.dwr.go.th` timed out from Germany; **200 through the Thai egress** (content not yet explored) | Backfill C-stations |
@@ -65,7 +64,7 @@
 | Open-Meteo Elevation | Point elevation (90 m DEM) | Global | JSON | `https://api.open-meteo.com/v1/elevation` | ✅ 200 | static | <0.1 s | none | m (EGM2008) | as above | Gave 4 m and 7 m where the true value is about 0–2 m MSL. **Not for depth** | n/a |
 | Traffy Fondue public | Citizen reports | Bangkok (+ other orgs) | JSON (undocumented) | `GET https://publicapi.traffy.in.th/share/teamchadchart/search?limit=…` → `results[]` (`coords` [lon, lat], `description`, `photo_url`, `timestamp` UTC, `state`) | ✅ 201, CORS `*` | near real time | <1 s | none | WGS84 | Citizen personal data: **aggregate only, don't republish photos or text**; ask BMA/NECTEC | Report time ≠ flood time | not yet |
 | TMD API | Observations, forecasts | Thailand | REST | `https://data.tmd.go.th/api/…` (uid/ukey) | 🟡 portal 200 | 3 h / daily | – | 🔑 | mm, °C | TMD terms | Register now | not yet |
-| GISTDA flood extent | Daily extent, recurrence | Thailand | REST | `https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day?lat=&lon=&api_key=` | 🟡 portal 200 | daily | days | 🔑 | – | Open Data Common | Use for validation | not yet |
+| GISTDA flood extent | Daily extent, recurrence | Thailand | REST | `https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day?lat=&lon=&api_key=` | ✅ key in `.env` | daily | days | 🔑 configured | – | Open Data Common | Use for validation | ✅ key verified |
 | Copernicus GFM | Sentinel-1 flood masks | AOIs | REST | `https://api.gfm.eodc.eu/v2/` | ✅ 200 | per pass | days | free account | – | Copernicus open | – | not yet |
 | data.go.th (BMA) | Daily max at Pak Khlong Talat | 1 station | CSV (CC-BY) | `https://dev.data.go.th/en/dataset/wl-max-chaophraya-river` | ✅ 200 (page) | daily | – | none | m MSL | CC-BY | Backfill | not yet |
 | DEM files | Elevation | Global 30 m | COG | FABDEM, Copernicus GLO-30, GEDTM30 | ✅ doc | static | – | none | **EGM2008 → Ko Lak offset** | FABDEM is non-commercial | RMSE ≥ 1 m in Bangkok | n/a |

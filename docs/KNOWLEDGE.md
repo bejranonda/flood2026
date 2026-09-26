@@ -171,8 +171,10 @@ Depth at a location is always shown as a **probability category**, never an exac
 | Bang Sai, Memorial Bridge | RID pages 🟡 | RID telemetry service | Routing from C.35 + S.26 |
 | Tide | Navy tables 🔴 (URL moved) | – | **Own harmonic fit on HII tidal stations** ✅ feasible |
 | Elevation | DEM files (probabilistic) | GISTDA/BMA survey data | User-entered floor height |
-| Flood extent | Copernicus GFM (free account) | GISTDA 🔑 | – |
+| Flood extent | Copernicus GFM (free account) | GISTDA 🔑 (key configured in .env) | – |
 | Citizen reports | Traffy public ✅ | Agreement with BMA/NECTEC | – |
+| Feedback note triage | Deterministic keyword rules ✅ | GLM (`glm-5.3-flash` 🔑 in .env) / Workers AI | Instant hotline triggers (1669/1784/191) |
+| Storage & backup | Local VPS disk (`data/raw_archive` + Postgres) ✅ | Nightly local snapshots | R2 disabled by owner choice (D-029) |
 
 ---
 

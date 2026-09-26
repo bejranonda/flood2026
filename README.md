@@ -91,10 +91,10 @@ infra/ (vpn/ sidecar, legacy Caddyfile)  scripts/ (build_chainage.py, owner_stat
 | [research/README.md](research/README.md) | Research validity index · [VALIDATION report](research/VALIDATION_2026-09-26.md) |
 
 ## Repository and license
-Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) — **public** (the owner changed the visibility on 2026-09-26; the full history was scanned first, see [D-028](docs/plan/DECISIONS.md)). **No license has been chosen yet** ([OWNER_ACTIONS](docs/OWNER_ACTIONS.md), Q10), so all rights are reserved by default: you may read and fork on GitHub, but reuse needs the owner's permission. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
+Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) — **public** (the owner changed visibility on 2026-09-26; the full history was scanned clean, see [D-028](docs/plan/DECISIONS.md)). **All rights reserved by owner choice** (no LICENSE file added, Q10): you may read and fork on GitHub, but reuse needs the owner's permission. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
 
 ## Configuration
-Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/`, `*.pem` and `infra/openvpn/*.ovpn` are git-ignored; never commit secrets. v1 needs **no data API keys**. Cloudflare (tunnel token) is required for publishing; **R2 S3 credentials** are still missing ([KI-504](docs/KNOWN_ISSUES.md)); TMD and GISTDA keys are optional.
+Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/`, `*.pem` and `infra/openvpn/*.ovpn` are git-ignored; never commit secrets. v1 needs **no data API keys** to run basic monitoring. Cloudflare (tunnel token) is required for publishing. **R2 off-site backups are kept disabled by owner choice** ([D-029](docs/plan/DECISIONS.md)); data and archive stay on the local VPS disk. **AI feedback note triage supports GLM** (`glm-5.3-flash`, [D-030](docs/plan/DECISIONS.md)) and Cloudflare Workers AI. **GISTDA API key** is configured in `.env` for satellite flood extent.
 
 ## Run it
 ```bash
