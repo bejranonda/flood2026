@@ -306,6 +306,7 @@ The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Ri
 
 ### KI-506 — `autobahn.bot` zone challenges non-browser clients · 🟡
 **Update 2026-09-26 16:58 UTC (D-034):** the owner moved everything to the main domain, so the alias's pages now 301 there; `/api/*` stays on the alias. A headless browser following an old link got the interactive "Verify you are human" checkbox. The token cannot see zone security settings, so the cause (Bot Fight Mode, most likely) can only be checked and switched off in the dashboard.
+**17:11–17:15 UTC:** with new token rights (Zone Settings, Firewall Services, Page Rules edit) the zone showed security level medium, Browser Integrity Check on, no firewall/IP/UA rules. A flood-only page rule turning both off (owner-approved) **did not remove the challenge** → the cause is Bot Fight Mode or a WAF custom rule (neither readable with this token). Fix: Bot Fight Mode off (owner, OWNER_ACTIONS Q18 option A).
 The main domain `flood.autobahn.bot` answers **HTTP 403 with `cf-mitigated: challenge`** ("Just a moment…") to `curl`, headless Chrome and the Facebook and LINE user agents. The same happens on every proxied host of the zone (`autobahn.bot`, `www`). Status: **still open at ~11:20 UTC** ([OWNER_ACTIONS](OWNER_ACTIONS.md) Q18).
 - **Evidence 2026-09-26:**
   - `/` and `/api/*` are challenged, `/static/*` is not.
