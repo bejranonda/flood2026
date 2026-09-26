@@ -5,6 +5,7 @@
 [![Status: Phase 0](https://img.shields.io/badge/status-Phase%200%20%E2%80%94%20source%20verification-yellow.svg)](docs/plan/PLAN.md)
 [![Infra: Cloudflare Tunnel live](https://img.shields.io/badge/infra-Cloudflare%20Tunnel%20live%2C%20app%20not%20deployed-orange.svg)](docs/ARCHITECTURE.md)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](docs/GUIDELINES.md)
+[![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
 > **Current status (2026-09-26):** documentation and plan only; **no runnable code yet**. The VPS and the Cloudflare Tunnel for `flood.bejranonda.com` are live, but the application isn't deployed. Phase 0 (source verification) has started: the first live probes are in [research/VALIDATION_2026-09-26.md](research/VALIDATION_2026-09-26.md). **Next:** repeat the probes from the production VPS and deliver the Phase 0 report ([plan](docs/plan/phase-0-source-verification.md)).
@@ -73,6 +74,9 @@ web/  edge/  infra/  tests/                            scaffold (READMEs only)
 | [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-502 with status |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, storage, security, deployment, adding a source |
 | [research/README.md](research/README.md) | Research validity index · [VALIDATION report](research/VALIDATION_2026-09-26.md) |
+
+## Repository and license
+Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) (created **private**; visibility is the owner's call, see [OPEN_QUESTIONS Q10](docs/plan/OPEN_QUESTIONS.md)). **No license has been chosen yet**, so all rights are reserved by default. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
 
 ## Configuration
 Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/` and `*.pem` are git-ignored; never commit secrets. v1 needs **no data API keys**. Only Cloudflare and R2 credentials are required; TMD and GISTDA keys are optional.

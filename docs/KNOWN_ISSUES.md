@@ -33,6 +33,7 @@
 | KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
 | KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
 | KI-502 | Dev host is not the production VPS | Infrastructure | 🔴 |
+| KI-503 | No license; repository is private | Infrastructure | 🟡 |
 
 ---
 
@@ -215,3 +216,6 @@ The API token needs: Account → Cloudflare Tunnel: Edit, Workers/Pages: Edit; Z
 
 ### KI-502 — Dev host is not the production VPS · 🔴
 This repo's working host (`HZ-Agent`) is in **Germany**, with 4 vCPU, 7 GB RAM, **~11 GB free disk** and no `cloudflared`. That isn't enough to hold the archive, and it is blocked by BMA. **Phase 0 tests must run on the production VPS** (region and specs in [OPEN_QUESTIONS](plan/OPEN_QUESTIONS.md)).
+
+### KI-503 — No license; repository is private · 🟡
+The GitHub repo `bejranonda/flood2026` was created **private** (D-011), and there is no LICENSE file, so all rights are reserved by default. The old README's MIT badge was removed because no license had been chosen. **Before going public:** the owner picks a license ([OPEN_QUESTIONS Q10](plan/OPEN_QUESTIONS.md)), a fresh secrets scan of the full history runs, and permissions from HII, BMA and Traffy are considered (Q3). Third-party data keeps its own terms regardless of the code license ([SOURCES §7](SOURCES.md)).

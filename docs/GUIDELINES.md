@@ -122,6 +122,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - Services bind to **127.0.0.1**. Public traffic enters only through the Cloudflare Tunnel. No open 80/443.
 - SSH by key only, with password and root login disabled.
 - Least-privilege Cloudflare and R2 tokens ([KI-501](KNOWN_ISSUES.md)).
+- **Publishing:** the repo is private by default ([D-011](plan/DECISIONS.md)). Before any visibility change or push of new history, scan the full history for secrets. Adding a license or making the repo public needs the owner's explicit approval.
 
 ### 7.2 Python (backend, collectors, models)
 - Python ≥ 3.11. Type hints with built-in generics (`dict[str, float]`, `list[Reading]`, `X | None`).

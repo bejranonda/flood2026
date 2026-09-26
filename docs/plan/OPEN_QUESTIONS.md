@@ -16,7 +16,7 @@
 | Q7 | **Notifications:** LINE (OA / Messaging API) or Web Push, in v1 or later? | Scope, and whether user data needs storing | Phase 3 |
 | Q8 | Dates in the **Buddhist era (พ.ศ.)** by default, or the Gregorian year? | UI | Phase 3 |
 | Q9 | Any **frontend framework** preference (Next.js, SvelteKit, Astro/static, plain)? The recommendation is a small static-first build on Cloudflare Pages | Phase 3 setup | Phase 3 |
-| Q10 | **Repository license** and visibility (public or private)? The old README had an MIT badge but no LICENSE file | Legal, contributions | Anytime |
+| Q10 | **Repository license** and visibility. The repo was published to GitHub as **private** on 2026-09-26 (D-011). Make it public? If so, which license (MIT, Apache-2.0, AGPL-3.0 …)? There is no LICENSE file yet | Legal, contributions, and whether third parties may reuse the code | Going public |
 | Q11 | **Budget** for R2 storage and the VPS, and how long to keep the raw archive (default: forever)? | Sizing and retention | Phase 1 |
 | Q12 | **Operations:** who is on call during a flood, and how many maintainers? | Alert routing, runbooks | Phase 4 |
 | Q13 | During the **current event**, do you want an **interim "observed levels only" public page** before the forecasts pass G2? This would be an exception to D-002 | Possible new decision | — |

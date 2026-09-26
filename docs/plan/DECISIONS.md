@@ -53,3 +53,9 @@
 - **Date:** 2026-09-26 · **Status:** accepted
 - **Context:** two hand-copied constant sets failed against observations (correlation −0.74 and +0.12) ([KI-301](../KNOWN_ISSUES.md)).
 - **Decision:** use the Navy tables (converted to MSL) or our own `utide` fits on archived HII tidal stations (interim 30-day fits, then ≥ 1 year). Every tide prediction records its method and fit window.
+
+### D-011 — Publish to GitHub as a private repository first
+- **Date:** 2026-09-26 · **Status:** accepted (owner asked to publish to https://github.com/bejranonda; visibility was not specified)
+- **Context:** the owner asked to publish the repo with `gh`. The history was scanned first: no keys, tokens or secret files were ever committed (`.env`, `certs/` and `*.pem` are git-ignored). Making a repository public can't be undone once it's been indexed and cloned, and two things are still open: the license and permission from HII, BMA and Traffy for redistribution ([OPEN_QUESTIONS](OPEN_QUESTIONS.md) Q3, Q10).
+- **Decision:** create `bejranonda/flood2026` as **private** and push `main`. Going public is a one-line change once Q10 is answered: `gh repo edit bejranonda/flood2026 --visibility public --accept-visibility-change-consequences`.
+- **Consequences:** collaborators can be added right away; a public launch needs a LICENSE file and a final secrets scan first.

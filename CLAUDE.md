@@ -24,4 +24,4 @@ Facts → KNOWLEDGE · pitfalls → KNOWN_ISSUES (KI-ID) · source tests → SOU
 - Re-run the source validation: `python3 research/validation/validate_research_claims.py` (the result depends on the host country; this dev host is in Germany and is blocked by BMA; see KI-502).
 
 ## Git
-Branch from `main` for changes. End commit messages with the attribution line the harness provides.
+Remote: `origin` = https://github.com/bejranonda/flood2026 (**private**, D-011). Branch from `main` for changes and end commit messages with the attribution line the harness provides. **Before any push, confirm nothing secret is staged** (`.env`, `certs/`, `*.pem` are ignored; keep it that way). Changing the repo's visibility, adding a license, or force-pushing needs the owner's explicit go-ahead.

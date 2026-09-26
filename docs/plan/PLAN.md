@@ -10,6 +10,7 @@
 |---|---|
 | Documentation reorganised and reconciled; research validated claim by claim | ✅ 2026-09-26 |
 | Infrastructure: VPS + Cloudflare Tunnel for flood.bejranonda.com | ✅ live (owner-reported); app not deployed |
+| Code hosting: [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) | ✅ published **private** 2026-09-26 ([D-011](DECISIONS.md)) |
 | **Phase 0 — source verification** | 🟡 **started**: first probes done from the dev host (Germany). **Still needed: the same tests from the production VPS, then the report** |
 | Phases 1–4 | ⏳ not started |
 

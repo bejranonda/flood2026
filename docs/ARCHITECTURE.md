@@ -16,7 +16,7 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 |---|---|
 | Domain `flood.bejranonda.com` via Cloudflare Tunnel | **Live** (owner-reported). Its configuration isn't in this repo yet |
 | Production VPS | **Live** (owner-reported). Region and specs to confirm ([OPEN_QUESTIONS](plan/OPEN_QUESTIONS.md)) |
-| Application code | **None yet**. Scaffold only ([§7](#7-repository-layout)) |
+| Application code | **None yet**. Scaffold only ([§7](#7-repository-layout)). Hosted in the private GitHub repo `bejranonda/flood2026` ([D-011](plan/DECISIONS.md)) |
 | Dev host of this repo | Germany, 4 vCPU / 7 GB / ~11 GB free. **Not the VPS**, and blocked by BMA ([KI-502](KNOWN_ISSUES.md)) |
 
 ---
