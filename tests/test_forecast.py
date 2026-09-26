@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 import math
 
 import numpy as np
@@ -55,3 +56,10 @@ def test_long_record_backtests_recent_window_only():
     fc = forecast.forecast_station("T", times, vals, bank=2.0, rain_next24=0)
     assert fc["skill"]["6"]["n"] <= forecast.EVAL_HOURS
     assert fc["skill"]["6"]["method"] in ("tide", "tide_trend")
+
+
+def test_payload_is_json_serialisable():
+    """numpy scalars (np.bool_) broke saving every forecast once; the stored payload must be plain JSON."""
+    times, vals = _synthetic()
+    for bank in (1.6, None):
+        json.dumps(forecast.forecast_station("T", times, vals, bank=bank, rain_next24=0))

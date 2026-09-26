@@ -198,7 +198,7 @@ def outlook24(path: list[dict], bank: float | None) -> dict | None:
         return None
     meds = [p["q"][2] for p in qs]
     peak = max(qs, key=lambda p: p["q"][2])
-    out = {"peak_h": peak["h"], "peak_q": peak["q"], "varies": (max(meds) - min(meds)) > 0.05}
+    out = {"peak_h": int(peak["h"]), "peak_q": [float(v) for v in peak["q"]], "varies": bool(max(meds) - min(meds) > 0.05)}
     if bank is not None:
         top = lambda k: max(p["q"][k] for p in qs)
         out["bank_chance"] = (">50%" if top(2) >= bank else "25-50%" if top(3) >= bank
