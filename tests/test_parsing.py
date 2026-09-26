@@ -72,7 +72,7 @@ def test_bma_klongmap_bank_is_lower_bank_not_critical_and_missing_dropped():
     ]}
     stations, obs = parsing.parse_bma_klongmap(payload, "sha")
     s = {x["code"]: x for x in stations}
-    assert s["WL.BPM.03"]["bank_msl"] == 1.91 and s["WL.BPM.03"]["critical_msl"] is None  # KI-215
+    assert s["WL.BPM.03"]["bank_msl"] == 1.91 and s["WL.BPM.03"]["critical_msl"] == 0.7  # stored, never used as bank (KI-215, D-038)
     assert s["WL.BPM.03"]["agency"] == "BMA" and "WL.OFF.01" in s  # the station is kept even without a reading
     assert [(o["code"], o["level_msl"], o["quality_flag"]) for o in obs] == [("WL.BPM.03", 1.1, "ok")]
     assert obs[0]["obs_time"].isoformat() == "2026-09-26T16:05:00+00:00"
@@ -105,3 +105,11 @@ def test_bma_reading_far_in_the_future_is_flagged():
                                                         "left_bank": 1.0}, "water_level_last": {"site_timestamp": f"/Date({ms})/", "wl_in": 0.5}}]}
     _, obs = parsing.parse_bma_klongmap(payload, "sha")
     assert obs[0]["quality_flag"] == "future_time"
+
+
+def test_bma_thresholds_are_stored_as_warning_and_critical_not_bank():
+    payload = {"waterStation": [{"water_station_info": {"water_code": "WL.Y.01", "latitude": 13.7, "longitude": 100.5,
+                                                        "left_bank": 1.91, "right_bank": 2.0, "warning": 0.6, "critical": 0.7},
+                                 "water_level_last": {"site_timestamp": "/Date(1790438700000)/", "wl_in": 1.1}}]}
+    st, _ = parsing.parse_bma_klongmap(payload, "sha")
+    assert (st[0]["bank_msl"], st[0]["warning_msl"], st[0]["critical_msl"]) == (1.91, 0.6, 0.7)

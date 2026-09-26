@@ -27,7 +27,7 @@
 | KI-209 | HII test gauges (`TEST*`) appear in station lists | Data quality | 🟢 |
 | KI-210 | GLF002 (Tha Chin mouth) values are not m MSL | Data quality | 🟡 (shown, values hidden) |
 | KI-211 | Implausible readings far above bank (sensor ceiling, spikes) | Data quality | 🟢 (flagged) |
-| KI-215 | BMA `warning`/`critical` are operating levels, not banks (⚠️ hypothesis) | Data quality | 🟢 handled (never used, D-031) |
+| KI-215 | BMA `warning`/`critical` are operating levels, not banks | Data quality | 🟢 used as drainage levels, never as bank (D-038) |
 | KI-216 | A freeboard of −0.4 cm displayed as "0 cm below the bank" next to "overflowing" | UI | 🟢 fixed |
 | KI-217 | BMA and HII gauges 7–100 m apart disagree by 0.3–0.6 m (level and bank) | Data quality | 🟡 open (handled: never mixed) |
 | KI-218 | BMA data depends on a third-party political relay | Data access | 🟡 accepted (D-031) |
@@ -193,6 +193,7 @@ BKK003 (คลองมหาสวัสดิ์ บางกรวย-สว�
 - **Open:** spikes below the ceiling and stuck values within range (flatline and rate-of-change rules still to add, KI-206).
 
 ### KI-215 — BMA `warning`/`critical` are not bank levels (⚠️ hypothesis) · 🟢 handled in v0.3.0
+**Update 2026-09-26 (D-038):** tested against street-flood reports: over BMA critical is a much better sign of flooded streets than over the bank (60 % vs 18 % of gauges near flooded streets). Now stored (`critical_msl`, `warning_msl`) and used for BMA status as a *drainage* level; the bank is still the lower bank.
 In the BMA KlongMap data (via the flood69 relay, 2026-09-26 16:12 UTC), **84 of 199 stations are at or above `critical`**, yet their banks are far higher: WL.BPM.03 has `critical` 0.70 m, `left_bank` 1.91 m, level 1.10 m. So `critical` looks like BMA's **drainage operating target** (the level at which they run pumps), not overflow. ⚠️ Not confirmed by BMA. **Rule before any BMA use:** status and "cm to the bank" come from `min(left_bank, right_bank)`, never from `critical`. Also unconfirmed: that BMA levels are m MSL; check the five co-located pairs with HII gauges (SOURCES §2c) first. At gates, `wl_in` is inside and `wl_out01` outside; don't mix them.
 
 ### KI-217 — BMA and HII disagree at the same place · 🟡

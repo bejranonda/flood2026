@@ -41,4 +41,4 @@ def test_summary_is_deterministic_template():
     stats = {"focus": {"total": 100, "status": {"critical": 14, "warning": 19, "watch": 28, "normal": 11, "unknown": 28},
                        "trend12": {"rising": 26, "falling": 0}}, "rain_bkk_next24_mm_max": 53.8}
     t = ai.summary_text(stats)
-    assert "ล้นตลิ่ง 14" in t and "ใกล้ตลิ่ง 19" in t and "54 มม." in t and t == ai.summary_text(stats)
+    assert "ล้นตลิ่ง 14" in t and "ใกล้ตลิ่งหรือคลองเต็ม 19" in t and "54 มม." in t and t == ai.summary_text(stats)

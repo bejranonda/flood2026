@@ -3,13 +3,26 @@
 
 const STATUS = {
   critical: { th: "ล้นตลิ่ง", long: "วิกฤต (ล้นตลิ่ง)", color: "#c62828" },
-  warning: { th: "ใกล้ตลิ่ง", long: "เตือนภัย (ใกล้ตลิ่ง)", color: "#e46c0a" },
+  warning: { th: "ใกล้ตลิ่ง/คลองเต็ม", long: "เตือนภัย (ใกล้ตลิ่ง)", color: "#e46c0a" },
   watch: { th: "เฝ้าระวัง", long: "เฝ้าระวัง", color: "#b58900" },
   // Not "ปกติ" (normal): a canal below its bank says nothing about the street, which can flood from rain the drains
   // can't take while BMA keeps canals pumped low (owner report 2026-09-26, D-036). Blue = water in the channel, not "safe".
-  normal: { th: "ต่ำกว่าตลิ่ง", long: "น้ำต่ำกว่าตลิ่ง", color: "#2f6fb0" },
+  normal: { th: "ยังรับน้ำได้", long: "น้ำต่ำกว่าตลิ่ง", color: "#2f6fb0" },
   unknown: { th: "ไม่ทราบ", long: "ไม่ทราบ (ไม่มีระดับตลิ่ง)", color: "#8a94a3" },
 };
+// BMA canal gauges are judged by BMA's own drainage levels (D-038): the words say what the canal can still take.
+const BMA_LABEL = {
+  critical: { th: "ล้นตลิ่ง", long: "ล้นตลิ่ง" },
+  warning: { th: "คลองเต็ม", long: "คลองเต็ม" },
+  watch: { th: "คลองเริ่มเต็ม", long: "คลองเริ่มเต็ม" },
+  normal: { th: "คลองยังรับน้ำได้", long: "คลองยังรับน้ำได้" },
+};
+const BANK_LABEL = { warning: { th: "ใกล้ตลิ่ง" }, normal: { th: "ต่ำกว่าตลิ่ง" } };
+const stOf = (s) => ({ ...(STATUS[s.status] || STATUS.unknown),
+  ...(s.status_basis === "bma_thresholds" ? BMA_LABEL[s.status] || {} : BANK_LABEL[s.status] || {}) });
+// Right-hand number: BMA gauges over a BMA level show that margin; everything else cm to the bank.
+const levelText = (s) => s.status_basis === "bma_thresholds" && s.over_bma_critical_m != null && s.over_bma_critical_m > 0 && s.status !== "critical"
+  ? `เกินเกณฑ์ กทม. ${Math.round(s.over_bma_critical_m * 100)} ซม.` : freeboardText(s.freeboard_m);
 const RANK = { critical: 0, warning: 1, watch: 2, normal: 3, unknown: 4 };
 const TREND = { rising: "📈 มีแนวโน้มเพิ่มขึ้น", falling: "📉 มีแนวโน้มลดลง", steady: "➖ ทรงตัว", unknown: "ยังไม่มีข้อมูลพอสำหรับคาดการณ์" };
 const CHANCE = { "<5%": "ต่ำมาก (น้อยกว่า 5%)", "5-25%": "มีโอกาส (5–25%)", "25-50%": "ค่อนข้างสูง (25–50%)", ">50%": "สูง (มากกว่า 50%)" };
@@ -106,11 +119,11 @@ function renderSummary(st) {
 
 /* ---------- list ---------- */
 function itemHTML(s, extra = "") {
-  const st = STATUS[s.status] || STATUS.unknown;
+  const st = stOf(s);
   return `<li class="item s-${esc(s.status)} ${s.stale ? "stale" : ""}" data-code="${esc(s.code)}" tabindex="0">
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
-    <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(freeboardText(s.freeboard_m))}</span></div>
+    <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(levelText(s))}</span></div>
     <div class="meta">${esc(trendLine(s))}
       · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${(s.street_reports_6h || 0) >= STREET_MIN
         ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
@@ -231,11 +244,11 @@ function renderMap() {
   const hn = document.getElementById("hidden-n");
   if (hn) hn.textContent = `(${stations.filter((s) => s.lat && !onMap(s)).length})`;
   stations.filter((s) => s.lat && s.lon && onMap(s)).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
-    const st = STATUS[s.status] || STATUS.unknown;
+    const st = stOf(s);
     const approx = (s.notes || []).includes("approx_location");
     L.circleMarker([s.lat, s.lon], { pane: "stations", radius: s.status === "critical" ? 10 : 8, color: approx ? "#333" : "#fff",
       weight: 2, dashArray: approx ? "3 3" : null, fillColor: st.color, fillOpacity: s.stale ? 0.45 : 0.95, bubblingMouseEvents: false })
-      .bindTooltip(`${esc(s.name_th)} — ${esc(st.th)} ${esc(freeboardText(s.freeboard_m))}${notesText(s) ? `<br><small>${esc(notesText(s))}</small>` : ""}`)
+      .bindTooltip(`${esc(s.name_th)} — ${esc(st.th)} ${esc(levelText(s))}${notesText(s) ? `<br><small>${esc(notesText(s))}</small>` : ""}`)
       .on("click", () => showDetail(s.code)).addTo(layer);
   });
   const unplaced = stations.filter((s) => !s.lat).length;
@@ -251,7 +264,7 @@ async function toggleNational(on) {
   const d = await getJSON("/api/stations?scope=all");
   const focus = new Set(stations.map((s) => s.code));
   d.stations.filter((s) => s.lat && !focus.has(s.code)).forEach((s) => {
-    const st = STATUS[s.status] || STATUS.unknown;
+    const st = stOf(s);
     L.circleMarker([s.lat, s.lon], { pane: "stations", radius: 5, color: "#fff", weight: 1, fillColor: st.color, fillOpacity: 0.8, bubblingMouseEvents: false })
       .bindTooltip(`${esc(s.name_th)} (${esc(s.province || "")}) — ${esc(st.th)}`).on("click", () => showDetail(s.code)).addTo(national);
   });
@@ -265,7 +278,7 @@ async function renderRiver() {
   try {
     const d = await getJSON("/api/profile");
     const rows = d.stations.map((s) => {
-      const st = STATUS[s.status] || STATUS.unknown;
+      const st = stOf(s);
       const pct = s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
       return `<div class="prow" data-code="${esc(s.code)}" role="button" tabindex="0">
         <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}${s.chainage_km != null ? ` · ~${Math.round(s.chainage_km)} กม. จากปากแม่น้ำ` : ""}</small></span>
@@ -298,10 +311,18 @@ function dayTicks(tmin, tmax, x, H) {
 
 // New gauges (history < 7 days, e.g. BMA from 26 Sep): say why the chart is short and when a forecast can start,
 // so a short chart is not mistaken for lost data (owner, 2026-09-26).
+function bmaNote(s) {
+  if (s.status_basis !== "bma_thresholds") return "";
+  const crit = s.bma_critical_msl != null ? `เกณฑ์วิกฤตของ กทม. ${s.bma_critical_msl.toFixed(2)} ม.` : "ไม่มีเกณฑ์ของ กทม.";
+  const full = ["warning", "watch"].includes(s.status);
+  return `<p class="muted">${esc(freeboardText(s.freeboard_m))} · ${esc(crit)}</p>${full
+    ? `<div class="warnbox">🌧️ น้ำในคลองสูงกว่าเกณฑ์ของ กทม. คลองจึง<b>รับน้ำจากท่อระบายบนถนนได้ช้า</b> ถนนรอบ ๆ อาจท่วมแม้คลองยังไม่ล้นตลิ่ง</div>` : ""}`;
+}
+
 function streetNote(s) {
   const n = s.street_reports_6h || 0;
   if (n < STREET_MIN) return "";
-  const calm = ["normal", "watch"].includes(s.status);
+  const calm = s.status === "normal" || (s.status === "watch" && s.status_basis !== "bma_thresholds");
   return `<div class="warnbox">🚗 <strong>ถนนรอบสถานีนี้ (1 กม.) มีรายงานน้ำท่วม ${n} เรื่องใน 6 ชม.</strong>${esc(streetAge())} (Traffy Fondue)
     ${calm ? `<br>น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}ยังต่ำกว่าตลิ่ง แต่ถนนท่วมได้ เพราะฝนตกหนักเกินกว่าท่อระบายน้ำจะรับไหว
       และ กทม. มักพร่องน้ำในคลองไว้รับฝน <b>สถานีนี้วัดน้ำในคลอง ไม่ได้วัดน้ำบนถนน</b>` : ""}</div>`;
@@ -318,13 +339,13 @@ function newGaugeNote(s, fc) {
     <span class="muted">ข้อมูลเดิมของสถานีอื่นไม่ได้หายไป</span></div>`;
 }
 
-function chartSVG(obs, fc, bank) {
+function chartSVG(obs, fc, bank, crit = null) {
   const W = 400, H = 200, P = 34, GAP_MS = 90 * 60e3;  // gaps longer than 90 min are not bridged
   const pts = obs.filter((o) => o[1] != null).map((o) => [Date.parse(o[0]), o[1]]);
   if (pts.length < 2) return "<p class='muted'>ข้อมูลย้อนหลังไม่พอสำหรับกราฟ</p>";
   const t0 = pts[pts.length - 1][0];
   const band = (fc?.path || []).filter((p) => p.q).map((p) => [t0 + p.h * 3600e3, p.q]);
-  const ys = pts.map((p) => p[1]).concat(band.flatMap((b) => [b[1][0], b[1][4]]), bank != null ? [bank] : []);
+  const ys = pts.map((p) => p[1]).concat(band.flatMap((b) => [b[1][0], b[1][4]]), bank != null ? [bank] : [], crit != null ? [crit] : []);
   const ymin = Math.min(...ys) - 0.1, ymax = Math.max(...ys) + 0.1;
   const tmin = pts[0][0], tmax = band.length ? band[band.length - 1][0] : t0;
   const x = (t) => P + ((t - tmin) / (tmax - tmin || 1)) * (W - P - 6);
@@ -337,7 +358,7 @@ function chartSVG(obs, fc, bank) {
     <text x="4" y="${y(ymax - 0.1) + 4}" font-size="10" fill="#5b6573">${(ymax - 0.1).toFixed(2)}</text>
     <text x="4" y="${y(ymin + 0.1)}" font-size="10" fill="#5b6573">${(ymin + 0.1).toFixed(2)}</text>
     ${band.length ? `<path d="${area(0, 4)}" fill="#1565c0" opacity=".12"/><path d="${area(1, 3)}" fill="#1565c0" opacity=".22"/>` : ""}
-    ${bankLine}<path d="${line}" fill="none" stroke="#0d3b66" stroke-width="1.6"/>
+    ${bankLine}${crit != null ? `<line x1="${P}" x2="${W - 6}" y1="${y(crit)}" y2="${y(crit)}" stroke="#e46c0a" stroke-dasharray="2 3"/><text x="${P + 4}" y="${y(crit) - 4}" font-size="11" fill="#e46c0a">เกณฑ์ กทม. ${crit.toFixed(2)}</text>` : ""}<path d="${line}" fill="none" stroke="#0d3b66" stroke-width="1.6"/>
     ${med ? `<path d="${med}" fill="none" stroke="#1565c0" stroke-width="1.6" stroke-dasharray="4 3"/>` : ""}
     ${dayTicks(tmin, tmax, x, H)}
     <line x1="${x(t0)}" x2="${x(t0)}" y1="8" y2="${H - 20}" stroke="#555" stroke-width=".8"/>
@@ -448,15 +469,18 @@ async function showDetail(code) {
   history.replaceState(null, "", `#s=${encodeURIComponent(code)}`);
   try {
     const d = await getJSON(`/api/stations/${encodeURIComponent(code)}?days=5`);
-    const s = d.station, st = STATUS[s.status] || STATUS.unknown, fc = d.forecast;
+    const s = d.station, st = stOf(s), fc = d.forecast;
     const methods = fc ? [...new Set(Object.values(fc.skill || {}).map((k) => k.method))] : [];
     const skill12 = fc?.skill?.["12"];
     const bma = s.agency === "BMA", unit = bma ? "ม. (หมุด กทม.)" : "ม.รทก.";  // BMA datum unverified vs HII (KI-217)
     box.innerHTML = `<div class="tools"><button class="btn share" aria-label="แชร์">🔗 แชร์</button><button class="btn close" aria-label="ปิด">✕</button></div>
       <h2 id="sheet-title">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></h2>
       <div class="muted">${esc(s.river || "")} · ${esc(s.amphoe || "")} ${esc(s.province || "")} · ${esc(s.agency || "")}</div>
-      <p class="headline" style="color:${st.color}">${s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
+      <p class="headline" style="color:${st.color}">${s.status_basis === "bma_thresholds"
+        ? `${esc(st.long)}${s.over_bma_critical_m != null && s.over_bma_critical_m > 0 && s.status !== "critical" ? ` · ${esc(levelText(s))}` : ""}`
+        : s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
         : `${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}`}</p>
+      ${bmaNote(s)}
       <p class="muted">ระดับน้ำ ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit} ·
         ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})${s.stale ? " ⚠️ ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว" : ""}</p>
       ${notesText(s) ? `<div class="warnbox">ℹ️ ${esc(notesText(s))}</div>` : ""}
@@ -465,7 +489,7 @@ async function showDetail(code) {
       <p class="big"${!hasForecast(s) && !observedText(s) && isNew(s) ? " hidden" : ""}>${esc(hasForecast(s) ? TREND[s.trend12] : observedText(s) || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
-      ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl)}
+      ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       <p class="muted">วิธีคาดการณ์: ${esc(methods.join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
         · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p>
       ${feedbackCounts(d.feedback7d)}
@@ -483,7 +507,7 @@ async function showDetail(code) {
 
 async function share(s) {
   const url = `${location.origin}/#s=${encodeURIComponent(s.code)}`;
-  const text = `${s.name_th}: ${STATUS[s.status]?.long || ""} ${freeboardText(s.freeboard_m)} (BKK FloodWatch)`;
+  const text = `${s.name_th}: ${stOf(s).long || ""} ${levelText(s)} (BKK FloodWatch)`;
   try {
     if (navigator.share) await navigator.share({ title: "BKK FloodWatch", text, url });
     else { await navigator.clipboard.writeText(`${text} ${url}`); document.querySelector(".share").textContent = "✔ คัดลอกแล้ว"; }

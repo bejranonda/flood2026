@@ -69,6 +69,7 @@
 | 36 | Street data silently 3 h old (Traffy outage) | Age shown on cards, in the detail and the map legend when > 60 min |
 | 38 | Owner: "users like to see the trend; separate the non-predictable from the map, with an option" | Map default = 81 forecastable gauges; switch shows 214 more (D-037). Observed 1–3 h change on every gauge without a forecast |
 | 39 | Map switches were under the legend and below the fold on a phone (found by the test) | Moved to the top left; verified at 390 and 1366 px |
+| 40 | Owner: "flood69 gauges show below bank but the area is flooded; maybe gate/pump mixing hides the real level" | Tested: no mixing (canal side only); 39 of 49 cases were plain canal gauges. BMA's own critical level matched flooded streets far better than the bank → **BMA gauges now read ล้นตลิ่ง / คลองเต็ม / คลองเริ่มเต็ม / คลองยังรับน้ำได้** with "เกินเกณฑ์ กทม. N ซม." and an explanation (D-038). Not hidden |
 | 37 | Redundant text in a new gauge's sheet | Trend line hidden when the 🆕 box explains it |
 
 ## 3. Still missing (prioritised)

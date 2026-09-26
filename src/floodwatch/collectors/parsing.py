@@ -217,7 +217,10 @@ def parse_bma_klongmap(payload: dict, raw_ref: str) -> tuple[list[dict], list[di
         stations[code] = {
             "code": code, "hii_id": None, "name_th": info.get("water_shortname") or info.get("water_name"),
             "name_en": info.get("water_shortname_en"), "lat": lat if lat else None, "lon": lon if lon else None,
-            "bank_msl": bank, "ground_msl": None, "critical_msl": None, "agency": "BMA",
+            # BMA's warning/critical are drainage operating levels, not banks (KI-215). Above them the canal can no
+            # longer take street water well, which matched street-flood reports better than the bank (D-038).
+            "bank_msl": bank, "ground_msl": None, "critical_msl": to_float(info.get("critical")),
+            "warning_msl": to_float(info.get("warning")), "agency": "BMA",
             "province": "กรุงเทพมหานคร", "amphoe": None, "river": info.get("river_name"), "basin": None,
             "in_focus": True, "meta_source": "bma_klongmap"}
         t = _ms_date((last or {}).get("site_timestamp"))

@@ -111,3 +111,13 @@ def test_observed_change_is_from_readings_and_needs_both_ends():
     r = {"level_msl": 1.55, "prev_level": 1.43, "obs_time": t, "prev_time": t - dt.timedelta(hours=2)}
     assert api._observed_change(r) == {"change_m": 0.12, "change_hours": 2.0}
     assert api._observed_change({**r, "prev_level": None}) == {"change_m": None, "change_hours": None}
+
+
+def test_bma_status_uses_bma_drainage_levels_then_bank():
+    # WL.SSB.07-like: 35 cm below bank but above BMA critical -> "canal full" (warning), not "normal" (D-038)
+    assert api.bma_status(0.40, 0.75, 0.10, 0.22) == ("warning", 0.18)
+    assert api.bma_status(0.15, 0.75, 0.10, 0.22) == ("watch", -0.07)
+    assert api.bma_status(0.05, 0.75, 0.10, 0.22) == ("normal", -0.17)
+    assert api.bma_status(0.80, 0.75, 0.10, 0.22)[0] == "critical"
+    assert api.bma_status(0.30, 0.75, None, None) == ("normal", None)  # no BMA levels: bank only
+    assert api.bma_status(None, 0.75, 0.1, 0.2) == ("unknown", None)

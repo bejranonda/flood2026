@@ -2,6 +2,11 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.5.0 — 2026-09-26
+- **BMA canal gauges are judged by BMA's own drainage levels** (D-038): ล้นตลิ่ง (over bank) / **คลองเต็ม** (over BMA critical) / คลองเริ่มเต็ม (over BMA warning) / คลองยังรับน้ำได้. Near flooded streets 60 % of BMA gauges were over BMA critical but only 18 % over the bank. BMA `warning`/`critical` stored (`warning_msl` column); `status_basis`, `over_bma_critical_m`, `bma_critical_msl` in the station API; BMA's critical level drawn on the chart; explanation "canal can't take street water well".
+- Summary chips: "ใกล้ตลิ่ง/คลองเต็ม", "ยังรับน้ำได้". HII/RID gauges unchanged (bank). `app.js?v=18`. 46 tests.
+- The owner's hypothesis (gate in/out mixing) was tested and not supported: only the canal side is stored; 39 of 49 cases were plain canal gauges.
+
 ## v0.4.1 — 2026-09-26
 - **Map: forecastable gauges only by default** (81), switch "แสดงสถานีที่ยังคาดการณ์ไม่ได้ (N)" to show all (D-037). The list and point check are unchanged.
 - **Observed trend for every gauge:** `change_m` / `change_hours` in `/api/stations` (readings 1–3 h apart); cards and details of gauges without a forecast show "สูงขึ้น/ลดลง N ซม. ใน N ชม.ที่ผ่านมา" or "ทรงตัว".

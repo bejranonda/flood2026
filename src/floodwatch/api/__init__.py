@@ -51,7 +51,7 @@ def health():
 
 
 STATIONS_SQL = """
-SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.agency, s.province, s.amphoe,
+SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.critical_msl, s.warning_msl, s.agency, s.province, s.amphoe,
        s.river, s.coord_source, s.coord_precision_km, o.obs_time, o.level_msl, o.discharge, o.situation_level,
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
        f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time,
@@ -74,6 +74,27 @@ WHERE (%(all)s OR s.in_focus) AND s.code !~ '^TEST'
 """
 
 
+def bma_status(level: float | None, bank: float | None, warning: float | None,
+               critical: float | None) -> tuple[str, float | None]:
+    """BMA canal gauges are judged by BMA's own drainage levels, not only the bank (D-038, owner 2026-09-26).
+    Canals rarely overtop their walls; streets flood when the canal is too full to take the drains' water. On
+    2026-09-26 60 % of gauges near flooded streets were above BMA 'critical' vs 18 % above the bank.
+    critical (red) = over the bank · warning (orange) = over BMA critical ("คลองเต็ม") ·
+    watch (amber) = over BMA warning ("คลองเริ่มเต็ม") · normal (blue) = below both ("คลองยังรับน้ำได้")."""
+    if level is None:
+        return "unknown", None
+    over = None if critical is None else round(level - critical, 2)
+    if bank is not None and level > bank:
+        return "critical", over
+    if critical is not None and level > critical:
+        return "warning", over
+    if warning is not None and level > warning:
+        return "watch", over
+    if bank is None and critical is None:
+        return "unknown", over
+    return "normal", over
+
+
 def _observed_change(r: dict) -> dict:
     lvl, prev, t, tp = r.get("level_msl"), r.get("prev_level"), r.get("obs_time"), r.get("prev_time")
     if lvl is None or prev is None or t is None or tp is None:
@@ -89,6 +110,10 @@ def _station_row(r: dict) -> dict:
         notes.append("datum_suspect")
         r.update(level_msl=None, trend12=None, delta12=None, recovery=None)
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])
+    basis, over_crit = "bank", None
+    if r.get("agency") == "BMA":
+        status, over_crit = bma_status(r["level_msl"], r["bank_msl"], r.get("warning_msl"), r.get("critical_msl"))
+        basis = "bma_thresholds"
     age = _age_min(r["obs_time"])
     if age is None or age > UNKNOWN_AFTER_MIN:
         status = "unknown"
@@ -115,6 +140,9 @@ def _station_row(r: dict) -> dict:
         "coord_precision_km": r.get("coord_precision_km"),
         # When our record of this gauge begins. New gauges (e.g. BMA since 2026-09-26) have no chart or forecast yet;
         # the UI says so instead of showing an empty chart that looks like lost data.
+        "status_basis": basis,  # "bank" or "bma_thresholds" (D-038): the UI names the yardstick
+        "bma_critical_msl": r.get("critical_msl") if basis == "bma_thresholds" else None,
+        "over_bma_critical_m": over_crit,
         "history_since": _iso(r.get("first_time")),
         # Observed change over the last 1-3 h: a trend from readings, available after an hour, long before a
         # forecast (which needs 7 days). Not a prediction; the UI says "ที่ผ่านมา" (owner: users want the trend).
