@@ -247,3 +247,4 @@ UX principles established through visitor testing during the 2026 flood season:
   - `BKK009` (คลองลำปลาทิว ลาดกระบัง) ↔ `WL.LPT.03` (10 m distance).
 - **Datum separation reminder (KI-217):** BMA gauges are referenced to local zero/datum, while HII stations are referenced to Mean Sea Level (m MSL / Ko Lak datum). Always display with proper unit attribution (`ม. (หมุด กทม.)` vs `ม.รทก.`).
 
+- **Trend display rule (v0.11, D-056):** a chip states a direction only where the backtest chose a real model (not "no change") at that horizon. On 2026-09-27 most BMA canal gauges therefore show "? ไม่แน่ชัด" at 24 h with their error range — pumps and gates, not tide or rain, drive them (research §10).

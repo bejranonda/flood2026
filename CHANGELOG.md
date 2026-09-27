@@ -2,6 +2,12 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.11.1 — 2026-09-27
+- **Canal factor readable at a glance (owner review, KI-234):** each gauge is its own block with the same structure —
+  a small label on its own line ("คลองใกล้สุด" / "คาดการณ์จากคลองใกล้เคียง"), then the **bold name** · distance ·
+  status pill, then that gauge's 24/48 h rows or "ยังไม่มีคาดการณ์"; a divider separates the two gauges. Before, one
+  name was bold and the other not, and the labels ran into long lines.
+
 ## v0.11.0 — 2026-09-27
 - **One trend format everywhere (D-056, KI-233):** list, point panel and station sheet use the same aligned rows —
   "ใน 24 ชม. · [→ ทรงตัว] · −7 ถึง +7 ซม. · ⓘ". A direction is shown only where a real model beat "no change" at that

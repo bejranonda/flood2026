@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-234 | Canal factor: one gauge name bold, the other not; labels ran into long lines | UI | 🟢 fixed v0.11.1 |
 | KI-233 | Trend formats differed by horizon and view; 24 h showed a direction from the "no change" model; "ใกล้ตลิ่ง" 158 cm below the bank | UX / Product | 🟢 fixed v0.11.0 (D-056) |
 | KI-232 | Nearest canal had no forecast (relay-only BMA gauge), so the panel showed no trend at all; summary wording not understood | UX / Product | 🟢 fixed v0.10.2 (D-054 amended) |
 | KI-229 | Canal factor said "ประเมินไม่ได้" at 83 % of Bangkok pins (8 km agreement rule) | UX / Product | 🟢 fixed v0.10.0 (D-054: 39 %) |
@@ -534,3 +535,6 @@ Owner screenshot 13.764,100.679 (2026-09-27): the nearest canal WL.SMK.01 (0.3 k
 
 ### KI-233 — Inconsistent trend formats and a misleading "near bank" · 🟢 fixed v0.11.0 (D-056)
 Owner, 2026-09-27: "Why do 24 h and 48 h have different formats?" and "the panel and station formats are confusing". Audit: the 48 h line put the horizon in the chip, the others in the text; 24 h chips showed "→ ทรงตัว" for gauges whose model is "no change" (a tautology, not a forecast) while 48 h withheld a direction; horizons, status styles and "when it drops" wording differed between list, panel and sheet. Separately, CPY015 read "เตือนภัย (ใกล้ตลิ่ง) · ต่ำกว่าตลิ่ง 158 ซม.": watch/warning for bank gauges come from the share of channel depth (91 % of an 18 m deep river), so the label now says "น้ำเต็มลำน้ำ 91 %" when the bank is > 30 cm away.
+
+### KI-234 — Two gauge lines formatted differently · 🟢 fixed v0.11.1
+Owner screenshot 13.748,100.668 (2026-09-27): "คลองใกล้สุด ค.หัวหมาก-ซ.รามคำแหง 68 2.2 กม. [pill] · ยังไม่มีคาดการณ์" was one muted run-on line with a plain name, while the forecast gauge below had a bold name, and "คาดการณ์จากคลองใกล้เคียง:" sat on a line of its own — two formats for the same thing. Now one `gBlock` renders both: label line → bold name · distance · status pill → rows or "ยังไม่มีคาดการณ์"; a dashed divider between gauges.

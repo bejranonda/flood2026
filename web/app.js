@@ -642,12 +642,17 @@ function pointHTML(d, src, place = "") {
   // one "when it drops" line; why/where details are folded. If the nearest canal has no forecast (relay-only BMA gauge),
   // it gets one line and the nearest canal with a forecast carries the trend (KI-232).
   const pill = (x) => `<span class="badge b-${esc(x.status)}">${esc(stOf(x).th)}</span>`;
-  const gHead = (c) => `<div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span> <span class="muted">${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span> ${pill(c.station)}</div>`;
+  // One block per gauge, same structure for both (owner 2026-09-27: one name was bold, the other not, and the labels ran
+  // into long lines): label on its own line → bold name · distance · status pill → that gauge's rows or "no forecast".
+  const gBlock = (label, c, body) => `<div class="pf-gauge"><div class="pf-glabel">${label}</div>
+    <div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span><span class="muted">${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span>${pill(c.station)}</div>${body}</div>`;
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
+  const trendBody = (x) => `${trendRows(x, [24, 48])}${dropText(x) ? `<div class="pf-nofall">${esc(dropText(x))}</div>` : ""}`;
   const noTrendLine = near && near.station && main !== near
-    ? `<div class="pf-gline muted">คลองใกล้สุด ${esc(near.station.name_th)} ${esc(near.distance_km)} กม. ${pill(near.station)} · ยังไม่มีคาดการณ์</div>` : "";
-  const mainBlock = main && main.station ? `${noTrendLine ? `<div class="muted">คาดการณ์จากคลองใกล้เคียง:</div>` : ""}${gHead(main)}${trendRows(main.station, [24, 48])}${dropText(main.station) ? `<div class="pf-nofall">${esc(dropText(main.station))}</div>` : ""}` : "";
+    ? gBlock("คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ (สถานีเริ่มเก็บข้อมูลไม่นาน)</div>`) : "";
+  const mainBlock = main && main.station
+    ? gBlock(noTrendLine ? "คาดการณ์จากคลองใกล้เคียง" : "คลองใกล้สุด", main, trendBody(main.station)) : "";
   const detailBits = [canal.sub, main && main.far ? "สถานีที่ใช้อยู่ห่างเกิน 3 กม. อาจอยู่คนละพื้นที่ปิดล้อม ใช้ประกอบเท่านั้น" : "",
     main && main.station ? `ข้อมูลจาก${main.station.agency === "BMA" ? "สำนักการระบายน้ำ กทม." : main.station.agency === "RID" ? "กรมชลประทาน" : "สสน."}` : "",
     a.n > 1 ? `มีสถานีอื่นอีก ${a.n - 1} แห่งในระยะ 8 กม. (รายชื่อด้านล่าง)` : ""].filter(Boolean);
