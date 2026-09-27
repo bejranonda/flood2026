@@ -66,8 +66,8 @@
       <summary>ที่มาข้อมูลและวิธีคาดการณ์</summary>
       <div class="more-popup">
         <p><strong>ที่มาของข้อมูล:</strong> สถาบันสารสนเทศทรัพยากรน้ำ (สสน./HII ThaiWater) รวมข้อมูลกรมชลประทาน · กทม. (สำนักการระบายน้ำ) · พยากรณ์ฝน Open-Meteo · รายงานประชาชน Traffy Fondue</p>
-        <p><strong>วิธีคาดการณ์:</strong> แต่ละสถานีทดสอบย้อนหลังกับข้อมูลจริงของตัวเอง (ค่าคงที่, ค่าคงที่+น้ำขึ้นน้ำลง, +แนวโน้ม) แล้วเลือกวิธีที่แม่นกว่าการใช้ค่าปัจจุบันเกิน 10% เท่านั้น</p>
-        <p><strong>ระดับความมั่นใจ:</strong> ไอคอน <span class="conf-badge conf-medium">ⓘ</span> สีฟ้า = คาดการณ์ปานกลาง (ทดสอบแบบจำลองน้ำขึ้นน้ำลงย้อนหลัง 45 วัน แม่นกว่าค่าคงที่) · <span class="conf-badge conf-low">ⓘ</span> สีเทา = คาดการณ์เบื้องต้น (อิงสถิติหรือความคงที่ 45 วัน)</p>
+        <p><strong>วิธีคาดการณ์:</strong> แต่ละสถานีทดสอบย้อนหลังกับข้อมูลจริงของตัวเอง แล้วเลือกวิธีที่แม่นกว่าการใช้ค่าปัจจุบันเกิน 10% เท่านั้น: ค่าคงที่, น้ำขึ้นน้ำลง, +แนวโน้ม และ (ตั้งแต่ v0.8.0) ฝนคาดการณ์ + น้ำจากสถานีต้นน้ำและการระบายน้ำเขื่อนเจ้าพระยา</p>
+        <p><strong>ระดับความมั่นใจ:</strong> ไอคอน <span class="conf-badge conf-medium">ⓘ</span> สีฟ้า = คาดการณ์ปานกลาง (ทดสอบย้อนหลัง 45 วัน แม่นกว่าการถือว่าน้ำคงที่อย่างน้อย 30%) · <span class="conf-badge conf-low">ⓘ</span> สีเทา = คาดการณ์เบื้องต้น (อิงสถิติหรือความคงที่ 45 วัน)</p>
         <p class="muted">พื้นที่ กทม. สูงต่ำไม่เท่ากัน สถานีที่ใกล้ที่สุดอาจอยู่คนละฝั่งคันกั้นน้ำกับบ้านคุณ</p>
       </div>
     </details>
@@ -79,6 +79,6 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="/static/app.js?v=29"></script>
+<script src="/static/app.js?v=30"></script>
 </body>
 </html>

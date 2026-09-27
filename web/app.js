@@ -56,8 +56,11 @@ const CHANGE = {
   rise: { th: "เพิ่มขึ้น", icon: "↗", color: "#b45309" }, strong_rise: { th: "เพิ่มขึ้นมาก", icon: "⬆", color: "#c62828" },
 };
 const CONF_TH = { medium: "คาดการณ์ปานกลาง", low: "คาดการณ์เบื้องต้น" };
+// Method codes from the backtest (forecast.evaluate) in plain Thai; "star" = D-052 (rain + upstream + dam release)
+const METHOD_TH = { persistence: "ค่าคงที่", tide: "น้ำขึ้นน้ำลง", tide_trend: "น้ำขึ้นน้ำลง + แนวโน้ม", trend: "แนวโน้ม",
+  star: "ฝนคาดการณ์ + น้ำจากต้นน้ำ" };
 const CONF_WHY = {
-  medium: "แบบจำลองน้ำขึ้นน้ำลงทดสอบย้อนหลัง 45 วัน แม่นกว่าการถือว่าน้ำคงที่ และช่วงที่ให้ถูกราว 9 ใน 10 ครั้ง",
+  medium: "แบบจำลองทดสอบย้อนหลัง 45 วัน แม่นกว่าการถือว่าน้ำคงที่อย่างน้อย 30% และช่วงที่ให้ถูกราว 9 ใน 10 ครั้ง (ใช้น้ำขึ้นน้ำลง ฝนคาดการณ์ และน้ำจากต้นน้ำ/เขื่อนเจ้าพระยา ตามที่แต่ละสถานีทดสอบแล้วแม่นกว่า)",
   low: "แบบจำลองเบื้องต้น (อิงความคงที่หรือสถิติ 45 วัน) ตัวเลขเป็นกรอบความคลาดเคลื่อนจากการทดสอบย้อนหลัง",
 };
 const changeRange = ([lo, hi], dir) => {
@@ -562,7 +565,7 @@ async function showDetail(code) {
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
-      <p class="muted">วิธีคาดการณ์: ${esc(methods.join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
+      <p class="muted">วิธีคาดการณ์: ${esc(methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
         · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p>
       ${feedbackCounts(d.feedback7d)}
       ${feedbackForm(s.code)}`;

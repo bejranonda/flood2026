@@ -23,7 +23,8 @@ TASKS = [
     ("hii_history", 6 * 3600),
     ("hii_backfill", 600),  # a few stations per run until the 1-year backfill is complete (D-018)
     ("bma_dds", 3 * 3600),
-    ("hii_fews_forecast", 3 * 3600),  # HII official forecast files, new issue ~daily (D-050)
+    ("hii_fews_forecast", 3 * 3600),
+    ("openmeteo_prev", 24 * 3600),  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
     ("forecast", 1800),
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),
@@ -91,7 +92,7 @@ def main() -> None:
             log.warning("db not ready (%s), retrying", e)
             time.sleep(2)
     # First run order: latest values -> history -> weather -> forecast.
-    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "traffy", "bma_klong", "hii_rain", "forecast", "disk"):
+    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev", "traffy", "bma_klong", "hii_rain", "forecast", "disk"):
         run_task(name)
     active = [(n, i) for n, i in TASKS if n != "bma_dds" or settings.thai_egress_proxy]
     next_run = {name: time.time() + interval for name, interval in active}

@@ -68,7 +68,7 @@
 | KI-509 | A GloFAS point query can hit a side cell (Nong Khai 3 vs ~9,000 m³/s) | Data quality | 🟡 (snap rule, APPROACH §19.5) |
 | KI-510 | GISTDA answered 404 (outdated path, key sent as a query parameter) while `owner_status.py` showed ✅ | Infrastructure | 🟢 fixed 2026-09-27 (documented API; real check in the script) |
 | KI-512 | Access logs kept place-search text and point coordinates (D-032 breach) | Privacy | 🟢 fixed v0.7.0 (redaction filter) |
-| KI-511 | No database backup at all; disk 84 % full (12 GB free, shared host) | Infrastructure | 🔴 |
+| KI-511 | No database backup at all; disk 84 % full (12 GB free, shared host) | Infrastructure | 🔴 risk accepted by the owner for now (Q29, 2026-09-27) |
 
 ---
 
@@ -478,7 +478,7 @@ On 2026-09-27 the Open-Meteo Flood API at Nong Khai (17.88, 102.74) returned **1
 - **Data (2026-09-27 09:54 UTC, national):** 1 day 0 cells (no satellite pass), 3 days 38,461, 7 days 49,761, 30 days 52,778 flooded **H3 cells (~0.12 km²)** with `f_area` m², province/amphoe, exposure (`population`, `building`, `length_road`, `hospital`, crop areas) and the source passes (`S1C/S1D` Sentinel-1, `rd2` Radarsat-2, `cg2/cm4` COSMO-SkyMed); `flood-freq` gives recurrence polygons (5,377 in a Bangkok-area bbox). The Bangkok bbox had **0 cells in 7 days** while streets were flooded: radar misses water between buildings (⚠️ inference), so an empty result is **not** "no flood" in cities.
 - **Fixed:** `GISTDA_API_ENDPOINT` → `/features/flood/7days`; `config.py` default and `.env.example` updated; the status script sends the header and reports the cell count. **Lesson:** a status check must exercise the service, not the presence of a key.
 
-### KI-511 — No database backup at all; disk 84 % full · 🔴
+### KI-511 — No database backup at all; disk 84 % full · 🔴 (risk accepted by the owner, Q29 2026-09-27: "no backup for now")
 R2 off-site backups were declined (D-029), but **no local dump exists either**; `infra/README.md` describes one that was never built. 2026-09-27: DB 706 MB, ~74,000 rows/day, disk 60 of 75 GB used (12 GB free, shared host). BMA canal history (since 2026-09-26) and user feedback cannot be re-fetched. National collection would multiply the growth.
 - **Plan (D-046):** nightly `pg_dump -Fc` into `data/backups/` (keep 3) and one tested restore into a throwaway container, **before** any national collector runs; retention of 90 days for high-volume national series; a disk alert already exists (hourly check).
 

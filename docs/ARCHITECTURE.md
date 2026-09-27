@@ -96,7 +96,7 @@ PostgreSQL + **TimescaleDB** (hypertables, compression, continuous aggregates fo
 | `user_feedback` *(live)* | verdict, depth band, note (private), rounded lat/lon (opt-in), **snapshot of what was shown**, daily-salted client hash |
 | `collector_state` *(live)* | small key/value bookkeeping: stations already backfilled (365 d), chart codes that failed in the last 24 h |
 
-The live MVP schema ([schema.sql](../src/floodwatch/db/schema.sql)) is a simpler subset of this target: `station`, `station_version`, `observation`, `rain_obs`, `weather_forecast`, `crowd_report`, `forecast_run`, `source_health`, `user_feedback`, `collector_state`.
+The live MVP schema ([schema.sql](../src/floodwatch/db/schema.sql)) is a simpler subset of this target: `station`, `station_version`, `observation`, `rain_obs`, `weather_forecast`, `crowd_report`, `forecast_run`, `source_health`, `user_feedback`, `collector_state`, plus `external_forecast` (HII official forecasts as issued, D-050) and `rain_hindcast` (rain as forecast 1–2 days earlier, training data for the `star` method, D-052).
 
 Store UTC and display Asia/Bangkok. Station metadata is **versioned, never overwritten**.
 

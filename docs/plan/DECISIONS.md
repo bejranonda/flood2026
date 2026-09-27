@@ -360,7 +360,7 @@
 - **Date:** 2026-09-27 · **Status:** accepted (owner answers)
 - **Evidence:** disk 60 of 75 GB used (12 GB free, shared host); DB 706 MB growing ~74,000 rows/day; **no backup of any kind** (KI-511). DWR and RID answer only from a Thai IP (KI-110) and the only Thai egress is a public VPN relay (KI-505). The national endpoints are public but undocumented.
 - **Decision:**
-  1. **Local nightly `pg_dump -Fc`** (keep 3) and one tested restore **before** any national collector runs. R2 stays off (D-029).
+  1. **Local nightly `pg_dump -Fc`** (keep 3) and one tested restore **before** any national collector runs. R2 stays off (D-029). **Amended 2026-09-27 (owner, Q29): "no backup for now"** — the risk (KI-511) is accepted; re-ask before national collectors or when feedback volume grows.
   2. **Lean national series:** dams and thresholds daily, FFPI every 6 h, DWR hourly via the Thai egress, 90-day retention for high-volume series, a freshness filter on every feed (KI-111).
   3. **Collect quietly, ask before public:** national collectors may poll gently (behind a flag, not shown) once built; before national data is shown publicly the owner sends short notes to HII, DWR and RID (drafts in OWNER_ACTIONS) and a reliable Thai egress exists.
   4. The work stays on branch `research/nationwide-scope` until the owner reviews it (owner answer 2026-09-27).
@@ -419,3 +419,13 @@
   4. **Nearest canal (fixes the D-048 fallback):** only a *canal* gauge within 3 km, chosen server-side (`forecast.nearest_canal`), never a river gauge.
   5. **District line** under the coordinates from `/api/reverse` (Nominatim via our server, rounded to ~1 km, cached, never logged); filled in after the panel renders, so it never delays the answer.
   6. **Report form** opens from one full-width button in a popup. Baseline before the change: 57 reports in 24 h (56 with a depth); compare after release.
+
+### D-052 — Network space-time AR + rain ("star") as a production forecast method
+- **Date:** 2026-09-27 · **Status:** accepted (owner: "Q32: continue")
+- **Evidence:** [research §9](../../research/2026-09-27_forecast_48h.md#9-built-and-proven-network-star--rain-in-production-d-052-v080). Three 45-day windows with production code; out of sample (choose on one window, score on the next) `star` kept its gain at 87–100 % of gauges, median 9.5–25 %. Gauges with 48 h skill ≥ 0.3: 8 → 35 in the latest window.
+- **Decision:**
+  1. `star` joins persistence / tide / tide_trend / trend in `forecast.evaluate`, compared on the same rows, chosen per gauge and horizon only where it wins and passes the skill gate (GUIDELINES §2). No new display rules: the existing confidence gate (D-047) and 48 h rule (D-050) decide what is shown.
+  2. Inputs: own tide/trend, 2 upstream Chao Phraya gauges (river km), C.13 release downstream of the dam, forecast rain at the nearest rain point. Training rain = Open-Meteo previous runs (table `rain_hindcast`, collector `openmeteo_prev`, daily); live rain = the latest `weather_forecast` run.
+  3. If today's inputs are incomplete, the path falls back to the gauge's best own method with that method's error band (`q_all` in the payload).
+  4. Forecast payload version `star-0.2`.
+- **Next:** interval coverage checked out of sample; canal gains depend on rain alone — BMA pump/gate data would be the next input; the same scripts are the starting point for the national phase (research §8).

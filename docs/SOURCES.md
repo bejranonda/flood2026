@@ -117,7 +117,7 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | ONWR public API | `https://ntw-admin.onwr.go.th/api/v1/public/disaster`, `/reportwater/events`, `/reportwater/events/option` | Timeout from Germany; 200 via the Thai egress. `disaster` empty on 2026-09-27; `reportwater/events`: 8 official event reports in 2026 (North/Northeast, none in Bangkok) | 🟡 low value for Bangkok; keep for the national phase |
 | HII token API in the ONWR bundle | `api.hii.or.th/v2/<token>/isohyet/...` | token hard-coded in a public web bundle | ⛔ never use copied tokens |
 | Open-Meteo historical forecast | `https://historical-forecast-api.open-meteo.com/v1/forecast?...&hourly=precipitation` | 200, keyless; a year of hourly rain at any point (stitched early forecast hours) | ✅ training data (upper-bound tests) |
-| Open-Meteo previous runs | `https://previous-runs-api.open-meteo.com/v1/forecast?...&hourly=precipitation_previous_day1,precipitation_previous_day2` | 200, keyless; forecasts issued 1–2 days earlier, a year back | ✅ **honest** training data for a rain-aware model (D-050) |
+| Open-Meteo previous runs | `https://previous-runs-api.open-meteo.com/v1/forecast?...&hourly=precipitation_previous_day1,precipitation_previous_day2` | 200, keyless; forecasts issued 1–2 days earlier, a year back | ✅ **collected daily** (`openmeteo_prev` → `rain_hindcast`, one year backfilled 2026-09-27); training data for `star` (D-052) |
 | Nominatim reverse | `https://nominatim.openstreetmap.org/reverse?lat&lon&format=jsonv2&zoom=14&accept-language=th` | 0.15–0.23 s; แขวง/เขต in Bangkok, อำเภอ/จังหวัด elsewhere | ✅ district line (D-051), ≤ 1 req/s shared with search, rounded ~1 km, never logged |
 
 ## 3. Refuted endpoints — do **not** use

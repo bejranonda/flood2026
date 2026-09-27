@@ -2,6 +2,22 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.8.0 — 2026-09-27
+- **New forecast method `star` (D-052): forecast rain + upstream water + Chao Phraya Dam release.** Each gauge now also
+  tries a regression on its own tide/trend, the 2 nearest upstream Chao Phraya gauges, the C.13 release and the forecast
+  rain over the horizon. It is used only where it beats the gauge's own methods on the same backtest rows and "no
+  change" by the skill gate. Validation on 3 separate 45-day windows and out of sample (choose on one window, score on
+  the next): the gain held at 87–100 % of gauges; gauges with a 48 h forecast ≥ 30 % better than "no change" went from
+  8 to 35. Largest gains on the upper river (Ayutthaya 48 h error 27 → 17 cm).
+- **Rain history for training:** new collector `openmeteo_prev` (daily) stores rain as it was forecast 1–2 days earlier
+  (Open-Meteo previous runs) in `rain_hindcast`; one year backfilled for the 9 rain points.
+- **Fixed before release:** gaps in a gauge's own record made the live forecast silently fall back (Ayutthaya);
+  own levels are now carried over gaps ≤ 6 h when building inputs.
+- UI: method names in Thai in the station sheet ("ฝนคาดการณ์ + น้ำจากต้นน้ำ" for the new method); confidence tooltip
+  and footer explain what the models use. The 48 h line (D-050) now appears wherever the new method earns it.
+- Q29 answered: no database backup for now (risk accepted, KI-511).
+- Tests: 75 passing (+8).
+
 ## v0.7.0 — 2026-09-27
 - **Point panel redesigned (issue #3, D-051):** one panel instead of three boxes — "แนวโน้ม 12–24 ชม. ข้างหน้า" with a
   single ⓘ for sources and caveats (owner: "everything into ⓘ"), a larger headline, and "ปัจจัยที่ใช้คาดการณ์": canal,

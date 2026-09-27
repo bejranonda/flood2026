@@ -160,7 +160,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
     - Technical surveying datum (`ม.รทก.`): Prioritize observation freshness on the main line; tuck raw surveying elevation into an interactive `[ม.รทก. ⓘ]` button.
     - Textual chart legends: Make collapsible (`<details class="chart-legend">`) to preserve vertical mobile viewport height.
 
-22. **Horizons only where proven (D-050):** a 12/24 h change is shown per gauge; a 48 h line only where the 48 h backtest gives "medium" confidence. When a high gauge shows no fall in 24 h, say "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า" — never "stable for 48 h". Outside forecasts (HII) are shown only after our scoring shows they beat "no change" and ours, labelled with their assumptions.
+22. **Horizons only where proven (D-050, D-052):** every method, including `star`, earns its place per gauge and horizon in the backtest; a 12/24 h change is shown per gauge; a 48 h line only where the 48 h backtest gives "medium" confidence. When a high gauge shows no fall in 24 h, say "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า" — never "stable for 48 h". Outside forecasts (HII) are shown only after our scoring shows they beat "no change" and ours, labelled with their assumptions.
 23. **Logs are data too (D-032, KI-512):** access logs must not contain search text or coordinates; `RedactQuery` strips the query string of `/api/geocode`, `/api/point`, `/api/reverse`, `/api/near`. Any new endpoint that takes a place or a position is added to `PRIVATE_QUERY_PATHS`.
 
 ---

@@ -16,7 +16,7 @@ import numpy as np
 from floodwatch import db
 
 log = logging.getLogger(__name__)
-VERSION = "mvp-0.1"
+VERSION = "star-0.2"  # D-052: network space-time AR + rain competes in the backtest
 HORIZONS = [1, 3, 6, 12, 24, 48, 72]
 TIDE_SPEEDS = {"K1": 15.0410686, "O1": 13.9430356, "M2": 28.9841042, "S2": 30.0, "M4": 57.9682084,
                "MS4": 58.9841042}
@@ -90,7 +90,100 @@ def _slope(ybar: np.ndarray, i: int) -> float:
     return (ybar[i] - ybar[i - 24]) / 24.0
 
 
-def evaluate(t: np.ndarray, y: np.ndarray) -> dict:
+# --- Network space-time AR + rain ("star", D-052) -------------------------------------------------------------------
+# Each gauge: change over h hours ~ own tide change + own recent trend + upstream gauges' recent change (Chao Phraya
+# chain, by river km) + C.13 dam release + forecast rain over the next h hours at the nearest rain point. One ridge
+# regression per gauge and horizon; it competes in the same backtest as the other methods (research 2026-09-27).
+STAR_MIN_TRAIN = 30 * 24
+OWN_FFILL_H = 6  # own-level gaps bridged when building features (never in the target); same in training and live
+STAR_RIDGE = 1.0
+FUTURE_H = 72
+
+
+def rain_arrays(t: np.ndarray, hind: dict, live: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Hourly rain aligned to the grid `t` plus FUTURE_H hours after it: (r1, r2) = forecast issued ~1 / ~2 days
+    before each hour (Open-Meteo previous runs) for the past; for the future both are the latest run (`live`).
+    Keys are hour indices (unix hours). Missing hours stay NaN, so rows without rain data drop out of the fit."""
+    n = len(t)
+    hours = np.concatenate([t, t[-1] + np.arange(1, FUTURE_H + 1)]) if n else np.arange(0)
+    r1 = np.full(len(hours), np.nan); r2 = np.full(len(hours), np.nan)
+    for i, h in enumerate(hours.astype(int)):
+        if i >= n and h in live:
+            r1[i] = r2[i] = live[h]
+        elif h in hind:
+            r1[i], r2[i] = hind[h]
+    return r1, r2
+
+
+def _ffill(x: np.ndarray, limit: int) -> np.ndarray:
+    """Carry the last finite value over gaps of at most `limit` hours."""
+    out, last, since = x.copy(), np.nan, limit + 1
+    for i in range(len(out)):
+        if np.isfinite(out[i]):
+            last, since = out[i], 0
+        else:
+            since += 1
+            if since <= limit and np.isfinite(last):
+                out[i] = last
+    return out
+
+
+def _on_grid(t: np.ndarray, times, vals, ffill: int = 3) -> np.ndarray:
+    tt, yy = hourly_grid(times, vals)
+    m = {int(a): b for a, b in zip(tt, yy) if np.isfinite(b)}
+    # carry the last value a few hours: upstream gauges report at slightly different times than the target
+    return _ffill(np.array([m.get(int(a), np.nan) for a in t]), ffill)
+
+
+def align_exo(t: np.ndarray, exo: dict | None) -> dict | None:
+    """Raw inputs {up: [(times, vals)], q: (times, vals) | None, rain: {hind, live}} -> arrays on the grid `t`."""
+    if not exo:
+        return None
+    rain = exo.get("rain") or {}
+    r1, r2 = rain_arrays(t, rain.get("hind") or {}, rain.get("live") or {})
+    return {"up": [_on_grid(t, *u) for u in exo.get("up") or []],
+            "q": None if not exo.get("q") else _on_grid(t, *exo["q"]), "r1": r1, "r2": r2}
+
+
+def _lagdiff(x: np.ndarray, k: int) -> np.ndarray:
+    o = np.full(len(x), np.nan)
+    o[k:] = x[k:] - x[:-k]
+    return o
+
+
+def star_features(t: np.ndarray, y: np.ndarray, eta, ybar: np.ndarray, h: int, ex: dict) -> np.ndarray:
+    """Feature rows for predicting y[i+h] - y[i] from what is known at hour i (levels up to i; rain as forecast)."""
+    n = len(y)
+    cols = [(eta(t + h) - eta(t)) if eta else np.zeros(n), _lagdiff(y, 6), _lagdiff(y, 24), y - ybar]
+    for u in ex.get("up") or []:
+        cols += [_lagdiff(u, 24), _lagdiff(u, 48)]
+    if ex.get("q") is not None:
+        q = ex["q"]
+        cols += [q, _lagdiff(q, 24), _lagdiff(q, 48)]
+    c1 = np.concatenate([[0.0], np.cumsum(ex["r1"])])  # NaN propagates: rows without rain data are dropped
+    c2 = np.concatenate([[0.0], np.cumsum(ex["r2"])])
+    i = np.arange(n)
+    near = c1[i + 1 + min(h, 24)] - c1[i + 1]
+    far = (c2[i + 1 + h] - c2[i + 1 + 24]) if h > 24 else np.zeros(n)
+    cols.append(near + far)
+    return np.column_stack(cols)
+
+
+def _ridge(X: np.ndarray, y: np.ndarray):
+    mu, sd = X.mean(0), X.std(0) + 1e-9
+    Z = (X - mu) / sd
+    w = np.linalg.solve(Z.T @ Z + STAR_RIDGE * np.eye(Z.shape[1]), Z.T @ (y - y.mean()))
+    ym = y.mean()
+    return lambda Xn: ((Xn - mu) / sd) @ w + ym
+
+
+def _star_target(y: np.ndarray, h: int) -> np.ndarray:
+    tg = np.full(len(y), np.nan)
+    tg[:-h] = y[h:] - y[:-h]
+    return tg
+
+
+def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
     """Rolling-origin backtest on the last EVAL_HOURS (or the last 40 % of a short record). The tide used in the
     backtest is fitted only on data before the window (no leakage). Returns per-horizon choice, skill, residuals."""
     n = len(y)
@@ -99,7 +192,7 @@ def evaluate(t: np.ndarray, y: np.ndarray) -> dict:
     methods = ["persistence"] + (["tide", "tide_trend"] if eta else ["trend"])
     ybar = trailing_mean(y, 25)
     etag = eta(t) if eta else np.zeros(n)
-    errs = {h: {m: [] for m in methods} for h in HORIZONS}
+    errs = {h: {m: {} for m in methods} for h in HORIZONS}  # row index -> error, so methods compare on the same rows
     for i in range(split, n):
         if not np.isfinite(y[i]):
             continue
@@ -111,12 +204,29 @@ def evaluate(t: np.ndarray, y: np.ndarray) -> dict:
             for m in methods:
                 tide = 0.0 if m == "trend" else etag[j] - etag[i]
                 p = _predict("tide_trend" if m == "trend" else m, y[i], tide, h, sl)
-                errs[h][m].append(y[j] - p)
+                errs[h][m][i] = y[j] - p
+    if ex:  # star: trained only on targets that end before the window, tested on the window (no leakage)
+        yf = _ffill(y, OWN_FFILL_H)
+        ybf = trailing_mean(yf, 25)
+        for h in HORIZONS:
+            X, tg = star_features(t, yf, eta, ybf, h, ex), _star_target(y, h)
+            ok = np.isfinite(X).all(1) & np.isfinite(tg)
+            idx = np.arange(n)
+            tr = ok & (idx < split - h)
+            te = [i for i in range(split, n) if ok[i] and i in errs[h]["persistence"]]
+            if tr.sum() < STAR_MIN_TRAIN or len(te) < 0.5 * len(errs[h]["persistence"]):
+                continue  # not enough inputs over the window: compare only the gauge's own methods
+            pred = _ridge(X[tr], tg[tr])(X[te])
+            errs[h]["star"] = {i: float(tg[i] - p) for i, p in zip(te, pred)}
     result = {}
     for h in HORIZONS:
-        e = {m: np.array(v) for m, v in errs[h].items()}
-        if len(e["persistence"]) < 30:
+        rows = set(errs[h]["persistence"])
+        for m in errs[h]:
+            rows &= set(errs[h][m])  # with star present: only rows every method could forecast
+        rows = sorted(rows)
+        if len(rows) < 30:
             continue
+        e = {m: np.array([v[i] for i in rows]) for m, v in errs[h].items()}
         rmse = {m: float(np.sqrt(np.mean(v ** 2))) for m, v in e.items() if len(v)}
         best = min(rmse, key=rmse.get)
         skill = 1 - rmse[best] / rmse["persistence"] if rmse["persistence"] > 0 else 0.0
@@ -124,7 +234,9 @@ def evaluate(t: np.ndarray, y: np.ndarray) -> dict:
         res = e[chosen]
         result[h] = {"method": chosen, "rmse": rmse, "skill_vs_persistence": round(skill, 3) if chosen != "persistence" else 0.0,
                      "n": int(len(res)), "q": [float(np.quantile(res, q)) for q in QUANTILES],
-                     "coverage90_backtest": float(np.mean((res >= np.quantile(res, 0.05)) & (res <= np.quantile(res, 0.95))))}
+                     "coverage90_backtest": float(np.mean((res >= np.quantile(res, 0.05)) & (res <= np.quantile(res, 0.95)))),
+                     # every method's error quantiles, so the live path can fall back with the right band
+                     "q_all": {m: [float(np.quantile(v, q)) for q in QUANTILES] for m, v in e.items() if len(v)}}
     return result
 
 
@@ -148,7 +260,7 @@ def classify_status(level: float | None, bank: float | None, ground: float | Non
 
 
 def forecast_station(code: str, times: list[dt.datetime], values: list[float], bank: float | None,
-                     rain_next24: float | None) -> dict | None:
+                     rain_next24: float | None, exo: dict | None = None) -> dict | None:
     t, y = hourly_grid(times, values)
     if len(y) == 0:
         return None
@@ -157,22 +269,42 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
     y0, t0 = float(y[-1]), float(t[-1])
     issue = dt.datetime.fromtimestamp(t0 * 3600, tz=dt.timezone.utc)
     enough = np.isfinite(y).sum() >= MIN_HOURS
-    ev = evaluate(t, y) if enough else {}
+    ex = align_exo(t, exo) if enough else None
+    ev = evaluate(t, y, ex) if enough else {}
     eta = fit_tide(t, y) if enough else None
     ybar = trailing_mean(y, 25)
     sl = _slope(ybar, len(y) - 1)
     fut = eta(t0 + np.arange(0, 73, dtype=float)) if eta else np.zeros(73)
+
+    yf = _ffill(y, OWN_FFILL_H) if ex else y
+    ybf = trailing_mean(yf, 25) if ex else ybar
+
+    def star_now(hh: int) -> float | None:
+        """Live star forecast for hh hours: fit on all complete rows, apply to the latest hour (today's inputs)."""
+        X, tg = star_features(t, yf, eta, ybf, hh, ex), _star_target(y, hh)
+        ok = np.isfinite(X).all(1) & np.isfinite(tg)
+        if ok.sum() < STAR_MIN_TRAIN or not np.isfinite(X[-1]).all():
+            return None  # e.g. an upstream gauge has not reported yet
+        return float(y0 + _ridge(X[ok], tg[ok])(X[-1:])[0])
+
     path = []
     for hh in range(1, 73):
         hb = next((h for h in HORIZONS if h >= hh), 72)
         e = ev.get(hb)
         method = e["method"] if e else "persistence"
-        m = "tide_trend" if method == "trend" else method
-        p = _predict(m, y0, 0.0 if method == "trend" else float(fut[hh] - fut[0]), hh, sl)
+        p = star_now(hh) if method == "star" else None
+        if method == "star" and p is None:  # fall back to the best of the gauge's own methods for this horizon
+            own = {m: r for m, r in e["rmse"].items() if m != "star"}
+            method = min(own, key=own.get)
+        if p is None:
+            m = "tide_trend" if method == "trend" else method
+            p = _predict(m, y0, 0.0 if method == "trend" else float(fut[hh] - fut[0]), hh, sl)
         if e:
             lo_h = max([h for h in HORIZONS if h <= hh and h in ev], default=hb)
             w = 0.0 if hb == lo_h else (hh - lo_h) / (hb - lo_h)
-            q = [(1 - w) * a + w * b for a, b in zip(ev[lo_h]["q"], e["q"])]
+            qa = ev[lo_h].get("q_all", {}).get(method, ev[lo_h]["q"])
+            qb = e.get("q_all", {}).get(method, e["q"])
+            q = [(1 - w) * a + w * b for a, b in zip(qa, qb)]
             path.append({"h": hh, "method": method, "q": [round(p + qi, 3) for qi in q]})
         else:
             path.append({"h": hh, "method": method, "q": None, "p": round(p, 3)})
@@ -287,6 +419,58 @@ def recovery(y, ybar, y0, bank, path, rain_next24) -> dict:
     return {"state": "not_estimable", "reason": "not_falling"}
 
 
+DAM_CODE, DAM_KM = "C.13", 275.3  # Chao Phraya Dam (Chai Nat): its release drives every gauge downstream
+
+
+def _chainage() -> dict[str, float]:
+    import json
+    from importlib import resources
+    d = json.loads(resources.files("floodwatch").joinpath("data/chaophraya_chainage.json").read_text())["stations"]
+    return {k: v["chainage_km"] for k, v in d.items()}
+
+
+def upstream_of(code: str, chain: dict[str, float], k: int = 2, min_km: float = 5.0, max_km: float = 150.0) -> list[str]:
+    """The k nearest gauges further up the Chao Phraya (by river km), skipping co-located ones and the dam gauge,
+    whose release enters as discharge instead. Empty for gauges off the main stem (canals: rain only)."""
+    if code not in chain:
+        return []
+    own = chain[code]
+    ups = sorted((c for c, km in chain.items() if c != DAM_CODE and min_km <= km - own <= max_km), key=lambda c: chain[c] - own)
+    return ups[:k]
+
+
+def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict) -> dict | None:
+    """Raw inputs for the star model from the database (cached across stations within one run)."""
+    from floodwatch.config import RAIN_POINTS
+    if lat is None:
+        return None
+    chain = cache.setdefault("chain", _chainage())
+
+    def level(cd, col="level_msl"):
+        key = (cd, col)
+        if key not in cache:
+            rows = c.execute(f"""SELECT obs_time, {col} AS v FROM observation WHERE code=%s AND quality_flag='ok'
+                                AND {col} IS NOT NULL AND obs_time > now() - make_interval(days => %s) ORDER BY obs_time""",
+                             (cd, LOOKBACK_DAYS)).fetchall()
+            cache[key] = ([r["obs_time"] for r in rows], [float(r["v"]) for r in rows])
+        return cache[key]
+
+    pt = min(RAIN_POINTS, key=lambda k: (RAIN_POINTS[k][0] - lat) ** 2 + (RAIN_POINTS[k][1] - lon) ** 2)
+    if ("rain", pt) not in cache:
+        hind = {int(r["valid_time"].timestamp() // 3600): (r["day1"], r["day2"]) for r in c.execute(
+            "SELECT valid_time, day1, day2 FROM rain_hindcast WHERE point=%s", (pt,)).fetchall()}
+        live = {int(r["valid_time"].timestamp() // 3600): float(r["precip_mm"] or 0.0) for r in c.execute(
+            """SELECT valid_time, precip_mm FROM weather_forecast WHERE point=%s
+               AND issue_time=(SELECT max(issue_time) FROM weather_forecast WHERE point=%s) AND valid_time > now()""",
+            (pt, pt)).fetchall()}
+        cache[("rain", pt)] = {"hind": hind, "live": live}
+    if not cache[("rain", pt)]["hind"]:
+        return None  # no rain history yet: the star model cannot be trained
+    ups = [level(u) for u in upstream_of(code, chain)]
+    q = level(DAM_CODE, "discharge") if code in chain and chain[code] < DAM_KM else None
+    return {"up": [u for u in ups if u[0]], "q": q if q and q[0] else None, "rain": cache[("rain", pt)]}
+
+
 def run_all() -> int:
     now = dt.datetime.now(dt.timezone.utc)
     with db.connect() as c:
@@ -301,6 +485,7 @@ def run_all() -> int:
     from floodwatch.config import RAIN_POINTS
     n = 0
     from floodwatch.config import DATUM_SUSPECT
+    cache: dict = {}
     for s in stations:
         if s["code"] in DATUM_SUSPECT:  # values not in m MSL (KI-210): never forecast or show them
             continue
@@ -308,13 +493,19 @@ def run_all() -> int:
             rows = c.execute(
                 """SELECT obs_time, level_msl FROM observation WHERE code=%s AND quality_flag='ok'
                    AND obs_time > now() - make_interval(days => %s) ORDER BY obs_time""", (s["code"], LOOKBACK_DAYS)).fetchall()
+        try:
+            with db.connect() as c:
+                exo = load_exo(c, s["code"], s["lat"], s["lon"], cache)
+        except Exception:
+            log.exception("star inputs for %s failed; own methods only", s["code"])
+            exo = None
         rain24 = None
         if s["lat"] is not None and rain:
             pt = min(RAIN_POINTS, key=lambda k: (RAIN_POINTS[k][0] - s["lat"]) ** 2 + (RAIN_POINTS[k][1] - s["lon"]) ** 2)
             rain24 = rain.get(pt)
         try:
             fc = forecast_station(s["code"], [r["obs_time"] for r in rows], [r["level_msl"] for r in rows],
-                                  s["bank_msl"], rain24)
+                                  s["bank_msl"], rain24, exo)
         except Exception:
             log.exception("forecast %s failed", s["code"])
             continue

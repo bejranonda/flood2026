@@ -15,6 +15,7 @@ from floodwatch.httpclient import fetch
 log = logging.getLogger(__name__)
 HII = "https://api-v3.thaiwater.net/api/v1/thaiwater30/public"
 CHART = "https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst"
+LOOKBACK_RAIN_DAYS = 370  # rain history for training, as long as the level history (forecast.LOOKBACK_DAYS)
 BACKFILL_DAYS = 365  # waterlevel_graph serves at most one year (checked 2026-09-26: C.12 from 2025-09-26)
 
 
@@ -299,6 +300,29 @@ FEWS_FORECASTS = [("hii_waterlevel", "CPY011", "CPY011", "m"), ("hii_waterlevel"
                   ("rid_discharge", "C7A", "C.7A", "m3/s"), ("rid_discharge", "C35", "C.35", "m3/s")]
 
 
+def openmeteo_prev() -> dt.datetime | None:
+    """Rain forecast history for training (D-052): one year on the first run, then the last few days each day."""
+    today = dt.datetime.now(dt.timezone.utc).date()
+    newest = None
+    with db.connect() as c:
+        for point, (lat, lon) in RAIN_POINTS.items():
+            last = c.execute("SELECT max(valid_time) AS t FROM rain_hindcast WHERE point=%s", (point,)).fetchone()["t"]
+            start = today - dt.timedelta(days=LOOKBACK_RAIN_DAYS) if last is None else last.date() - dt.timedelta(days=3)
+            url = ("https://previous-runs-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(
+                {"latitude": lat, "longitude": lon, "start_date": start.isoformat(), "end_date": today.isoformat(),
+                 "hourly": "precipitation_previous_day1,precipitation_previous_day2", "timezone": "UTC"}))
+            payload, _ = _get_json("openmeteo_prev", url)
+            rows = parsing.parse_openmeteo_prev(point, payload)
+            with c.cursor() as cur:
+                cur.executemany("""INSERT INTO rain_hindcast (point, valid_time, day1, day2)
+                                   VALUES (%(point)s, %(valid_time)s, %(day1)s, %(day2)s)
+                                   ON CONFLICT (point, valid_time) DO UPDATE SET day1=EXCLUDED.day1, day2=EXCLUDED.day2""", rows)
+            c.commit()
+            if rows:
+                newest = max(filter(None, [newest, rows[-1]["valid_time"]]))
+    return newest
+
+
 def hii_fews_forecast() -> dt.datetime | None:
     """Archive each new issue of HII's official forecast files (one per station, overwritten daily)."""
     from email.utils import parsedate_to_datetime
@@ -340,4 +364,4 @@ def bma_dds() -> dt.datetime | None:
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
-                  "hii_fews_forecast": hii_fews_forecast}[source])
+                  "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev}[source])

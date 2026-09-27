@@ -106,6 +106,16 @@ CREATE TABLE IF NOT EXISTS external_forecast (
     PRIMARY KEY (source, code, issue_time, valid_time)
 );
 
+-- Rain as it was forecast ~1 and ~2 days before each hour (Open-Meteo previous runs), per rain point: the honest
+-- training data for the rain-aware level model (D-052). Live forecasts stay in weather_forecast.
+CREATE TABLE IF NOT EXISTS rain_hindcast (
+    point       text NOT NULL,
+    valid_time  timestamptz NOT NULL,
+    day1        double precision NOT NULL,     -- mm/h, forecast issued ~1 day before valid_time
+    day2        double precision NOT NULL,     -- mm/h, forecast issued ~2 days before valid_time
+    PRIMARY KEY (point, valid_time)
+);
+
 -- Small key/value store for collector bookkeeping (e.g. which stations were backfilled).
 CREATE TABLE IF NOT EXISTS collector_state (
     key         text PRIMARY KEY,

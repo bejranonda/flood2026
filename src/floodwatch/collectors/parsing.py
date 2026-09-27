@@ -254,3 +254,18 @@ def parse_fews_forecast(text: str, issue_time: dt.datetime) -> list[dict[str, An
             continue
         out.append({"valid_time": t, "value": v})
     return out
+
+
+def parse_openmeteo_prev(point: str, payload: dict) -> list[dict[str, Any]]:
+    """Open-Meteo previous-runs API (timezone=UTC): hourly rain as forecast ~1 and ~2 days before each hour
+    (`precipitation_previous_day1/2`). Training data for the rain-aware model (D-052); hours missing either lead are
+    dropped so training and backtest use the same information."""
+    h = (payload or {}).get("hourly") or {}
+    out = []
+    for ts, d1, d2 in zip(h.get("time") or [], h.get("precipitation_previous_day1") or [],
+                          h.get("precipitation_previous_day2") or []):
+        if d1 is None or d2 is None:
+            continue
+        out.append({"point": point, "valid_time": dt.datetime.fromisoformat(ts).replace(tzinfo=dt.timezone.utc),
+                    "day1": float(d1), "day2": float(d2)})
+    return out

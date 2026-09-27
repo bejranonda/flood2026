@@ -140,3 +140,12 @@ def test_fews_forecast_keeps_large_discharges_but_drops_the_999999_sentinel():
     txt = "station,date,time,value\r\nC13,2026-09-28,18:00:00,1950.06\r\nC13,2026-09-28,19:00:00,999999\r\n"
     rows = parsing.parse_fews_forecast(txt, dt.datetime(2026, 9, 27, 10, 5, tzinfo=dt.timezone.utc))
     assert [r["value"] for r in rows] == [1950.06]
+
+
+def test_openmeteo_previous_runs_rows():
+    payload = {"hourly": {"time": ["2026-09-01T00:00", "2026-09-01T01:00", "2026-09-01T02:00"],
+                          "precipitation_previous_day1": [0.0, 2.5, None],
+                          "precipitation_previous_day2": [0.1, 1.0, 3.0]}}
+    rows = parsing.parse_openmeteo_prev("bkk_east", payload)
+    assert [(r["valid_time"].isoformat(), r["day1"], r["day2"]) for r in rows] == [
+        ("2026-09-01T00:00:00+00:00", 0.0, 0.1), ("2026-09-01T01:00:00+00:00", 2.5, 1.0)]  # incomplete hour dropped
