@@ -174,10 +174,12 @@ a { color: var(--accent); }
   font-weight: 600;
   text-decoration: underline dotted;
   cursor: help;
+  white-space: nowrap;
 }
 .conf-badge.conf-low { color: #6b7280; }
 .conf-badge.conf-medium { color: #0369a1; }
 .conf-badge .dots { font-size: 11px; letter-spacing: -0.5px; }
+.conf-badge .sep { margin-right: 3px; color: #9ca3af; text-decoration: none; }
 
 .forecast-banner .fc-gauges { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(0, 0, 0, 0.12); display: grid; gap: 4px; }
 .forecast-banner .fc-g-label { font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }

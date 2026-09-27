@@ -81,7 +81,7 @@ function changeHTML(ch, hours, s) {
   const confTh = CONF_TH[ch.confidence] || ch.confidence;
   const why = CONF_WHY[ch.confidence] || "";
   const peak = hours === 12 ? esc(peakText(s)) : "";
-  return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${peak} · <span class="conf-badge conf-${esc(ch.confidence)}" title="${esc(why)}"><span class="dots" aria-hidden="true">${dots}</span> ${esc(confTh)}</span></span>`;
+  return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${peak} <span class="conf-badge conf-${esc(ch.confidence)}" title="${esc(why)}"><span class="sep">·</span> <span class="dots" aria-hidden="true">${dots}</span> ${esc(confTh)}</span></span>`;
 }
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
 const freeboardText = (fb) => {
