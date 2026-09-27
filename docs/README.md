@@ -19,7 +19,7 @@
 | File | Purpose | Update when… |
 |---|---|---|
 | [plan/PLAN.md](plan/PLAN.md) | Roadmap, gates G0–G4, risks | A phase starts or ends |
-| [plan/phase-0 … phase-4](plan/) | Task checklists and exit criteria per phase | Tasks progress |
+| [plan/phase-0 … phase-5](plan/) | Task checklists and exit criteria per phase (phase 5 = nationwide, validated 2026-09-27) | Tasks progress |
 | [plan/DECISIONS.md](plan/DECISIONS.md) | Decision log (D-001…) | A decision is made or superseded |
 | [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md) | Questions for the owner | Asked or answered |
 | [SOURCES.md](SOURCES.md) | Source registry (the brief's Phase 0 format) | A source is tested, changes or fails |

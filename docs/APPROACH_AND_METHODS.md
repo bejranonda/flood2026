@@ -504,3 +504,50 @@ From [methods_survey §11](../research/methods_survey.md). The citations are to 
 - Meadows, Jones, Reinke (2024) — vertical accuracy of FABDEM and other DEMs in flood-prone areas.
 - **Tide type:** "Tidal resonance in the Gulf of Thailand", Ocean Science 15, 321 (2019) — the Gulf is diurnal-dominated, with K1 strongest. ✅ checked 2026-09-26.
 - Pawlowicz, Beardsley, Lentz (2002) T_TIDE, and Codiga (2011) UTide — harmonic analysis with nodal corrections.
+
+## 19. National scope: monitor first, forecast later (D-044, 2026-09-27)
+The owner asked how the app could cover all of Thailand. The research ([Research_NATIONWIDE.md](../research/Nationwide/Research_NATIONWIDE.md) 🟢, [Research_Thailand.md](../research/Nationwide/Research_Thailand.md) 🔴) was checked live in [VALIDATION_2026-09-27_nationwide.md](../research/VALIDATION_2026-09-27_nationwide.md). Nothing here is built yet: the owner asked for validation first.
+
+**Decision (D-044):** first a national **monitoring** view (measured levels against *official* thresholds, reservoirs, flash-flood products of the agencies, satellite extent when available); forecasts only per flood type and only where a backtest passes (§14, GUIDELINES §2). Audience: residents in any province, and local officials and volunteers (อบต., อสม., rescue).
+
+### 19.1 What changes outside Bangkok
+| Bangkok today | Elsewhere | Consequence |
+|---|---|---|
+| Tide dominates the lower river (§5, §8) | Inland stations have **no tide**; coasts and river mouths do (28 Navy tide stations, Gulf and Andaman, SOURCES §2d) | Tide features only for coastal/tidal types (F6 below) |
+| Flow from upstream and pumps | **Reservoirs control many rivers** (50 large dams, 448 fresh medium reservoirs) | Show storage and release; a release *forecast* needs rule curves, which **no feed carries** (RID/EGAT documents needed) |
+| Every HII gauge has a bank level | Many stations **lack an official flood level** | Priority list in §19.3; never invent one |
+| Gauges every ~8 km in the metro | Sparse; many valleys have none | Tiers (§19.2), virtual gauges (§19.5) and **GISTDA satellite extent** (§19.4b), categories only |
+| Sources reachable from Germany | **DWR and RID answer only from a Thai IP** | A reliable Thai egress before any public national launch (D-046, KI-110) |
+
+### 19.2 Flood types and data tiers (adopted from the research as the frame, 💡)
+- **Types:** F1 regulated large river · F2 unregulated medium river · F3 flash flood in steep catchments · F4 slow flat-basin flood with backwater (Mun/Chi) · F5 Mekong mainstream · F6 coastal/tidal/lagoon · F7 urban pluvial · F8 reservoir spill. Each station, reach or tambon gets one or more tags; the tag chooses the message and, later, the model family.
+- **Tiers:** A = long telemetry + official thresholds; B = telemetry without history or thresholds; C = no gauge (virtual gauge, satellite, FFPI only). **The UI always says which tier a statement comes from** (วัดจริง · ประมาณจากแบบจำลอง · จากดาวเทียม), GUIDELINES §6.18.
+
+### 19.3 Thresholds, in order of preference (never invented)
+1. **Official:** HII station `min_bank` / `warning_level_m` / `critical_level_msl`; HII FEWS `hii_waterlevel.csv` (66 stations, m MSL); **RID discharge thresholds** `rid_discharge.csv` (87 stations, m³/s); BMA's own warning/critical for BMA canals (D-038); DWR EWS station status (their classification, shown as theirs).
+2. **Statistical**, only with ≥ 5 years of history: percentiles or return levels of annual maxima → worded "สูงกว่าปกติมาก (สูงสุดในรอบราว X ปี)", **never** "ล้นตลิ่ง".
+3. **Virtual gauges:** GloFAS return-period discharges → category only.
+4. None → show the level and its trend, without a verdict (as D-021/D-042 do for the point check).
+
+### 19.4 Reservoirs and flash floods: use the agencies' products first
+- **Reservoirs:** storage % against `normal_storage`, inflow and release trends, a spill flag when `dam_spilled > 0`; small-dam telemetry gives **level vs spillway** (a measured overflow margin, F8). No release forecast until rule curves are obtained; a rule-curve emulator (research §4.2) is a later Phase-2 item.
+- **Flash floods:** show HII's **FFPI per tambon** and **DWR EWS status** as published, attributed and dated; our own Flash Flood Guidance (research §4.3) comes later and must be verified against DWR/DDPM events first.
+
+### 19.4b Satellite flood extent (GISTDA) — observed water where no gauge exists
+GISTDA's documented API (KI-510) returns flooded **H3 cells (~0.12 km²)** for 1/3/7/30 days, nationally (7 days on 2026-09-27: 49,761 cells), each with flooded area, exposure (population, buildings, road length, hospitals) and the satellite passes used (Sentinel-1, Radarsat-2, COSMO-SkyMed). Use: an **observed** tier-C layer ("จากดาวเทียม", with the pass dates), and for point checks outside cities ("ดาวเทียมพบน้ำท่วมในรัศมี … ช่วง 7 วัน"). **Never** read an empty result as "dry" in built-up areas: the Bangkok bbox had 0 cells in 7 days while streets flooded (radar misses water between buildings ⚠️). The recurrence layer (`flood-freq`) gives "flooded N times" polygons for context.
+
+### 19.5 Virtual gauges (GloFAS) must be snapped
+A point query returns the 5 km cell under the point, which may be a side cell: at Nong Khai the naive point gave **1–3 m³/s** and the cell ≈ 5 km away **≈ 9,000 m³/s** (the Mekong, 2026-09-27, KI-509). Rule: snap to the cell with the largest long-term discharge within ~5 km of the reach, store the chosen cell, compare only with that cell's own climatology (median/max), and show a category, never a level or a depth.
+
+### 19.6 Rejected, and why
+- **Street depth from HAND** (`d = H − HAND`, Research_Thailand §2.4): DEM error of 1–2 m exceeds flood depths; against D-019/D-021.
+- **`api2.thaiwater.net`**: no DNS (SOURCES §3). **HII gates** (`watergate_load`): 12 of 2,315 rows fresh.
+- **Egress relays** to reach blocked sources other than the owner's Thai egress for public pages (D-014/D-016); **token APIs** with tokens copied from web bundles.
+- **Evacuation instructions** generated by our code: link official channels instead (D-005).
+
+### 19.7 Order of work (D-045, D-046)
+1. **Bangkok, via HII's government channel:** BMA canals from `canal_waterlevel` as primary (relay as fallback, +73 gauges), BMA **road sensors** as a map layer and as point-check evidence (measured cm on the road, not an interpolation), Navy tide predictions, RID discharge thresholds at C.2/C.13. Validated 2026-09-27, not built.
+2. **Local nightly backup** before national data grows (none exists today, KI-511).
+3. **National collectors behind a flag**, lean: dams daily, FEWS thresholds daily, FFPI every 6 h, tide daily, DWR hourly via the Thai egress; 90-day retention for high-volume series; freshness filters on every HII national feed (KI-111).
+4. **National map** only after HII/DWR/RID have been informed (D-046) and a reliable Thai egress exists.
+5. **Forecasts per flood type**, each with its own backtest on verified events.

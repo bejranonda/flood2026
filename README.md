@@ -13,6 +13,8 @@
 > [!IMPORTANT]
 > **Current status (2026-09-27): v0.6.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
 >
+> **Nationwide (validated plan, not built — branch `research/nationwide-scope`):** monitor first, forecast later ([D-044](docs/plan/DECISIONS.md), [APPROACH §19](docs/APPROACH_AND_METHODS.md), [phase 5](docs/plan/phase-5-nationwide.md)); the sources were probed live in [research/VALIDATION_2026-09-27_nationwide.md](research/VALIDATION_2026-09-27_nationwide.md).
+>
 > **Core USP & Highlights:**
 > - **🔮 Point Forecast Outlook (D-041, confidence-gated per D-042):** Tap any coordinate in Bangkok/BMR for an instant 12–24h outlook combining nearest ML channel trends, 24h precipitation, canal drainage capacity, and citizen street reports — a canal trend is only claimed when a gauge is close enough and agrees; otherwise the outlook says so plainly instead of guessing.
 > - **Categorized Station Detail (D-040):** Stations split into 📈 Predictable (12–72h ML forecast) and 📍 Nearest active canal/river gauges. Stale gauges (>24h inactive) are filtered out.

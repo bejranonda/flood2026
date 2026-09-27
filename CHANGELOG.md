@@ -13,6 +13,19 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
     and the feedback location note). When rain is unknown the card says "ไม่มีข้อมูล" instead of "~0 มม.".
   - A number is printed with one decimal when rounding would cross a TMD boundary (35.1 mm is "ฝนหนัก").
   - `/api/point` adds `rain_band`. Tests: 56 passing (+2). Checked at 390 px on a preview container of the branch.
+- **Nationwide research validated, not built** (D-044–D-046, APPROACH §19, phase 5): 22 national and international
+  endpoints probed live ([research/VALIDATION_2026-09-27_nationwide.md](research/VALIDATION_2026-09-27_nationwide.md),
+  re-run script in `research/validation/`). Findings: HII serves BMA's 262 road sensors and 282 canal gauges (+73 we
+  lack); official thresholds for 66 level and 87 RID discharge stations; Navy tide for 28 stations; DWR (2,275) and RID
+  (921) only via a Thai IP; the HII gate feed is dead (12 of 2,315 fresh); GloFAS points must be snapped (Nong Khai 3
+  vs ~9,000 m³/s). `Research_Thailand.md` kept with a 🔴 banner (refuted host, invented numbers, rule-breaking methods).
+- **GISTDA works again** (KI-510): our endpoint path and key placement were outdated; with the documented API
+  (`/api/2.0/resources/features/flood/7days`, header `API-Key`) the key returns ~50,000 flooded cells nationally.
+  `config.py` default and `.env.example` updated.
+- **`scripts/owner_status.py` tests services, not the presence of keys:** GISTDA makes one real request (key never
+  printed); new rows for the Google Flood API key and a reliable Thai egress.
+- Docs: SOURCES §2d, KNOWLEDGE §9, KNOWN_ISSUES KI-110/111/404/509/510/511, GUIDELINES §6.17–19, OWNER_ACTIONS,
+  OPEN_QUESTIONS A27–A37 and Q28–Q31, PLAN + phase-5.
 
 ## v0.6.1 — 2026-09-27
 - **Fixed: the D-041 forecast banner could give a canal verdict without a usable gauge** (D-042, KI-223). Found in

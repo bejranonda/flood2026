@@ -13,6 +13,7 @@ import pathlib
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -101,10 +102,52 @@ def main() -> None:
     rows.append(("GLM", "GLM API key for AI feedback triage (GLM_API_KEY in .env)", "done" if glm_key else "open",
                  "key configured" if glm_key else "empty (fill in later in .env, D-030)"))
 
+    # A key that exists is not a key that works (KI-510): make one real request, never print the key or the URL.
     gistda_key = e.get("GISTDA_API_KEY", "").strip()
-    rows.append(("GISTDA", "GISTDA Satellite Flood Extent key (GISTDA_API_KEY in .env)", "done" if gistda_key else "open",
-                 "key configured" if gistda_key else "empty (fill in when ready in .env)"))
+    if gistda_key:
+        # Documented at disaster.gistda.or.th/services/open-api: key in the API-Key header (not a query parameter).
+        ep = e.get("GISTDA_API_ENDPOINT", "").strip() or "https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/7days"
+        req = urllib.request.Request(f"{ep}?limit=1", headers={"User-Agent": UA, "API-Key": gistda_key})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                status, body = r.status, r.read(200_000).decode("utf-8", "replace")
+        except urllib.error.HTTPError as ex:
+            status, body = ex.code, ex.read(2_000).decode("utf-8", "replace")
+        except Exception as ex:  # DNS, timeout, TLS
+            status, body = 0, type(ex).__name__
+        try:
+            d = json.loads(body)
+            detail = f"{d['numberMatched']} flood cells (7 days)" if status == 200 else str(d.get("detail", ""))[:60]
+        except Exception:
+            detail = ""
+        detail = detail.replace(gistda_key, "***")
+        rows.append(("GISTDA", "GISTDA flood-extent service answers with the configured key",
+                     "done" if status == 200 else "open",
+                     f"HTTP {status}" + (f" {detail}" if detail else "") + ("" if status == 200 else " (KI-510; see OWNER_ACTIONS)")))
+    else:
+        rows.append(("GISTDA", "GISTDA flood-extent service answers with the configured key", "open",
+                     "GISTDA_API_KEY empty in .env"))
 
+
+    # Google Flood Forecasting API (owner applies, D-046): one real, tiny request once a key is set; key never printed.
+    gkey = e.get("GOOGLE_FLOOD_API_KEY", "").strip()
+    if gkey:
+        req = urllib.request.Request(
+            "https://floodforecasting.googleapis.com/v1/gauges:searchGaugesByArea?" + urllib.parse.urlencode({"key": gkey}),
+            data=json.dumps({"regionCode": "TH", "pageSize": 1}).encode(), method="POST",
+            headers={"User-Agent": UA, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                gstatus = r.status
+        except urllib.error.HTTPError as ex:
+            gstatus = ex.code
+        except Exception as ex:  # DNS, timeout, TLS
+            gstatus = type(ex).__name__
+        rows.append(("GFLOOD", "Google Flood Forecasting API key works (GOOGLE_FLOOD_API_KEY)", "done" if gstatus == 200 else "open",
+                     f"HTTP {gstatus}"))
+    else:
+        rows.append(("GFLOOD", "Google Flood Forecasting API key works (GOOGLE_FLOOD_API_KEY)", "open",
+                     "not applied/configured yet (pilot application, OWNER_ACTIONS)"))
 
     has_license = (ROOT / "LICENSE").exists()
     rows.append(("Q10", "Repository license (open source, MIT)", "done" if has_license else "open",
@@ -114,7 +157,8 @@ def main() -> None:
                  "station_coords_rid.json present" if rid else "not provided"))
     for qid, title in (("Q19", "Who reads user feedback (notes), how often"),
                        ("Q7", "Notifications (LINE / Web Push) wanted?"), ("Q22", "Traffy text labelling / voice reports with Workers AI?"),
-                       ("Q3", "Permission mails to HII / BMA / Traffy (optional, D-014)"),
+                       ("Q3", "Permission mails to HII / BMA / Traffy, and DWR / RID before national data goes public (D-046)"),
+                       ("EGRESS", "Reliable Thai egress before a public national launch (KI-110, D-046)"),
                        ("BMA", "Courtesy note to the flood69 relay / BMA about showing their data (D-031)")):
         rows.append((qid, title, "manual", "answer in chat or in docs/plan/OPEN_QUESTIONS.md"))
 

@@ -201,3 +201,13 @@ Depth at a location is always shown as a **probability category**, never an exac
 | ปตร. (ประตูระบายน้ำ) | Sluice gate | e.g. BKC003 |
 | อุโมงค์ยักษ์ | Giant drainage tunnel | |
 | ลบ.ม./วินาที | m³/s | |
+
+## 9. Thailand beyond Bangkok (facts checked 2026-09-27)
+Live-probed facts for the national scope (D-044); details and evidence in [research/VALIDATION_2026-09-27_nationwide.md](../research/VALIDATION_2026-09-27_nationwide.md). Research claims not yet checked are marked ⚠️.
+- **Gauges:** HII `waterlevel_load` 805 stations nationwide (HII 330, RID 315, FOP 89, EGAT 71). RID Telerid lists 921 stations. DWR EWS has 2,275 village stations (1,819 rain, 455 level, with soil moisture); 783 show status `9` (probably offline ⚠️).
+- **Official thresholds:** HII FEWS lists alarm/warning/critical for 66 level stations (m MSL; Northeast 26, Chao Phraya 20, South-West 12, East 8) and for 87 RID discharge stations (m³/s). C.13 below the Chao Phraya Dam: **2,176 / 2,448 / 2,720 m³/s**; C.2 Nakhon Sawan: **2,988 / 3,362 / 3,735 m³/s**.
+- **Reservoirs:** 50 large dams report daily (storage, inflow, release, spill; 14 at ≥ 80 % storage and none spilling on 2026-09-27); 862 medium reservoirs, of which 448 report; 60 small-dam telemetry stations give level against spillway. **No rule curves** in any feed reached.
+- **Tide:** Navy predictions for **28 stations** on both coasts (Gulf and Andaman), daily high/low and 4-hourly values, via HII FEWS.
+- **Satellite:** GISTDA flooded H3 cells nationally (~50,000 over 7 days on 2026-09-27) with exposure; empty over central Bangkok despite street flooding (radar limitation ⚠️).
+- **Flood types differ by region** (research, ⚠️ not independently checked): flash floods in the North and on the Western range; slow, long floods with backwater in the Mun/Chi basins and against the Mekong; regulated floods below the large dams; coastal/lagoon effects in the South (Songkhla Lake). Main season Jul–Oct; the Gulf-side South mainly Oct–Jan.
+- **Rain words:** TMD rain-amount categories ฝนเล็กน้อย 0.1–10.0 · ฝนปานกลาง 10.1–35.0 · ฝนหนัก 35.1–90.0 · ฝนหนักมาก ≥ 90.1 mm (tmd.go.th "เกณฑ์อากาศ", read 2026-09-27; the page gives no period ⚠️). They are national words for amounts, not local flood thresholds (KI-224).

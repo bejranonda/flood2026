@@ -152,6 +152,8 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 15. **Version on screen (D-025):** the header badge and footer show the deployed version from the API.
 16. **Urgent notes:** if a note matches emergency keywords, show 1669 / 1784 / 191 immediately, and say the site has no responders.
 17. **Numbers people can read (issue #1, KI-224):** no `~` in user-facing text (it reads as a minus on phones); write "ประมาณ"/"ราว". Every rain amount carries its TMD word (ฝนเล็กน้อย / ปานกลาง / หนัก / หนักมาก) and says whether it is past or forecast ("ข้างหน้า"). Unknown is "ไม่มีข้อมูล", never 0. The Python (`point.py RAIN_*`) and JS (`RAIN_TMD`) bands change together.
+18. **National statements (D-044, APPROACH §19):** every statement outside the tested area shows its **tier** (วัดจริง · ประมาณจากแบบจำลอง · จากดาวเทียม) and source with its time; verdicts only against **official** thresholds (APPROACH §19.3); agencies' own products (HII FFPI, DWR status) are shown as theirs, not re-labelled; an empty satellite result is never "no flood"; virtual gauges are snapped and categorical only. Nothing national is public until D-046's conditions hold.
+19. **Freshness before storage (KI-111):** a national collector drops rows older than 3 × its cadence and any epoch-0 date, and reports fresh/total in `/api/health`.
 
 ---
 

@@ -1,8 +1,8 @@
 # SOURCES.md — Data Source Registry (Phase 0 deliverable)
 
 > **Project:** BKK FloodWatch 2026. Water-level monitoring and forecasting for Bangkok and the lower Chao Phraya.
-> **Status:** 🟡 **Desk research plus a first live probe (2026-09-26, from a dev host in Germany).** Testing from the **production VPS** (Phase 0) has not started.
-> **Last updated:** 2026-09-26
+> **Status:** 🟡 Live-probed from the production server in Germany (it is the only host, KI-502) and, for geo-blocked public pages, through the Thai egress: Bangkok sources 2026-09-26, **nationwide sources 2026-09-27 (§2d)**.
+> **Last updated:** 2026-09-27
 > **Evidence:** [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md). Re-run with `python3 research/validation/validate_research_claims.py`.
 > **Seeded from:** [sources_survey.md](../research/sources_survey.md), [keyless_access.md](../research/keyless_access.md), and the validated parts of [bangkok_flood_intelligence_data_sources.md](../research/bangkok_flood_intelligence_data_sources.md) and [API_noKey-1.md](../research/API_noKey-1.md).
 > **Maintained by:** Phase 0 ([plan](plan/phase-0-source-verification.md)). Update this file whenever a source is tested, changes format, or fails.
@@ -39,7 +39,7 @@
 | **P2** | GISTDA API Gateway | Daily satellite flood extent, 2011–2023 recurrence | REST | 🔑 registered in `.env` | ✅ key configured | Flood extent layer, validation |
 | **P2** | Copernicus GFM | Sentinel-1 flood masks | REST | free account | ✅ live (Swagger) | Fallback for GISTDA |
 | **P3** | DEMs (FABDEM, Copernicus GLO-30, GEDTM30); Open-Meteo elevation | Ground elevation | COG / JSON | none | ✅ live (Open-Meteo) | **Probabilistic** depth only (KI-202) |
-| **P3** | DWR EWS, DWR/ONWR PDFs, CCTV | Tributary telemetry, historical tables | Web/PDF | none | 🟡 `ews.dwr.go.th` timed out from Germany; **200 through the Thai egress** (content not yet explored) | Backfill C-stations |
+| **P3** | DWR EWS, DWR/ONWR PDFs, CCTV | Tributary telemetry, historical tables | Web/PDF | none | ✅ `ews.dwr.go.th` times out from Germany; **200 through the Thai egress**: 2,275 stations incl. soil moisture (§2d, 2026-09-27) | Backfill C-stations |
 | **P3** | Google Flood Hub, NASA GPM IMERG | Forecast cross-check; satellite rain | Web / files | application / Earthdata | ⚠️ | Cross-check, upstream rain |
 
 ---
@@ -64,7 +64,7 @@
 | Open-Meteo Elevation | Point elevation (90 m DEM) | Global | JSON | `https://api.open-meteo.com/v1/elevation` | ✅ 200 | static | <0.1 s | none | m (EGM2008) | as above | Gave 4 m and 7 m where the true value is about 0–2 m MSL. **Not for depth** | n/a |
 | Traffy Fondue public | Citizen reports | Bangkok (+ other orgs) | JSON (undocumented) | `GET https://publicapi.traffy.in.th/share/teamchadchart/search?limit=…` → `results[]` (`coords` [lon, lat], `description`, `photo_url`, `timestamp` UTC, `state`) | ✅ 201, CORS `*` | near real time | <1 s | none | WGS84 | Citizen personal data: **aggregate only, don't republish photos or text**; ask BMA/NECTEC | Report time ≠ flood time | not yet |
 | TMD API | Observations, forecasts | Thailand | REST | `https://data.tmd.go.th/api/…` (uid/ukey) | 🟡 portal 200 | 3 h / daily | – | 🔑 | mm, °C | TMD terms | Register now | not yet |
-| GISTDA flood extent | Daily extent, recurrence | Thailand | REST | `https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day?lat=&lon=&api_key=` | ✅ key in `.env` | daily | days | 🔑 configured | – | Open Data Common | Use for validation | ✅ key verified |
+| GISTDA flood extent | 1/3/7/30-day extent, recurrence | Thailand | REST (OGC features) | `https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/7days?limit=&offset=&bbox=`, header `API-Key` (the older `gi-service/…flood-extent-1day?api_key=` path answers 404, KI-510) | ✅ key in `.env` | daily | days | 🔑 configured | – | Open Data Common | Use for validation | ✅ key verified |
 | Copernicus GFM | Sentinel-1 flood masks | AOIs | REST | `https://api.gfm.eodc.eu/v2/` | ✅ 200 | per pass | days | free account | – | Copernicus open | – | not yet |
 | data.go.th (BMA) | Daily max at Pak Khlong Talat | 1 station | CSV (CC-BY) | `https://dev.data.go.th/en/dataset/wl-max-chaophraya-river` | ✅ 200 (page) | daily | – | none | m MSL | CC-BY | Backfill | not yet |
 | DEM files | Elevation | Global 30 m | COG | FABDEM, Copernicus GLO-30, GEDTM30 | ✅ doc | static | – | none | **EGM2008 → Ko Lak offset** | FABDEM is non-commercial | RMSE ≥ 1 m in Bangkok | n/a |
@@ -89,6 +89,25 @@
 | BMA "roads to avoid" Claude artifact `claude.ai/artifact/N6umcENfSgoY6GMkhVKwZs` | A **static page**, data embedded, no fetch. 135 district-office reports (from an xlsx, 17:43 local) + 55 road sensors (20:40 local); positions **approximate, geocoded from street names**; depth in cm with impact notes ("รถเล็กผ่านไม่ได้"). Updated by hand, so it's a snapshot, not a feed | 🟡 link only (Q25); no scraping |
 | `flood.larry-cctv.com` (road-sensor source named in that artifact) | Legacy TLS renegotiation + self-signed chain; the page **redirects to a Palo Alto GlobalProtect login** | 🔴 private system — **do not use** |
 
+### 2d. Nationwide candidates (probed 2026-09-27 08:55–09:45 UTC; details and re-run script: [research/VALIDATION_2026-09-27_nationwide.md](../research/VALIDATION_2026-09-27_nationwide.md))
+Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is collected yet (owner: validate first, D-044).
+| Source | Endpoint | Found | Verdict |
+|---|---|---|---|
+| HII dams | `GET https://api-v3.thaiwater.net/api/v1/thaiwater30/analyst/dam` | 50 large dams (all fresh: storage MCM/%, inflow, release, spill, max/normal storage); 862 medium (448 fresh, 317 dated 1970-01-01); 60 small-dam telemetry (52 fresh, with spillway level). **No rule curves** | ✅ national reservoir state; filter stale rows |
+| HII BMA road sensors | `GET …/thaiwater30/public/flood_road` | **262 BMA road-flood sensors, 241 fresh**, depth on the road in **cm**, lat/lon, code `FL.xxx.nn` | ✅ Bangkok road-level measurement (never convert to m MSL) |
+| HII BMA canals | `GET …/thaiwater30/public/canal_waterlevel` | 282 BMA canal gauges, 229 fresh; same `WL.xxx.nn` codes and values as the flood69 relay; +73 fresh gauges we lack; 250 with bank/warning/critical | ✅ government channel for BMA canals (KI-218) |
+| HII gates | `GET …/thaiwater30/public/watergate_load` | 2,315 rows, **12 fresh**; most stopped July 2023; no thresholds | ❌ stale nationally |
+| HII FEWS portal | `GET https://fews2.hii.or.th/model-output/data_portal/…` `flashflood/flashflood_report.txt`, `metadata/hii_waterlevel.csv`, `metadata/rid_discharge.csv`, `tide_table/summary.txt` | FFPI for at-risk tambons (25 today); thresholds for 66 HII level stations (m MSL) and 87 RID discharge stations (m³/s; C.13 2,176/2,448/2,720); Navy tide predictions for **28 stations** incl. Fort Chula | ✅ keyless flat files |
+| DWR EWS | `POST https://ews.dwr.go.th/ews/web-service/stn` (`action=LoadStation`) | Timeout from Germany; **200 via the Thai egress** (28 s, 3 MB): 2,275 stations (1,819 rain, 455 level), rain 12 h, level, soil moisture, status 0–3 plus `9` on 783 stations; dates `27/09/69 15:45 น.` (Buddhist short year, ICT) | ✅ Thai egress only |
+| RID Telerid | `GET https://telerid.rid.go.th/restapi/main/station_list/` | Timeout from Germany; 200 via Thai egress; `count: 921` | ✅ list only (readings untested) |
+| EGAT | `GET https://api-egatwater.egat.co.th/api/dam` | 69 dams, static, most fields empty | ⚠️ low value |
+| GloFAS | `GET https://flood-api.open-meteo.com/v1/flood` | Keyless; a naive point at Nong Khai gives 1–3 m³/s, the Mekong cell 5 km away ≈ 9,000 m³/s | ✅ **snap to the channel** (KI-509) |
+| Google Flood Forecasting API | `floodforecasting.googleapis.com/v1/…` | 403 without an API key | 🔑 owner applies (OWNER_ACTIONS) |
+| Copernicus GFM | `https://api.gfm.eodc.eu/v2/` | API reachable; account needed | 🔑 |
+| GDACS | `gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=FL&country=THA…` | 204, no Thai flood events Aug–Sep 2026 | ⚠️ context only |
+| GISTDA flood extent (key) | `GET https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/{1day,3days,7days,30days}` and `/features/flood-freq`, header `API-Key`, params `limit`/`offset`/`bbox` (docs: `disaster.gistda.or.th/services/open-api`) | 200. National flooded H3 cells (~0.12 km²): 3 d 38,461 · 7 d 49,761 · 30 d 52,778, with area, exposure and source passes (Sentinel-1, Radarsat-2, COSMO-SkyMed); 1 d empty (no pass); **Bangkok 0 in 7 d** (radar misses urban water) | ✅ satellite extent nationally; never "no flood" in cities (KI-510) |
+| thaiwater.net pages (`/water/wl`, `/water`, `/water/gate`) | — | JS single-page app over the `api-v3` endpoints above | ✅ use the API, not the page |
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |
@@ -99,8 +118,11 @@
 | `https://weather.tmd.go.th/svpLoop.php` | same | **HTTP 404** |
 | `https://www.hydro.navy.mi.th/download/Water_lever69/LLW/TT2026.pdf` | sources_survey.md | 301 → **404** |
 | `THAIWATER_API_KEY` for the public API | old `.env.example` | The public endpoints work without a key |
+| `https://api2.thaiwater.net/v1/analyst/water/{telemetry,dam,watergate}` | research/Nationwide/Research_Thailand.md | **Still no DNS** (re-checked 2026-09-27) |
+| `https://ffw-web.mrcmekong.org/` | research/Nationwide/Research_Thailand.md | **No DNS** (2026-09-27) |
+| C.13 discharge thresholds "2,000 / 2,500 m³/s" | research/Nationwide/Research_Thailand.md | RID thresholds from HII FEWS are **2,176 / 2,448 / 2,720** (2026-09-27) |
 
-Unverified (⚠️) rather than refuted, because they can only be tested from a Thai IP or with access: the BMA DDS paths (`/canal/`, `/pumping/`, `/flood_warning/`, `CanalList.aspx`, `203.155.220.119/flood/`), `ews.dwr.go.th`, Longdo Traffic, the X/Twitter stream, the "GISTDA/BMA LiDAR 1 m" dataset, and Copernicus Marine surge suitability.
+Unverified (⚠️) rather than refuted, because they can only be tested from a Thai IP or with access: the BMA DDS paths (`/canal/`, `/pumping/`, `/flood_warning/`, `CanalList.aspx`, `203.155.220.119/flood/`), Longdo Traffic, the X/Twitter stream, the "GISTDA/BMA LiDAR 1 m" dataset, and Copernicus Marine surge suitability.
 
 ---
 

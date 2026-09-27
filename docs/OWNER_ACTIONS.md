@@ -1,6 +1,6 @@
 # OWNER_ACTIONS.md — What the project needs from the owner
 
-> **Single tracker** (D-026). Anything an AI harness or developer needs from the owner goes here, with the reason, the exact steps and how it will be verified. Last verified **2026-09-26 ~15:20 UTC** (v0.2.1).
+> **Single tracker** (D-026). Anything an AI harness or developer needs from the owner goes here, with the reason, the exact steps and how it will be verified. Last verified **2026-09-27 ~10:10 UTC** (branch `research/nationwide-scope`).
 > **Check the current status any time:** `python3 scripts/owner_status.py` (read-only; it never prints a secret). Open questions with their history are in [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md).
 > **Handing over secrets:** put them only in `/root/flood2026/.env` on the server. Never paste them in chat or commit them. Tell the agent the *key name* you set; it will check the value works without printing it.
 
@@ -10,7 +10,10 @@
 | Q18 | `flood.autobahn.bot` challenged non-browser clients | ✅ **done** (owner turned Bot Fight Mode off, verified 17:33 UTC) | |
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
-| **GISTDA** | GISTDA API key (`GISTDA_API_KEY` in `.env`) for satellite flood extent | ✅ **configured** (verified in `.env`) | |
+| **GISTDA** | GISTDA key works for the flood-extent service | ✅ **works** (2026-09-27 10:05 UTC): the key was fine; our endpoint path and key placement were outdated (KI-510). Fixed from the docs link you sent | |
+| **GFLOOD** | Google Flood Forecasting API key (`GOOGLE_FLOOD_API_KEY`) | ⬜ open — you chose to apply (2026-09-27) | 2 |
+| **EGRESS** | A reliable Thai egress before any public national view (DWR, RID answer only from Thailand, KI-110) | ⬜ open — needed before national goes public (D-046) | 3 |
+| **Q3+** | Courtesy/permission emails to HII, DWR, RID before national data goes public (drafts below) | ⬜ open — needed before national goes public (D-046) | 3 |
 | Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
 | Q10 | Repository license | ✅ **closed** (MIT License added; D-043) | — |
 | BMA | Courtesy note to the flood69 relay (and BMA) that we show their copy of BMA data, with attribution (D-031, KI-218) | ⬜ optional | 3 |
@@ -39,7 +42,21 @@
 | C | ~~Share `flood.bejranonda.com`~~ | No longer possible: since D-034 its pages redirect to the main domain |
 **Then tell the agent.** It will run `scripts/owner_status.py` (Q18 turns ✅), then also redirect `/api/*` from the alias (today excluded, D-034), and re-test link previews.
 
-### Priority 2 · Q15b / Q16 — enable R2 and give the server backup credentials
+### ✅ Done · GISTDA — the key reaches the flood-extent service (KI-510, 2026-09-27)
+**Resolved without an owner step:** the owner sent the API documentation (`disaster.gistda.or.th/services/open-api`). Its OpenAPI spec uses `https://api-gateway.gistda.or.th/api/2.0/resources` + `/features/flood/{1day,3days,7days,30days}` and `/features/flood-freq`, with the key in the **`API-Key` header**. Our `.env` still had an older path with the key as a query parameter, which answered 404. `GISTDA_API_ENDPOINT` now points at `/features/flood/7days`; `owner_status.py` reports ✅ (49,761 flood cells over 7 days).
+
+### Priority 2 · Google Flood Forecasting API (Flood Hub) — you chose to apply
+**Why:** Google's AI river forecasts and flood status cover Thai rivers, including places without HII gauges; they are a benchmark and a virtual-gauge source (research §6.1). **Evidence (2026-09-27):** the API answers **403** without a key.
+**Steps:** 1. Apply for access via the Flood Forecasting API page linked from `sites.research.google/floods` (Google reviews pilot requests; describe a volunteer, non-commercial Thai flood-information site). 2. When accepted: Google Cloud Console → a project → enable the Flood Forecasting API → **Credentials → API key**, restricted to that API. 3. Put it in `.env` as `GOOGLE_FLOOD_API_KEY=`. **Verify:** the GFLOOD row in `owner_status.py` turns ✅ (one tiny request, key never printed). Nothing uses it until a decision on how to show it.
+
+### Before national goes public · EGRESS and agency notes (D-046)
+**Thai egress:** DWR EWS (2,275 village stations) and RID Telerid (921) time out from Germany and answer only via the public VPN Gate relay, which is flaky and untrusted (KI-505). For a public service you need something stable: a small Thai VPS or a proxy on a machine in Thailand you control, used only for public pages (D-014). Tell the agent the proxy URL key name in `.env` (e.g. `THAI_EGRESS_PROXY`).
+**Agency notes (drafts; send from your own address):**
+- **HII** (สสน., info_thaiwater@hii.or.th): "BKK FloodWatch (flood.autobahn.bot) is a volunteer, non-commercial site. We read your public api-v3 JSON (water level, dams, BMA canal and road sensors via your API) and FEWS files every 10–60 min from one server with the User-Agent `BKK-FloodWatch/…`, cache them and credit สสน. on every page. May we extend this to the national feeds, and is there an official access route or rate you prefer?"
+- **DWR** (กรมทรัพยากรน้ำ, EWS): same text for `ews.dwr.go.th` station data (hourly, one request), asking also what `status = 9` means.
+- **RID** (กรมชลประทาน, Telerid): same text for the station list and readings.
+
+### Declined (D-029) · Q15b / Q16 — R2 off-site backups (kept for reference; a local backup is still missing, KI-511)
 **Why:** everything (database and raw archive) lives on **one disk**. If it fails, the flood record is gone. R2 is the off-site copy.
 **Evidence:** the API answers *"Please enable R2 through the Cloudflare Dashboard."* Cloudflare says R2 must be purchased/enabled before an S3 token can be created.
 **Cost (measured 2026-09-26):** the raw archive grows about **3–5 MB/hour (~100 MB/day, ~3–4 GB/month)** in steady state (more during the one-off backfill); the database dump adds little. R2's free tier is **10 GB-month of storage, 1 M writes and 10 M reads per month, and egress is free**; beyond that storage is $0.015/GB-month. So it's free for roughly two months and then well under $1/month. ([R2 pricing](https://developers.cloudflare.com/r2/pricing/))

@@ -1,6 +1,6 @@
 # KNOWN_ISSUES.md — Limitations, pitfalls and workarounds
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-26
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-27
 > **Audience:** developers, operators, AI agents
 > **Status values:** 🔴 Open · 🟡 Workaround defined · 🟢 Resolved · ℹ️ Inherent (permanent constraint; design around it)
 > Evidence for items marked "probe" is in [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md).
@@ -15,7 +15,9 @@
 | KI-106 | Open-Meteo free tier is non-commercial | Data access | ℹ️ |
 | KI-107 | Traffy data contains personal data; report time ≠ flood time | Data access | 🟡 |
 | KI-108 | Large, slow HII payloads | Data access | 🟡 |
-| KI-109 | Key stations missing from HII (C.29A, Memorial Bridge, Fort Chula) | Data access | 🔴 |
+| KI-109 | Key stations missing from HII (C.29A, Memorial Bridge, Fort Chula) | Data access | 🔴 (Fort Chula tide *predictions* found in HII FEWS, 2026-09-27) |
+| KI-110 | DWR EWS and RID Telerid answer only from a Thai IP; DWR status `9` on a third of stations; Buddhist-year dates | Data access | 🟡 (Thai egress; not collected yet) |
+| KI-111 | HII national feeds mix fresh and long-dead rows (gates 12/2,315 fresh; 1970 placeholders) | Data quality | 🟡 (freshness filter required) |
 | KI-207 | Chart-only stations: missing from the main feed, HTTP 500, no coordinates or bank | Data access | 🟡 |
 | KI-201 | Datum mixing (MSL / LLW / gauge zero / EGM2008); LLW offsets unknown | Data quality | 🔴 |
 | KI-202 | DEM vertical error ≫ flood depth | Data quality | ℹ️ |
@@ -30,7 +32,7 @@
 | KI-215 | BMA `warning`/`critical` are operating levels, not banks | Data quality | 🟢 used as drainage levels, never as bank (D-038) |
 | KI-216 | A freeboard of −0.4 cm displayed as "0 cm below the bank" next to "overflowing" | UI | 🟢 fixed |
 | KI-217 | BMA and HII gauges 7–100 m apart disagree by 0.3–0.6 m (level and bank) | Data quality | 🟡 open (handled: never mixed) |
-| KI-218 | BMA data depends on a third-party political relay | Data access | 🟡 accepted (D-031) |
+| KI-218 | BMA data depends on a third-party political relay | Data access | 🟡 accepted (D-031); HII serves the same BMA canals (validated 2026-09-27, D-045) |
 | KI-219 | BMA codes sent to HII's chart endpoint stalled the worker ~1 h | Infrastructure | 🟢 fixed v0.3.2 |
 | KI-220 | Canal "normal" next to flooded streets read as a contradiction; Traffy overloaded | UX / Data access | 🟢 relabelled (D-036); 🟡 Traffy down |
 | KI-221 | Favicon unrecognizable at 16×16 and blends into dark-mode browser tabs | UI / Brand | 🟢 redesigned with Flood Droplet & Wave (D-039) |
@@ -46,6 +48,7 @@
 | KI-401 | Research files of mixed validity | Docs integrity | 🟢 |
 | KI-402 | Config contradictions (`.env.example` vs guidelines) | Docs integrity | 🟢 |
 | KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
+| KI-404 | Research_Thailand.md: refuted host, invented numbers, rule-breaking methods | Docs integrity | 🟢 (banner; not used as a source) |
 | KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
 | KI-502 | Single server; this host is production | Infrastructure | 🟢 |
 | KI-503 | Open source license (MIT) | Infrastructure | 🟢 (resolved: MIT License added, D-043) |
@@ -58,6 +61,9 @@
 | KI-214 | Public repository: what history reveals; SSH exposure of the host | Infrastructure | 🟡 |
 | KI-307 | Point check is not a depth or level at the pin | Modelling | ℹ️ |
 | KI-508 | AI triage provider (GLM / Workers AI) | Infrastructure | 🟢 (GLM live verified, D-030) |
+| KI-509 | A GloFAS point query can hit a side cell (Nong Khai 3 vs ~9,000 m³/s) | Data quality | 🟡 (snap rule, APPROACH §19.5) |
+| KI-510 | GISTDA answered 404 (outdated path, key sent as a query parameter) while `owner_status.py` showed ✅ | Infrastructure | 🟢 fixed 2026-09-27 (documented API; real check in the script) |
+| KI-511 | No database backup at all; disk 84 % full (12 GB free, shared host) | Infrastructure | 🔴 |
 
 ---
 
@@ -429,3 +435,28 @@ The Traffy public API answered **HTTP 502 for about 2.5 hours** on 2026-09-26 (1
   - the Cloudflare account id and tunnel ids appear only in truncated form, in the current docs.
 - **Exposed (low risk):** the host's **IP address** is in 8 old commits ([D-013](plan/DECISIONS.md) had it). It was removed from the current files. Removing it from history needs `git filter-repo` plus a force-push, which breaks clones and forks and needs the owner's go-ahead. Risk is low: the site is reachable only through the Cloudflare Tunnel, and no web ports are open.
 - **SSH (host, not repo):** 15,754 failed SSH logins in 24 hours (ordinary internet scanning). `sshd -T` shows `passwordauthentication yes`, `permitrootlogin without-password` (key only), and **no account with a usable password except root**, whose password login SSH refuses. Every successful login in the last 7 days used a public key. So password guessing cannot succeed today. **This contradicts the earlier guideline "SSH by key only, password and root login disabled"**, which is now corrected. Optional hardening for the owner ([OWNER_ACTIONS](OWNER_ACTIONS.md)): `PasswordAuthentication no`, `PermitRootLogin prohibit-password` (already), and `fail2ban` to cut the log noise. An agent should not change sshd on this shared host unasked (lockout risk).
+
+### KI-110 — DWR EWS and RID Telerid are reachable only from Thailand · 🟡
+Probed 2026-09-27: both **time out from Germany** and answer through the Thai egress (VPN Gate relay, KI-505). DWR `LoadStation` returns 2,275 stations (1,819 rain, 455 level) with soil moisture; `status` is 0–3 on most stations but **`9` on 783** (undocumented; probably offline ⚠️ — ask DWR). Dates are Thai local time with a **Buddhist short year** (`27/09/69 15:45 น.` = 2026-09-27 08:45 UTC). RID Telerid lists 921 stations (readings untested).
+- **Before a public national launch:** a reliable Thai egress (owner action) and a courtesy note to DWR/RID (D-046). Parse `yy` as BE−543 and convert ICT → UTC (KI-205).
+
+### KI-111 — HII national feeds mix fresh and long-dead rows · 🟡
+Probed 2026-09-27 ([validation](../research/VALIDATION_2026-09-27_nationwide.md)): `watergate_load` has **2,315 rows but only 12 fresh**, most stopped in July 2023, and no thresholds; `analyst/dam` medium reservoirs: 448 of 862 fresh, **317 dated 1970-01-01** (placeholder), 71 from 2021; `canal_waterlevel`: 47 rows older than 2026. A collector that stores "latest" without a freshness filter would present years-old values as current.
+- **Rule:** every national collector drops rows older than its cadence × 3 (and any epoch-0 date) and records the fresh/total ratio in `/api/health`.
+
+### KI-404 — Research_Thailand.md is not a usable source · 🟢 (banner)
+The file builds its ingestion on `api2.thaiwater.net` (no DNS; refuted since 2026-09-26), gives wrong counts and thresholds (C.13 "2,000/2,500" vs RID's 2,176/2,448/2,720), invents a sample payload, and proposes a HAND street depth, an egress relay, a non-honest UA and evacuation instructions — all against project rules. Kept as a record with a 🔴 banner (owner's choice); see [validation §C](../research/VALIDATION_2026-09-27_nationwide.md).
+
+### KI-509 — A GloFAS point query can land on a side cell · 🟡
+On 2026-09-27 the Open-Meteo Flood API at Nong Khai (17.88, 102.74) returned **1–3 m³/s**; the cell at 17.925, 102.725, about 5 km away, returned **≈ 9,000 m³/s** — the Mekong. At Hat Yai a point gave 0.1–1.3 m³/s. A virtual gauge taken at the user's pin can therefore be off by three orders of magnitude.
+- **Rule (APPROACH §19.5):** snap each virtual gauge once to the highest-discharge cell within ~5 km of the reach, store it, compare only with that cell's own climatology, and show categories only.
+
+### KI-510 — GISTDA answered 404, while the status script said ✅ · 🟢 fixed 2026-09-27
+`GET …/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day?…&api_key=…` returned **404 `{"detail":"Service not found"}`**. `scripts/owner_status.py` had reported ✅ because it only checked that `GISTDA_API_KEY` existed.
+- **Cause:** our endpoint was outdated. GISTDA's documentation (`disaster.gistda.or.th/services/open-api`, OpenAPI server `https://api-gateway.gistda.or.th/api/2.0/resources`) lists `/features/flood/{1day,3days,7days,30days}` and `/features/flood-freq` (params `limit`, `offset`, `bbox`) with the key in the **`API-Key` header**. With that, the same key returns 200.
+- **Data (2026-09-27 09:54 UTC, national):** 1 day 0 cells (no satellite pass), 3 days 38,461, 7 days 49,761, 30 days 52,778 flooded **H3 cells (~0.12 km²)** with `f_area` m², province/amphoe, exposure (`population`, `building`, `length_road`, `hospital`, crop areas) and the source passes (`S1C/S1D` Sentinel-1, `rd2` Radarsat-2, `cg2/cm4` COSMO-SkyMed); `flood-freq` gives recurrence polygons (5,377 in a Bangkok-area bbox). The Bangkok bbox had **0 cells in 7 days** while streets were flooded: radar misses water between buildings (⚠️ inference), so an empty result is **not** "no flood" in cities.
+- **Fixed:** `GISTDA_API_ENDPOINT` → `/features/flood/7days`; `config.py` default and `.env.example` updated; the status script sends the header and reports the cell count. **Lesson:** a status check must exercise the service, not the presence of a key.
+
+### KI-511 — No database backup at all; disk 84 % full · 🔴
+R2 off-site backups were declined (D-029), but **no local dump exists either**; `infra/README.md` describes one that was never built. 2026-09-27: DB 706 MB, ~74,000 rows/day, disk 60 of 75 GB used (12 GB free, shared host). BMA canal history (since 2026-09-26) and user feedback cannot be re-fetched. National collection would multiply the growth.
+- **Plan (D-046):** nightly `pg_dump -Fc` into `data/backups/` (keep 3) and one tested restore into a throwaway container, **before** any national collector runs; retention of 90 days for high-volume national series; a disk alert already exists (hourly check).

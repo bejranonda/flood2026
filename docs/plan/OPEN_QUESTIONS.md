@@ -4,11 +4,14 @@
 > When one is answered, move it to "Answered" with the date, and record any resulting decision in [DECISIONS.md](DECISIONS.md).
 
 ## Open
-> **Steps, costs and verification for each item are in [../OWNER_ACTIONS.md](../OWNER_ACTIONS.md)** (D-026). Check status with `python3 scripts/owner_status.py`. Last verified 2026-09-26 ~11:20 UTC.
+> **Steps, costs and verification for each item are in [../OWNER_ACTIONS.md](../OWNER_ACTIONS.md)** (D-026). Check status with `python3 scripts/owner_status.py`. Last verified 2026-09-27 ~10:10 UTC.
 
 | # | Question | Why it matters | Priority |
 |---|---|---|---|
-| **Q18** | **`autobahn.bot` bot challenge** (`cf-mitigated: challenge`, evidence points to Bot Fight Mode, which WAF rules can't skip): turn Bot Fight Mode off for the zone, upgrade to Pro (Super Bot Fight Mode + Skip), or keep sharing the alias? Then: may we 301 the old domain (`REDIRECT_LEGACY_HOST=1`, built and tested, off)? ([KI-506](../KNOWN_ISSUES.md)) | LINE/Facebook previews, monitors, API users | **1** |
+| **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
+| **Q29** | **Local backup (KI-511):** may an agent add the nightly `pg_dump` (host cron or a worker task) and run one restore test? It only reads the DB and writes `data/backups/` (~150–250 MB each, keep 3) | No backup exists today; BMA history can't be re-fetched | **1** |
+| Q30 | **Flood season priority for the national view:** which region first after Bangkok? (South Gulf floods mainly Oct–Jan per the research ⚠️; Northeast/Mekong now) | Order of D-046 collectors and thresholds | 2 |
+| Q31 | **Officials/volunteers:** what do they need that residents don't (a table view, an export, LINE alerts, a login)? Anyone to ask? | Scope of the "officials" audience (A28) | 2 |
 | RID | **Gate coordinates** (`code,lat,lon`) for the 15 unplaced and 14 approximate stations | Exact map positions, point checks ([KI-207](../KNOWN_ISSUES.md)) | 2 |
 | Q23 | **GLM API Key** (`GLM_API_KEY` in `.env`) when ready for AI triage of citizen feedback notes | Enables background AI classification of feedback notes | 3 |
 | Q19 | Who reads **feedback notes**, how often; a review page or SQL? (first real report arrived 10:17 UTC) | Feedback is only useful if someone acts on it ([D-020](DECISIONS.md)) | — |
@@ -17,7 +20,7 @@
 | Q8 | Dates in the **Buddhist era (พ.ศ.)**? | UI | — |
 | Q11 | **Budget/retention** for R2 and the raw archive | Sizing | — |
 | Q12 | **Who is on call** during a flood? | Alert routing | — |
-| Q3 | Permission mails to **HII / BMA / Traffy**? (optional since D-014) | Public redistribution | — |
+| Q3 | Permission mails to **HII / BMA / Traffy**, and **DWR / RID** before national data goes public (drafts in OWNER_ACTIONS, D-046) | Public redistribution; national launch | 3 |
 | Q4 | **TMD / GISTDA / Copernicus GFM / NASA** keys? | Optional P2 sources | — |
 | Q6 | Will the app ever be **commercial**? | Open-Meteo and FABDEM are non-commercial ([KI-106](../KNOWN_ISSUES.md)) | — |
 | Q9 | **Frontend framework** preference? | The plain-JS app is enough so far | — |
@@ -25,6 +28,17 @@
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
+| A27 | What should "whole Thailand" mean next? | **Monitor first, forecast later** (2026-09-27) | [D-044](DECISIONS.md) |
+| A28 | Who should the national version serve? | **Residents in any province and local officials / volunteers** (2026-09-27) | [D-044](DECISIONS.md) |
+| A29 | Bangkok improvements found by the probes vs national work? | **Bangkok before national** (2026-09-27) | [D-045](DECISIONS.md) |
+| A30 | What should this session build, and where does it go? | First "Bangkok live + national collectors behind a flag"; then **"keep on the branch"** and **"do not follow everything, review and validate first"** → validated docs, the issue #1 fix and the status-script fix only, on branch `research/nationwide-scope` (2026-09-27) | [D-045](DECISIONS.md), [D-046](DECISIONS.md) |
+| A31 | Storage with 12 GB free and no backup? | **Lean + local backup** (2026-09-27) | [D-046](DECISIONS.md) |
+| A32 | Agencies (Q3) for national endpoints? | **Collect quietly, ask before public** (2026-09-27) | [D-046](DECISIONS.md) |
+| A33 | Keep `Research_Thailand.md` in the public repo? | **Keep, with a validation banner** (2026-09-27) | [KI-404](../KNOWN_ISSUES.md) |
+| A34 | Thai egress for DWR/RID in a prototype? | **Use the VPN for now**; a reliable egress before public (2026-09-27) | [D-046](DECISIONS.md) |
+| A35 | How to use the 262 BMA road sensors? | **Map layer + point-check evidence** (2026-09-27) | [D-045](DECISIONS.md) |
+| A36 | Owner steps | **Fix the GISTDA key; apply for the Google Flood API** (2026-09-27). GISTDA: the owner sent the API docs; the agent fixed our outdated path/header, the key works ✅ (KI-510). Google: open | [OWNER_ACTIONS](../OWNER_ACTIONS.md) |
+| A37 | Q18 (bot challenge) | Bot Fight Mode off (owner, 2026-09-26 17:33 UTC); removed from the open list 2026-09-27 | [D-035](DECISIONS.md) |
 | A22 | Q24: BMA khlong data via the People's Party relay? | **Use and show it**, credit BMA and the relay (2026-09-26) | [D-031](DECISIONS.md) |
 | A23 | Q27: Who is the app for in the next two weeks? | **Bangkok residents** (2026-09-26) | D-031, D-033 |
 | A24 | Q26: Default list region? | **Bangkok, this week**; revisit 2026-10-03 (2026-09-26) | [D-033](DECISIONS.md) |

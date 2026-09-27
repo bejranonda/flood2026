@@ -336,3 +336,31 @@
 - **Decision:** Released under the **MIT License**. Created `LICENSE` file in repo root, added `license = { text = "MIT" }` to `pyproject.toml`, added MIT badge to `README.md`, updated documentation and status checks (closing Q10 and KI-503). Third-party data sources retain their respective terms per `docs/SOURCES.md`.
 
 
+
+### D-044 — National scope: monitor first, forecast later
+- **Date:** 2026-09-27 · **Status:** accepted (owner answers to the national grill; research validated in [VALIDATION_2026-09-27_nationwide.md](../../research/VALIDATION_2026-09-27_nationwide.md))
+- **Context:** the owner asked how to extend the forecast to all of Thailand. National **water levels already arrive** (`waterlevel_load`, 805 stations); official thresholds (66 HII level, 87 RID discharge stations), reservoir state (50 large, 448 fresh medium), HII flash-flood potential and DWR's 2,275 village stations are reachable. **Forecasting** outside Bangkok needs a different model per flood type (no tide inland, reservoir control, flash floods, backwater), and each needs its own backtest; none exists.
+- **Decision:**
+  1. **Monitor first:** a national view of *measured* levels against *official* thresholds, reservoirs, and the agencies' own flash-flood products, with the data tier shown on every statement (APPROACH §19.2). Forecasts only per flood type after a backtest passes (§14).
+  2. **Audience:** residents in any province, and local officials and volunteers (อบต., อสม., rescue). Thai, mobile-first.
+  3. **Frame:** flood types F1–F8 and data tiers A/B/C from Research_NATIONWIDE (💡); thresholds only from the priority list in APPROACH §19.3, never invented.
+  4. **Rejected:** street depth from HAND (D-019/D-021), `api2.thaiwater.net` (no DNS), the HII gate feed (12 of 2,315 rows fresh), egress relays other than the owner's Thai egress, generated evacuation instructions.
+- **Consequence:** nothing national is shown to the public before D-046's conditions are met.
+
+### D-045 — Bangkok first: use HII's copy of BMA data; build order
+- **Date:** 2026-09-27 · **Status:** accepted as the plan; **validated, not built** (owner: "review and validate first")
+- **Evidence (2026-09-27):** HII `public/canal_waterlevel` serves **282 BMA canal gauges** (229 fresh) with the same `WL.xxx.nn` codes and identical values as the flood69 relay (WL.BBN.02 = 0.58 m at 09:15 UTC in both), **+73 fresh gauges** we lack, and bank/warning/critical on 250; HII `public/flood_road` serves **262 BMA road-flood sensors** (241 fresh, depth in cm); HII FEWS has Navy tide predictions for 28 stations (Fort Chula included) and RID discharge thresholds (C.13: 2,176/2,448/2,720 m³/s).
+- **Decision (order):**
+  1. BMA canals from HII as **primary**, the relay as fallback (reduces KI-218). Check before switching that HII's warning/critical equal the relay's for the 156 shared gauges (D-038 yardstick).
+  2. BMA **road sensors** as a map layer **and** as point-check evidence (a measured depth on the road, stored in cm and never mixed with m MSL; D-019/D-021 hold because nothing is interpolated).
+  3. Navy tide predictions and RID discharge thresholds in the river station sheets.
+  4. Then the national collectors (D-046).
+
+### D-046 — National data: lean storage, local backup first, agencies told before anything is public
+- **Date:** 2026-09-27 · **Status:** accepted (owner answers)
+- **Evidence:** disk 60 of 75 GB used (12 GB free, shared host); DB 706 MB growing ~74,000 rows/day; **no backup of any kind** (KI-511). DWR and RID answer only from a Thai IP (KI-110) and the only Thai egress is a public VPN relay (KI-505). The national endpoints are public but undocumented.
+- **Decision:**
+  1. **Local nightly `pg_dump -Fc`** (keep 3) and one tested restore **before** any national collector runs. R2 stays off (D-029).
+  2. **Lean national series:** dams and thresholds daily, FFPI every 6 h, DWR hourly via the Thai egress, 90-day retention for high-volume series, a freshness filter on every feed (KI-111).
+  3. **Collect quietly, ask before public:** national collectors may poll gently (behind a flag, not shown) once built; before national data is shown publicly the owner sends short notes to HII, DWR and RID (drafts in OWNER_ACTIONS) and a reliable Thai egress exists.
+  4. The work stays on branch `research/nationwide-scope` until the owner reviews it (owner answer 2026-09-27).

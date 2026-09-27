@@ -1,6 +1,6 @@
 # PLAN.md — Roadmap, phase gates and status
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-26
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-27
 > **Mode (since 2026-09-26, D-012):** all workstreams run **in parallel**. An interim public MVP is live at **https://flood.autobahn.bot** (main domain since D-017; `flood.bejranonda.com` is an alias). Gates G0–G4 are now quality reviews, not blockers. Current state and next steps: [HANDOFF.md](../../HANDOFF.md).
 > **Brief:** [docs/brief/first_prompt.md](../brief/first_prompt.md) (the "Option 2" prompt plus the updated Phase 1 and Phase 4)
 
@@ -16,6 +16,7 @@
 | Phase 1 — ingestion | 🟡 running; **110 focus stations**, whole BMR (D-015, D-023, KI-209/210); **1-year hourly backfill** from `waterlevel_graph` (D-018); missing: R2 off-site backup (blocked on R2 S3 credentials) and ~54 stations the chart endpoint won't serve (incl. GLF001, CPY013; all workarounds tested, KI-207) |
 | Phase 2 — forecasting | 🟡 L0/L1 + damped trend; tide fitted on up to a year, backtest on the last 45 days (D-018); 24 h outlook (peak window, chance of reaching the bank); interpolation assessed (D-019). L3–L5 and polder-aware depth are next |
 | Phase 3 — web | 🟡 MVP live, **mobile-first redesign** (tabs, bottom sheet, search, share/deep links, summary statistics, Chao Phraya profile) and **citizen feedback** (D-020), **point check** for places with no gauge (D-021), optional **Workers AI** triage (D-022), **every station shown with notes** (D-024). **Released v0.2.0** ([CHANGELOG](../../CHANGELOG.md), D-025). Reviewed in [UX_VALIDATION](../UX_VALIDATION.md). Next: polder-aware "near me", alerts (Q7), model page |
+| Phase 5 — nationwide ([phase-5](phase-5-nationwide.md)) | 🔎 **Validated, not built** (2026-09-27): monitor first, forecast later (D-044); Bangkok first via HII's copy of BMA data (D-045); lean storage, local backup and agency notes before anything public (D-046). Research checked live in [VALIDATION_2026-09-27_nationwide](../../research/VALIDATION_2026-09-27_nationwide.md) |
 | Phase 4 — ops | 🟡 **Cloudflare Tunnel live** (no inbound ports); Thai VPN sidecar (D-016); monitoring alerts and R2 backups are next (KI-504, KI-505) |
 
 ## Phases and gates
@@ -26,6 +27,7 @@
 | **1** [Ingestion and archive](phase-1-ingestion-archive.md) | Capture every reading from now on, and backfill everything available | Collectors, raw archive + R2, TimescaleDB/PostGIS schema, QC, backfill, source health, **tested restore** | **G1:** ≥ 7 days of continuous collection, backfill done, restore drill passed |
 | **2** [Forecasting](phase-2-forecasting.md) | Honest, calibrated forecasts that beat the baselines | Backtest harness, L0–L2, L3 physics (tide fit, lags, rating curves, polders), L4/L5, recovery estimator, depth module, skill report | **G2:** acceptance gate passed per station × horizon (or a documented fallback) |
 | **3** [Web app](phase-3-web-app.md) | A Thai, mobile-first public app answering the two golden questions | Public API, map, "ใกล้บ้านฉัน", station pages, model page, attribution, disclaimers | **G3:** UX review by the owner (and ideally a few Thai residents) |
+| **5** [Nationwide](phase-5-nationwide.md) | An honest national view, then forecasts per flood type | Bangkok via HII (D-045), backup, lean national collectors behind a flag, national view with tiers, per-type forecasts | **G5:** tiers on every statement, official thresholds only, backup drill, agencies informed, per-type backtests |
 | **4** [Deployment and ops](phase-4-deployment-ops.md) | Survive peak traffic and failures; redeploy in under 1 hour | Edge caching, monitoring and alerts, backups, runbooks, security hardening | **G4:** load test, redeploy drill, and alert test passed |
 
 ## Critical path and timing principles
@@ -42,7 +44,7 @@
 | Key stations missing (C.29A, Memorial Bridge, Fort Chula) | Weaker regime B | Find RID and Navy feeds; interim routing and our own tide fit ([KI-109](../KNOWN_ISSUES.md)) |
 | Too little history for extremes | Poor ML skill | Backfill; GloFAS 1984→; global models; physical baseline |
 | Overconfident public messages | Harm to users | Acceptance gate, conformal coverage, ranges, conditions, official links |
-| Single server's disk fills up (~13 GB free, shared) | Collection stops | Disk alert below 2 GB; R2 replication once credentials exist ([KI-502](../KNOWN_ISSUES.md), [KI-504](../KNOWN_ISSUES.md)) |
+| Single server's disk fills up (12 GB free, 84 % used on 2026-09-27, shared) and **no backup exists** | Collection stops; history lost | Disk alert below 2 GB; local nightly dump before national collection (D-046, [KI-511](../KNOWN_ISSUES.md)); R2 declined (D-029) |
 | Main domain behind a bot challenge | Slow first load; LINE previews and API users blocked | Owner relaxes the zone setting (Q18); old domain kept as alias ([KI-506](../KNOWN_ISSUES.md)) |
 | Feedback abuse or misreading | Misleading counts | Private notes, rate limit, human review only ([KI-507](../KNOWN_ISSUES.md), D-020) |
 | Licensing (Open-Meteo, FABDEM non-commercial; HII redistribution) | Legal | Non-commercial operation; ask HII and BMA ([OPEN_QUESTIONS](OPEN_QUESTIONS.md)) |

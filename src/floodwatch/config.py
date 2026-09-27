@@ -50,7 +50,7 @@ class Settings:
     gistda_api_key: str = field(default_factory=lambda: _env("GISTDA_API_KEY"))
     gistda_api_endpoint: str = field(default_factory=lambda: _env(
         "GISTDA_API_ENDPOINT",
-        "https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day"))
+        "https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/7days"))
 
 
 settings = Settings()
