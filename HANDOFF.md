@@ -1,6 +1,6 @@
 # HANDOFF.md — State of the project and how to continue
 
-> Updated **2026-09-27 ~18:40 UTC (01:40 ICT 28 Sep)** so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. **Release v0.8.0** ([CHANGELOG](CHANGELOG.md)) · **What the owner needs to do: [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md)** (`python3 scripts/owner_status.py`) · Read this first, then [CLAUDE.md](CLAUDE.md) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions work on this repo: **always `git pull --ff-only` and check `git log` before editing**. **The repository is public: never commit secrets, IPs, account ids, emails or feedback content (D-028).**
+> Updated **2026-09-27 ~18:05 UTC (01:05 ICT 28 Sep)** so any developer or AI harness (Claude Code, Codex, Gemini CLI, Cursor, …) can pick this up cold. **Release v0.8.0** ([CHANGELOG](CHANGELOG.md)) · **What the owner needs to do: [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md)** (`python3 scripts/owner_status.py`) · Read this first, then [CLAUDE.md](CLAUDE.md) and [docs/plan/PLAN.md](docs/plan/PLAN.md). Several sessions work on this repo: **always `git pull --ff-only` and check `git log` before editing**. **The repository is public: never commit secrets, IPs, account ids, emails or feedback content (D-028).**
 
 ## 1. What is live right now
 | Item | State |
@@ -10,7 +10,7 @@
 | Site | **v0.8.0** (version in the header badge and footer). **Forecast method `star` (D-052):** rain + upstream + dam release, chosen per gauge/horizon where it wins the backtest (48 h skill at 35 gauges, was 8). v0.7.0: **One point panel (issue #3, D-051):** headline + "ปัจจัยที่ใช้คาดการณ์" (canal / rain / street, dot + word, canal dot follows the gate), caveats behind one ⓘ, district line via `/api/reverse`, report form behind a button (issue #2); 48 h line only where skilled (D-050). Earlier: **Compact UI & Progressive Details (D-049)**: single `ⓘ` confidence button with color coding (sky-blue `.conf-medium` for tide-calibrated models, slate-gray `.conf-low` for baseline statistical models) with mobile toast tap feedback and desktop hover tooltips; collapsible SVG chart legend (`ℹ️ สัญลักษณ์กราฟ ▾`); observation timestamp prioritized with MSL surveying datum tucked into an adjacent `[ม.รทก. ⓘ]` button; compact point forecast banner with inline `อ้างอิงข้อมูล ⓘ` button. **Point check UX redesign & USP (D-040, D-041, D-042, D-047, D-048)**: 12–24h synthesized forecast outlook banner (`🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า`) with nearest canal forecast surfaced with distance attribution even when surrounding area statuses vary. Natural Thai zero-crossing phrasing (`ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`). **Rain shown in TMD words, never "~" (issue #1, KI-224).** **High-contrast Traffy street flood hotspots**. Modernized favicon (D-039), **Region chips (default กทม., D-033), place search (D-032).** Thai, **mobile-first**: summary strip, tabs, bottom-sheet detail, share link, feedback, and 61 tests passing |
 | API | `/api/health`, `/stations`, `/stations/{code}`, `/near`, `/stats`, `/profile` (river km), **`/point`**, **`/summary`** (template), `/reports`, `/rain`, `POST /feedback` (instant `urgent` flag), `/feedback/summary`, **`/reverse`** (district line, D-051); docs at `/api/docs` ([ARCHITECTURE §1.1](docs/ARCHITECTURE.md)) |
 
-## 2p. Session 2026-09-27 17:45–18:40 UTC: forecast method `star` built and proven (v0.8.0, D-052)
+## 2p. Session 2026-09-27 17:35–18:05 UTC: forecast method `star` built and proven (v0.8.0, D-052)
 | Owner request / event | Result | Where |
 |---|---|---|
 | "Q32: continue" | Built `star` (network space-time AR + forecast rain + C.13 release) as a 4th method in the production backtest; rain history via Open-Meteo previous runs (`openmeteo_prev` → `rain_hindcast`, 1 year backfilled) | `forecast/__init__.py`, [D-052](docs/plan/DECISIONS.md) |
@@ -18,8 +18,9 @@
 | Found on the way | Ayutthaya fell back silently: gaps in its own record left the 24 h change undefined → own levels bridged ≤ 6 h in features (test added); validation re-run on the final code | test `…short_gap` |
 | Frank notes | Two of my tests encoded wrong expectations (a 0.3 skill bar; "star must not win on a tidal gauge") — corrected to what matters (no overfitting to noise). Forecast run now ~145 s per 30 min | — |
 | "Q29: no backup for now" | Recorded as accepted risk (KI-511, D-046 amended) | OPEN_QUESTIONS A47 |
+| Live check after deploy | First `star-0.2` run: 292 stations in ~3.5 min, no failures (18:04:30 UTC); **48 h line now at 29 gauges** (was 7), medium-confidence 24 h at 35 | `/api/stations` |
 
-## 2o. Session 2026-09-27 16:45–17:45 UTC: 48 h forecasting research, HII official forecast, issues #2/#3 (v0.7.0)
+## 2o. Session 2026-09-27 16:45–17:30 UTC: 48 h forecasting research, HII official forecast, issues #2/#3 (v0.7.0)
 | Owner request / event | Result | Where |
 |---|---|---|
 | Review of v0.6.4–v0.6.5 (earlier) | Two bugs: river gauge as "nearest canal" (KI-227), ⓘ in a list opened the station (KI-228). Both fixed and verified | `point.py`, `web/app.js` |
