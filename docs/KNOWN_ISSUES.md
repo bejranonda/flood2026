@@ -253,7 +253,23 @@ BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded
 ### KI-209 — HII test gauges in station lists · 🟢
 `queryStation` lists test gauges (`TEST02` and three more `TEST*` codes in Bangkok). **Fixed:** `hii_stations` skips `TEST*`, the API filters them out, and the 4 existing rows were set to `in_focus=false`.
 
+### KI-225 — Literal zero-crossing delta intervals ("ลด X ถึงเพิ่ม Y") confused citizens under steady conditions · 🟢 fixed in v0.6.4 (D-048)
+- **Problem (visitor feedback, 2026-09-27):** Conformal delta intervals spanning negative and positive values (e.g. `[-0.11, +0.17] m`) were displayed literally as "น่าจะลด 11 ถึงเพิ่ม 17 ซม.", which read as a bizarre contradiction next to a "ทรงตัว" badge.
+- **Resolution:** Replaced with intuitive citizen-friendly wording: `ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`.
+
+### KI-226 — Mobile UI line wrapping from verbose confidence labels and uncollapsed metadata · 🟢 fixed in v0.6.5 (D-049)
+- **Problem (visitor feedback, 2026-09-27):**
+  1. Multi-dot meters (`●○○`) combined with text ("คาดการณ์เบื้องต้น") caused line wrapping on 390px mobile viewports.
+  2. Technical surveying elevation in meters above mean sea level (`ม.รทก.`) cluttered the top of the station sheet, distracting citizens from measurement freshness ("15 นาทีที่แล้ว").
+  3. The SVG chart's dense 3-line textual legend pushed user survey and feedback controls below the fold.
+- **Resolution:**
+  1. Replaced verbose meter with a single circular `ⓘ` button (sky-blue `.conf-medium` for tide-calibrated models, slate-gray `.conf-low` for baseline statistical models) with desktop hover tooltip and touch-triggered non-blocking toast on mobile.
+  2. Prioritized observation freshness on the main line; tucked raw surveying numbers into an adjacent `[ม.รทก. ⓘ]` button.
+  3. Collapsed chart curve definitions into `<details class="chart-legend"><summary>ℹ️ สัญลักษณ์กราฟ</summary>...`.
+  4. Moved forecast basis to a top-row button (`อ้างอิงข้อมูล ⓘ`) and canal disclaimer to a label tooltip `ⓘ`.
+
 ---
+
 
 ## 3. Modelling
 

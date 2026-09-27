@@ -456,14 +456,17 @@ Results are published on the in-app "เกี่ยวกับแบบจำ�
 ## 15. Plain-Thai translation
 | Internal result | UI message |
 |---|---|
-| Median ΔH(+12 h) > +kσ | "ระดับน้ำมีแนวโน้ม **เพิ่มขึ้น** ประมาณ X–Y ซม. ใน 12 ชม." |
-| \|ΔH\| ≤ kσ | "ระดับน้ำ **ทรงตัว**" |
-| Median ΔH < −kσ | "ระดับน้ำมีแนวโน้ม **ลดลง**" |
+| Median ΔH(+12 h) > +kσ | "ระดับน้ำมีแนวโน้ม **เพิ่มขึ้น** X–Y ซม. ใน 12 ชม." |
+| \|ΔH\| ≤ kσ (steady) | "[→ ทรงตัว] ใน 12 ชม. อาจแกว่งตัว -A ถึง +B ซม. <span class='conf-badge'>ⓘ</span>" (D-048) |
+| Median ΔH < −kσ | "ระดับน้ำมีแนวโน้ม **ลดลง** X–Y ซม. ใน 12 ชม." |
+| Conformal confidence (medium) | `ⓘ` สีฟ้า = "คาดการณ์ปานกลาง (ทดสอบแบบจำลองย้อนหลัง 45 วัน แม่นกว่าค่าคงที่)" (D-049) |
+| Conformal confidence (low) | `ⓘ` สีเทา = "คาดการณ์เบื้องต้น (อิงสถิติหรือความคงที่ 45 วัน)" (D-049) |
 | P(H > H_bank) | "โอกาสน้ำล้นตลิ่งภายใน 3 วัน: 30%" |
 | Recovery distribution | "คาดว่าน้ำจะลดต่ำกว่าตลิ่งประมาณ 2–5 ต.ค. (หากไม่มีฝนตกหนักเพิ่ม)" |
-| Model not accepted or low confidence | "ความเชื่อมั่นต่ำ — โปรดติดตามประกาศทางการ" |
-| Daily high water (tidal) | "น้ำขึ้นสูงสุดวันนี้ประมาณ 18:00–19:00 น." |
-| Stale input | "ข้อมูลล่าสุดเมื่อ … (แหล่งข้อมูลขัดข้องชั่วคราว)" |
+| Daily high water (tidal) | "สูงสุดราว 18:00–20:00 น." |
+| Stale input | "ข้อมูลล่าสุดเมื่อ … (⚠️ ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว)" |
+| Elevation datum | Fresh timestamp prominent; surveying datum tucked into `[ม.รทก. ⓘ]` (D-049) |
+
 
 ## 16. Pitfalls
 | Pitfall | Mitigation |

@@ -211,3 +211,11 @@ Live-probed facts for the national scope (D-044); details and evidence in [resea
 - **Satellite:** GISTDA flooded H3 cells nationally (~50,000 over 7 days on 2026-09-27) with exposure; empty over central Bangkok despite street flooding (radar limitation ⚠️).
 - **Flood types differ by region** (research, ⚠️ not independently checked): flash floods in the North and on the Western range; slow, long floods with backwater in the Mun/Chi basins and against the Mekong; regulated floods below the large dams; coastal/lagoon effects in the South (Songkhla Lake). Main season Jul–Oct; the Gulf-side South mainly Oct–Jan.
 - **Rain words:** TMD rain-amount categories ฝนเล็กน้อย 0.1–10.0 · ฝนปานกลาง 10.1–35.0 · ฝนหนัก 35.1–90.0 · ฝนหนักมาก ≥ 90.1 mm (tmd.go.th "เกณฑ์อากาศ", read 2026-09-27; the page gives no period ⚠️). They are national words for amounts, not local flood thresholds (KI-224).
+
+## 10. Forecast Presentation & UI Principles (v0.6.4 / v0.6.5, D-048, D-049)
+UX principles established through visitor testing during the 2026 flood season:
+- **Zero-crossing interval phrasing:** Conformal prediction intervals crossing zero under steady conditions (e.g. `[-0.11, +0.17] m`) must not be phrased as contradictory words ("ลด 11 ถึงเพิ่ม 17 ซม."). Use `ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`.
+- **Single ⓘ confidence symbol:** Citizens perceive "มั่นใจต่ำ" as a severe system error. Confidence is presented as a single circular `ⓘ` button color-coded by model class (sky-blue `.conf-medium` for tide-calibrated models beating persistence >10%; slate-gray `.conf-low` for baseline persistence/statistical models). On desktop, hover displays the backtest summary. On touchscreens, tap triggers a non-blocking toast.
+- **Progressive technical disclosure:** The primary line prioritizes actionable freshness (`ข้อมูล 27 ก.ย. 18:40 (15 นาทีที่แล้ว)`). Technical surveying datums (`ม.รทก.`) are tucked into an adjacent `[ม.รทก. ⓘ]` button.
+- **Collapsible visual metadata:** Dense textual legends (such as 3-line SVG chart curve explanations) are collapsed into `<details class="chart-legend"><summary>ℹ️ สัญลักษณ์กราฟ</summary>...` to preserve vertical screen height on mobile devices.
+

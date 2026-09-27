@@ -1,6 +1,6 @@
 # GUIDELINES.md — Engineering, Modelling, Data Ethics & UX Standards
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-26
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-27
 > **Audience:** maintainers, contributors, AI agents (agents: also read [CLAUDE.md](../CLAUDE.md))
 
 ---
@@ -154,6 +154,11 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 17. **Numbers people can read (issue #1, KI-224):** no `~` in user-facing text (it reads as a minus on phones); write "ประมาณ"/"ราว". Every rain amount carries its TMD word (ฝนเล็กน้อย / ปานกลาง / หนัก / หนักมาก) and says whether it is past or forecast ("ข้างหน้า"). Unknown is "ไม่มีข้อมูล", never 0. The Python (`point.py RAIN_*`) and JS (`RAIN_TMD`) bands change together.
 18. **National statements (D-044, APPROACH §19):** every statement outside the tested area shows its **tier** (วัดจริง · ประมาณจากแบบจำลอง · จากดาวเทียม) and source with its time; verdicts only against **official** thresholds (APPROACH §19.3); agencies' own products (HII FFPI, DWR status) are shown as theirs, not re-labelled; an empty satellite result is never "no flood"; virtual gauges are snapped and categorical only. Nothing national is public until D-046's conditions hold.
 19. **Freshness before storage (KI-111):** a national collector drops rows older than 3 × its cadence and any epoch-0 date, and reports fresh/total in `/api/health`.
+20. **Zero-crossing delta intervals (D-048):** Conformal intervals crossing zero under steady conditions must be phrased as `ทรงตัว (อาจแกว่งตัว -A ถึง +B ซม.)`, never contradictory words ("ลด 11 ถึงเพิ่ม 17 ซม.").
+21. **Compact UI and progressive disclosure (D-049):**
+    - Confidence indicator: Single color-coded `ⓘ` button (sky-blue for tide-calibrated models, slate-gray for baseline persistence) with desktop hover tooltip and touch-triggered non-blocking toast on mobile.
+    - Technical surveying datum (`ม.รทก.`): Prioritize observation freshness on the main line; tuck raw surveying elevation into an interactive `[ม.รทก. ⓘ]` button.
+    - Textual chart legends: Make collapsible (`<details class="chart-legend">`) to preserve vertical mobile viewport height.
 
 ---
 
