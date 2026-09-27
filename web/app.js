@@ -55,24 +55,33 @@ const CHANGE = {
   steady: { th: "ทรงตัว", icon: "→", color: "#6b7280" },
   rise: { th: "เพิ่มขึ้น", icon: "↗", color: "#b45309" }, strong_rise: { th: "เพิ่มขึ้นมาก", icon: "⬆", color: "#c62828" },
 };
-const CONF_TH = { medium: "มั่นใจปานกลาง", low: "มั่นใจต่ำ" };
+const CONF_TH = { medium: "คาดการณ์ปานกลาง", low: "คาดการณ์เบื้องต้น" };
+const CONF_DOTS = { medium: "●●○", low: "●○○" };
 const CONF_WHY = {
   medium: "แบบจำลองน้ำขึ้นน้ำลงทดสอบย้อนหลัง 45 วัน แม่นกว่าการถือว่าน้ำคงที่ และช่วงที่ให้ถูกราว 9 ใน 10 ครั้ง",
-  low: "ยังคาดการณ์ได้ไม่ดีกว่าการถือว่าน้ำคงที่ ตัวเลขเป็นช่วงความคลาดเคลื่อนจากการทดสอบย้อนหลัง 45 วัน",
+  low: "แบบจำลองเบื้องต้น (อิงความคงที่หรือสถิติ 45 วัน) ตัวเลขเป็นกรอบความคลาดเคลื่อนจากการทดสอบย้อนหลัง",
 };
-const changeRange = ([lo, hi]) => {
+const changeRange = ([lo, hi], dir) => {
   const a = Math.round(lo * 100), b = Math.round(hi * 100);
-  if (a >= 0) return a === b ? `เพิ่มราว ${b} ซม.` : `เพิ่ม ${a}–${b} ซม.`;
-  if (b <= 0) return a === b ? `ลดราว ${-a} ซม.` : `ลด ${-b}–${-a} ซม.`;
-  return `ลด ${-a} ถึงเพิ่ม ${b} ซม.`;
+  if (a >= 0) return a === b ? `เพิ่มขึ้นราว ${b} ซม.` : `เพิ่มขึ้น ${a}–${b} ซม.`;
+  if (b <= 0) return a === b ? `ลดลงราว ${-a} ซม.` : `ลดลง ${-b}–${-a} ซม.`;
+  // Zero-crossing (a < 0 and b > 0): "ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)"
+  if (dir === "steady") return `อาจแกว่งตัว ${a} ถึง +${b} ซม.`;
+  if (dir === "rising") return `แนวโน้มเพิ่มขึ้น (อาจแกว่งตัว ${a} ถึง +${b} ซม.)`;
+  if (dir === "falling") return `แนวโน้มลดลง (อาจแกว่งตัว ${a} ถึง +${b} ซม.)`;
+  return `อาจแกว่งตัว ${a} ถึง +${b} ซม.`;
 };
 const peakText = (s) => (s.peak_h && s.forecast_time)
   ? ` · สูงสุดราว ${fmtHour(Date.parse(s.forecast_time) + (s.peak_h - 1) * 3600e3)}–${fmtHour(Date.parse(s.forecast_time) + (s.peak_h + 1) * 3600e3)} น.` : "";
 function changeHTML(ch, hours, s) {
   if (!ch) return "";
   const c = CHANGE[ch.level] || CHANGE.steady;
-  const nums = ch.wide ? "ช่วงคาดการณ์กว้างเกินไป จึงไม่แสดงตัวเลข" : `น่าจะ${changeRange(ch.likely)}`;
-  return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${hours === 12 ? esc(peakText(s)) : ""} · <span title="${esc(CONF_WHY[ch.confidence])}">${esc(CONF_TH[ch.confidence])}</span></span>`;
+  const nums = ch.wide ? "ช่วงคาดการณ์กว้างเกินไป จึงไม่แสดงตัวเลข" : changeRange(ch.likely, ch.dir);
+  const dots = CONF_DOTS[ch.confidence] || "";
+  const confTh = CONF_TH[ch.confidence] || ch.confidence;
+  const why = CONF_WHY[ch.confidence] || "";
+  const peak = hours === 12 ? esc(peakText(s)) : "";
+  return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${peak} · <span class="conf-badge conf-${esc(ch.confidence)}" title="${esc(why)}"><span class="dots" aria-hidden="true">${dots}</span> ${esc(confTh)}</span></span>`;
 }
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
 const freeboardText = (fb) => {
@@ -575,7 +584,10 @@ function pointHTML(d, src, place = "") {
   const hasStreetFlood = (d.warnings || []).includes("street_flooding_despite_channels");
   const staticWarnings = (d.warnings || []).filter((w) => w !== "street_flooding_despite_channels");
 
-  const urgentBanner = hasStreetFlood
+  const fc = d.forecast || {};
+  // Avoid stacked alert fatigue: if forecastBanner is already high risk (which covers street water waiting to drain),
+  // suppress the redundant urgentBanner right above it
+  const urgentBanner = (hasStreetFlood && (!fc.title || fc.risk !== "high"))
     ? `<div class="urgent">⚠️ ${WARN.street_flooding_despite_channels}</div>`
     : "";
 
@@ -591,7 +603,6 @@ function pointHTML(d, src, place = "") {
 
   // Point Forecast Outlook Banner (USP: D-041, confidence-gated per D-042 — never a canal verdict from a
   // gauge that is too far or disagrees; "info" means only rain/reports were usable, not "all clear")
-  const fc = d.forecast || {};
   const FC_RISK = {
     high: { cls: "risk-high", icon: "⚠️" },
     moderate: { cls: "risk-mod", icon: "🌧️" },
@@ -601,18 +612,35 @@ function pointHTML(d, src, place = "") {
   const fcR = FC_RISK[fc.risk] || FC_RISK.info;
   const FC_BASIS = { rain: "ฝนคาดการณ์", reports: "รายงานถนน", gauges: "สถานีใกล้เคียง" };
   const fcBasis = (fc.basis || []).map((b) => FC_BASIS[b] || b).join(" · ");
-  // Rise/fall, how much and how sure at each gauge the outlook used (D-047), named with its distance: a change at
-  // that gauge, never a level at the pin (D-021). Listed only when the area allows a canal statement (D-042).
+
+  // Canal forecast for this point:
+  // If the area allows an area-wide canal outlook, fc.gauges lists the agreeing gauges.
+  // If area gauges disagree or are further away, show the nearest available forecast gauge
+  // clearly labeled with its distance, so the visitor gets the rise/fall forecast they need!
   const byCode = Object.fromEntries((d.stations_forecast || []).map((s) => [s.code, s]));
-  const fcGauges = (fc.gauges || []).map((c) => byCode[c]).filter(Boolean).map((s) =>
-    `<div class="fc-g"><span class="fc-gname">${esc(s.name_th)} <span class="muted">${esc(s.distance_km)} กม.</span></span> ${changeHTML(s.change12, 12, s)}</div>`).join("");
+  let fcGaugesHTML = "";
+  if (fc.gauges && fc.gauges.length) {
+    const items = fc.gauges.map((c) => byCode[c]).filter(Boolean).map((s) =>
+      `<div class="fc-g"><span class="fc-gname">${esc(s.name_th)} <span class="muted">${esc(s.distance_km)} กม.</span></span> ${changeHTML(s.change12, 12, s)}</div>`).join("");
+    if (items) {
+      fcGaugesHTML = `<div class="fc-gauges"><div class="fc-g-label">🌊 สถานีคลองใกล้เคียง:</div>${items}</div>`;
+    }
+  } else if (d.stations_forecast && d.stations_forecast.length && d.stations_forecast[0].change12) {
+    const s = d.stations_forecast[0];
+    fcGaugesHTML = `
+      <div class="fc-gauges">
+        <div class="fc-g-label">🌊 คลองใกล้เคียงที่สุด (${esc(s.name_th)} ห่าง ${esc(s.distance_km)} กม.):</div>
+        <div class="fc-g">${changeHTML(s.change12, 12, s)}</div>
+        <div class="fc-subnote">*(ระดับน้ำที่สถานีคลอง ไม่ใช่ระดับน้ำที่จุดนี้หรือบนถนน)*</div>
+      </div>`;
+  }
 
   const forecastBanner = fc.title ? `
     <div class="forecast-banner ${fcR.cls}">
       <div class="fc-badge">🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า</div>
       <div class="fc-title">${fcR.icon} ${esc(fc.title)}</div>
       <div class="fc-desc">${esc(fc.desc)}</div>
-      ${fcGauges ? `<div class="fc-gauges">${fcGauges}</div>` : ""}
+      ${fcGaugesHTML}
       ${fcBasis ? `<div class="fc-basis">อ้างอิง: ${esc(fcBasis)}</div>` : ""}
     </div>` : "";
 

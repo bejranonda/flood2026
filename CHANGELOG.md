@@ -2,6 +2,14 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.6.4 — 2026-09-27
+- **Human-centered forecast phrasing and confidence indicators (D-048, owner feedback):**
+  - **Zero-crossing interval clarity:** Replaced confusing literal delta intervals like "น่าจะลด 11 ถึงเพิ่ม 17 ซม." with intuitive citizen wording: `ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`.
+  - **Friendly UX confidence indicators:** Replaced harsh negative wording "มั่นใจต่ำ" with progressive dot scale badges: `●○○ คาดการณ์เบื้องต้น` (for persistence/statistical baseline) and `●●○ คาดการณ์ปานกลาง` (for tested harmonic tide models) with explanatory tooltips on the 45-day backtest.
+  - **Visible canal outlook at point check:** When area confidence is low/none due to mixed gauge statuses across 8 km, the forecast banner now explicitly displays the nearest canal station (`คลองใกล้เคียงที่สุด (ชื่อสถานี ห่าง X.X กม.)`) with its rise/fall forecast and distance disclaimer `*(ระดับน้ำที่สถานีคลอง ไม่ใช่ระดับน้ำที่จุดนี้หรือบนถนน)*` (D-021).
+  - **Stacked alert deduplication:** Suppressed duplicate top urgent road alert banner when the forecast banner is already in high-risk alert mode, removing redundant warning boxes.
+  - Cache-busters bumped: `style.css?v=17`, `app.js?v=26`.
+
 ## v0.6.3 — 2026-09-27
 - **Forecast banner now says how much, and how sure (D-047, owner feedback):** "จะเพิ่มหรือลด เมื่อไหร่ เท่าไหร่ และ
   มั่นใจแค่ไหน" — the plain trend arrow gained a coloured chip (5 steps: ลดลงมาก/ลดลง/ทรงตัว/เพิ่มขึ้น/เพิ่มขึ้นมาก) with

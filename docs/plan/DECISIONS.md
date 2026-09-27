@@ -364,3 +364,24 @@
   2. **Lean national series:** dams and thresholds daily, FFPI every 6 h, DWR hourly via the Thai egress, 90-day retention for high-volume series, a freshness filter on every feed (KI-111).
   3. **Collect quietly, ask before public:** national collectors may poll gently (behind a flag, not shown) once built; before national data is shown publicly the owner sends short notes to HII, DWR and RID (drafts in OWNER_ACTIONS) and a reliable Thai egress exists.
   4. The work stays on branch `research/nationwide-scope` until the owner reviews it (owner answer 2026-09-27).
+
+### D-047 — Forecast banner shows how much, and how sure
+- **Date:** 2026-09-27 · **Status:** accepted (owner prompt: "the rain legend was too much text; forecast banner didn't say how much the water would rise/fall, when, or how confident")
+- **Decision:**
+  1. `forecast.change_summary()` outputs direction (`rising`, `steady`, `falling`), 5-step intensity level, numerical likely range (50% conformal band), 90% error band, and an honest confidence label (`medium` only when a model beats persistence by 30% and calibrated; otherwise `low`).
+  2. Station card, sheet, and point banner show a coloured chip with the range and confidence.
+  3. Tidal peak window shown only when ≥ 3 hours out.
+  4. Rain legend sentence replaced with a concise coloured TMD-word pill with a 4-step mini scale.
+
+### D-048 — Human-centered forecast phrasing, progressive confidence indicators, and point outlook visibility
+- **Date:** 2026-09-27 · **Status:** accepted (owner feedback on v0.6.3: "in 12h will decrease 11 to increase 17 cm is not understandable"; "can we modify 'มั่นใจต่ำ' with symbol or sign to be UX friendly?"; "in click point, visitor wants to know if water will rise or fall, when and how much before 'คลองรอบจุด'")
+- **Evidence & UX Problems:**
+  1. Literal conformal delta intervals like `[-0.11, +0.17]` printed as "น่าจะลด 11 ถึงเพิ่ม 17 ซม." read as a bizarre contradiction to citizens, especially alongside a "ทรงตัว" badge.
+  2. "มั่นใจต่ำ" sounded like a severe system defect, undermining user trust in reliable baseline telemetry.
+  3. When area confidence was `very_low` (due to wide gauge status spreads across 8 km), the banner omitted all canal gauges, withholding rise/fall information that users explicitly sought.
+  4. Multiple stacked warning boxes (urgent street alert + high risk forecast banner + overview card) caused cognitive warning fatigue.
+- **Decision:**
+  1. **Zero-crossing phrasing:** When delta spans across zero under steady conditions, format as `ทรงตัว (อาจแกว่งตัว -A ถึง +B ซม.)` (e.g. `[→ ทรงตัว] ใน 12 ชม. อาจแกว่งตัว -11 ถึง +17 ซม.`).
+  2. **Progressive confidence scale:** Replace "มั่นใจต่ำ" with dot indicators and friendly phrasing: `●○○ คาดการณ์เบื้องต้น` and `●●○ คาดการณ์ปานกลาง`, with an explanatory tooltip on the 45-day backtest.
+  3. **Point outlook nearest canal visibility:** When area-wide confidence is low/none, the forecast banner explicitly displays the nearest forecast canal gauge (`คลองใกล้เคียงที่สุด (ชื่อสถานี ห่าง X.X กม.)`) with its rise/fall forecast and disclaimer `*(ระดับน้ำที่สถานีคลอง ไม่ใช่ระดับน้ำที่จุดนี้หรือบนถนน)*` (D-021).
+  4. **Alert deduplication:** Suppress the top urgent road banner when the forecast banner is already in high-risk alert mode.

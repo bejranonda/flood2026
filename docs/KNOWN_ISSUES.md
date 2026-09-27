@@ -39,6 +39,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-225 | Literal delta interval "ลด 11 ถึงเพิ่ม 17 ซม." and "มั่นใจต่ำ" caused citizen confusion | UX / Product | 🟢 fixed v0.6.4 (D-048) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -460,3 +461,12 @@ On 2026-09-27 the Open-Meteo Flood API at Nong Khai (17.88, 102.74) returned **1
 ### KI-511 — No database backup at all; disk 84 % full · 🔴
 R2 off-site backups were declined (D-029), but **no local dump exists either**; `infra/README.md` describes one that was never built. 2026-09-27: DB 706 MB, ~74,000 rows/day, disk 60 of 75 GB used (12 GB free, shared host). BMA canal history (since 2026-09-26) and user feedback cannot be re-fetched. National collection would multiply the growth.
 - **Plan (D-046):** nightly `pg_dump -Fc` into `data/backups/` (keep 3) and one tested restore into a throwaway container, **before** any national collector runs; retention of 90 days for high-volume national series; a disk alert already exists (hourly check).
+
+### KI-225 — Literal delta interval "ลด 11 ถึงเพิ่ม 17 ซม." and "มั่นใจต่ำ" caused citizen confusion · 🟢 fixed v0.6.4 (D-048)
+Conformal prediction intervals crossing zero were printed literally as "น่าจะลด 11 ถึงเพิ่ม 17 ซม.", creating a paradoxical statement where water was claimed to decrease and increase simultaneously, contradicting the "ทรงตัว" badge beside it. In addition, "มั่นใจต่ำ" sounded like a severe defect, causing citizens to distrust the telemetry. In point check, mixed canal statuses across 8 km suppressed canal gauges entirely, leaving users without the canal rise/fall information they needed.
+- **Fixed (D-048, v0.6.4):**
+  1. Steady intervals crossing zero are worded as `ทรงตัว (อาจแกว่งตัว -A ถึง +B ซม.)`.
+  2. "มั่นใจต่ำ" replaced with progressive dot scale `●○○ คาดการณ์เบื้องต้น` and `●●○ คาดการณ์ปานกลาง` with backtest tooltips.
+  3. The closest forecast canal station is displayed in the point check banner with distance attribution even when surrounding area confidence is low/none.
+  4. Redundant urgent alert banner suppressed when forecast banner is active in high-risk alert mode.
+
