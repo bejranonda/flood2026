@@ -2,7 +2,7 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## Unreleased (branch `research/nationwide-scope`, not deployed)
+## v0.6.2 — 2026-09-27
 - **Fixed issue #1 "ฝน -27 มม. แปลว่าอะไร"** (KI-224): the point card showed `ฝน 24 ชม.: ~27 มม.`. On a phone the
   `~` read as a minus sign, the amount had no meaning attached, and "24 ชม." did not say it is a forecast.
   - Rain is now worded with the **Thai Meteorological Department's rain-amount categories** (ฝนเล็กน้อย 0.1–10.0 ·
