@@ -2,6 +2,15 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.10.2 — 2026-09-27
+- **The canal factor always shows a trend when one exists** (owner: "users cannot see the trend … show both"): when the
+  nearest canal has no forecast (37 BMA gauges HII does not serve, history since 26 Sep), the panel adds **the nearest
+  canal that has one** (`nearest_canal_trend` in `/api/point`). Each canal line says **when the water may drop** ("คาดว่า
+  จะต่ำกว่าตลิ่ง: 30 ก.ย. – 2 ต.ค.", or "ยังไม่เห็นแนวโน้มลดลง…").
+- **Plain words** for the canal summary: "คลองรอบจุดต่างกันมาก — คลองใกล้จุด 3 แห่งมีตั้งแต่ “ยังรับน้ำได้” ถึง
+  “ล้นตลิ่ง” จึงสรุปรวมไม่ได้ ดูทีละคลองด้านล่าง"; the "ทั้งรัศมี 8 กม." block is gone.
+- Tests: 82 passing (+1).
+
 ## v0.10.1 — 2026-09-27
 - **Fixed a contradiction found on the live site:** a "steady" chip next to a one-sided range read "→ ทรงตัว … เพิ่มขึ้น
   1–22 ซม." (WL.SSB.06). Steady ranges are now always worded neutrally: "อาจแกว่งตัว +1 ถึง +22 ซม.".

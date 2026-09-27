@@ -119,6 +119,7 @@ Persona: a resident of Lat Phrao / Chatuchak on a phone at night during the floo
 | 59 | Station sheet said "steady" three times | Median note dropped when the 12 h chip exists |
 | 60 | Area word "เตือนภัย (ใกล้ตลิ่ง)" next to a BMA gauge saying "คลองเต็ม" | Area uses the combined chip words ("ใกล้ตลิ่ง/คลองเต็ม") |
 | 61 | Issue #5: kicker vs factor heading and the three detail lines had different styles | One heading style; every factor "title · word" + one grey detail style |
+| 63 | Owner: nearest canal (relay-only BMA gauge) showed no trend; the summary block was not understood | Second line "คลองใกล้ที่มีคาดการณ์"; "when it may drop" on each line; plain one-sentence summary (v0.10.2, KI-232) |
 | 62 | Issue #4: drag signifier did nothing on mobile | Real grip; pull down from the top (sheet at scroll 0) closes, > 90 px; ✕ kept. Verified with CDP touch events: short pull snaps back, long pull closes, scrolled content and mid-sheet pulls never close |
 
 ## 3. Still missing (prioritised)

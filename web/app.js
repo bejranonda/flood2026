@@ -636,26 +636,39 @@ function pointHTML(d, src, place = "") {
   // Factor 1: canals (D-054). Lead with the nearest canal gauge — its state and 24/48 h change — then fold the rest.
   // The dot follows the confidence gate, now judged from the nearest gauges (≤ 3 within 3 km), not the whole 8 km.
   const agencyTag = (s) => (s.agency === "BMA" ? "กทม." : s.agency === "RID" ? "กรมชลฯ" : "สสน.");
+  // Canal summary in plain words (owner 2026-09-27: the old "ใกล้จุด 3 แห่ง … ทั้งรัศมี 8 กม. …" was not understood)
   let canal;
   if (!a.category) {
-    canal = { color: "#9ca3af", word: "ประเมินไม่ได้", sub: "ไม่มีสถานีวัดน้ำในระยะ 8 กม." };
+    canal = { color: "#9ca3af", word: "ไม่มีสถานีใกล้", sub: "ไม่มีสถานีวัดน้ำในระยะ 8 กม." };
+  } else if ((a.confidence === "very_low" || a.confidence === "none") && a.n_close) {
+    canal = { color: "#9ca3af", word: "คลองรอบจุดต่างกันมาก",
+      sub: `คลองใกล้จุด ${a.n_close} แห่ง (ไม่เกิน 3 กม.) มีตั้งแต่ “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” จึงสรุปรวมไม่ได้ ดูทีละคลองด้านล่าง` };
   } else if (a.confidence === "very_low" || a.confidence === "none") {
-    canal = { color: "#9ca3af", word: a.n_close ? "สถานีใกล้จุดให้ผลต่างกัน" : "สถานีอยู่ไกล ประเมินไม่ได้", sub: "" };
+    canal = { color: "#9ca3af", word: "สถานีอยู่ไกล", sub: `สถานีใกล้สุดห่าง ${a.nearest_km} กม. อาจอยู่คนละพื้นที่ปิดล้อม` };
   } else {
-    // the short combined words, as in the summary chips: an area mixes HII (bank) and BMA (drainage level) gauges
-    canal = { color: STATUS[a.category].color, word: STATUS[a.category].th, sub: "" };
+    canal = { color: STATUS[a.category].color, word: STATUS[a.category].th, sub: `สรุปจากคลองใกล้จุด ${a.n_close || a.n} แห่ง` };
   }
-  const nc = d.nearest_canal, ns = nc && nc.station;
-  const ncLine = ns ? `<div class="pf-g"><div><span class="muted">คลองใกล้ที่สุด:</span> <span class="pf-gname">${esc(ns.name_th)}</span>
-      <span class="muted">${esc(nc.distance_km)} กม. · ${esc(agencyTag(ns))}</span> · <b style="color:${stOf(ns).color}">${esc(stOf(ns).th)}</b></div>
-      ${nc.far ? `<div class="pf-far">ห่างเกิน 3 กม. อาจอยู่คนละพื้นที่ปิดล้อม ใช้ประกอบเท่านั้น</div>` : ""}
-      ${ns.change24 ? `<div>${changeHTML(ns.change24, 24, ns)}</div>` : ns.change12 ? `<div>${changeHTML(ns.change12, 12, ns)}</div>` : ""}
-      ${ns.change48 ? `<div>${changeHTML(ns.change48, 48, ns)}</div>` : ""}
-      ${noFallText(ns) ? `<div class="pf-nofall">${esc(noFallText(ns))}</div>` : ""}</div>` : "";
-  const others = a.n > 1 ? `<details class="pf-more"><summary>สถานีอื่นรอบจุด (${a.n} แห่งใน 8 กม.)</summary>
-      <div>ใกล้จุด ${a.n_close || 0} แห่ง (ไม่เกิน 3 กม.): ${a.n_close ? `“${esc(STATUS[a.min].th)}”${a.min !== a.max ? ` ถึง “${esc(STATUS[a.max].th)}”` : ""}` : "-"}
-      · ทั้งรัศมี 8 กม.: “${esc(STATUS[a.min_all || a.min].th)}” ถึง “${esc(STATUS[a.max_all || a.max].th)}” · รายชื่อด้านล่าง</div></details>` : "";
-  const canalGauges = `<div class="pf-gauges">${ncLine}${others}</div>`;
+  // When will it drop? The station's recovery estimate in dates/hours (never minutes, KI-231)
+  const dropText = (s) => {
+    const r = s.recovery || {};
+    if (r.state === "forecast") return `คาดว่าจะต่ำกว่าตลิ่ง: ${r.hours_max ? whenText(r.hours_min, r.hours_max) : "หลัง 72 ชม."}`;
+    if (r.state === "extrapolated") return `หากลดในอัตราเดิม อาจต่ำกว่าตลิ่ง: ${whenText(r.hours_min, r.hours_max)}`;
+    if (r.state === "not_estimable" && ["warning", "critical"].includes(s.status))
+      return r.reason === "heavy_rain_forecast" ? "ยังประเมินเวลาน้ำลดไม่ได้ (คาดฝนหนัก)" : (noFallText(s) || "ยังประเมินเวลาน้ำลดไม่ได้ (น้ำยังไม่ลดลง)");
+    return noFallText(s);
+  };
+  const canalLine = (label, c) => {
+    if (!c || !c.station) return "";
+    const x = c.station, trend = x.change24 || x.change12;
+    return `<div class="pf-g"><div><span class="muted">${label}:</span> <span class="pf-gname">${esc(x.name_th)}</span>
+      <span class="muted">${esc(c.distance_km)} กม. · ${esc(agencyTag(x))}</span> · <b style="color:${stOf(x).color}">${esc(stOf(x).th)}</b></div>
+      ${c.far ? `<div class="pf-far">ห่างเกิน 3 กม. อาจอยู่คนละพื้นที่ปิดล้อม ใช้ประกอบเท่านั้น</div>` : ""}
+      ${trend ? `<div>${changeHTML(trend, x.change24 ? 24 : 12, x)}</div>` : `<div>ยังไม่มีคาดการณ์: สถานีเริ่มเก็บข้อมูลไม่นาน${x.history_since ? ` (ตั้งแต่ ${esc(new Date(x.history_since).toLocaleDateString("th-TH", { ...TZ, day: "numeric", month: "short" }))})` : ""}</div>`}
+      ${x.change48 ? `<div>${changeHTML(x.change48, 48, x)}</div>` : ""}
+      ${dropText(x) ? `<div class="pf-nofall">${esc(dropText(x))}</div>` : ""}</div>`;
+  };
+  const others = a.n > 1 ? `<div>มีสถานีอื่นอีก ${a.n - 1} แห่งในระยะ 8 กม. ดูรายชื่อด้านล่าง</div>` : "";
+  const canalGauges = `<div class="pf-gauges">${canalLine("คลองใกล้ที่สุด", d.nearest_canal)}${canalLine("คลองใกล้ที่มีคาดการณ์", d.nearest_canal_trend)}${others}</div>`;
 
   // Factor 2: rain (TMD words and colours). Factor 3: street reports (≥ 3 in 1 km / 6 h = the alert level, STREET_ALERT).
   const rain = d.rain_next24_mm;

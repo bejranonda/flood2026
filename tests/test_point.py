@@ -232,3 +232,15 @@ def test_nearest_canal_is_reported_with_distance_and_a_far_flag():
     st2 = st + [_st("K2", 13.705, 100.502, "critical")]
     nc2 = point.assess(13.70, 100.50, st2, 0, {}, 5.0)["nearest_canal"]
     assert (nc2["code"], nc2["distance_km"], nc2["far"], nc2["station"]["status"]) == ("K2", 0.6, False, "critical")
+
+
+def test_nearest_canal_with_a_trend_is_given_when_the_nearest_has_none():
+    # 13.764,100.679 on 2026-09-27: the nearest canal WL.SMK.01 (0.3 km) is relay-only (1.2 days) -> no trend; the
+    # owner: "users cannot see the trend … if there is more than one, show both".
+    ch = {"dir": "steady", "level": "steady", "likely": [-0.1, 0.1], "confidence": "low"}
+    st = [_st("NEW", 13.7645, 100.6795, "critical"),
+          {**_st("OLD", 13.772, 100.690, "normal"), "trend12": "steady", "change24": ch}]
+    out = point.assess(13.764, 100.679, st, 0, {}, 5.0)
+    assert out["nearest_canal"]["code"] == "NEW" and out["nearest_canal_trend"]["code"] == "OLD"
+    st2 = [{**st[0], "trend12": "steady", "change24": ch}, st[1]]
+    assert point.assess(13.764, 100.679, st2, 0, {}, 5.0)["nearest_canal_trend"] is None  # nearest already has one

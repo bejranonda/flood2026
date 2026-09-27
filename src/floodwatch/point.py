@@ -121,7 +121,15 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
                and s.get("status") not in (None, "unknown")), None)
     nearest_canal = None if nc is None else {"code": nc["code"], "distance_km": nc["distance_km"],
                                              "far": nc["distance_km"] > NEAR_KM, "station": nc}
+    # When the nearest canal has no forecast (e.g. a BMA gauge HII does not serve: relay history only), also give the
+    # nearest canal that has one, so the panel always shows a trend when any is available (owner 2026-09-27).
+    has_trend = lambda x: bool(x.get("change24") or x.get("change12"))
+    nt = None if nc is None or has_trend(nc) else next(
+        (x for x in candidates if x.get("water_body") == "khlong" and has_trend(x) and not x.get("stale")), None)
+    nearest_trend = None if nt is None else {"code": nt["code"], "distance_km": nt["distance_km"],
+                                             "far": nt["distance_km"] > NEAR_KM, "station": nt}
     return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx, "nearest_canal": nearest_canal,
+            "nearest_canal_trend": nearest_trend,
             "forecast": fc_outlook,
             "stations": combined,
             "stations_forecast": stations_forecast,

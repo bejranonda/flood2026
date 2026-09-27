@@ -447,7 +447,7 @@
 - **Decision:**
   1. Collector `bma_history`: one year hourly for every BMA gauge (5 per run until done, progress saved per gauge), then a daily 3-day refresh that fills relay gaps. Same BMA values and datum as the relay; never mixed with HII m MSL.
   2. **Canal gate from the nearest gauges:** agreement is judged among up to 3 gauges within 3 km; the 8 km circle is only counted and ranged (`min_all`/`max_all`). Result on the same 64 points: "ประเมินไม่ได้" 53 → 25 (the rest are places where the nearest gauges really disagree).
-  3. The panel leads the canal factor with **the nearest canal gauge** (name, distance, agency, status, 24 h and 48 h change), notes "ห่างเกิน 3 กม. …" when it is far, and folds the other stations into one line. Area words use the combined short labels (ใกล้ตลิ่ง/คลองเต็ม) because an area mixes HII (bank) and BMA (drainage-level) gauges.
+  3. *(Amended v0.10.2: when the nearest canal has no forecast, the nearest canal with one is shown too, and each line says when the water may drop; the summary is one plain sentence — KI-232.)* The panel leads the canal factor with **the nearest canal gauge** (name, distance, agency, status, 24 h and 48 h change), notes "ห่างเกิน 3 กม. …" when it is far, and folds the other stations into one line. Area words use the combined short labels (ใกล้ตลิ่ง/คลองเต็ม) because an area mixes HII (bank) and BMA (drainage-level) gauges.
 
 ### D-055 — 48 h line everywhere, honestly labelled; lists show 24 h; shorter rain sentence
 - **Date:** 2026-09-27 · **Status:** accepted (owner: "add a longer 48 h trend"; "show 24 h instead of 12 h in lists"; "shorten the redundant rain sentence") · **Amends D-050 §1**
