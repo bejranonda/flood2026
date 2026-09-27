@@ -88,13 +88,18 @@
 - Find the current PDF by hand in a browser and archive it once a year. Parse it with `pdfplumber` into `tide_prediction` (LLW and MSL).
 - **Interim / fallback:** fit our own harmonic model on HII tidal stations. A 4-constituent fit on 30 days at CPY015 already explains 92 % of the tidal variance. Use `utide` with ≥1 year of data for production ([APPROACH §5](APPROACH_AND_METHODS.md)).
 
-### KI-103 — BMA DDS has no API and isn't mirrored in HII · 🔴
-**Symptom:** the older claim that "many BMA stations are aggregated by HII under agency bma" is **wrong**. HII `waterlevel_load` has no BMA-agency rows. The `BKKxxx` codes are HII's own stations. The BMA portals are legacy web pages, blocked from outside Thailand.
-**Workaround:**
-- Use HII's Bangkok stations first (BKK008, BKK021, AIT001, BKK001–BKK020, C.12, CPY014, CPY015).
-- From a Thai IP, capture the DDS XHR calls and pages (`StationDetailFlow?id=`, canal lists).
-- Scrape politely: one call per cycle, with a circuit breaker (after 3 failures, switch to degraded mode).
-- Ask BMA for an official feed.
+### KI-103 — BMA DDS has no API and isn't mirrored in HII · 🟢 (resolved via BKK mapping + relay)
+**Symptom:** BMA's internal site (`weather.bangkok.go.th` / `dds.bangkok.go.th`) has no open historical API and blocks foreign datacenters as well as public VPN relays (KI-505). HII's `waterlevel_load` has no BMA-agency rows.
+**Resolution (v0.3.0 + v0.9.0, D-031, D-053):**
+- **Live snapshots (199 stations):** Ingested every 5 min via the People's Party relay (`bma_klong`, `flood69.peoplesparty.or.th/api/klongmap`). Codes are `WL.xxx.nn` (e.g. `WL.KTY.01` ส.คลองเตย, `WL.AJP.01` ค.อาจารย์พร, `WL.BKY.02` ค.บางเชือกหนัง).
+- **30-day historical telemetering:** For key Bangkok canals (Khlong Lat Phrao, Khlong Saen Saep, Khlong Phasi Charoen, Khlong Lam Pla Thio, etc.), HII operates parallel telemetry stations under the `BKKxxx` series (`BKK001`, `BKK008`, `BKK020`, `BKK021`, etc.). HII exposes **30 full days of 10-minute resolution history** without geo-blocking via `GET https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{CODE}` (4,300+ points per station).
+- **Cross-reference mapping:**
+  - `BKK001` (คลองลาดพร้าว ท้าย ปตร.คลอง 2) ↔ `WL.SST.01` (60 m away) / `WL.KLA.01` reach.
+  - `BKK020` (คลองลาดพร้าว ปากคลอง 2 สายใต้) ↔ `WL.ANX.01`.
+  - `BKK021` (คลองลาดพร้าว วัดบางบัว) ↔ `WL.BBU.01` / `WL.LPW.01`.
+  - `BKK008` (คลองแสนแสบ บางกะปิ) ↔ `WL.SSB.06` (80 m away) / `WL.SSB.07`.
+  - `BKK005` (คลองภาษีเจริญ เพชรเกษม 69) ↔ `WL.TWW.05` (20 m away).
+  - `BKK009` (คลองลำปลาทิว ลาดกระบัง) ↔ `WL.LPT.03` (10 m away).
 
 ### KI-104 — Short history retention at sources · 🟡
 The HII exchange standard only guarantees **7 days** 🟡. The chart XHR `getGraphFirst` returns **~30 days** ✅.
@@ -362,7 +367,10 @@ The repository was released as open source under the **MIT License** ([LICENSE](
 
 ### KI-505 — Public VPN relay is untrusted and flaky · 🟡
 The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Risks: the operator can see destinations and unencrypted metadata; the relay can drop or throttle (it needed one restart during testing); its IP class is blocked by some sites; legacy AES-128-CBC/SHA1. **Mitigations:** the proxy is opt-in per request; HTTPS certificates are verified; no credentials or personal data go through it; a watchdog restarts the tunnel; the `.ovpn` is git-ignored. **Better:** an owner-controlled Thai host (SSH SOCKS) or a paid VPN with a Thai exit.
-- 2026-09-26 ~09:30 UTC: the exit IP was up (49.48.220.198), but `dds.bangkok.go.th` **timed out** through it; `bma_dds` had 2 consecutive proxy failures ("Tunnel connection failed: 500"). Treat BMA collection as best-effort until a better Thai egress exists.
+- **Probe Update (2026-09-27 19:30 UTC, Exit 49.48.220.198 Ayutthaya, TH):**
+  - **Reachable via VPN:** `https://ews.dwr.go.th/` (200 OK) and `https://hydro.navy.mi.th/` (200 OK) — successfully bypasses foreign IP geo-blocks.
+  - **Still failing via VPN:** Both `weather.bangkok.go.th` (`203.155.220.231`) and `dds.bangkok.go.th` (`203.155.220.120`) time out on ports 80 and 443. Traceroute shows packets are completely dropped at BMA's perimeter firewall subnet `203.155.220.0/24`. Tinyproxy returns `500 Unable to connect`.
+  - **Resolution (D-053):** Do not rely on BMA direct web pages for historical telemetry. Use HII TIWRM (`getGraphFirst/{BKK_CODE}`) for 30-day high-resolution history and the `bma_klong` relay for 199 live 5-minute snapshot gauges.
 
 ### KI-506 — `autobahn.bot` zone challenges non-browser clients · 🟡
 **RESOLVED 17:33 UTC (D-035):** the owner turned Bot Fight Mode off; curl, Facebook and LINE user agents get HTTP 200 and the alias now redirects everything, API included. Lesson: page rules and security-level changes could not remove a Bot Fight Mode challenge (tried, no effect).

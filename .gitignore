@@ -82,3 +82,6 @@ certs/
 
 # VPN client configs (contain the relay client key)
 infra/openvpn/*.ovpn
+
+# Temporary research / probe files
+bkk_stations_formatted.json

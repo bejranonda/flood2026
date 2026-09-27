@@ -319,14 +319,18 @@ Why these and not more: status and trend answer the citizen's question; freshnes
 - Circuit breaker: 3 consecutive failures pause AI for 1 hour.
 - Deterministic rule labels remain active for all feedback reports.
 
-### 3.7 New Bangkok sources (v0.3.0): what they can and cannot do for the model
-**BMA khlong gauges (D-031), used now:**
-- **Display and point check:** 199 gauges inside Bangkok's polders (the list went from 10 to 209 Bangkok gauges). A pin in Sai Mai (near Saphan Mai), the first real place request, now sees BMA's Khlong Song at Phahonyothin 1.8 km away instead of HII's BKK001 at ~3.5 km.
-- **Forecasts:** none yet. The relay serves the latest value only, so history starts with our own polling (2026-09-26 16:30 UTC). The ladder needs `MIN_HOURS` = 7 days, and the tide fit much more; BMA gauges get persistence/trend forecasts from ~2026-10-03.
-- **Gates (45) with inside and outside levels:** the raw archive keeps both; only the inside level (`wl_in`) is stored as the gauge's level. Next, store the outside level too: `outside − inside` is the head across the gate, which says whether gravity drainage is possible (KNOWLEDGE §4.3). That is the missing input for **polder-aware near-me** (§2.10) and for a Regime C drainage model (§8).
-- **BMA's daily tide table** (`dailyheightwater`: two highs and lows per day): an independent check on our harmonic tide fit at the river gauges.
-- **Never** mix BMA and HII levels (KI-217): IDW over status ranks is fine, averaging levels is not.
-- **Old vs new records are one table, labelled by age:** observations stay in one `observation` table (a gauge's history is simply its rows); each station carries `history_since`, and the UI labels gauges with < 7 days as new instead of splitting storage. Faster start for BMA is possible with `max_in_day` / `max_in_yesterday` in the payload (today's and yesterday's maxima, not stored yet).
+### 3.7 Bangkok Canal Ingestion Architecture (v0.3.0 + v0.9.0, D-031, D-053)
+**Dual-channel access for BMA canal telemetry:**
+1. **Live snapshots across Bangkok (199 stations, codes `WL.*`):**
+   - Ingested every 5 min via the People's Party relay (`bma_klong`, `https://flood69.peoplesparty.or.th/api/klongmap`).
+   - Covers 199 stations (e.g. `WL.KTY.01` ส.คลองเตย, `WL.AJP.01` ค.อาจารย์พร, `WL.BKY.02` ค.บางเชือกหนัง, `WL.KLA.01` ค.ลาว ถ.พัฒนาการ, `WL.LPW.01` ปตร.คลองลาดพร้าว) with BMA warning/critical thresholds and gates (45) with inside/outside head levels.
+   - History builds up locally from our own polling (since 2026-09-26).
+2. **30-day 10-minute historical telemetering (key canal reaches, codes `BKK*`):**
+   - HII ThaiWater telemetering operates parallel stations along primary Bangkok canals and serves **30 full days of 10-minute observations** (4,310+ points) via `GET https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{CODE}` without authentication or geo-blocking.
+   - Cross-referenced pairs: `BKK001` (Khlong Lat Phrao) ↔ `WL.SST.01` (60 m distance), `BKK020` ↔ `WL.ANX.01`, `BKK021` ↔ `WL.BBU.01`, `BKK008` (Khlong Saen Saep) ↔ `WL.SSB.06` (80 m distance), `BKK005` (Khlong Phasi Charoen) ↔ `WL.TWW.05`, `BKK009` (Khlong Lam Pla Thio) ↔ `WL.LPT.03`.
+   - Ingested automatically into `observation` through `hii_history` (`EXTRA_STATIONS`).
+3. **Data integrity and datum rules:**
+   - **Never mix BMA and HII levels directly (KI-217):** BMA gauges are referenced to local zero/datum, while HII stations are referenced to Mean Sea Level (m MSL / Ko Lak datum). Status ranks (normal/watch/warning/critical) can be combined in spatial index calculations, but raw numeric levels are kept separate.
 
 **Road water levels (the BMA "roads to avoid" page), assessed, not integrated:**
 - *Would it help?* In principle, yes, a lot. Street depth is the quantity residents care about and the one no gauge measures: it would validate the point check (which today only has Traffy counts and our users' depth reports) and could train a rain → street-ponding model per district.

@@ -429,3 +429,14 @@
   3. If today's inputs are incomplete, the path falls back to the gauge's best own method with that method's error band (`q_all` in the payload).
   4. Forecast payload version `star-0.2`.
 - **Next:** interval coverage checked out of sample; canal gains depend on rain alone — BMA pump/gate data would be the next input; the same scripts are the starting point for the national phase (research §8).
+
+### D-053 — BMA Canal Historical Telemetry Access via HII TIWRM and Dual Ingestion Architecture
+- **Date:** 2026-09-27 · **Status:** accepted (v0.9.0 release)
+- **Context:** BMA stations (`WL.*` series, e.g. `WL.KTY.01`, `WL.AJP.01`, `WL.BKY.02`, `WL.KLA.01`, `WL.LPW.01`) are geo-blocked from non-Thai datacenters. A probe using our project's Thai residential VPN egress (`49.48.220.198` Ayutthaya) verified that BMA's perimeter subnet (`203.155.220.0/24`) drops all incoming TCP SYN packets on ports 80/443 (tinyproxy 500), while other Thai agencies (`ews.dwr.go.th`, `hydro.navy.mi.th`) connect normally (HTTP 200). Furthermore, BMA's own dashboard does not host multi-week historical time series.
+- **Decision:**
+  1. **Dual Ingestion Architecture:**
+     - **Live monitoring:** Continue polling `flood69.peoplesparty.or.th/api/klongmap` (`bma_klong`) every 5 min for 199 BMA stations (`WL.*`), accumulating history in PostgreSQL.
+     - **30-day historical telemetering:** Ingest HII ThaiWater canal telemetry stations (`BKK*` series) via `https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{CODE}`. This provides 30 days of 10-minute resolution history (4,310+ points per station) without authentication or geo-blocking.
+  2. **Station Coverage:** Add all verified `BKK*` canal gauges (`BKK001`, `BKK002`, `BKK003`, `BKK005`, `BKK006`, `BKK007`, `BKK008`, `BKK009`, `BKK013`, `BKK015`, `BKK017`, `BKK018`, `BKK019`, `BKK020`, `BKK021`) to `EXTRA_STATIONS` in `config.py` with automatic coordinate and name backfilling from HII map feeds.
+  3. **Datum Separation (KI-217):** Keep BMA local datum and HII MSL / Ko Lak datum explicitly labelled in UI and API; do not average raw elevations across the two networks.
+

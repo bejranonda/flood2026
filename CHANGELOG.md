@@ -2,6 +2,16 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.9.0 — 2026-09-27
+- **BMA canal telemetry historical access via HII TIWRM (D-053, KI-103):**
+  - **30-Day Historical Canal Telemetry:** Discovered and verified direct access to 30 days of 10-minute resolution water level telemetering from HII's public TIWRM service (`GET https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{station_code}`). Unlike BMA DDS's private/geo-blocked endpoints, HII provides open international access with zero authentication.
+  - **Comprehensive Bangkok Canal Gauge Coverage:** Expanded `EXTRA_STATIONS` in `config.py` to include all verified BKK canal gauges (`BKK001` through `BKK021`, plus `CPY015` Krungthep Bridge and `AIT001` Asoke). All 18 active endpoints return full ~4,310 time-series observations in UTC, backfilling historical canal trends across Khlong Saen Saep, Khlong Lat Phrao, Khlong Thawi Watthana, Khlong Phasi Charoen, Khlong Maha Sawat, and Khlong Lam Pla Thio.
+  - **BMA (`WL.*`) vs HII (`BKK*`) Cross-Referencing:** Documented station taxonomy, dual-channel ingestion, and spatial proximity pairings (e.g. BMA `WL.SSB.06` ↔ HII `BKK008` Bang Kapi, `WL.SST.01` ↔ `BKK001` Lat Phrao Khlong 2) in `docs/KNOWLEDGE.md` §11 and `docs/SOURCES.md`.
+  - **Explicit Datum Distinction:** Preserved clear distinction between BMA's local municipal datum (`ม. (หมุด กทม.)`, where mean sea level is ~+1.50 m) and HII's national Mean Sea Level / Ko Lak 1915 datum (`ม.รทก.`), preventing dangerous false-critical water level alarms.
+  - **VPN Probe Diagnostic (KI-505):** Egress through Thai residential proxy (`49.48.220.198`, Ayutthaya) successfully connects to DWR (`ews.dwr.go.th`) and Royal Thai Navy Hydrographic Dept (`hydro.navy.mi.th`), but confirmed that BMA's perimeter firewall subnet `203.155.220.0/24` actively drops TCP SYN packets from this VPN range.
+- UI: Bumped version indicator to `v0.9.0` in header badge and footer; updated data source descriptions in index.html and docs.
+- Tests: 75 passing.
+
 ## v0.8.0 — 2026-09-27
 - **New forecast method `star` (D-052): forecast rain + upstream water + Chao Phraya Dam release.** Each gauge now also
   tries a regression on its own tide/trend, the 2 nearest upstream Chao Phraya gauges, the C.13 release and the forecast

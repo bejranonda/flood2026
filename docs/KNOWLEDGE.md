@@ -226,3 +226,23 @@ UX principles established through visitor testing during the 2026 flood season:
 - **Rain archives for training:** Open-Meteo `historical-forecast-api` (stitched early hours, ≈ known rain) and `previous-runs-api` (`*_previous_day1..` = forecasts issued 1–2 days earlier), keyless for non-commercial use, back at least to 2025-09.
 - **ONWR National Thai Water** (`nationalthaiwater.onwr.go.th/waterlevel`, `/dam`) is a front end over the same HII `api-v3` endpoints we use; its own API `ntw-admin.onwr.go.th/api/v1/public/{disaster,reportwater/events}` answers only from a Thai IP (8 event reports in 2026, none in Bangkok; disaster list empty on 2026-09-27).
 - **Since v0.8.0 (D-052):** the `star` method (own tide/trend + 2 upstream Chao Phraya gauges + C.13 release + forecast rain) wins the backtest at ~50–60 of ~100 gauges per horizon; gauges with 48 h skill ≥ 0.3 went 8 → 35. Biggest gains on the non-tidal upper river (Ayutthaya 48 h RMSE 27 → 17 cm).
+
+## 11. BMA Canal Telemetry Architecture & Coding Systems (v0.9.0, D-053)
+- **BMA Station Naming Schema (`WL.*`):**
+  - Prefix `WL`: Water Level (สำนักการระบายน้ำ กทม.).
+  - 3-letter canal acronym: e.g. `KTY` (คลองเตย), `AJP` (อาจารย์พร), `BKY` (บางเชือกหนัง), `KLA` (คลองลาว), `LPW` (ลาดพร้าว), `SSB` (แสนแสบ), `SST` (สองสายใต้), `TWW` (ทวีวัฒนา), `LPT` (ลำปลาทิว).
+  - 2-digit sequence: `.01`, `.02` along the canal chain.
+  - Total count: 199 telemetry stations across Bangkok (135 canal gauges, 45 pump gates, 19 flow/special sites).
+- **HII Bangkok Telemetering Schema (`BKK*`):**
+  - Prefix `BKK`: Bangkok telemetering stations operated or ingested by HII / ThaiWater.
+  - Numbers: `BKK001` through `BKK021`.
+  - **Key architectural discovery:** HII maintains parallel telemetry gauges matching primary BMA canal reaches. Unlike BMA's direct portals (which are geo-blocked, blackhole VPN relays, and only offer real-time snapshots), HII provides **30 days of 10-minute resolution telemetering history** (4,310+ points) via `https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{CODE}` without any authentication or geo-blocking.
+- **Cross-System Station Equivalents:**
+  - `BKK001` (คลองลาดพร้าว ท้าย ปตร.คลอง 2) ↔ `WL.SST.01` (60 m distance).
+  - `BKK020` (คลองลาดพร้าว ปากคลอง 2 สายใต้) ↔ `WL.ANX.01` (610 m distance).
+  - `BKK021` (คลองลาดพร้าว วัดบางบัว) ↔ `WL.BBU.01` (460 m distance).
+  - `BKK008` (คลองแสนแสบ บางกะปิ) ↔ `WL.SSB.06` (80 m distance) / `WL.SSB.07`.
+  - `BKK005` (คลองภาษีเจริญ เพชรเกษม 69) ↔ `WL.TWW.05` (20 m distance).
+  - `BKK009` (คลองลำปลาทิว ลาดกระบัง) ↔ `WL.LPT.03` (10 m distance).
+- **Datum separation reminder (KI-217):** BMA gauges are referenced to local zero/datum, while HII stations are referenced to Mean Sea Level (m MSL / Ko Lak datum). Always display with proper unit attribution (`ม. (หมุด กทม.)` vs `ม.รทก.`).
+

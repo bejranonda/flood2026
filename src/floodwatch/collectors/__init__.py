@@ -129,16 +129,30 @@ def hii_history(pause_s: float = 0.7) -> dt.datetime | None:
             if latest is None or o["obs_time"] > latest:
                 latest = o["obs_time"]
         time.sleep(pause_s)
+    coords = None
     for code in EXTRA_STATIONS:  # stations only the chart XHR serves
         if code in known:
             continue
-        rows, sha = _get_json("hii_chart", f"{CHART}/{code}")
-        obs, bank, ground = parsing.parse_chart(code, rows, sha)
+        try:
+            rows, sha = _get_json("hii_chart", f"{CHART}/{code}")
+            obs, bank, ground = parsing.parse_chart(code, rows, sha)
+        except Exception as e:
+            log.warning("extra station %s failed: %s", code, e)
+            continue
+        if coords is None:
+            try:
+                map_rows, _ = _get_json("hii_map_feed", "https://tiwrm.hii.or.th/thaiwater_l5/public/json/telemetering/wl/warning")
+                coords = {m["code"]: m for m in parsing.parse_map_feed(map_rows)}
+            except Exception:
+                coords = {}
+        m = coords.get(code, {})
         with db.connect() as c:
-            db.upsert_station(c, {"code": code, "hii_id": None, "name_th": None, "name_en": None, "lat": None,
-                                  "lon": None, "bank_msl": bank, "ground_msl": ground, "critical_msl": None,
-                                  "agency": "HII", "province": "กรุงเทพมหานคร", "amphoe": None, "river": None,
-                                  "basin": None, "in_focus": True, "meta_source": "hii_chart"})
+            db.upsert_station(c, {"code": code, "hii_id": None, "name_th": m.get("name_th"), "name_en": None,
+                                  "lat": m.get("lat"), "lon": m.get("lon"), "bank_msl": m.get("bank_msl") or bank,
+                                  "ground_msl": m.get("ground_msl") or ground, "critical_msl": None,
+                                  "agency": "HII", "province": m.get("province") or "กรุงเทพมหานคร",
+                                  "amphoe": m.get("amphoe"), "river": None, "basin": m.get("basin"),
+                                  "in_focus": True, "meta_source": "hii_chart"})
             total += db.insert_observations(c, obs)
             c.commit()
     log.info("hii_history: %d rows for %d stations", total, len(stations))
