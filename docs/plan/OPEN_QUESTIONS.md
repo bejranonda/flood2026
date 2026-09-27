@@ -39,6 +39,10 @@
 | A35 | How to use the 262 BMA road sensors? | **Map layer + point-check evidence** (2026-09-27) | [D-045](DECISIONS.md) |
 | A36 | Owner steps | **Fix the GISTDA key; apply for the Google Flood API** (2026-09-27). GISTDA: the owner sent the API docs; the agent fixed our outdated path/header, the key works ✅ (KI-510). Google: open | [OWNER_ACTIONS](../OWNER_ACTIONS.md) |
 | A37 | Q18 (bot challenge) | Bot Fight Mode off (owner, 2026-09-26 17:33 UTC); removed from the open list 2026-09-27 | [D-035](DECISIONS.md) |
+| A48 | BMA history from HII: how much? | **1 year, hourly** (2026-09-28) | [D-054](DECISIONS.md) |
+| A49 | How to judge the canal factor at a pin? | **Nearest gauges first** (2026-09-28) | [D-054](DECISIONS.md) |
+| A50 | 48 h line where unproven? | **Show, honestly labelled** (range, no direction) (2026-09-28) | [D-055](DECISIONS.md) |
+| A51 | Scope / release | **All, then deploy** (2026-09-28); station types: BMA gauges keep BMA's own thresholds (D-038) and an agency tag | [D-054](DECISIONS.md), [D-055](DECISIONS.md) |
 | A46 | Q32: build network STAR + rain? | **"continue"** (2026-09-27) → built, validated on 3 windows + out of sample, released v0.8.0 | [D-052](DECISIONS.md) |
 | A47 | Q29: local database backup? | **"no backup for now"** (2026-09-27): risk accepted by the owner; re-ask if data volume or feedback grows (KI-511) | [D-046](DECISIONS.md) |
 | A38 | 12/24 h → 24/48 h? | **12 + 24 h; 48 h only where skilled** (2026-09-27) | [D-050](DECISIONS.md) |

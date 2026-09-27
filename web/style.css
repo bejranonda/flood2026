@@ -64,6 +64,7 @@ a { color: var(--accent); }
 .sheet { position: fixed; z-index: 1200; top: calc(var(--top-h) + 8px); left: 16px; width: min(440px, calc(100vw - 32px));
   max-height: calc(100vh - var(--top-h) - 24px); overflow-y: auto; background: var(--card); border: 2px solid var(--accent);
   border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+.sheet-grip { display: none; }
 .detail { position: relative; padding: 12px 14px 16px; }
 .detail h2 { font-size: 19px; margin: 0 0 2px; padding-right: 88px; }
 .detail .tools { position: absolute; right: 10px; top: 10px; display: flex; gap: 6px; }
@@ -121,7 +122,11 @@ a { color: var(--accent); }
   body[data-tab="map"] .panel, body:not([data-tab="map"]) .map { display: none; }
   .sheet { top: auto; bottom: 0; left: 0; width: 100%; max-height: 88vh; border-radius: 16px 16px 0 0; border-width: 2px 0 0;
     padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .sheet::before { content: ""; display: block; width: 44px; height: 5px; background: #cfd6de; border-radius: 3px; margin: 8px auto 0; }
+  /* drag signifier with a real touch target (issue #4): pull down from the top of the sheet to close */
+  .sheet-grip { display: block; height: 22px; touch-action: none; cursor: grab; }
+  .sheet-grip::before { content: ""; display: block; width: 44px; height: 5px; background: #cfd6de; border-radius: 3px; margin: 8px auto 0; }
+  .sheet.dragging { transition: none; }
+  .sheet.snap { transition: transform .18s ease-out; }
   .foot { flex-wrap: wrap; justify-content: center; gap: 2px 8px; font-size: 11px; padding: 4px 8px calc(6px + env(safe-area-inset-bottom, 0px)); white-space: normal; text-align: center; }
   .foot-left, .foot-right { justify-content: center; flex-wrap: wrap; }
   .more-popup { left: 50%; transform: translateX(-50%); width: calc(100vw - 24px); }
@@ -291,7 +296,6 @@ a { color: var(--accent); }
 .pf.risk-mod { background: #fffbeb; border-color: #fde68a; border-left-color: var(--warning); }
 .pf.risk-low { background: #f0fdf4; border-color: #bbf7d0; border-left-color: #16a34a; }
 .pf-top { display: flex; justify-content: space-between; align-items: center; }
-.pf-kicker { font-size: 13px; font-weight: 600; color: var(--muted); }
 .pf-info-btn { font: inherit; font-size: 18px; line-height: 1; min-width: 44px; min-height: 44px; margin: -10px -10px -10px 0;
   border: 0; background: none; color: var(--muted); cursor: pointer; }
 .pf-info-btn[aria-expanded="true"] { color: var(--accent); }
@@ -299,14 +303,16 @@ a { color: var(--accent); }
 .pf-info p { margin: 3px 0; }
 .pf-title { font-size: 21px; line-height: 1.3; font-weight: 800; margin: 2px 0 4px; color: var(--ink); }
 .pf-desc { font-size: 14px; line-height: 1.5; color: #374151; margin: 0 0 8px; }
-.pf-h { font-size: 13px; font-weight: 700; color: var(--muted); margin-top: 6px; }
+.pf-h { font-size: 13px; font-weight: 700; color: var(--muted); }  /* kicker and factor heading share one style (issue #5) */
+.pf-factors-h { margin-top: 6px; }
 .pf-factors { list-style: none; margin: 4px 0 0; padding: 0; }
 .pf-factors > li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid rgba(0, 0, 0, 0.07); font-size: 15px; line-height: 1.45; }
 .pf-factors > li:first-child { border-top: 0; }
 .pf-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; }
 .pf-word { font-weight: 600; }
 .pf-sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
-.pf-gauges { margin-top: 4px; display: grid; gap: 4px; font-size: 13px; }
+.pf-gauges { margin-top: 2px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.pf-gauges .pf-gname { color: var(--ink); }
 .pf-gname { font-weight: 600; margin-right: 4px; }
 .pf-nofall { font-size: 12.5px; color: #92400e; }
 /* Report form in a popup (issue #2) */
@@ -314,3 +320,9 @@ a { color: var(--accent); }
 .report-dlg { width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 48px); border: 0; border-radius: 14px; padding: 8px 16px 16px; }
 .report-dlg::backdrop { background: rgba(15, 23, 42, 0.45); }
 .report-dlg .feedback { border-top: 0; margin-top: 0; padding-top: 0; }
+/* v0.10: unproven 48 h line (range, no direction) and the folded "other stations" line (D-054, D-055) */
+.chg-unproven { background: #fff; color: #4b5563; border: 1px dashed #9ca3af; }
+.pf-far { font-size: 12.5px; color: #92400e; }
+.pf-more { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.pf-more summary { cursor: pointer; color: var(--accent); }
+.pf-g > div { margin-top: 2px; }

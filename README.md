@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > [!IMPORTANT]
-> **Current status (2026-09-27): v0.9.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
+> **Current status (2026-09-28): v0.10.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
 >
 > **Nationwide (validated plan, not built):** monitor first, forecast later ([D-044](docs/plan/DECISIONS.md), [APPROACH §19](docs/APPROACH_AND_METHODS.md), [phase 5](docs/plan/phase-5-nationwide.md)); the sources were probed live in [research/VALIDATION_2026-09-27_nationwide.md](research/VALIDATION_2026-09-27_nationwide.md).
 >
@@ -71,7 +71,7 @@ All workstreams run in parallel during the flood ([D-012](docs/plan/DECISIONS.md
 | RID portals | 🟡 reachable; Bang Sai (C.29A) feed still to find | Upstream boundary, releases |
 | Navy tide tables | 🔴 URL moved + bot challenge → our own harmonic fit as the interim | Tide |
 | BMA KlongMap via flood69 relay | ✅ live since v0.3.0: 199 Bangkok gauges, 5-min copies; BMA direct is unreachable from here | Bangkok khlongs, gates (inside/outside) |
-| HII TIWRM Bangkok Canal Telemetry | ✅ live: 30-day 10-min history for key Bangkok canals (`BKK*` series, e.g. BKK001, BKK008); direct BMA subnet `203.155.220.0/24` blackholes VPN egress | 30-day historical telemetering |
+| HII TIWRM Bangkok Canal Telemetry | ✅ live: 30-day 10-min history for key Bangkok canals (`BKK*` series, e.g. BKK001, BKK008); direct BMA subnet BMA server subnet blackholes VPN egress | 30-day historical telemetering |
 | OSM Nominatim | ✅ place search only, on demand | Find a soi, open the point check |
 | Traffy Fondue public API | 🟡 overloaded since 2026-09-26 15:11 UTC (HTTP 502); requests cut to 40 tickets, age shown in the UI | Street flooding beside each gauge (D-036), point check |
 

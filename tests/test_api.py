@@ -146,3 +146,13 @@ def test_reverse_label_from_nominatim_address():
     assert geocode.reverse_label(rural) == "บางปลาม้า, บางปลาม้า, สุพรรณบุรี"
     assert geocode.reverse_label({}) is None
     assert geocode.reverse_key(13.7764, 100.6412) == geocode.reverse_key(13.7801, 100.6449)  # same ~1 km cell
+
+
+def test_change48_is_always_given_and_flagged_proven_only_at_medium_confidence():
+    q48 = [0.55, 0.9, 1.01, 1.31, 2.25]  # BKK008-like: persistence, likely -10..+31 cm, 90 % -45..+125 cm
+    row = {"fc_now": 1.0, "q12": None, "q24": None, "q48": q48, "sk48": {"method": "persistence"}, "outlook24": None}
+    c = api._change_fields(row, "critical")["change48"]
+    assert c is not None and c["proven"] is False and c["likely"] == [-0.1, 0.31]
+    row["sk48"] = {"method": "star", "skill_vs_persistence": 0.4, "coverage90_backtest": 0.9}
+    row["q48"] = [0.9, 0.95, 1.0, 1.05, 1.1]
+    assert api._change_fields(row, "critical")["change48"]["proven"] is True

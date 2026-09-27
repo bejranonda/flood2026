@@ -1,10 +1,10 @@
 # `web/` — Thai, mobile-first web app
 
-> **Status:** Production live at https://flood.autobahn.bot (**v0.9.0**). Built with vanilla HTML5, CSS3, and JavaScript, served directly by FastAPI and Cloudflare Tunnel for high performance on mobile devices. Includes 199 BMA canal gauges and 30-day 10-minute telemetry history via HII TIWRM.
+> **Status:** Production live at https://flood.autobahn.bot (**v0.10.0**). Built with vanilla HTML5, CSS3, and JavaScript, served directly by FastAPI and Cloudflare Tunnel for high performance on mobile devices. Includes 199 BMA canal gauges and 30-day 10-minute telemetry history via HII TIWRM.
 
 ## Features
 - **Mobile-first Thai interface**: Summary statistics, status chips, Bangkok first, Leaflet interactive map with custom telemetry markers, bottom-sheet station details with 24 h outlook, trend arrows, recovery date predictions, and BMA drainage criteria.
-- **Point check (`#p=lat,lon`, D-021, D-051)**: tap anywhere on the map or use GPS. One panel: 12–24 h outlook headline, "ปัจจัยที่ใช้คาดการณ์" (canal / rain / street reports, each a coloured dot + word; the canal dot follows the confidence gate), district line from `/api/reverse`, sources and caveats behind one ⓘ, report form behind a button (popup). Station lists below: gauges with a forecast (12/24 h change, 48 h only where proven, D-050) and nearest active gauges.
+- **Point check (`#p=lat,lon`, D-021, D-051, D-054)**: tap anywhere on the map or use GPS. One panel: 12–24 h outlook headline, "ปัจจัยที่ใช้คาดการณ์" — the canal factor leads with the **nearest canal gauge** (name, distance, agency, status, 24 h and 48 h change; a note when it is > 3 km away) and folds the other stations into one line; the dot follows a nearest-gauge confidence gate — plus rain and street reports; district line from `/api/reverse`; caveats behind one ⓘ; report form behind a button. Station lists show the 24 h change; unproven 48 h lines show a range only (D-055).
 - **Enhanced Traffy street flood layer**: Increased hotspot visibility with refined purple stroke and translucent fill to make citizen street flooding instantly clear.
 - **Place search**: Fast geocoding via OpenStreetMap Nominatim for soi / street / district search without third-party tracking.
 - **Brand & Web Assets**: Modern, high-contrast, scalable favicon and PWA icon suite:

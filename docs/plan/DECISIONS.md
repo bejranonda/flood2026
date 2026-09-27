@@ -85,7 +85,7 @@
 - **Date:** 2026-09-26 · **Status:** accepted (owner added a VPN Gate config: "I have added openvpn from vpngate.net")
 - **Decision:** the `vpn` compose service (profile `vpn`) runs the owner's OpenVPN client plus a small HTTP proxy in **one** container. Only requests that explicitly use `THAI_EGRESS_PROXY=http://vpn:8888` leave through it. **Host routing and SSH are untouched.** A watchdog restarts the tunnel when it stops carrying traffic.
 - **Limits (public relay = untrusted and flaky):** public pages only; **never send credentials, tokens or personal data through it**; HTTPS is always verified; used only for sources that geo-block (BMA/DWR/Navy); no bot-challenge solving; if a site still blocks the relay's IP class (as `weather.bangkok.go.th` does), don't rotate through relays to evade it: get an owner-controlled Thai host instead.
-- **Evidence:** exit IP 49.48.220.198 (Ayutthaya, TH, 3BB); DWR EWS and the Navy home page open from it; BMA `weather.` still 403 ([KI-101](../KNOWN_ISSUES.md)).
+- **Evidence:** exit: a VPN Gate relay in Ayutthaya (TH, 3BB); DWR EWS and the Navy home page open from it; BMA `weather.` still 403 ([KI-101](../KNOWN_ISSUES.md)).
 
 ### D-017 — Main domain `flood.autobahn.bot`; `flood.bejranonda.com` stays as an alias
 - **Date:** 2026-09-26 · **Status:** accepted (owner: "Change the main domain to https://flood.autobahn.bot/"; the owner also replaced the tunnel token)
@@ -431,8 +431,8 @@
 - **Next:** interval coverage checked out of sample; canal gains depend on rain alone — BMA pump/gate data would be the next input; the same scripts are the starting point for the national phase (research §8).
 
 ### D-053 — BMA Canal Historical Telemetry Access via HII TIWRM and Dual Ingestion Architecture
-- **Date:** 2026-09-27 · **Status:** accepted (v0.9.0 release)
-- **Context:** BMA stations (`WL.*` series, e.g. `WL.KTY.01`, `WL.AJP.01`, `WL.BKY.02`, `WL.KLA.01`, `WL.LPW.01`) are geo-blocked from non-Thai datacenters. A probe using our project's Thai residential VPN egress (`49.48.220.198` Ayutthaya) verified that BMA's perimeter subnet (`203.155.220.0/24`) drops all incoming TCP SYN packets on ports 80/443 (tinyproxy 500), while other Thai agencies (`ews.dwr.go.th`, `hydro.navy.mi.th`) connect normally (HTTP 200). Furthermore, BMA's own dashboard does not host multi-week historical time series.
+- **Date:** 2026-09-27 · **Status:** accepted (v0.9.0 release) · **Corrected by [D-054](#d-054--bma-canal-history-from-hii-and-a-nearest-gauge-canal-gate) (review 2026-09-28):** the `BKK*` gauges are HII's own gauges, and all but BKK007/BKK008 already had ~1 year of hourly history (the code change added BKK007); the real history for BMA's `WL.*` gauges comes from HII `waterlevel_graph?station_type=canal` (D-054). "BMA local datum" is unverified: we only know BMA and HII differ 0.3–0.6 m (KI-217); the "ม. (หมุด กทม.)" label was never implemented.
+- **Context:** BMA stations (`WL.*` series, e.g. `WL.KTY.01`, `WL.AJP.01`, `WL.BKY.02`, `WL.KLA.01`, `WL.LPW.01`) are geo-blocked from non-Thai datacenters. A probe using our project's Thai residential VPN egress the VPN Gate relay in Ayutthaya) verified that BMA's perimeter subnet (BMA server subnet) drops all incoming TCP SYN packets on ports 80/443 (tinyproxy 500), while other Thai agencies (`ews.dwr.go.th`, `hydro.navy.mi.th`) connect normally (HTTP 200). Furthermore, BMA's own dashboard does not host multi-week historical time series.
 - **Decision:**
   1. **Dual Ingestion Architecture:**
      - **Live monitoring:** Continue polling `flood69.peoplesparty.or.th/api/klongmap` (`bma_klong`) every 5 min for 199 BMA stations (`WL.*`), accumulating history in PostgreSQL.
@@ -440,3 +440,20 @@
   2. **Station Coverage:** Add all verified `BKK*` canal gauges (`BKK001`, `BKK002`, `BKK003`, `BKK005`, `BKK006`, `BKK007`, `BKK008`, `BKK009`, `BKK013`, `BKK015`, `BKK017`, `BKK018`, `BKK019`, `BKK020`, `BKK021`) to `EXTRA_STATIONS` in `config.py` with automatic coordinate and name backfilling from HII map feeds.
   3. **Datum Separation (KI-217):** Keep BMA local datum and HII MSL / Ko Lak datum explicitly labelled in UI and API; do not average raw elevations across the two networks.
 
+
+### D-054 — BMA canal history from HII, and a nearest-gauge canal gate
+- **Date:** 2026-09-28 · **Status:** accepted (owner grill: "1 year, hourly"; "nearest gauges first")
+- **Evidence:** HII `waterlevel_graph?station_type=canal&station_id=…` (found in thaiwater.net's app) serves BMA's `WL.*` gauges at 15 min back to at least 2024-01; values identical to the relay (WL.SSB.07: 46 matching times, difference 0.0 m, 2026-09-27). BMA gauges had ~28 h of our own history, so all 199 fell back to "no change". Over a grid of 64 Bangkok points the old gate (all gauges within 8 km must agree) gave "ประเมินไม่ได้" at **53 (83 %)**; the nearest gauge is typically 1.9 km away.
+- **Decision:**
+  1. Collector `bma_history`: one year hourly for every BMA gauge (5 per run until done, progress saved per gauge), then a daily 3-day refresh that fills relay gaps. Same BMA values and datum as the relay; never mixed with HII m MSL.
+  2. **Canal gate from the nearest gauges:** agreement is judged among up to 3 gauges within 3 km; the 8 km circle is only counted and ranged (`min_all`/`max_all`). Result on the same 64 points: "ประเมินไม่ได้" 53 → 25 (the rest are places where the nearest gauges really disagree).
+  3. The panel leads the canal factor with **the nearest canal gauge** (name, distance, agency, status, 24 h and 48 h change), notes "ห่างเกิน 3 กม. …" when it is far, and folds the other stations into one line. Area words use the combined short labels (ใกล้ตลิ่ง/คลองเต็ม) because an area mixes HII (bank) and BMA (drainage-level) gauges.
+
+### D-055 — 48 h line everywhere, honestly labelled; lists show 24 h; shorter rain sentence
+- **Date:** 2026-09-28 · **Status:** accepted (owner: "add a longer 48 h trend"; "show 24 h instead of 12 h in lists"; "shorten the redundant rain sentence") · **Amends D-050 §1**
+- **Decision:**
+  1. `change48` is given wherever a forecast exists, with `proven` = the 48 h backtest gives "medium". Proven: direction chip + likely range, as for 12/24 h. **Unproven: a dashed grey "? 48 ชม." chip, "ยังบอกทิศทางไม่ได้ · ช่วงที่น่าจะเป็น A ถึง B ซม."** — a range, never a direction (e.g. BKK008: −10 to +31 cm).
+  2. The "too wide to show" rule tests the likely (50 %) range, which is what is printed (> 0.75 m), instead of the 90 % band (> 1.5 m). BKK005-type bands stay hidden; BKK008's 48 h range is shown.
+  3. Station lists show the 24 h change (12 h only where 24 h is missing).
+  4. The outlook sentence no longer repeats the rain amount (it is in the rain factor): "มีรายงานน้ำรอระบายในพื้นที่ และคาดฝนปานกลาง อาจมีน้ำขังบนถนนช่วงฝนตก".
+  5. Recovery times are windows without false precision: dates only when the window is ≥ 24 h, whole hours otherwise (was "30 ก.ย. 01:12 – 2 ต.ค. 05:12").

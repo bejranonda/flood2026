@@ -191,3 +191,19 @@ def test_star_still_forecasts_when_the_gauge_has_a_short_gap():
     keep = [i for i in range(len(times)) if not (len(times) - 30 <= i < len(times) - 20)]  # a 10 h gap a day ago
     fc = forecast.forecast_station("X", [times[i] for i in keep], [y[i] for i in keep], None, None, exo)
     assert fc["skill"]["24"]["method"] == "star" and fc["path"][23]["method"] == "star"
+
+
+def test_trailing_mean_vectorised_matches_the_reference_loop():
+    def ref(y, w, centered=False):  # the original per-element implementation
+        out = np.full(len(y), np.nan)
+        for i in range(len(y)):
+            lo, hi = (i - w // 2, i + w // 2 + 1) if centered else (i - w + 1, i + 1)
+            seg = y[max(0, lo):min(len(y), hi)]
+            seg = seg[np.isfinite(seg)]
+            if len(seg) >= w // 2:
+                out[i] = seg.mean()
+        return out
+    rng = np.random.default_rng(5)
+    y = rng.normal(0, 1, 2000); y[rng.random(2000) < 0.3] = np.nan; y[100:160] = np.nan
+    for centered in (False, True):
+        assert np.allclose(forecast.trailing_mean(y, 25, centered), ref(y, 25, centered), equal_nan=True)

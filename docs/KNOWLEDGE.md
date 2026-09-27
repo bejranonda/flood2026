@@ -228,6 +228,7 @@ UX principles established through visitor testing during the 2026 flood season:
 - **Since v0.8.0 (D-052):** the `star` method (own tide/trend + 2 upstream Chao Phraya gauges + C.13 release + forecast rain) wins the backtest at ~50–60 of ~100 gauges per horizon; gauges with 48 h skill ≥ 0.3 went 8 → 35. Biggest gains on the non-tidal upper river (Ayutthaya 48 h RMSE 27 → 17 cm).
 
 ## 11. BMA Canal Telemetry Architecture & Coding Systems (v0.9.0, D-053)
+> **Correction (2026-09-28, D-054):** the `BKK*` gauges below are **HII's own** gauges, not BMA's, and most had a year of hourly history before v0.9.0. BMA's own `WL.*` gauges have history in HII too: `api-v3…/thaiwater30/public/waterlevel_graph?station_type=canal&station_id={HII canal id}` returns 15-min values back to at least 2024-01, **identical to the relay** (46 matching times on 2026-09-27, difference 0.0 m). The datum of BMA gauges is not documented; treat "BMA local datum" as ⚠️ unverified. **Coverage (2026-09-28 backfill):** 162 of our 199 relay gauges are in HII's canal feed and got one year of hourly history; **37 are not in HII's feed at all** (ordinary canal gauges such as WL.AJP.01, WL.ANX.01, WL.BKT.01 — probably newer), so their history starts with our relay polling on 2026-09-26.
 - **BMA Station Naming Schema (`WL.*`):**
   - Prefix `WL`: Water Level (สำนักการระบายน้ำ กทม.).
   - 3-letter canal acronym: e.g. `KTY` (คลองเตย), `AJP` (อาจารย์พร), `BKY` (บางเชือกหนัง), `KLA` (คลองลาว), `LPW` (ลาดพร้าว), `SSB` (แสนแสบ), `SST` (สองสายใต้), `TWW` (ทวีวัฒนา), `LPT` (ลำปลาทิว).

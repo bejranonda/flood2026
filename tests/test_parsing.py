@@ -149,3 +149,23 @@ def test_openmeteo_previous_runs_rows():
     rows = parsing.parse_openmeteo_prev("bkk_east", payload)
     assert [(r["valid_time"].isoformat(), r["day1"], r["day2"]) for r in rows] == [
         ("2026-09-01T00:00:00+00:00", 0.0, 0.1), ("2026-09-01T01:00:00+00:00", 2.5, 1.0)]  # incomplete hour dropped
+
+
+def test_canal_graph_hourly_rows_in_utc():
+    # HII waterlevel_graph?station_type=canal (BMA gauges, same values as the relay, D-054): 15-min, Thai time.
+    payload = {"data": {"graph_data": [
+        {"datetime": "2026-09-27 07:00", "value": 0.40, "value_out": 0},
+        {"datetime": "2026-09-27 07:15", "value": 0.41, "value_out": 0},   # not on the hour: skipped (hourly backfill)
+        {"datetime": "2026-09-27 08:00", "value": None, "value_out": 0},   # missing
+        {"datetime": "2026-09-27 09:00", "value": 999999, "value_out": 0},  # sentinel
+        {"datetime": "2026-09-27 10:00", "value": -0.22, "value_out": 0}]}}
+    rows = parsing.parse_canal_graph("WL.SSB.07", payload, "sha")
+    assert [(r["obs_time"].isoformat(), r["level_msl"]) for r in rows] == [
+        ("2026-09-27T00:00:00+00:00", 0.40), ("2026-09-27T03:00:00+00:00", -0.22)]
+    assert rows[0]["source"] == "hii_canal_graph" and rows[0]["quality_flag"] == "ok"
+
+
+def test_canal_graph_tolerates_a_text_payload():
+    # 2026-09-28 backfill: one gauge answered {"data": "<message>"}; the parser crashed the whole run.
+    assert parsing.parse_canal_graph("WL.X.01", {"result": "OK", "data": "no data"}, "sha") == []
+    assert parsing.parse_canal_graph("WL.X.01", "error page", "sha") == []

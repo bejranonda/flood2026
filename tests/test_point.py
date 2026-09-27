@@ -77,7 +77,8 @@ def test_point_forecast_synthesis():
     out_heavy = point.assess(13.87, 100.71, st_heavy, 0, {}, 53.0)
     assert out_heavy["forecast"]["risk"] == "high"
     assert "เสี่ยงน้ำท่วมขังเพิ่มขึ้น" in out_heavy["forecast"]["title"]
-    assert "53" in out_heavy["forecast"]["desc"]
+    # the amount lives in the rain factor now (owner 2026-09-27); the sentence keeps the warning
+    assert "53" not in out_heavy["forecast"]["desc"] and "ฝนหนัก" in out_heavy["forecast"]["desc"]
     assert "gauges" in out_heavy["forecast"]["basis"] and "rain" in out_heavy["forecast"]["basis"]
 
     # Scenario B: a close, usable, calm gauge with light rain -> low, worded as a condition (never "ปกติ" without
@@ -163,7 +164,11 @@ def test_rain_text_never_uses_a_tilde_and_keeps_label_and_number_consistent():
     for mm in (0, 0.4, 10.1, 27.3, 35.1, 53.0, 90.1, 120):
         out = point.assess(14.30, 100.20, [], 0, {}, mm)
         assert "~" not in out["forecast"]["desc"] and "~" not in out["forecast"]["title"]
-    assert "35.1 มม." in point._rain_phrase(35.1)[1] and point._rain_phrase(35.1)[1].startswith("ฝนหนัก")
+    # Owner 2026-09-27: the amount is already in the rain factor; the headline sentence keeps the word and the warning
+    assert point._rain_phrase(35.1)[1] == "คาดฝนหนัก จุดที่ระบายช้าเสี่ยงน้ำขังบนถนน"
+    assert point._rain_phrase(35.0)[1] == "คาดฝนปานกลาง อาจมีน้ำขังบนถนนช่วงฝนตก"
+    for mm in (0.4, 27.3, 53.0, 120):
+        assert "มม." not in point._rain_phrase(mm)[1]
     assert point.assess(14.30, 100.20, [], 0, {}, 27.3)["rain_band"] == "moderate"
     assert point.assess(14.30, 100.20, [], 0, {}, None)["rain_band"] is None
 
@@ -206,3 +211,24 @@ def test_nearest_canal_is_a_khlong_within_3_km_never_a_river_gauge():
     # Close gauges that disagree (river normal, canal overflowing): gate closed -> fall back to the nearest canal.
     out = point.assess(13.70, 100.50, [{**river, "status": "normal"}, {**near_canal, "status": "critical"}], 0, {}, 5.0)
     assert out["forecast"]["gauges"] == [] and out["forecast"]["nearest_canal"] == "K1"
+
+
+def test_dense_city_is_judged_by_the_nearest_gauges_not_the_whole_8_km_d054():
+    # 2026-09-27: with 310 gauges, 83 % of Bangkok pins were "ประเมินไม่ได้" because some gauge within 8 km always
+    # disagreed. Two agreeing gauges within 1 km now decide; far ones are only counted.
+    st = [_st("A", 13.7610, 100.6400, "normal"), _st("B", 13.7660, 100.6450, "normal"),
+          _st("C", 13.8100, 100.6400, "critical"), _st("D", 13.7000, 100.6600, "warning")]
+    idx = point.area_index(13.763, 100.642, st)
+    assert idx["confidence"] == "medium" and idx["category"] == "normal"
+    assert (idx["min"], idx["max"]) == ("normal", "normal") and (idx["min_all"], idx["max_all"]) == ("normal", "critical")
+    assert idx["n"] == 4 and idx["n_close"] == 2
+
+
+def test_nearest_canal_is_reported_with_distance_and_a_far_flag():
+    st = [_st("R", 13.7005, 100.5075, "watch", river="แม่น้ำเจ้าพระยา"), _st("K", 13.74, 100.50, "normal")]
+    out = point.assess(13.70, 100.50, st, 0, {}, 5.0)
+    nc = out["nearest_canal"]
+    assert nc["code"] == "K" and nc["far"] is True and nc["distance_km"] > point.NEAR_KM  # river gauge never counts
+    st2 = st + [_st("K2", 13.705, 100.502, "critical")]
+    nc2 = point.assess(13.70, 100.50, st2, 0, {}, 5.0)["nearest_canal"]
+    assert (nc2["code"], nc2["distance_km"], nc2["far"], nc2["station"]["status"]) == ("K2", 0.6, False, "critical")

@@ -269,3 +269,28 @@ def parse_openmeteo_prev(point: str, payload: dict) -> list[dict[str, Any]]:
         out.append({"point": point, "valid_time": dt.datetime.fromisoformat(ts).replace(tzinfo=dt.timezone.utc),
                     "day1": float(d1), "day2": float(d2)})
     return out
+
+
+def parse_canal_graph(code: str, payload: dict, raw_ref: str) -> list[dict[str, Any]]:
+    """HII `waterlevel_graph?station_type=canal` for a BMA canal gauge (D-054): the same BMA values as the relay
+    (checked 2026-09-27: 46 matching times, difference 0.0 m), 15-min, Thai local time. Kept hourly (on the hour)
+    like our other backfills; the relay keeps adding 5-min live readings."""
+    out = []
+    data = payload.get("data") if isinstance(payload, dict) else None
+    graph = data.get("graph_data") if isinstance(data, dict) else None  # some gauges answer data="<message>"
+    for g in graph if isinstance(graph, list) else []:
+        if not isinstance(g, dict):
+            continue
+        v, ts = g.get("value"), g.get("datetime") or ""
+        if v is None or not ts.endswith(":00"):  # "YYYY-MM-DD HH:MM": keep minute 00 only
+            continue
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            continue
+        t = parse_local(ts)
+        if t is None or not math.isfinite(v) or abs(v) >= SENTINEL_ABS:
+            continue
+        out.append({"code": code, "obs_time": t, "level_msl": v, "discharge": None, "situation_level": None,
+                    "source": "hii_canal_graph", "quality_flag": "ok", "raw_ref": raw_ref})
+    return out

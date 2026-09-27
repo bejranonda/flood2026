@@ -1,3 +1,3 @@
 """BKK FloodWatch 2026 — collectors, archive, database, forecasts and API."""
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"

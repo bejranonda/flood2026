@@ -106,6 +106,21 @@ Live `/api/point` probes on 4 real coordinates (KI-223), before and after the fi
 | 51 | Review: river gauge shown as "nearest canal"; ⓘ in a list opened the station | Server-side canal-only rule (≤ 3 km); capture-phase click handler; both verified |
 | 52 | Rain words "ไม่มีฝน"/"ฝนเล็กน้อย" 2.5:1 contrast | grey-500 / cyan-700 (≥ 4.5:1) |
 
+### Round 10 (2026-09-28 ~03:00–04:00 ICT): owner's panel review, issues #4/#5, a Bangkok resident's check (v0.10.0)
+Persona: a resident of Lat Phrao / Chatuchak on a phone at night during the flood, asking "is the water near me going up or down, will my street flood tonight, when will it drop?"
+| # | Finding | Done |
+|---|---|---|
+| 53 | "ระดับน้ำในคลอง · ประเมินไม่ได้" almost everywhere (83 % of a 64-point grid) although forecasts exist | Nearest-gauge gate (D-054): 39 %; the canal factor leads with the nearest canal, its state and 24/48 h change |
+| 54 | The outlook sentence repeated the rain amount shown in the rain factor | Sentence keeps the TMD word + warning only (D-055) |
+| 55 | "สถานีรอบจุดให้ผลต่างกัน … (41 สถานีใน 8 กม.)" was long and came first | Folded into "สถานีอื่นรอบจุด (N แห่งใน 8 กม.)"; nearest canal first, "ห่างเกิน 3 กม." note when far |
+| 56 | Nearest canal is usually a BMA gauge — it had no trend at all | 1-year BMA history from HII (D-054); honest result: skill mainly at 12 h |
+| 57 | Wanted a 48 h line in the panel, lists and station sheet; lists showed only 12 h | 48 h everywhere, unproven = dashed "? 48 ชม." + range only; lists show 24 h (D-055) |
+| 58 | Recovery window "30 ก.ย. 01:12 – 2 ต.ค. 05:12" read as exact | Dates only for windows ≥ 24 h, whole hours otherwise (KI-231) |
+| 59 | Station sheet said "steady" three times | Median note dropped when the 12 h chip exists |
+| 60 | Area word "เตือนภัย (ใกล้ตลิ่ง)" next to a BMA gauge saying "คลองเต็ม" | Area uses the combined chip words ("ใกล้ตลิ่ง/คลองเต็ม") |
+| 61 | Issue #5: kicker vs factor heading and the three detail lines had different styles | One heading style; every factor "title · word" + one grey detail style |
+| 62 | Issue #4: drag signifier did nothing on mobile | Real grip; pull down from the top (sheet at scroll 0) closes, > 90 px; ✕ kept. Verified with CDP touch events: short pull snaps back, long pull closes, scrolled content and mid-sheet pulls never close |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

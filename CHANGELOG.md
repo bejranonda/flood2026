@@ -2,13 +2,33 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.10.0 — 2026-09-28
+- **BMA canal gauges get a year of history (D-054).** HII serves BMA's own `WL.*` gauges through
+  `waterlevel_graph?station_type=canal` back to 2024, identical to the relay (0.0 m difference). New collector
+  `bma_history`: one-year hourly backfill for all 199 gauges, then a daily 3-day refresh. BMA gauges now enter the
+  forecast backtest: on a dry run `star` beat "no change" at 12 h on 46 of 85, with real skill (≥ 30 %) on 17; at 24/48 h
+  almost none — BMA pumps and gates drive the canals.
+- **Canal factor judged from the nearest gauges (D-054, KI-229):** "ประเมินไม่ได้" fell from 83 % to 39 % of Bangkok
+  pins. The panel leads with the nearest canal gauge (distance, agency, status, 24 h and 48 h change; a note when it is
+  more than 3 km away) and folds the other stations into one line.
+- **48 h everywhere, honestly (D-055):** where the backtest isn't convincing, a dashed "? 48 ชม." chip with "ยังบอก
+  ทิศทางไม่ได้ · ช่วงที่น่าจะเป็น −10 ถึง +31 ซม." (a range, never a direction). Station lists show the 24 h change.
+- **Shorter outlook sentence:** the rain amount now appears once, in the rain factor ("…และคาดฝนปานกลาง อาจมีน้ำขัง
+  บนถนนช่วงฝนตก"). Recovery windows show dates (≥ 24 h) or whole hours, never minutes (KI-231).
+- **Issues #4 and #5:** the mobile sheet can be pulled down to close (✕ kept); panel headings and factor details share
+  one text style.
+- **Corrections to v0.9.0 docs:** the `BKK*` gauges are HII's own, and most already had a year of history; "BMA
+  local datum" is unverified; public IP addresses removed from the maintained docs (D-028).
+- Faster forecast runs: `trailing_mean` vectorised (tested identical to the old loop).
+- Tests: 81 passing (+6).
+
 ## v0.9.0 — 2026-09-27
 - **BMA canal telemetry historical access via HII TIWRM (D-053, KI-103):**
   - **30-Day Historical Canal Telemetry:** Discovered and verified direct access to 30 days of 10-minute resolution water level telemetering from HII's public TIWRM service (`GET https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{station_code}`). Unlike BMA DDS's private/geo-blocked endpoints, HII provides open international access with zero authentication.
   - **Comprehensive Bangkok Canal Gauge Coverage:** Expanded `EXTRA_STATIONS` in `config.py` to include all verified BKK canal gauges (`BKK001` through `BKK021`, plus `CPY015` Krungthep Bridge and `AIT001` Asoke). All 18 active endpoints return full ~4,310 time-series observations in UTC, backfilling historical canal trends across Khlong Saen Saep, Khlong Lat Phrao, Khlong Thawi Watthana, Khlong Phasi Charoen, Khlong Maha Sawat, and Khlong Lam Pla Thio.
   - **BMA (`WL.*`) vs HII (`BKK*`) Cross-Referencing:** Documented station taxonomy, dual-channel ingestion, and spatial proximity pairings (e.g. BMA `WL.SSB.06` ↔ HII `BKK008` Bang Kapi, `WL.SST.01` ↔ `BKK001` Lat Phrao Khlong 2) in `docs/KNOWLEDGE.md` §11 and `docs/SOURCES.md`.
   - **Explicit Datum Distinction:** Preserved clear distinction between BMA's local municipal datum (`ม. (หมุด กทม.)`, where mean sea level is ~+1.50 m) and HII's national Mean Sea Level / Ko Lak 1915 datum (`ม.รทก.`), preventing dangerous false-critical water level alarms.
-  - **VPN Probe Diagnostic (KI-505):** Egress through Thai residential proxy (`49.48.220.198`, Ayutthaya) successfully connects to DWR (`ews.dwr.go.th`) and Royal Thai Navy Hydrographic Dept (`hydro.navy.mi.th`), but confirmed that BMA's perimeter firewall subnet `203.155.220.0/24` actively drops TCP SYN packets from this VPN range.
+  - **VPN Probe Diagnostic (KI-505):** Egress through Thai residential proxy (the VPN Gate relay in Ayutthaya) successfully connects to DWR (`ews.dwr.go.th`) and Royal Thai Navy Hydrographic Dept (`hydro.navy.mi.th`), but confirmed that BMA's perimeter firewall subnet BMA server subnet actively drops TCP SYN packets from this VPN range.
 - UI: Bumped version indicator to `v0.9.0` in header badge and footer; updated data source descriptions in index.html and docs.
 - Tests: 75 passing.
 

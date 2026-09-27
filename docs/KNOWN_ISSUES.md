@@ -40,6 +40,9 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-229 | Canal factor said "ประเมินไม่ได้" at 83 % of Bangkok pins (8 km agreement rule) | UX / Product | 🟢 fixed v0.10.0 (D-054: 39 %) |
+| KI-230 | BMA gauges had no forecast (≈ 28 h of history) | Modelling | 🟢 v0.10.0: 1-year backfill from HII (D-054) |
+| KI-231 | Recovery window printed to the minute over days ("01:12 – 05:12") | UX | 🟢 fixed v0.10.0 (D-055) |
 | KI-227 | "Nearest canal" fallback showed a river gauge (CPY015, tide) at very low confidence | UX / Product | 🟢 fixed v0.7.0 (D-051) |
 | KI-228 | Tapping ⓘ inside a list item opened the station instead of the tip | UI | 🟢 fixed v0.7.0 |
 | KI-225 | Literal delta interval "ลด 11 ถึงเพิ่ม 17 ซม." and "มั่นใจต่ำ" caused citizen confusion | UX / Product | 🟢 fixed v0.6.4 (D-048) |
@@ -76,7 +79,7 @@
 
 ### KI-101 — Geo/datacenter IP blocking · 🟡
 **Probe (2026-09-26, from Germany):** HII `api-v3` and `tiwrm` work. **All BMA hosts** (`dds.bangkok.go.th`, `weather.bangkok.go.th`) reset the connection, and `www.bangkok.go.th` returns 403. `ews.dwr.go.th` timed out. The earlier claim that HII returns 403 to foreign datacenters is **not** supported. That 403 came from a sandbox with restricted egress.
-**Update 2026-09-26 (D-016):** a Thai VPN egress was tested. Exit 49.48.220.198 (Ayutthaya, TH). **Opens from it:** `ews.dwr.go.th` (timed out from DE), `hydro.navy.mi.th` (bot wall from DE), `dds.bangkok.go.th`. **Still blocked:** `weather.bangkok.go.th` returns an IIS 403 even with a browser User-Agent → an IP-class block on that relay. It's not being evaded; get an owner-controlled Thai host instead.
+**Update 2026-09-26 (D-016):** a Thai VPN egress was tested. Exit: a VPN Gate relay in Ayutthaya, TH. **Opens from it:** `ews.dwr.go.th` (timed out from DE), `hydro.navy.mi.th` (bot wall from DE), `dds.bangkok.go.th`. **Still blocked:** `weather.bangkok.go.th` returns an IIS 403 even with a browser User-Agent → an IP-class block on that relay. It's not being evaded; get an owner-controlled Thai host instead.
 **Workaround:**
 - Run the collectors from the production VPS in Singapore or Thailand, and **re-test everything there** (Phase 0).
 - If BMA still blocks the VPS, use a **small collector node on a Thai IP**, as the brief suggests, and **ask BMA for access**.
@@ -367,9 +370,9 @@ The repository was released as open source under the **MIT License** ([LICENSE](
 
 ### KI-505 — Public VPN relay is untrusted and flaky · 🟡
 The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Risks: the operator can see destinations and unencrypted metadata; the relay can drop or throttle (it needed one restart during testing); its IP class is blocked by some sites; legacy AES-128-CBC/SHA1. **Mitigations:** the proxy is opt-in per request; HTTPS certificates are verified; no credentials or personal data go through it; a watchdog restarts the tunnel; the `.ovpn` is git-ignored. **Better:** an owner-controlled Thai host (SSH SOCKS) or a paid VPN with a Thai exit.
-- **Probe Update (2026-09-27 19:30 UTC, Exit 49.48.220.198 Ayutthaya, TH):**
+- **Probe Update (2026-09-27 19:30 UTC, Exit the VPN Gate relay in Ayutthaya, TH):**
   - **Reachable via VPN:** `https://ews.dwr.go.th/` (200 OK) and `https://hydro.navy.mi.th/` (200 OK) — successfully bypasses foreign IP geo-blocks.
-  - **Still failing via VPN:** Both `weather.bangkok.go.th` (`203.155.220.231`) and `dds.bangkok.go.th` (`203.155.220.120`) time out on ports 80 and 443. Traceroute shows packets are completely dropped at BMA's perimeter firewall subnet `203.155.220.0/24`. Tinyproxy returns `500 Unable to connect`.
+  - **Still failing via VPN:** Both `weather.bangkok.go.th` (BMA server) and `dds.bangkok.go.th` (BMA server) time out on ports 80 and 443. Traceroute shows packets are completely dropped at BMA's perimeter firewall subnet BMA server subnet. Tinyproxy returns `500 Unable to connect`.
   - **Resolution (D-053):** Do not rely on BMA direct web pages for historical telemetry. Use HII TIWRM (`getGraphFirst/{BKK_CODE}`) for 30-day high-resolution history and the `bma_klong` relay for 199 live 5-minute snapshot gauges.
 
 ### KI-506 — `autobahn.bot` zone challenges non-browser clients · 🟡
@@ -514,3 +517,12 @@ The document-level click handler ran after the list item's own handler, so `stop
 
 ### KI-512 — Access logs kept search text and coordinates · 🟢 fixed v0.7.0
 D-032 says place-search queries are never logged. Uvicorn's access log nevertheless recorded the full URL: on 2026-09-27, 124 `/api/geocode?q=…` queries and 1,236 `/api/point?lat=…&lon=…` positions in 24 h (container logs on this server only, never published). `api.RedactQuery` now strips the query string of `/api/geocode`, `/api/point`, `/api/reverse`, `/api/near` (test in `test_api.py`). Recreating the container on deploy discards the old logs.
+
+### KI-229 — "ประเมินไม่ได้" almost everywhere in Bangkok · 🟢 fixed v0.10.0 (D-054)
+Owner, 2026-09-28: "Why does it always show ระดับน้ำในคลอง · ประเมินไม่ได้? We have predicted results." Cause: the D-042 gate required *all* gauges within 8 km to agree (spread ≤ 1 level). Since the 199 BMA gauges joined (v0.3.0), nearly every 8 km circle holds both a calm and an overflowing canal: 53 of 64 grid points (83 %) were "very_low". The gate now judges agreement among up to 3 gauges within 3 km (gauges within 1–2 km agree 71–86 %, D-042 analysis); 25 of 64 remain very_low, where the nearest gauges really disagree. Tests: `test_dense_city_is_judged_by_the_nearest_gauges_not_the_whole_8_km_d054`.
+
+### KI-230 — BMA gauges had no forecast · 🟢 v0.10.0 (D-054)
+All 199 BMA gauges had only our own relay history (from 2026-09-26 16:30 UTC), so the backtest never ran and every one used "no change" without a range; the point panel's nearest canal (usually a BMA gauge) therefore showed no trend. HII serves the same BMA values back to 2024 (`waterlevel_graph?station_type=canal`); a one-year hourly backfill now lets the tide and `star` methods compete on BMA gauges.
+
+### KI-231 — False precision in recovery windows · 🟢 fixed v0.10.0
+"อาจต่ำกว่าตลิ่งราว 30 ก.ย. 01:12 – 2 ต.ค. 05:12" read as exact times although it is a 3-day low-confidence extrapolation (D-005: ranges, no minute countdowns). Windows ≥ 24 h now show dates only; shorter ones whole hours.

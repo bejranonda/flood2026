@@ -133,9 +133,9 @@ def _change_fields(r: dict, status: str) -> dict:
     c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
     return {"change12": change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
             "change24": change_summary(r.get("q24"), r["fc_now"], r.get("sk24")),
-            # 48 h only where the 45-day backtest passes (7 of 102 gauges on 2026-09-27); elsewhere its range is
-            # wider than the distance to the bank, so we say nothing rather than "stable" (D-050)
-            "change48": c48 if c48 and c48["confidence"] == "medium" else None,
+            # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050), flagged: `proven` only where the
+            # 45-day backtest gives "medium"; the UI then states a direction, otherwise only the likely range
+            "change48": None if not c48 else {**c48, "proven": c48["confidence"] == "medium"},
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 

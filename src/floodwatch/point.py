@@ -57,20 +57,29 @@ def area_index(lat: float, lon: float, stations: list[dict]) -> dict:
             near.append((d, s))
     if not near:
         return {"category": None, "confidence": "none", "n": 0}
-    weights = [1.0 / max(d, 0.3) ** 2 for d, _ in near]
-    score = sum(w * RANK[s["status"]] for w, (_, s) in zip(weights, near)) / sum(weights)
-    ranks = [RANK[s["status"]] for _, s in near]
+    near.sort(key=lambda x: x[0])
+    # Judge from the nearest gauges (D-054): up to 3 within NEAR_KM. The whole 8 km circle almost always holds some
+    # overflowing and some calm canal in Bangkok (83 % of pins were "can't assess" on 2026-09-27), while gauges
+    # within ~1-2 km agree 71-86 % of the time (D-042 distance analysis). Far gauges are only counted and ranged.
+    close = [x for x in near if x[0] <= NEAR_KM][:3]
+    basis = close or near
+    weights = [1.0 / max(d, 0.3) ** 2 for d, _ in basis]
+    score = sum(w * RANK[s["status"]] for w, (_, s) in zip(weights, basis)) / sum(weights)
+    ranks = [RANK[s["status"]] for _, s in basis]
+    all_ranks = [RANK[s["status"]] for _, s in near]
     spread = max(ranks) - min(ranks)
-    n_close = sum(d <= NEAR_KM for d, _ in near)
-    nearest = min(d for d, _ in near)
-    if n_close >= 2 and spread <= 1:
+    nearest = near[0][0]
+    if len(close) >= 2 and spread <= 1:
         confidence = "medium"  # never "high": gauges measure channels, not the ground at the point
-    elif nearest <= 5.0 and spread <= 1 and (len(near) >= 2 or nearest <= NEAR_KM):
-        confidence = "low"  # a single gauge > 3 km away may sit in another polder -> very_low
+    elif close and spread <= 1:
+        confidence = "low"  # one gauge within 3 km
+    elif not close and nearest <= 5.0 and len(near) >= 2 and spread <= 1:
+        confidence = "low"
     else:
-        confidence = "very_low"
+        confidence = "very_low"  # close gauges disagree, or the nearest is far (another polder?)
     return {"category": LEVELS[min(3, int(round(score)))], "score": round(score, 2), "confidence": confidence,
-            "n": len(near), "nearest_km": round(nearest, 1), "min": LEVELS[min(ranks)], "max": LEVELS[max(ranks)]}
+            "n": len(near), "n_close": len(close), "nearest_km": round(nearest, 1), "min": LEVELS[min(ranks)],
+            "max": LEVELS[max(ranks)], "min_all": LEVELS[min(all_ranks)], "max_all": LEVELS[max(all_ranks)]}
 
 
 def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedback_depths: dict[str, int],
@@ -107,7 +116,12 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
 
     fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km)
 
-    return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx,
+    # The canal line the panel leads with (D-054): the nearest fresh canal gauge, never a river gauge (KI-227).
+    nc = next((s for s in candidates if s.get("water_body") == "khlong" and not s.get("stale")
+               and s.get("status") not in (None, "unknown")), None)
+    nearest_canal = None if nc is None else {"code": nc["code"], "distance_km": nc["distance_km"],
+                                             "far": nc["distance_km"] > NEAR_KM, "station": nc}
+    return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx, "nearest_canal": nearest_canal,
             "forecast": fc_outlook,
             "stations": combined,
             "stations_forecast": stations_forecast,
@@ -158,25 +172,15 @@ def rain_band(rain_mm: float | None) -> tuple[str, str] | None:
     return "very_heavy", "ฝนหนักมาก"
 
 
-def _mm(x: float) -> str:
-    # Never "~27": on phones the tilde reads as a minus sign (issue #1); "ประมาณ" is spelled out instead.
-    # Keep one decimal when rounding would cross a TMD boundary (35.1 is "หนัก"; "35" would read as "ปานกลาง").
-    if x < 1 or rain_band(round(x)) != rain_band(x):
-        return f"{x:.1f}"
-    return str(round(x))
-
-
 def _rain_phrase(rain_mm: float) -> tuple[str, str]:
     """(band key, sentence) for a forecast 24h rainfall total. Never invoked when rain is unknown."""
     key, label = rain_band(rain_mm)
     if key == "none":
         return key, "ไม่คาดว่าจะมีฝนใน 24 ชม. ข้างหน้า"
-    base = f"{label}: คาดว่าตกประมาณ {_mm(rain_mm)} มม. ใน 24 ชม. ข้างหน้า"
-    tail = {"light": "",
-            "moderate": " อาจมีน้ำขังบนถนนช่วงฝนตก",
-            "heavy": " จุดที่ระบายช้าเสี่ยงน้ำขังบนถนน",
+    # No amount here: the panel's rain factor shows it (owner 2026-09-27); this sentence keeps the word + warning.
+    tail = {"light": "", "moderate": " อาจมีน้ำขังบนถนนช่วงฝนตก", "heavy": " จุดที่ระบายช้าเสี่ยงน้ำขังบนถนน",
             "very_heavy": " เสี่ยงน้ำขังบนถนนหลายจุด"}[key]
-    return key, base + tail
+    return key, f"คาด{label}{tail}"
 
 
 def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
@@ -228,11 +232,11 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
     if reports_1km >= STREET_ALERT and rain_24h_mm is not None and rain_24h_mm >= 20:
         return {"risk": "high", "channel_trend": channel_trend, "basis": basis,
                 "title": "เฝ้าระวังน้ำท่วมขังบนถนนต่อเนื่อง",
-                "desc": f"มีรายงานน้ำรอระบายในพื้นที่ — {rain_sentence}"}
+                "desc": f"มีรายงานน้ำรอระบายในพื้นที่ และ{rain_sentence}"}
     if gauge_usable and cat in ("critical", "warning") and band in ("heavy", "very_heavy"):
         return {"risk": "high", "channel_trend": channel_trend, "basis": basis,
                 "title": "เสี่ยงน้ำท่วมขังเพิ่มขึ้นจากฝนตกหนัก",
-                "desc": f"คลองรอบจุดอยู่ในระดับสูง (ใกล้เต็ม) รองรับฝนหนักที่คาดว่าจะตกประมาณ {_mm(rain_24h_mm)} มม. ใน 24 ชม. ข้างหน้าได้จำกัด ระวังน้ำรอระบายบนถนน"}
+                "desc": "คลองรอบจุดอยู่ในระดับสูง (ใกล้เต็ม) รองรับฝนหนักที่คาดไว้ได้จำกัด ระวังน้ำรอระบายบนถนน"}
     if gauge_usable and cat == "critical":
         return {"risk": "high", "channel_trend": channel_trend, "basis": basis,
                 "title": "ระดับน้ำในคลองล้นตลิ่ง/วิกฤต",

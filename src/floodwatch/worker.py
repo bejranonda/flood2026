@@ -24,7 +24,8 @@ TASKS = [
     ("hii_backfill", 600),  # a few stations per run until the 1-year backfill is complete (D-018)
     ("bma_dds", 3 * 3600),
     ("hii_fews_forecast", 3 * 3600),
-    ("openmeteo_prev", 24 * 3600),  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
+    ("openmeteo_prev", 24 * 3600),
+    ("bma_history", 600),  # BMA canal history from HII: backfill 5 gauges per run, then a daily 3-day refresh (D-054)  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
     ("forecast", 1800),
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),

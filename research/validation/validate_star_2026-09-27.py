@@ -10,6 +10,8 @@ import numpy as np
 from floodwatch import db, forecast
 
 WINDOW_ENDS_DAYS_AGO = (0, 45, 90)
+import os
+ONLY = os.environ.get("ONLY_PREFIX")  # e.g. "WL." for BMA gauges only (D-054 validation, 2026-09-28)
 HS = (12, 24, 48)
 
 def cut(series, end):
@@ -33,6 +35,8 @@ for ago in WINDOW_ENDS_DAYS_AGO:
     end = now - dt.timedelta(days=ago)
     for s in stations:
         code, ex = s["code"], exos[s["code"]]
+        if ONLY and not code.startswith(ONLY):
+            continue
         if ex is None:
             continue
         ts, vs = cut(series[code], end)

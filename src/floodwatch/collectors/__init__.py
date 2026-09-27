@@ -305,6 +305,56 @@ def bma_klong() -> dt.datetime | None:
     return max((o["obs_time"] for o in obs), default=None)
 
 
+BMA_HISTORY_DAYS = 365
+
+
+def bma_history(max_stations: int = 5, pause_s: float = 1.0) -> dt.datetime | None:
+    """History for BMA canal gauges from HII (D-054): `waterlevel_graph?station_type=canal` serves the same BMA values
+    as the relay, back to at least 2024. First a one-year hourly backfill, a few gauges per run; afterwards a daily
+    3-day refresh that fills gaps when the relay was down. Same BMA datum as the relay (never mixed with HII MSL)."""
+    feed, _ = _get_json("hii_canal_waterlevel", f"{HII}/canal_waterlevel")
+    ids = {r["station"]["canal_oldcode"]: r["station"]["id"] for r in feed.get("data") or [] if r.get("station")}
+    today = dt.datetime.now(dt.timezone.utc).date()
+    newest = None
+    with db.connect() as c:
+        codes = [r["code"] for r in c.execute("SELECT code FROM station WHERE agency='BMA' AND code LIKE 'WL.%%' ORDER BY code").fetchall()]
+        state = db.get_state(c, "bma_history") or {"done": [], "missing": [], "refreshed": None}
+        pending = [x for x in codes if x not in state["done"] and x not in state["missing"]]
+        if pending:
+            todo, start = pending[:max_stations], today - dt.timedelta(days=BMA_HISTORY_DAYS)
+        elif state.get("refreshed") != today.isoformat():
+            todo, start = [x for x in codes if x in ids], today - dt.timedelta(days=3)
+        else:
+            return None
+        for code in todo:
+            if code not in ids:
+                state["missing"].append(code)  # not in HII's canal feed: relay history only
+                continue
+            url = f"{HII}/waterlevel_graph?" + urllib.parse.urlencode(
+                {"station_type": "canal", "station_id": ids[code], "start_date": start.isoformat(), "end_date": today.isoformat()})
+            try:
+                payload, sha = _get_json("hii_canal_graph", url)
+            except Exception as e:  # one gauge failing must not stop the others; it is retried next run
+                log.warning("bma_history %s: %s", code, e)
+                continue
+            rows = parsing.parse_canal_graph(code, payload, sha)
+            db.insert_observations(c, rows)
+            if pending:
+                state["done"].append(code)
+                db.set_state(c, "bma_history", state)  # progress survives an interrupted run
+            c.commit()
+            if rows:
+                newest = max(filter(None, [newest, rows[-1]["obs_time"]]))
+            time.sleep(pause_s)
+        if not pending:
+            state["refreshed"] = today.isoformat()
+        db.set_state(c, "bma_history", state)
+        c.commit()
+    log.info("bma_history: %d gauges (%s), %d still pending", len(todo), "backfill" if pending else "refresh",
+             max(0, len(pending) - len(todo)))
+    return newest
+
+
 FEWS = "https://fews2.hii.or.th/model-output/data_portal"
 # HII's official forecasts for our area (D-050): (FEWS folder, FEWS code, our code, unit). Collected and scored,
 # not shown until they beat "no change" and our own model on the archived record.
@@ -378,4 +428,4 @@ def bma_dds() -> dt.datetime | None:
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
-                  "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev}[source])
+                  "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history}[source])

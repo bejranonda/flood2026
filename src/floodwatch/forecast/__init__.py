@@ -65,13 +65,19 @@ def fit_tide(t: np.ndarray, y: np.ndarray):
 
 
 def trailing_mean(y: np.ndarray, w: int, centered: bool = False) -> np.ndarray:
-    out = np.full(len(y), np.nan)
-    for i in range(len(y)):
-        lo, hi = (i - w // 2, i + w // 2 + 1) if centered else (i - w + 1, i + 1)
-        seg = y[max(0, lo):min(len(y), hi)]
-        seg = seg[np.isfinite(seg)]
-        if len(seg) >= w // 2:
-            out[i] = seg.mean()
+    """Mean of the finite values in a window of w hours (trailing, or centred), NaN when fewer than w // 2 are finite.
+    Vectorised with cumulative sums: it runs several times per gauge per forecast cycle (~500 gauges)."""
+    n = len(y)
+    ok = np.isfinite(y)
+    cs = np.concatenate([[0.0], np.cumsum(np.where(ok, y, 0.0))])
+    cn = np.concatenate([[0], np.cumsum(ok)])
+    i = np.arange(n)
+    lo, hi = (i - w // 2, i + w // 2 + 1) if centered else (i - w + 1, i + 1)
+    lo, hi = np.clip(lo, 0, n), np.clip(hi, 0, n)
+    cnt = cn[hi] - cn[lo]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        out = (cs[hi] - cs[lo]) / cnt
+    out[cnt < w // 2] = np.nan
     return out
 
 
@@ -342,7 +348,8 @@ def outlook24(path: list[dict], bank: float | None) -> dict | None:
     return out
 
 
-WIDE_BAND_M = 1.5          # a 90 % band wider than this says nothing useful to a resident; hide the numbers (D-024)
+WIDE_LIKELY_M = 0.75       # a likely (50 %) range wider than this says nothing useful to a resident; hide the numbers
+                           # (D-024). The 50 % range is what the UI prints, so it is what we test (was the 90 % band > 1.5 m)
 STRONG_CHANGE_M = 0.20     # colour steps for citizens (D-047): |median change| >= 20 cm is "มาก"
 MEDIUM_SKILL = 0.30        # skill over "no change" needed before we call a forecast "ปานกลาง" (never "สูง")
 
@@ -369,7 +376,7 @@ def change_summary(q: list[float] | None, level_now: float | None, skill: dict |
     sk = skill or {}
     good_model = sk.get("method") not in (None, "persistence") and (sk.get("skill_vs_persistence") or 0) >= MEDIUM_SKILL
     calibrated = (sk.get("coverage90_backtest") or 0) >= 0.85
-    wide = (q[4] - q[0]) > WIDE_BAND_M
+    wide = (q[3] - q[1]) > WIDE_LIKELY_M
     return {"dir": direction, "level": level, "median": round(med, 2),
             "likely": None if wide else [round(d[1], 2), round(d[3], 2)],
             "range90": None if wide else [round(d[0], 2), round(d[4], 2)],

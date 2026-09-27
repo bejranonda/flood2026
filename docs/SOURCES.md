@@ -56,7 +56,7 @@
 | **HII chart XHR** | 10-min WL history | Per `oldcode` (BKK001, BKK008, BKK020, BKK021, CPY015, …) | JSON behind the chart page | `GET https://tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{CODE}` → `[[epoch_ms_UTC, level_msl, bank, ground, bank], …]` (30 days = 4,310+ points); `GET …/json/telemetering/wl/warning` (live metadata) | ✅ 200 | 10 min | ~1.5 s, 180 KB | none | m MSL; epoch is **true UTC** | as above | **Provides 30-day 10-min history for key BMA canal reaches** (`BKK001` Lat Phrao, `BKK008` Saen Saep, `BKK005` Phasi Charoen, etc.). No geo-blocking | ✅ this host |
 | RID C-stations via HII | WL + discharge | C.2 (1,824 m³/s), C.13 (1,912), C.3 (1,946), C.35 (1,156), C.36, C.37, S.26 Pasak (470) at 26 Sep 12:00 | via HII | `ridhydro_*` rows in `waterlevel_load` | ✅ 200 | hourly | – | none | m MSL, m³/s | – | **C.29A (Bang Sai), C.4/C.22 (Memorial Bridge), Fort Chula are not in HII** → need RID or Navy feeds | not yet |
 | RID portals | Situation, releases, diversions | Chao Phraya basin | HTML / PDF | `https://water.rid.go.th/flood/`, `http://wmsc.rid.go.th/`; station list `http://water.rid.go.th/hyd/rainmean/st-list.htm` | ✅ 200 (pages) | daily | – | none | m³/s; Buddhist-era dates | – | Machine-readable data inside still to be found | not yet |
-| BMA DDS (Direct) | Khlong/river WL, rain, flow and pump stations | Bangkok | Web pages / IIS | `https://dds.bangkok.go.th/`, `http://weather.bangkok.go.th/water/…`, `…/StationDetailFlow?id=` | 🔴 **connection reset from Germany**; via Thai VPN: **timed out** (subnet `203.155.220.0/24` blackholes relay) | 10–15 min | – | none | Datum per station TBD (KI-201) | ask BMA | Use HII TIWRM for history (`BKK*`) and `flood69` relay for live 199 `WL.*` stations | not yet |
+| BMA DDS (Direct) | Khlong/river WL, rain, flow and pump stations | Bangkok | Web pages / IIS | `https://dds.bangkok.go.th/`, `http://weather.bangkok.go.th/water/…`, `…/StationDetailFlow?id=` | 🔴 **connection reset from Germany**; via Thai VPN: **timed out** (subnet BMA server subnet blackholes relay) | 10–15 min | – | none | Datum per station TBD (KI-201) | ask BMA | Use HII TIWRM for history (`BKK*`) and `flood69` relay for live 199 `WL.*` stations | not yet |
 | Navy tide tables | Hourly astronomical tide | Fort Phra Chulachomklao, Bangkok Bar, Bangkok Port, Navy HQ | PDF | old: `…/download/Water_lever69/LLW/TT2026.pdf` → **404**; site behind a Cloudflare challenge | 🔴 | yearly | – | none | **LLW (ม.ตลน.)**, offsets TBD | check | Find the new URL by hand; fall back to our own harmonic fit (APPROACH §5) | not yet |
 | Open-Meteo Forecast | Hourly rain, wind, pressure | Point | JSON | `https://api.open-meteo.com/v1/forecast` | ✅ 200, CORS `*` | hourly | <0.2 s | none | mm, hPa, m/s | **Non-commercial free tier** (KI-106) | Store every issued run | not yet |
 | Open-Meteo Ensemble | Member rain | Point | JSON | `https://ensemble-api.open-meteo.com/v1/ensemble` | ✅ 200 | per run | <0.2 s | none | mm | as above | – | not yet |
@@ -71,13 +71,13 @@
 
 ---
 
-### 2b. Thai egress probe (Updated 2026-09-27 19:30 UTC, exit 49.48.220.198, Ayutthaya TH, via [D-016](plan/DECISIONS.md))
+### 2b. Thai egress probe (Updated 2026-09-27 19:30 UTC, exit: the VPN Gate relay in Ayutthaya, TH, via [D-016](plan/DECISIONS.md))
 | URL | From Germany | Via Thai egress | Notes |
 |---|---|---|---|
 | `https://ews.dwr.go.th/` | timeout | **200** | Successfully unblocked via VPN |
 | `https://hydro.navy.mi.th/` | 403 bot challenge | **200** | Successfully unblocked via VPN |
 | `…/download/Water_lever69/LLW/TT2026.pdf` | 404 | **404** | URL moved, not blocked |
-| `https://dds.bangkok.go.th/` | connection reset | **timeout** (SYN dropped) | Subnet `203.155.220.0/24` blackholes relay |
+| `https://dds.bangkok.go.th/` | connection reset | **timeout** (SYN dropped) | Subnet BMA server subnet blackholes relay |
 | `https://weather.bangkok.go.th/` (+ `flood/`) | connection reset | **timeout** (SYN dropped) | Port 80/443 dropped by BMA firewall (KI-505) |
 | `https://tiwrm.hii.or.th/` | 200 | **200** | Free, unblocked, provides 30-d history (`BKK*`) |
 
@@ -109,6 +109,13 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | GISTDA flood extent (key) | `GET https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/{1day,3days,7days,30days}` and `/features/flood-freq`, header `API-Key`, params `limit`/`offset`/`bbox` (docs: `disaster.gistda.or.th/services/open-api`) | 200. National flooded H3 cells (~0.12 km²): 3 d 38,461 · 7 d 49,761 · 30 d 52,778, with area, exposure and source passes (Sentinel-1, Radarsat-2, COSMO-SkyMed); 1 d empty (no pass); **Bangkok 0 in 7 d** (radar misses urban water) | ✅ satellite extent nationally; never "no flood" in cities (KI-510) |
 | thaiwater.net pages (`/water/wl`, `/water`, `/water/gate`) | — | JS single-page app over the `api-v3` endpoints above | ✅ use the API, not the page |
 
+### 2f. BMA canal history via HII (probed 2026-09-27 20:00 UTC, honest UA; D-054)
+| Source | Endpoint | Found | Verdict |
+|---|---|---|---|
+| **HII canal graph (BMA gauges)** | `GET https://api-v3.thaiwater.net/api/v1/thaiwater30/public/waterlevel_graph?station_type=canal&station_id={id}&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` (`id` = `station.id` in `public/canal_waterlevel`, e.g. WL.SSB.07 = 77) | 200, keyless, from Germany; `graph_data[{datetime (Thai time), value, value_out}]` plus `min_bank`, `warning_level`, `critical_level`; 15-min; one year ≈ 29,000 points, 2.7 MB, ~18 s; 2024 fully present. Values **identical** to the relay (46 matching times, 0.0 m) | ✅ **collected** (`bma_history`: 1-year hourly backfill, then daily 3-day refresh). 162 of our 199 BMA gauges are in HII's canal feed; 37 are not (relay-only history) |
+| HII chart XHR for BMA codes | `…/getGraphFirst/WL.SSB.07` | HTTP 500 | ❌ serves HII `BKK*` codes only |
+| thaiwater.net app | `www.thaiwater.net/dist/js/app.chunk.js` | shows the canal graph call above and `tele_canal_station?province_code=` | reference only |
+
 ### 2e. Forecast and ONWR sources (probed 2026-09-27 16:45–17:15 UTC, honest UA; D-050)
 | Source | Endpoint | Found | Verdict |
 |---|---|---|---|
@@ -135,7 +142,7 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | `https://ffw-web.mrcmekong.org/` | research/Nationwide/Research_Thailand.md | **No DNS** (2026-09-27) |
 | C.13 discharge thresholds "2,000 / 2,500 m³/s" | research/Nationwide/Research_Thailand.md | RID thresholds from HII FEWS are **2,176 / 2,448 / 2,720** (2026-09-27) |
 
-Unverified (⚠️) rather than refuted, because they can only be tested from a Thai IP or with access: the BMA DDS paths (`/canal/`, `/pumping/`, `/flood_warning/`, `CanalList.aspx`, `203.155.220.119/flood/`), Longdo Traffic, the X/Twitter stream, the "GISTDA/BMA LiDAR 1 m" dataset, and Copernicus Marine surge suitability.
+Unverified (⚠️) rather than refuted, because they can only be tested from a Thai IP or with access: the BMA DDS paths (`/canal/`, `/pumping/`, `/flood_warning/`, `CanalList.aspx`, a BMA IP-only flood page), Longdo Traffic, the X/Twitter stream, the "GISTDA/BMA LiDAR 1 m" dataset, and Copernicus Marine surge suitability.
 
 ---
 

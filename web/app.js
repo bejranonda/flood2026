@@ -75,8 +75,15 @@ const changeRange = ([lo, hi], dir) => {
 };
 const peakText = (s) => (s.peak_h && s.forecast_time)
   ? ` · สูงสุดราว ${fmtHour(Date.parse(s.forecast_time) + (s.peak_h - 1) * 3600e3)}–${fmtHour(Date.parse(s.forecast_time) + (s.peak_h + 1) * 3600e3)} น.` : "";
+const signed = (x) => `${x > 0 ? "+" : ""}${x}`;
 function changeHTML(ch, hours, s) {
   if (!ch) return "";
+  if (ch.proven === false) {  // 48 h where the backtest is not convincing: a range, never a direction (D-055)
+    const r = ch.wide ? "ช่วงกว้างเกินไป จึงไม่แสดงตัวเลข"
+      : `ช่วงที่น่าจะเป็น ${signed(Math.round(ch.likely[0] * 100))} ถึง ${signed(Math.round(ch.likely[1] * 100))} ซม.`;
+    const tip = "ยังบอกทิศทาง 48 ชม. ไม่ได้: ทดสอบย้อนหลังแล้วยังไม่แม่นกว่าการถือว่าน้ำคงที่ ตัวเลขคือช่วงความคลาดเคลื่อนครึ่งหนึ่งของครั้งที่ผ่านมา";
+    return `<span class="chg chg-unproven">? ${hours} ชม.</span> <span class="chg-txt">ยังบอกทิศทางไม่ได้ · ${esc(r)} <button type="button" class="conf-badge conf-low" title="${esc(tip)}" aria-label="คาดการณ์เบื้องต้น">ⓘ</button></span>`;
+  }
   const c = CHANGE[ch.level] || CHANGE.steady;
   const nums = ch.wide ? "ช่วงคาดการณ์กว้างเกินไป จึงไม่แสดงตัวเลข" : changeRange(ch.likely, ch.dir);
   const confTh = CONF_TH[ch.confidence] || ch.confidence;
@@ -179,7 +186,7 @@ function itemHTML(s, extra = "") {
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(levelText(s))}</span></div>
-    ${s.change12 ? `<div class="meta">${changeHTML(s.change12, 12, s)}</div>
+    ${(s.change24 || s.change12) ? `<div class="meta">${s.change24 ? changeHTML(s.change24, 24, s) : changeHTML(s.change12, 12, s)}</div>
     <div class="meta">ข้อมูลล่าสุด ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`
       : `<div class="meta">${esc(trendLine(s))} · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`}${(s.street_reports_6h || 0) >= STREET_MIN
         ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
@@ -423,14 +430,25 @@ function chartSVG(obs, fc, bank, crit = null) {
 }
 
 /* ---------- texts ---------- */
+// A time window without false precision (D-005): whole hours for a short window, dates only for a long one
+// (a resident read "30 ก.ย. 01:12 – 2 ต.ค. 05:12" as exact, 2026-09-28 UX check).
+function whenText(hMin, hMax) {
+  const d = (h) => new Date(Date.now() + h * 3600e3);
+  const day = (x) => x.toLocaleDateString("th-TH", { ...TZ, day: "numeric", month: "short" });
+  const hr = (x) => x.toLocaleTimeString("th-TH", { ...TZ, hour: "2-digit" }).replace(/:\d\d.*$/, "");
+  const a = d(hMin), b = hMax == null ? null : d(hMax);
+  if (!b) return `หลัง ${day(a)}`;
+  if (hMax - hMin >= 24) return day(a) === day(b) ? day(a) : `${day(a)} – ${day(b)}`;
+  return day(a) === day(b) ? `${day(a)} ราว ${hr(a)}–${hr(b)} น.` : `${day(a)} ${hr(a)} น. – ${day(b)} ${hr(b)} น.`;
+}
+
 function recoveryText(rec) {
   if (!rec) return "";
-  const at = (h) => fmtTime(new Date(Date.now() + h * 3600e3).toISOString());
   switch (rec.state) {
     case "forecast":
-      return `⏱️ คาดว่าจะลดต่ำกว่าตลิ่ง: ประมาณ ${at(rec.hours_min)} – ${rec.hours_max ? at(rec.hours_max) : "หลัง 72 ชม."} <span class="muted">(หากไม่มีฝนตกหนักเพิ่ม)</span>`;
+      return `⏱️ คาดว่าจะลดต่ำกว่าตลิ่ง: ประมาณ ${esc(rec.hours_max ? whenText(rec.hours_min, rec.hours_max) : `หลัง 72 ชม.`)} <span class="muted">(หากไม่มีฝนตกหนักเพิ่ม)</span>`;
     case "extrapolated":
-      return `⏱️ หากน้ำลดในอัตราเดิม อาจต่ำกว่าตลิ่งราว ${at(rec.hours_min)} – ${at(rec.hours_max)} <span class="muted">(ประมาณจากอัตราลดลง 24 ชม.ล่าสุด ความเชื่อมั่นต่ำ หากไม่มีฝนตกหนักเพิ่ม)</span>`;
+      return `⏱️ หากน้ำลดในอัตราเดิม อาจต่ำกว่าตลิ่งราว ${esc(whenText(rec.hours_min, rec.hours_max))} <span class="muted">(ประมาณจากอัตราลดลง 24 ชม.ล่าสุด ความเชื่อมั่นต่ำ หากไม่มีฝนตกหนักเพิ่ม)</span>`;
     case "not_estimable":
       return rec.reason === "heavy_rain_forecast"
         ? `⏱️ ยังประเมินเวลาน้ำลดไม่ได้ — คาดว่า${rainText(rec.rain_next24_mm)} ใน 24 ชม. ข้างหน้า`
@@ -560,7 +578,7 @@ async function showDetail(code) {
       ${notesText(s) ? `<div class="warnbox">ℹ️ ${esc(notesText(s))}</div>` : ""}
       ${bma ? `<div class="warnbox">ℹ️ สถานีของสำนักการระบายน้ำ กทม. ดึงผ่านเว็บ <a href="https://flood69.peoplesparty.or.th/#klong" target="_blank" rel="noopener">flood69 (พรรคประชาชน)</a> ซึ่งสำเนาข้อมูล กทม. ทุก 5 นาที ·
         ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ที่อยู่ใกล้กัน 30–60 ซม. จึงเทียบกับตลิ่งของสถานีนี้เท่านั้น · ประวัติย้อนหลังเริ่มเก็บ 26 ก.ย.</div>` : ""}
-      <p class="big"${!hasForecast(s) && !observedText(s) && isNew(s) ? " hidden" : ""}>${esc(hasForecast(s) ? TREND[s.trend12] : observedText(s) || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
+      <p class="big"${!hasForecast(s) && !observedText(s) && isNew(s) ? " hidden" : ""}>${esc(hasForecast(s) ? TREND[s.trend12] : observedText(s) || TREND.unknown)}${s.delta12_median != null && !s.change12 ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
       ${s.change12 ? `<p class="chg-row">${changeHTML(s.change12, 12, s)}</p>` : ""}${s.change24 ? `<p class="chg-row">${changeHTML(s.change24, 24, s)}</p>` : ""}${s.change48 ? `<p class="chg-row">${changeHTML(s.change48, 48, s)}</p>` : ""}${noFallText(s) ? `<p class="chg-row muted">${esc(noFallText(s))}</p>` : ""}
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
@@ -612,28 +630,38 @@ function pointHTML(d, src, place = "") {
   };
   const fcR = FC_RISK[fc.risk] || FC_RISK.info;
   const FC_BASIS = { rain: "ฝนคาดการณ์ (Open-Meteo)", reports: "รายงานน้ำท่วมถนน (Traffy Fondue)", gauges: "สถานีวัดน้ำ (สสน. / กทม.)" };
-  const byCode = Object.fromEntries((d.stations_forecast || []).map((s) => [s.code, s]));
-  const gaugeLine = (s) => `<div class="pf-g"><span class="pf-gname">${esc(s.name_th)} <span class="muted">${esc(s.distance_km)} กม.</span></span>
-    ${changeHTML(s.change12, 12, s)}${noFallText(s) ? `<div class="pf-nofall">${esc(noFallText(s))}</div>` : ""}</div>`;
-
-  // Factor 1: canals. The dot follows the confidence gate (D-042): grey "can't assess" when gauges are far or
-  // disagree — never red from one overflowing gauge among calm ones (owner 2026-09-27, issue #3).
+  // Factor 1: canals (D-054). Lead with the nearest canal gauge — its state and 24/48 h change — then fold the rest.
+  // The dot follows the confidence gate, now judged from the nearest gauges (≤ 3 within 3 km), not the whole 8 km.
+  const agencyTag = (s) => (s.agency === "BMA" ? "กทม." : s.agency === "RID" ? "กรมชลฯ" : "สสน.");
   let canal;
   if (!a.category) {
     canal = { color: "#9ca3af", word: "ประเมินไม่ได้", sub: "ไม่มีสถานีวัดน้ำในระยะ 8 กม." };
   } else if (a.confidence === "very_low" || a.confidence === "none") {
-    canal = { color: "#9ca3af", word: "ประเมินไม่ได้",
-      sub: `สถานีรอบจุดให้ผลต่างกัน ตั้งแต่ “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” (${a.n} สถานีใน 8 กม.)` };
+    canal = { color: "#9ca3af", word: a.n_close ? "สถานีใกล้จุดให้ผลต่างกัน" : "สถานีอยู่ไกล ประเมินไม่ได้", sub: "" };
   } else {
-    canal = { color: STATUS[a.category].color, word: STATUS[a.category].long, sub: `${a.n} สถานีใน 8 กม. ใกล้สุด ${a.nearest_km} กม.` };
+    // the short combined words, as in the summary chips: an area mixes HII (bank) and BMA (drainage level) gauges
+    canal = { color: STATUS[a.category].color, word: STATUS[a.category].th, sub: "" };
   }
-  const shown = (fc.gauges && fc.gauges.length ? fc.gauges : fc.nearest_canal ? [fc.nearest_canal] : []).map((c) => byCode[c]).filter(Boolean);
-  const canalGauges = shown.length ? `<div class="pf-gauges">${fc.nearest_canal && !(fc.gauges || []).length ? `<div class="muted">คลองใกล้ที่สุด:</div>` : ""}${shown.map(gaugeLine).join("")}</div>` : "";
+  const nc = d.nearest_canal, ns = nc && nc.station;
+  const ncLine = ns ? `<div class="pf-g"><div><span class="muted">คลองใกล้ที่สุด:</span> <span class="pf-gname">${esc(ns.name_th)}</span>
+      <span class="muted">${esc(nc.distance_km)} กม. · ${esc(agencyTag(ns))}</span> · <b style="color:${stOf(ns).color}">${esc(stOf(ns).th)}</b></div>
+      ${nc.far ? `<div class="pf-far">ห่างเกิน 3 กม. อาจอยู่คนละพื้นที่ปิดล้อม ใช้ประกอบเท่านั้น</div>` : ""}
+      ${ns.change24 ? `<div>${changeHTML(ns.change24, 24, ns)}</div>` : ns.change12 ? `<div>${changeHTML(ns.change12, 12, ns)}</div>` : ""}
+      ${ns.change48 ? `<div>${changeHTML(ns.change48, 48, ns)}</div>` : ""}
+      ${noFallText(ns) ? `<div class="pf-nofall">${esc(noFallText(ns))}</div>` : ""}</div>` : "";
+  const others = a.n > 1 ? `<details class="pf-more"><summary>สถานีอื่นรอบจุด (${a.n} แห่งใน 8 กม.)</summary>
+      <div>ใกล้จุด ${a.n_close || 0} แห่ง (ไม่เกิน 3 กม.): ${a.n_close ? `“${esc(STATUS[a.min].th)}”${a.min !== a.max ? ` ถึง “${esc(STATUS[a.max].th)}”` : ""}` : "-"}
+      · ทั้งรัศมี 8 กม.: “${esc(STATUS[a.min_all || a.min].th)}” ถึง “${esc(STATUS[a.max_all || a.max].th)}” · รายชื่อด้านล่าง</div></details>` : "";
+  const canalGauges = `<div class="pf-gauges">${ncLine}${others}</div>`;
 
   // Factor 2: rain (TMD words and colours). Factor 3: street reports (≥ 3 in 1 km / 6 h = the alert level, STREET_ALERT).
   const rain = d.rain_next24_mm;
-  const rainF = rain == null ? { color: "#9ca3af", body: "ไม่มีข้อมูล" }
-    : { color: RAIN_COLOR[rainLabel(rain)], body: rainPill(rain) };
+  // Issue #5: every factor = "title · word" on one line, details in the same small grey style below
+  const rainScale = (mm) => { const idx = RAIN_TMD.findIndex(([, l]) => l === rainLabel(mm)), c = RAIN_COLOR[rainLabel(mm)];
+    return `<span class="rscale" aria-hidden="true">${[1, 2, 3, 4].map((i) => `<i style="background:${i <= idx ? c : "#e5e7eb"}"></i>`).join("")}</span>`; };
+  const rainF = rain == null ? { color: "#9ca3af", word: "ไม่มีข้อมูล", sub: "" }
+    : { color: RAIN_COLOR[rainLabel(rain)], word: rainLabel(rain),
+        sub: rain >= 0.1 ? `ประมาณ ${esc(rainMm(rain))} มม. (Open-Meteo) ${rainScale(rain)}` : "Open-Meteo" };
   const nRep = Number(ev.traffy_flood_reports_1km_6h || 0);
   const streetF = nRep >= 3 ? { color: "#c62828", word: `มีแจ้ง ${nRep} เรื่อง` } : nRep > 0 ? { color: "#b45309", word: `มีแจ้ง ${nRep} เรื่อง` }
     : { color: "#9ca3af", word: "ยังไม่มีรายงาน" };
@@ -648,16 +676,17 @@ function pointHTML(d, src, place = "") {
 
   const panel = `
     <section class="pf ${fcR.cls}" aria-labelledby="pf-title">
-      <div class="pf-top"><span class="pf-kicker">แนวโน้ม 12–24 ชม. ข้างหน้า</span>
+      <div class="pf-top"><span class="pf-h">แนวโน้ม 12–24 ชม. ข้างหน้า</span>
         <button type="button" class="pf-info-btn" aria-expanded="false" aria-controls="pf-info" aria-label="ที่มาและข้อจำกัดของข้อมูล">ⓘ</button></div>
       <div id="pf-info" class="pf-info" hidden>${infoBody}</div>
       ${fc.title ? `<h3 id="pf-title" class="pf-title">${fcR.icon ? `${fcR.icon} ` : ""}${esc(fc.title)}</h3>
       <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
-      <div class="pf-h">ปัจจัยที่ใช้คาดการณ์</div>
+      <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
         <li><span class="pf-dot" style="background:${canal.color}"></span><div><b>ระดับน้ำในคลอง</b> · <span class="pf-word">${esc(canal.word)}</span>
-          <div class="pf-sub">${canal.sub}</div>${canalGauges}</div></li>
-        <li><span class="pf-dot" style="background:${rainF.color}"></span><div><b>ฝน 24 ชม. ข้างหน้า</b> · ${rainF.body}</div></li>
+          ${canal.sub ? `<div class="pf-sub">${canal.sub}</div>` : ""}${canalGauges}</div></li>
+        <li><span class="pf-dot" style="background:${rainF.color}"></span><div><b>ฝน 24 ชม. ข้างหน้า</b> · <span class="pf-word">${esc(rainF.word)}</span>
+          ${rainF.sub ? `<div class="pf-sub">${rainF.sub}</div>` : ""}</div></li>
         <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b>น้ำท่วมบนถนน</b> · <span class="pf-word">${esc(streetF.word)}</span>
           <div class="pf-sub">${hasStreetFlood ? "<b>น้ำรอระบายรอบจุดนี้ แม้คลองใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · " : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
       </ul>
@@ -784,6 +813,31 @@ setTopH();
 setTab("list");
 load().then(openFromHash);
 setInterval(load, 5 * 60 * 1000);
+
+// Issue #4: the grip promised a drag that did nothing. Pull down from the top of the sheet (only when it is scrolled to
+// the top, so scrolling is never hijacked) to close; the ✕ stays for desktop, keyboard and screen-reader users.
+(function sheetDrag() {
+  const sheet = document.getElementById("sheet");
+  if (!sheet) return;
+  let y0 = null, dy = 0;
+  sheet.addEventListener("touchstart", (e) => {
+    const top = sheet.getBoundingClientRect().top;
+    if (sheet.scrollTop > 0 || e.touches.length !== 1 || e.touches[0].clientY - top > 56) return;
+    y0 = e.touches[0].clientY; dy = 0; sheet.classList.add("dragging");
+  }, { passive: true });
+  sheet.addEventListener("touchmove", (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    if (dy > 0) { sheet.style.transform = `translateY(${dy}px)`; if (e.cancelable) e.preventDefault(); }
+  }, { passive: false });
+  sheet.addEventListener("touchend", () => {
+    if (y0 == null) return;
+    sheet.classList.remove("dragging"); sheet.classList.add("snap");
+    if (dy > 90) { closeDetail(); }
+    sheet.style.transform = ""; y0 = null;
+    setTimeout(() => sheet.classList.remove("snap"), 200);
+  });
+})();
 
 function showToast(msg) {
   let t = document.getElementById("toast");
