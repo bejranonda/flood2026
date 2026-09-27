@@ -25,6 +25,7 @@
 | "Station name bold and not bold; labels run into long lines" | One block per gauge (label line → bold name · distance · pill → rows), divider between gauges → **v0.11.1** | KI-234 |
 | "The why sentence is too long and not needed" | Can't-summarise outlook: short headline + rain condition only → **v0.11.2** | KI-235 |
 | Docs sweep after v0.11.2 | README highlights and sources rewritten to the v0.11.2 state (the v0.9.0 "30-day BMA history" claim replaced by D-054); PLAN phase rows; ARCHITECTURE task list; garbled IP redactions fixed | README, PLAN, ARCHITECTURE |
+| "Not all are committed?" | Right: `src/floodwatch/data/*.json` (chainage, approx. coords) were caught by the `data/` ignore rule and lived only on the server; rule anchored to `/data/`, files committed, verified from a fresh clone | KI-236 |
 | My slip, caught after deploy | The bulk date correction (28 → 27 Sep) also rewrote two **test fixtures**; one test failed in the v0.10.1 image, and I missed it because the test output line printed empty. App code was unaffected; fixtures restored, 81 passing, image rebuilt. Lesson: never bulk-replace inside tests; always read the pytest summary line | `tests/test_parsing.py` |
 
 ## 2q. Session 2026-09-27 19:15–19:50 UTC: BMA canal telemetry historical access via HII TIWRM (v0.9.0, D-053)

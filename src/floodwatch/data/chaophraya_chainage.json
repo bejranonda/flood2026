@@ -1,0 +1,87 @@
+{
+ "source": "https://tiwrm.hii.or.th/thaiwater_l5/public/resources/json/river/river_main.json",
+ "method": "graph shortest path from the mouth; see script docstring",
+ "mouth_to_northernmost_km": 376.0,
+ "stations": {
+  "C.35": {
+   "chainage_km": 150.8,
+   "offset_km": 0.36
+  },
+  "CPY014": {
+   "chainage_km": 84.1,
+   "offset_km": 0.4
+  },
+  "CPY015": {
+   "chainage_km": 42.0,
+   "offset_km": 0.15
+  },
+  "BKC003": {
+   "chainage_km": 34.6,
+   "offset_km": 0.12
+  },
+  "CPY004": {
+   "chainage_km": 294.7,
+   "offset_km": 0.42
+  },
+  "BKC004": {
+   "chainage_km": 21.9,
+   "offset_km": 0.52
+  },
+  "C.12": {
+   "chainage_km": 57.4,
+   "offset_km": 1.11
+  },
+  "CPY012": {
+   "chainage_km": 139.5,
+   "offset_km": 0.08
+  },
+  "CPY011": {
+   "chainage_km": 150.8,
+   "offset_km": 0.35
+  },
+  "CPY007": {
+   "chainage_km": 209.0,
+   "offset_km": 0.29
+  },
+  "CPY008": {
+   "chainage_km": 180.7,
+   "offset_km": 0.42
+  },
+  "C.13": {
+   "chainage_km": 275.3,
+   "offset_km": 1.31
+  },
+  "CPY005": {
+   "chainage_km": 259.1,
+   "offset_km": 0.12
+  },
+  "C.7A": {
+   "chainage_km": 187.1,
+   "offset_km": 0.1
+  },
+  "C.3": {
+   "chainage_km": 229.7,
+   "offset_km": 0.43
+  },
+  "CPY006": {
+   "chainage_km": 248.2,
+   "offset_km": 0.54
+  },
+  "CPY001": {
+   "chainage_km": 373.8,
+   "offset_km": 0.21
+  },
+  "CPY002": {
+   "chainage_km": 328.5,
+   "offset_km": 0.29
+  },
+  "C.2": {
+   "chainage_km": 381.3,
+   "offset_km": 0.17
+  },
+  "CPY003": {
+   "chainage_km": 320.8,
+   "offset_km": 1.2
+  }
+ }
+}

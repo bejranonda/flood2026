@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-236 | Package data (`src/floodwatch/data/*.json`) was never committed: the `data/` ignore rule matched it | Repo | 🟢 fixed 2026-09-27 (`/data/`) |
 | KI-235 | "Can't summarise" outlook repeated the reason at length | UX | 🟢 fixed v0.11.2 |
 | KI-234 | Canal factor: one gauge name bold, the other not; labels ran into long lines | UI | 🟢 fixed v0.11.1 |
 | KI-233 | Trend formats differed by horizon and view; 24 h showed a direction from the "no change" model; "ใกล้ตลิ่ง" 158 cm below the bank | UX / Product | 🟢 fixed v0.11.0 (D-056) |
@@ -542,3 +543,6 @@ Owner screenshot 13.748,100.668 (2026-09-27): "คลองใกล้สุด
 
 ### KI-235 — Long "why" sentence in the can't-summarise outlook · 🟢 fixed v0.11.2
 Owner screenshot 13.875,100.542 (2026-09-27): "สถานีรอบจุดนี้ให้ข้อมูลไม่ตรงกัน จึงยังสรุประดับคลองที่จุดนี้ไม่ได้" followed by "สถานีใกล้เคียงวัดคนละแหล่งน้ำ (แม่น้ำ/คลอง) หรือคนละพื้นที่ปิดล้อม ดูแนวโน้มของแต่ละสถานีด้านล่าง" — long and redundant with the canal factor ("คลองรอบจุดต่างกันมาก"). Now: "สถานีรอบจุดไม่ตรงกัน ยังสรุประดับคลองไม่ได้" / "ไม่มีสถานีวัดน้ำใกล้พอ ยังสรุประดับคลองไม่ได้", and the text is only the rain condition. Test: `test_info_outlook_is_short_the_reason_lives_in_the_canal_factor`.
+
+### KI-236 — Package data files were never in git · 🟢 fixed 2026-09-27
+The owner asked "not all are committed?" — and two files were not: `src/floodwatch/data/chaophraya_chainage.json` (river km per gauge; used by the Chao Phraya profile and by `star` to find upstream gauges) and `src/floodwatch/data/station_coords_approx.json` (OSM positions for gauges HII does not place, KI-207). The `.gitignore` rule `data/`, meant for the runtime folder at the repo root, matched them too. Production worked because Docker copies the files from disk; a fresh clone of the public repo would have lacked them. The rule is now `/data/`, both files are committed, and a fresh clone passes the tests.

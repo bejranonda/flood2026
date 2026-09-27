@@ -1,0 +1,19 @@
+{
+ "_about": "Approximate positions for HII gauges that no HII feed locates (KI-207). Curated 2026-09-26 from OpenStreetMap (Overpass name search; (c) OpenStreetMap contributors, ODbL). A gate or bridge is placed at the OSM town, canal, temple or RID office that carries its name, in the station's own province. precision_km is a rough radius. Upstream/downstream pairs (เหนือ/ท้าย) share the point, offset ~150 m so both markers stay tappable. Unresolved (not placed): ATG011 ATG042 ATG051 ATG052 ATG081 ATG082 ATG091 ATG092 ATG101 ATG111 ATG112 FROC02 HDA002 HDA003 TCP013.",
+ "stations": {
+  "ATG021": {"lat": 15.3008, "lon": 100.0839, "precision_km": 5, "osm": "node/8042187143", "label": "มโนรมย์ (municipality)"},
+  "ATG031": {"lat": 15.1596, "lon": 100.1523, "precision_km": 5, "osm": "node/5139596377", "label": "วัดพระบรมธาตุวรวิหาร, ชัยนาท"},
+  "ATG032": {"lat": 15.1596, "lon": 100.1538, "precision_km": 5, "osm": "node/5139596377", "label": "วัดพระบรมธาตุวรวิหาร, ชัยนาท (downstream, offset)"},
+  "ATG122": {"lat": 15.0548, "lon": 100.0078, "precision_km": 5, "osm": "node/2982447226", "label": "สามง่ามท่าโบสถ์ (town)"},
+  "ATG151": {"lat": 14.8888, "lon": 100.3181, "precision_km": 5, "osm": "node/1052433214", "label": "บางระจัน (town)"},
+  "ATG152": {"lat": 14.8888, "lon": 100.3196, "precision_km": 5, "osm": "node/1052433214", "label": "บางระจัน (town, downstream, offset)"},
+  "ATG161": {"lat": 14.7503, "lon": 100.4142, "precision_km": 3, "osm": "node/10591157607", "label": "โครงการส่งน้ำและบำรุงรักษายางมณี (RID office)"},
+  "ATG162": {"lat": 14.7503, "lon": 100.4157, "precision_km": 3, "osm": "node/10591157607", "label": "โครงการส่งน้ำและบำรุงรักษายางมณี (downstream, offset)"},
+  "ATG171": {"lat": 14.4062, "lon": 100.3903, "precision_km": 5, "osm": "way/153885672", "label": "คลองผักไห่-เจ้าเจ็ด (canal centre)"},
+  "ATG181": {"lat": 15.1656, "lon": 100.4214, "precision_km": 5, "osm": "node/2615929391", "label": "ช่องแค (town)"},
+  "ATG182": {"lat": 15.1656, "lon": 100.4229, "precision_km": 5, "osm": "node/2615929391", "label": "ช่องแค (town, downstream, offset)"},
+  "BKC006": {"lat": 13.6787, "lon": 100.5779, "precision_km": 2, "osm": "way/40350045", "label": "คลองบางน้ำผึ้ง (canal centre)"},
+  "HDA001": {"lat": 14.3684, "lon": 100.6026, "precision_km": 5, "osm": "node/6841259119", "label": "หันตรา (tambon)"},
+  "TBW014": {"lat": 15.7365, "lon": 100.1848, "precision_km": 3, "osm": "node/4255927306", "label": "บ้านปากคลองเกรียงไกร (village)"}
+ }
+}
