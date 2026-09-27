@@ -146,3 +146,23 @@ def test_point_forecast_street_reports_alone_are_moderate_not_high():
     assert below["forecast"]["risk"] == "moderate"
     at_or_above = point.assess(13.82, 100.60, [], point.STREET_ALERT, {}, 20.0)
     assert at_or_above["forecast"]["risk"] == "high"
+
+
+def test_rain_band_follows_tmd_categories_issue_1():
+    # TMD "เกณฑ์อากาศ" (read 2026-09-27): เล็กน้อย 0.1–10.0 · ปานกลาง 10.1–35.0 · หนัก 35.1–90.0 · หนักมาก ≥ 90.1 mm.
+    cases = {None: None, 0: "none", 0.05: "none", 0.1: "light", 10.0: "light", 10.1: "moderate", 35.0: "moderate",
+             35.1: "heavy", 90.0: "heavy", 90.1: "very_heavy"}
+    for mm, key in cases.items():
+        got = point.rain_band(mm)
+        assert (got[0] if got else None) == key, mm
+
+
+def test_rain_text_never_uses_a_tilde_and_keeps_label_and_number_consistent():
+    # Issue #1: "~27 มม." was read as "−27 มม." on a phone. The number must also not contradict the label
+    # (35.1 mm is "ฝนหนัก"; printing "35" would read as "ปานกลาง").
+    for mm in (0, 0.4, 10.1, 27.3, 35.1, 53.0, 90.1, 120):
+        out = point.assess(14.30, 100.20, [], 0, {}, mm)
+        assert "~" not in out["forecast"]["desc"] and "~" not in out["forecast"]["title"]
+    assert "35.1 มม." in point._rain_phrase(35.1)[1] and point._rain_phrase(35.1)[1].startswith("ฝนหนัก")
+    assert point.assess(14.30, 100.20, [], 0, {}, 27.3)["rain_band"] == "moderate"
+    assert point.assess(14.30, 100.20, [], 0, {}, None)["rain_band"] is None

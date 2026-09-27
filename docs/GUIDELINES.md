@@ -151,6 +151,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 14. **Filter values, never stations (D-024):** keep every station visible and hide only the misleading value (wrong datum, implausible, stale), always with a note saying why. Approximate positions are dashed and give their radius.
 15. **Version on screen (D-025):** the header badge and footer show the deployed version from the API.
 16. **Urgent notes:** if a note matches emergency keywords, show 1669 / 1784 / 191 immediately, and say the site has no responders.
+17. **Numbers people can read (issue #1, KI-224):** no `~` in user-facing text (it reads as a minus on phones); write "ประมาณ"/"ราว". Every rain amount carries its TMD word (ฝนเล็กน้อย / ปานกลาง / หนัก / หนักมาก) and says whether it is past or forecast ("ข้างหน้า"). Unknown is "ไม่มีข้อมูล", never 0. The Python (`point.py RAIN_*`) and JS (`RAIN_TMD`) bands change together.
 
 ---
 

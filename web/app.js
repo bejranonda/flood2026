@@ -35,6 +35,13 @@ const fmtTime = (iso) => iso ? new Date(iso).toLocaleString("th-TH", { ...TZ, da
 const fmtHour = (ms) => new Date(ms).toLocaleTimeString("th-TH", { ...TZ, hour: "2-digit", minute: "2-digit" });
 const fmtAge = (m) => m == null ? "-" : m < 60 ? `${Math.round(m)} นาทีที่แล้ว` : m < 1440 ? `${Math.round(m / 60)} ชม.ที่แล้ว` : `${Math.round(m / 1440)} วันที่แล้ว`;
 const cm = (m) => m == null ? "-" : `${m > 0 ? "+" : ""}${Math.round(m * 100)} ซม.`;
+// Rain-amount words of the Thai Meteorological Department (tmd.go.th "เกณฑ์อากาศ", read 2026-09-27), mirrored from
+// point.py RAIN_* — change both together. Never write "~27 มม.": on phones the tilde reads as a minus (issue #1).
+const RAIN_TMD = [[0.1, "ไม่มีฝน"], [10.0, "ฝนเล็กน้อย"], [35.0, "ฝนปานกลาง"], [90.0, "ฝนหนัก"], [Infinity, "ฝนหนักมาก"]];
+const rainLabel = (mm) => RAIN_TMD.find(([max], i) => (i === 0 ? mm < max : mm <= max))[1];
+const rainMm = (mm) => (mm < 1 || rainLabel(Math.round(mm)) !== rainLabel(mm)) ? mm.toFixed(1) : String(Math.round(mm));
+const rainText = (mm) => mm < 0.1 ? "ไม่มีฝน" : `${rainLabel(mm)} (ประมาณ ${rainMm(mm)} มม.)`;
+const RAIN_LEGEND = "เกณฑ์กรมอุตุฯ: เล็กน้อย ≤10 · ปานกลาง ≤35 · หนัก ≤90 · หนักมาก >90 มม. · ฝนหนักช่วงสั้นทำถนนท่วมได้แม้ยอดรวมไม่มาก";
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
 const freeboardText = (fb) => {
   if (fb == null) return "";
@@ -104,7 +111,7 @@ function renderSummary(st) {
   const rain = st.rain_bkk_next24_mm_max;
   document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>
     <p class="sumline">${esc(TREND.rising)} <b>${f.trend12.rising}</b> · ${esc(TREND.falling)} <b>${f.trend12.falling}</b> สถานี (12 ชม.)
-      ${rain != null ? ` · 🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด ~${Math.round(rain)} มม.` : ""}</p>
+      ${rain != null ? ` · 🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: <span title="${esc(RAIN_LEGEND)}">${esc(rainText(rain))}</span>` : ""}</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั้งประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
@@ -281,12 +288,12 @@ async function renderRiver() {
       const st = stOf(s);
       const pct = s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
       return `<div class="prow" data-code="${esc(s.code)}" role="button" tabindex="0">
-        <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}${s.chainage_km != null ? ` · ~${Math.round(s.chainage_km)} กม. จากปากแม่น้ำ` : ""}</small></span>
+        <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}${s.chainage_km != null ? ` · ราว ${Math.round(s.chainage_km)} กม. จากปากแม่น้ำ` : ""}</small></span>
         <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${st.color}"></span></span>
         <span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span></div>`;
     }).join("");
     box.innerHTML = `<p class="muted">แม่น้ำเจ้าพระยา จากเหนือ (นครสวรรค์) ลงใต้ (ปากอ่าว) · แถบ = ความลึกน้ำเทียบตลิ่ง ·
-      ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง) · ระยะทางตามลำน้ำจากปากแม่น้ำโดยประมาณ (คลาดเคลื่อนได้ ~10 กม.) ·
+      ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง) · ระยะทางตามลำน้ำจากปากแม่น้ำโดยประมาณ (คลาดเคลื่อนได้ราว 10 กม.) ·
       ค่าระหว่างสถานีไม่ได้ประมาณ เพราะตลิ่งและคันกั้นน้ำแต่ละช่วงสูงไม่เท่ากัน</p>${rows}`;
     box.querySelectorAll(".prow").forEach((r) => {
       r.addEventListener("click", () => showDetail(r.dataset.code));
@@ -377,7 +384,7 @@ function recoveryText(rec) {
       return `⏱️ หากน้ำลดในอัตราเดิม อาจต่ำกว่าตลิ่งราว ${at(rec.hours_min)} – ${at(rec.hours_max)} <span class="muted">(ประมาณจากอัตราลดลง 24 ชม.ล่าสุด ความเชื่อมั่นต่ำ หากไม่มีฝนตกหนักเพิ่ม)</span>`;
     case "not_estimable":
       return rec.reason === "heavy_rain_forecast"
-        ? `⏱️ ยังประเมินเวลาน้ำลดไม่ได้ — คาดว่ามีฝน ~${Math.round(rec.rain_next24_mm)} มม. ใน 24 ชม.`
+        ? `⏱️ ยังประเมินเวลาน้ำลดไม่ได้ — คาดว่า${rainText(rec.rain_next24_mm)} ใน 24 ชม. ข้างหน้า`
         : "⏱️ ยังประเมินเวลาน้ำลดไม่ได้ (น้ำยังไม่ลดลง)";
     default: return "";
   }
@@ -411,7 +418,7 @@ function feedbackForm(code, loc) {
       <select name="depth"><option value="">— ไม่ระบุ —</option>${Object.entries(DEPTH).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></label>
     <label>ข้อมูลเพิ่มเติม (ไม่บังคับ, ไม่เกิน 280 ตัวอักษร)
       <textarea name="note" maxlength="280" placeholder="เช่น น้ำเริ่มเอ่อจากท่อในซอย / ประตูระบายน้ำปิด"></textarea></label>
-    <label><input type="checkbox" name="loc"${loc ? " checked" : ""}> แนบตำแหน่ง${loc ? (loc.src === "pin" ? "ของหมุดนี้" : "ของคุณ") : ""}โดยประมาณ (ปัดเป็น ~100 ม.)</label>
+    <label><input type="checkbox" name="loc"${loc ? " checked" : ""}> แนบตำแหน่ง${loc ? (loc.src === "pin" ? "ของหมุดนี้" : "ของคุณ") : ""}โดยประมาณ (ปัดเป็นราว 100 ม.)</label>
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <p class="muted">ไม่เก็บชื่อหรือเบอร์โทร · ข้อความไม่แสดงต่อสาธารณะ · ใช้ตรวจสอบและปรับปรุงการคาดการณ์เท่านั้น ·
       <b>ไม่ใช่ช่องทางขอความช่วยเหลือ</b> เหตุฉุกเฉินโทร 1784 / 1555</p>
@@ -573,7 +580,8 @@ function pointHTML(d, src, place = "") {
   const overviewCard = `
     <div class="overview-box">
       <div class="ov-item">🌊 <b>คลองรอบจุด</b>: ${canalSummary}</div>
-      <div class="ov-item">🌧️ <b>ฝน 24 ชม.</b>: ~${d.rain_next24_mm != null ? Math.round(d.rain_next24_mm) : 0} มม. <span class="muted">(Open-Meteo)</span></div>
+      <div class="ov-item">🌧️ <b>ฝน 24 ชม. ข้างหน้า</b>: ${d.rain_next24_mm != null ? `<b>${esc(rainText(d.rain_next24_mm))}</b>` : "ไม่มีข้อมูล"} <span class="muted">(คาดการณ์ Open-Meteo)</span>
+        <div class="ov-note">${esc(RAIN_LEGEND)}</div></div>
       <div class="ov-item">🚗 <b>น้ำท่วมบนถนน (1 กม.)</b>: ${ev.traffy_flood_reports_1km_6h ? `มีแจ้ง <b>${Number(ev.traffy_flood_reports_1km_6h)} จุด</b> (ดูจุดสีม่วงบนแผนที่)` : "ยังไม่มีรายงานใน 6 ชม."}${depths ? ` <span class="muted">· แจ้งระดับ: ${depths}</span>` : ""}</div>
     </div>`;
 

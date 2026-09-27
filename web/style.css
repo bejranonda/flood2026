@@ -157,6 +157,7 @@ a { color: var(--accent); }
 .point-disclaimer .disclaimer-body p { margin: 4px 0; }
 .overview-box { background: #f8fafc; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
 .overview-box .ov-item { padding: 4px 0; line-height: 1.5; }
+.overview-box .ov-note { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: 2px; }
 .sec-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 6px; font-size: 15px; font-weight: 700; color: var(--ink); }
 .sec-heading .sub { font-size: 12px; font-weight: normal; color: var(--muted); }
 

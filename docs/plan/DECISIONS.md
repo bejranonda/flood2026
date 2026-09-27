@@ -313,7 +313,7 @@
      separately for khlong (drives "canal" wording) and river (tidal; only labelled, never drives risk alone) —
      not "any one gauge ≥ 0.04 m".
   3. **Rainfall is usable everywhere** (it needs no nearby gauge), worded by 24h band (light/moderate/heavy/very
-     heavy — ⚠️ approximate, not cited from a live TMD source) as a *condition*, never folded into a "risk is low"
+     heavy — since 2026-09-27 the TMD categories, cited in KI-224) as a *condition*, never folded into a "risk is low"
      verdict. `rain_next24_mm = None` omits the rain sentence entirely (no more "~0 มม.").
   4. **Street reports** (Traffy, ≥`STREET_ALERT` in 1 km/6 h) are usable everywhere and can raise risk on their own.
   5. When neither a usable gauge nor strong local evidence exists, the outlook returns **`risk: "info"`** (ℹ️, new

@@ -2,6 +2,18 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## Unreleased (branch `research/nationwide-scope`, not deployed)
+- **Fixed issue #1 "ฝน -27 มม. แปลว่าอะไร"** (KI-224): the point card showed `ฝน 24 ชม.: ~27 มม.`. On a phone the
+  `~` read as a minus sign, the amount had no meaning attached, and "24 ชม." did not say it is a forecast.
+  - Rain is now worded with the **Thai Meteorological Department's rain-amount categories** (ฝนเล็กน้อย 0.1–10.0 ·
+    ฝนปานกลาง 10.1–35.0 · ฝนหนัก 35.1–90.0 · ฝนหนักมาก ≥ 90.1 mm, from tmd.go.th "เกณฑ์อากาศ", read 2026-09-27):
+    `ฝน 24 ชม. ข้างหน้า: ฝนปานกลาง (ประมาณ 27 มม.)`, with a one-line legend and the note that a short burst can
+    flood streets even when the day's total is small. The same words appear in the forecast banner.
+  - Every user-facing `~` replaced by "ประมาณ"/"ราว" (also river km, the profile legend next to "ติดลบ = ต่ำกว่าตลิ่ง",
+    and the feedback location note). When rain is unknown the card says "ไม่มีข้อมูล" instead of "~0 มม.".
+  - A number is printed with one decimal when rounding would cross a TMD boundary (35.1 mm is "ฝนหนัก").
+  - `/api/point` adds `rain_band`. Tests: 56 passing (+2). Checked at 390 px on a preview container of the branch.
+
 ## v0.6.1 — 2026-09-27
 - **Fixed: the D-041 forecast banner could give a canal verdict without a usable gauge** (D-042, KI-223). Found in
   a routine review: at `confidence=none` (0 gauges) the banner said "สถานการณ์ปกติ … ความเสี่ยงน้ำท่วมต่ำ" from no

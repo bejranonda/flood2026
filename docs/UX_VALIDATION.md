@@ -92,6 +92,11 @@ Live `/api/point` probes on 4 real coordinates (KI-223), before and after the fi
 | 13.60, 100.95 (0 gauges, heavy rain) | `none` | 🌧️ "moderate" (rain only — this one was already reasonable) | Same outcome, now with an explicit `basis: ["rain"]` footnote |
 | — | — | — | See [D-042](plan/DECISIONS.md) for the distance/agreement evidence behind the confidence bands, and [KI-223](KNOWN_ISSUES.md) for the bug detail. |
 
+### Round 8 (2026-09-27 ~09:40 UTC): issue #1 "ฝน -27 มม. แปลว่าอะไร" (branch, KI-224)
+| # | Finding | Done (branch `research/nationwide-scope`) |
+|---|---|---|
+| 47 | Owner's phone screenshot: `ฝน 24 ชม.: ~27 มม. (Open-Meteo)` read as "−27 mm", with no sense of little vs a lot, and no hint that it is a forecast | `ฝน 24 ชม. ข้างหน้า: ฝนปานกลาง (ประมาณ 27 มม.)` + a 2-line TMD legend ("ฝนหนักช่วงสั้นทำถนนท่วมได้แม้ยอดรวมไม่มาก"); all user-facing `~` removed; unknown → "ไม่มีข้อมูล". Checked at 390 px on a throwaway preview of the branch (same pin, Bang Kapi) |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

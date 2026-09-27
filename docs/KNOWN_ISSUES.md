@@ -36,6 +36,7 @@
 | KI-221 | Favicon unrecognizable at 16×16 and blends into dark-mode browser tabs | UI / Brand | 🟢 redesigned with Flood Droplet & Wave (D-039) |
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
+| KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -359,6 +360,19 @@ Feedback (`/api/feedback`, [APPROACH §3.5](APPROACH_AND_METHODS.md)) is subject
   - counts only in public, notes never published;
   - the `review` flag drives **human review, never an automatic model change**.
 - **Open:** no moderation UI yet; operators read `user_feedback` in SQL.
+
+### KI-224 — "ฝน ~27 มม." was read as "ฝน −27 มม." and meant nothing to users · 🟢 fixed on branch (issue #1)
+Reported by the owner on 2026-09-27 (GitHub issue #1, phone screenshot of the point card): "ฝน -27 มม. แปลว่าอะไร อ่านละไม่เข้าใจ".
+- **Causes:** the approximation sign `~` renders like a minus on phone fonts, right next to a legend that uses
+  negative numbers for "below bank"; a bare mm total says nothing to most people; "ฝน 24 ชม." did not say "forecast";
+  an unknown value was printed as "~0 มม.".
+- **Fix:** Thai Meteorological Department rain-amount categories (tmd.go.th "เกณฑ์อากาศ", read 2026-09-27:
+  เล็กน้อย 0.1–10.0 · ปานกลาง 10.1–35.0 · หนัก 35.1–90.0 · หนักมาก ≥ 90.1 mm), the words "ประมาณ"/"ราว" instead of `~`
+  everywhere users read, "ข้างหน้า" for forecasts, "ไม่มีข้อมูล" for unknown, one decimal near a boundary.
+- **Limits, stated in the UI legend:** the TMD words are national amount classes, not local flood thresholds. Street
+  flooding depends on short-burst intensity and local drainage, which a 24 h total (and a 9–25 km model cell) cannot show.
+  The TMD page lists the amounts without a period; applying them to a 24 h total is our reading ⚠️.
+- **Rule (GUIDELINES §6):** no `~` in user-facing text; every rain number carries its TMD word.
 
 ### KI-307 — Point check is not a depth or level at the pin · ℹ️
 `/api/point` summarises gauges *around* a pin as a status category (D-021). It can't know the ground height, drains, walls or polder of the pin itself: Bangkok is not flat (KI-202, [APPROACH §2.10](APPROACH_AND_METHODS.md)).
