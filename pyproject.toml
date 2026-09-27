@@ -2,6 +2,13 @@
 name = "floodwatch"
 version = "0.6.1"
 description = "BKK FloodWatch 2026 — water-level monitoring and forecasting for Bangkok and the lower Chao Phraya"
+license = { text = "MIT" }
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.110",

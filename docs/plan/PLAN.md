@@ -10,7 +10,7 @@
 |---|---|
 | Documentation reorganised and reconciled; research validated claim by claim | ✅ 2026-09-26 |
 | Infrastructure: single server + Cloudflare Tunnel; main domain **flood.autobahn.bot** (D-017) | ✅ live; ⚠️ the new domain shows a bot challenge to non-browsers (KI-506, Q18) |
-| Code hosting: [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) | ✅ published 2026-09-26 (private first, D-011); **public** by the owner's action, history scanned ([D-028](DECISIONS.md)); no LICENSE yet |
+| Code hosting: [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) | ✅ published 2026-09-26 (private first, D-011); **public** (owner action, D-028); **MIT License** ([LICENSE](../../LICENSE), [D-043](DECISIONS.md)) |
 | **MVP live** (collectors, raw archive, Postgres, baseline forecasts, API, Thai web) | ✅ 2026-09-26, https://flood.autobahn.bot (D-012, D-013, D-017) |
 | Phase 0 — sources | 🟡 HII, Open-Meteo and Traffy in production; BMA needs a Thai egress (D-014); RID C.29A and the Navy tide are still open |
 | Phase 1 — ingestion | 🟡 running; **110 focus stations**, whole BMR (D-015, D-023, KI-209/210); **1-year hourly backfill** from `waterlevel_graph` (D-018); missing: R2 off-site backup (blocked on R2 S3 credentials) and ~54 stations the chart endpoint won't serve (incl. GLF001, CPY013; all workarounds tested, KI-207) |

@@ -326,3 +326,13 @@
 - **Follow-up (unchanged from HANDOFF §5):** polder/drainage-zone polygons are the real fix for "near me"; until
   then this distance/agreement proxy is what confidence is built on, for both the overview card and this outlook.
 
+### D-043 — Open source release under the MIT License
+- **Date:** 2026-09-27 · **Status:** accepted (owner prompt: "Upate the license in github to open source, you can recomend the optimal choice"; owner confirmed the recommended MIT License).
+- **Context:** The repository was made public on 2026-09-26 without a LICENSE file (D-028, Q10: all rights reserved by copyright default). With public visibility, an active REST API for AI agents and civic tech, and live flood monitoring, an open source license allows disaster response organizations, researchers, civic tech volunteers, and government agencies (HII, BMA, GISTDA) to adopt and reuse the codebase.
+- **License Options Evaluated:**
+  1. **MIT License (Selected):** Most permissive, widely recognized, zero friction for civic integration, academic research, and public disaster mitigation. Allows anybody to use, modify, and distribute with simple copyright attribution.
+  2. **Apache-2.0:** Permissive with explicit contributor patent grants, trademark terms, and corporate/institutional protections.
+  3. **GNU AGPLv3:** Strong copyleft requiring anyone running modified network/cloud services of the pipeline to open-source all changes.
+- **Decision:** Released under the **MIT License**. Created `LICENSE` file in repo root, added `license = { text = "MIT" }` to `pyproject.toml`, added MIT badge to `README.md`, updated documentation and status checks (closing Q10 and KI-503). Third-party data sources retain their respective terms per `docs/SOURCES.md`.
+
+

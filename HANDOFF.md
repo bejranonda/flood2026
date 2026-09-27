@@ -16,7 +16,12 @@
 | Public path | Both hostnames → proxied CNAME → **tunnel `d62b426d…`** (the owner's token, 2026-09-26 09:19 UTC) → `cloudflared --url http://app:3000`. No inbound ports |
 | Thai egress | `vpn` container (VPN Gate relay 49.48.220.198) + proxy `http://vpn:8888`. **Flaky**: `bma_dds` has never succeeded through it (proxy 500s as of 2026-09-27 07:47 UTC; [KI-505](docs/KNOWN_ISSUES.md)) |
 | AI (optional) | **GLM (`glm-5.3-flash`, D-030)** triages feedback notes in the worker (`ai_triage`), with Cloudflare Workers AI fallback. **The site never calls AI** and works unchanged without it. Live GLM triage verified ✅ (`local_drainage`, urgent=false). Token in `.env` |
-| Repo | https://github.com/bejranonda/flood2026 — **PUBLIC** (owner action; verified 15:20 UTC). Full-history scan done: clean (D-028). **No LICENSE** by owner choice (all rights reserved, Q10). Git commit author updated to **`bejranonda <bwerapol@gmail.com>`** |
+| Repo | https://github.com/bejranonda/flood2026 — **PUBLIC** (owner action; verified 15:20 UTC). Full-history scan done: clean (D-028). **MIT License** (Q10 closed, D-043). Git commit author updated to **`bejranonda <bwerapol@gmail.com>`** |
+
+## 2j. Session 2026-09-27 09:05–09:15 UTC: open source license (MIT License, D-043)
+| Owner request / event | Result | Where |
+|---|---|---|
+| Owner: "Upate the license in github to open source, you can recomend the optimal choice." | Confirmed and applied **MIT License**: maximum openness and adoption for civic tech, disaster response bots, researchers, and government agencies with minimal friction. Created [LICENSE](LICENSE), added license & classifiers to `pyproject.toml`, added MIT badge to `README.md`, updated all documentation & `scripts/owner_status.py` (closing Q10 and KI-503) | `LICENSE`, `pyproject.toml`, `README.md`, `scripts/owner_status.py`, [D-043](docs/plan/DECISIONS.md) |
 
 ## 2i. Session 2026-09-27 07:45–08:20 UTC: found and fixed the D-041 outlook bug (v0.6.1, D-042), HANDOFF clean-up
 | Owner request / event | Result | Where |

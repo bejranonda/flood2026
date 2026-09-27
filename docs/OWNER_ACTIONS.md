@@ -12,7 +12,7 @@
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
 | **GISTDA** | GISTDA API key (`GISTDA_API_KEY` in `.env`) for satellite flood extent | ✅ **configured** (verified in `.env`) | |
 | Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
-| Q10 | Repository license | ✅ **closed** (all rights reserved, no LICENSE added; D-028) | — |
+| Q10 | Repository license | ✅ **closed** (MIT License added; D-043) | — |
 | BMA | Courtesy note to the flood69 relay (and BMA) that we show their copy of BMA data, with attribution (D-031, KI-218) | ⬜ optional | 3 |
 | Q19 / Q22 / Q7 / Q8 / Q11 / Q12 | Decisions and answers (no work) | 🖐️ open | see §3 |
 | Q15a | Tunnel rights on the API token | ✅ works (verified 11:15 UTC) | |
@@ -66,8 +66,8 @@
 **Why:** 15 gauges (mostly Ayutthaya gates: ATG011, ATG042, ATG051/052, ATG081/082, ATG091/092, ATG101, ATG111/112, FROC02, HDA002/003, TCP013) have no position anywhere, and 14 more are placed only approximately (±2–5 km, dashed markers). Point checks and "near me" rely on positions ([KI-207](KNOWN_ISSUES.md)).
 **What to send:** a CSV `code,lat,lon` (WGS84) or any RID/HII list with gate coordinates. Save it as `src/floodwatch/data/station_coords_rid.json` or just give it to the agent, which will import it, replace the approximate positions and mark them exact.
 
-### Priority 5 · Q10 — choose a license (the repository is public now)
-You made the repository **public** (seen 2026-09-26 15:20 UTC). I scanned the whole history first: no credentials, data or personal email were ever committed ([KI-214](KNOWN_ISSUES.md), [D-028](plan/DECISIONS.md)). There is **no LICENSE**, so by default all rights are reserved: people can read and fork it on GitHub but have no permission to reuse the code. Options: **Apache-2.0** or **MIT** (permissive, attribution required), **AGPL-3.0** (anyone running a modified copy as a service must share their changes), or leave it unlicensed. Third-party data keeps its own terms either way ([SOURCES](SOURCES.md): Open-Meteo non-commercial, OSM ODbL). **An agent will not add a license or rewrite history without your explicit go-ahead.**
+### ✅ Done · Q10 — choose a license (MIT License applied, 2026-09-27)
+The repository was updated to open source under the **MIT License** ([LICENSE](../LICENSE), [D-043](plan/DECISIONS.md)). Anyone may freely read, fork, modify, and integrate the code with simple attribution. Third-party data keeps its own terms ([SOURCES](SOURCES.md): Open-Meteo non-commercial, OSM ODbL).
 
 ### Optional · keep the host and the public history tidy
 - **Server IP in old commits (KI-214):** 8 commits from earlier today still show it; it is gone from the current files. It is low risk because the site is only reachable through the Cloudflare Tunnel and no web ports are open. Removing it from history means `git filter-repo` plus a force-push, which rewrites history and breaks existing clones and forks. **Only do this if you want it; say so and I will.**

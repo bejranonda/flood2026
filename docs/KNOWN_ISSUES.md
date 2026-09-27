@@ -47,7 +47,7 @@
 | KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
 | KI-501 | Cloudflare token scopes and tunnel config | Infrastructure | 🟡 |
 | KI-502 | Single server; this host is production | Infrastructure | 🟢 |
-| KI-503 | No license; repository is public | Infrastructure | 🟢 (all rights reserved by owner choice, D-028) |
+| KI-503 | Open source license (MIT) | Infrastructure | 🟢 (resolved: MIT License added, D-043) |
 | KI-504 | R2 off-site backup | Infrastructure | 🟢 (kept disabled by owner choice, D-029) |
 | KI-505 | Public VPN relay is untrusted and flaky | Infrastructure | 🟡 |
 | KI-506 | `autobahn.bot` zone challenged non-browser clients (Bot Fight Mode) | Infrastructure | 🟢 fixed 2026-09-26 (owner, D-035) |
@@ -321,8 +321,8 @@ The API token needs: Account → Cloudflare Tunnel: Edit, Workers/Pages: Edit; Z
 ### KI-502 — Single server (resolved: this host *is* production) · 🟢
 This repo's working host (`HZ-Agent`) is in **Germany**, with 4 vCPU, 7 GB RAM, **~11 GB free disk** and no `cloudflared`. That isn't enough to hold the archive, and it is blocked by BMA. **Phase 0 tests must run on the production VPS** (region and specs in [OPEN_QUESTIONS](plan/OPEN_QUESTIONS.md)).
 
-### KI-503 — No license; repository is public · 🟡
-The owner made `bejranonda/flood2026` **public** (verified 2026-09-26 15:20 UTC). There is **no LICENSE file**, so all rights are reserved: people may view and fork it on GitHub but have no permission to reuse it. The old README's MIT badge was removed earlier. Choosing a license is the owner's call (Q10, [OWNER_ACTIONS](OWNER_ACTIONS.md)); an agent must not add one.
+### KI-503 — Open source license added (MIT License) · 🟢 (closed)
+The repository was released as open source under the **MIT License** ([LICENSE](../LICENSE), [D-043](plan/DECISIONS.md)) on 2026-09-27 per the owner's request. Free reuse, modification, and integration with attribution is granted. Third-party data keeps its original terms ([SOURCES](SOURCES.md)). Q10 closed.
 
 ### KI-504 — Tunnel live; R2 off-site backups kept disabled by owner choice · 🟢 (closed)
 - **Done:** the Cloudflare Tunnel runs (`cloudflared`, `--url http://app:3000`); both hostnames are proxied CNAMEs to it; ports 80/443 are closed; the Caddy origin is retired. Verified 2026-09-26.

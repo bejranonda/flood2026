@@ -8,6 +8,7 @@
 [![Domain: Hydrology & Flood Forecasting](https://img.shields.io/badge/domain-hydrology%20%26%20flood%20forecast-0077b6.svg)](docs/APPROACH_AND_METHODS.md)
 [![Coverage: Bangkok & Chao Phraya](https://img.shields.io/badge/coverage-Bangkok%20%26%20Chao%20Phraya-023e8a.svg)](docs/KNOWLEDGE.md)
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > [!IMPORTANT]
 > **Current status (2026-09-27): v0.6.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
@@ -100,7 +101,7 @@ infra/ (vpn/ sidecar, legacy Caddyfile)  scripts/ (build_chainage.py, owner_stat
 | [research/README.md](research/README.md) | Research validity index · [VALIDATION report](research/VALIDATION_2026-09-26.md) |
 
 ## Repository and license
-Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) — **public** (the owner changed visibility on 2026-09-26; the full history was scanned clean, see [D-028](docs/plan/DECISIONS.md)). **All rights reserved by owner choice** (no LICENSE file added, Q10): you may read and fork on GitHub, but reuse needs the owner's permission. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
+Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) — **public** (the owner changed visibility on 2026-09-26; the full history was scanned clean, see [D-028](docs/plan/DECISIONS.md)). **Open source under the [MIT License](LICENSE)** (Q10 closed): free to use, modify, and distribute with attribution. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
 
 ## Configuration
 Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/`, `*.pem` and `infra/openvpn/*.ovpn` are git-ignored; never commit secrets. v1 needs **no data API keys** to run basic monitoring. Cloudflare (tunnel token) is required for publishing. **R2 off-site backups are kept disabled by owner choice** ([D-029](docs/plan/DECISIONS.md)); data and archive stay on the local VPS disk. **AI feedback note triage supports GLM** (`glm-5.3-flash`, [D-030](docs/plan/DECISIONS.md)) and Cloudflare Workers AI. **GISTDA API key** is configured in `.env` for satellite flood extent.

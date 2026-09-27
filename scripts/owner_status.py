@@ -106,8 +106,9 @@ def main() -> None:
                  "key configured" if gistda_key else "empty (fill in when ready in .env)"))
 
 
-    rows.append(("Q10", "Repository license (public, all rights reserved)", "done",
-                 "all rights reserved by owner choice (no LICENSE file, D-028)"))
+    has_license = (ROOT / "LICENSE").exists()
+    rows.append(("Q10", "Repository license (open source, MIT)", "done" if has_license else "open",
+                 "MIT License applied (LICENSE file present, D-043)" if has_license else "no LICENSE file"))
     rid = (ROOT / "src/floodwatch/data/station_coords_rid.json").exists()
     rows.append(("RID", "RID gate coordinates imported (exact positions for ATG*/HDA*/TCP*)", "done" if rid else "open",
                  "station_coords_rid.json present" if rid else "not provided"))

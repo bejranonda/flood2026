@@ -48,7 +48,7 @@
 | A16 | Q20 (old tunnel `ecd8a7b9…`) | Deleted by the owner; verified 11:15 UTC | [KI-504](../KNOWN_ISSUES.md) |
 | A17 | Release cadence / version on screen | Versioned releases with the version in the UI (2026-09-26) | [D-025](DECISIONS.md) |
 | A18 | Q1, Q3, Q13, Q14 | Answered earlier as A6–A9 (single server; don't wait for agencies; ship now; OpenVPN added). Removed from the open list on 2026-09-26 | D-012…D-016 |
-| A19 | Q10 (visibility & license) | Repository made public; owner decided to keep all rights reserved (no LICENSE file) (2026-09-26) | [D-028](DECISIONS.md) |
+| A19 | Q10 (visibility & license) | Repository made public (2026-09-26); open source MIT License applied by owner request (2026-09-27) | [D-028](DECISIONS.md), [D-043](DECISIONS.md) |
 | A20 | Q15b / Q16 (R2 off-site backups) | Owner decided to keep R2 disabled; telemetry and DB remain local to VPS disk (2026-09-26) | [D-029](DECISIONS.md) |
 | A21 | Q21 / Q23 (AI provider switch) | Switch to GLM (Zhipu AI `glm-4-flash`) for feedback triage; `.env` prepared for GLM key (2026-09-26) | [D-030](DECISIONS.md) |
 

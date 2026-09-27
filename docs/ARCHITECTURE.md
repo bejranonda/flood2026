@@ -20,7 +20,7 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | Application | **Live MVP**: collectors, raw archive, forecasts, FastAPI + Thai web app, all in `docker compose` (`db`, `worker`, `app`, `cloudflared`, `vpn`) |
 | Database | Plain PostgreSQL 16; TimescaleDB/PostGIS deferred ([D-013](plan/DECISIONS.md)) |
 | Off-site backup (R2) | **Not yet** (owner: Q15/Q16) |
-| Repo | **Public** GitHub `bejranonda/flood2026` ([D-028](plan/DECISIONS.md)); no license yet |
+| Repo | **Public** GitHub `bejranonda/flood2026` ([D-028](plan/DECISIONS.md)); **MIT License** ([LICENSE](../LICENSE), [D-043](plan/DECISIONS.md)) |
 
 ### 1.1 Live API (FastAPI, `/api/docs`)
 | Endpoint | Purpose |
