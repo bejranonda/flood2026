@@ -1,6 +1,6 @@
 # `web/` — Thai, mobile-first web app
 
-> **Status:** Production live at https://flood.autobahn.bot (**v0.10.0**). Built with vanilla HTML5, CSS3, and JavaScript, served directly by FastAPI and Cloudflare Tunnel for high performance on mobile devices. Includes 199 BMA canal gauges and 30-day 10-minute telemetry history via HII TIWRM.
+> **Status:** Production live at https://flood.autobahn.bot (**v0.10.1**). Built with vanilla HTML5, CSS3, and JavaScript, served directly by FastAPI and Cloudflare Tunnel for high performance on mobile devices. Includes 199 BMA canal gauges and 30-day 10-minute telemetry history via HII TIWRM.
 
 ## Features
 - **Mobile-first Thai interface**: Summary statistics, status chips, Bangkok first, Leaflet interactive map with custom telemetry markers, bottom-sheet station details with 24 h outlook, trend arrows, recovery date predictions, and BMA drainage criteria.

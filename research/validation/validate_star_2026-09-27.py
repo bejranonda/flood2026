@@ -11,7 +11,7 @@ from floodwatch import db, forecast
 
 WINDOW_ENDS_DAYS_AGO = (0, 45, 90)
 import os
-ONLY = os.environ.get("ONLY_PREFIX")  # e.g. "WL." for BMA gauges only (D-054 validation, 2026-09-28)
+ONLY = os.environ.get("ONLY_PREFIX")  # e.g. "WL." for BMA gauges only (D-054 validation, 2026-09-27)
 HS = (12, 24, 48)
 
 def cut(series, end):

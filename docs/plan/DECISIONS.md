@@ -431,7 +431,7 @@
 - **Next:** interval coverage checked out of sample; canal gains depend on rain alone — BMA pump/gate data would be the next input; the same scripts are the starting point for the national phase (research §8).
 
 ### D-053 — BMA Canal Historical Telemetry Access via HII TIWRM and Dual Ingestion Architecture
-- **Date:** 2026-09-27 · **Status:** accepted (v0.9.0 release) · **Corrected by [D-054](#d-054--bma-canal-history-from-hii-and-a-nearest-gauge-canal-gate) (review 2026-09-28):** the `BKK*` gauges are HII's own gauges, and all but BKK007/BKK008 already had ~1 year of hourly history (the code change added BKK007); the real history for BMA's `WL.*` gauges comes from HII `waterlevel_graph?station_type=canal` (D-054). "BMA local datum" is unverified: we only know BMA and HII differ 0.3–0.6 m (KI-217); the "ม. (หมุด กทม.)" label was never implemented.
+- **Date:** 2026-09-27 · **Status:** accepted (v0.9.0 release) · **Corrected by [D-054](#d-054--bma-canal-history-from-hii-and-a-nearest-gauge-canal-gate) (review 2026-09-27):** the `BKK*` gauges are HII's own gauges, and all but BKK007/BKK008 already had ~1 year of hourly history (the code change added BKK007); the real history for BMA's `WL.*` gauges comes from HII `waterlevel_graph?station_type=canal` (D-054). "BMA local datum" is unverified: we only know BMA and HII differ 0.3–0.6 m (KI-217); the "ม. (หมุด กทม.)" label was never implemented.
 - **Context:** BMA stations (`WL.*` series, e.g. `WL.KTY.01`, `WL.AJP.01`, `WL.BKY.02`, `WL.KLA.01`, `WL.LPW.01`) are geo-blocked from non-Thai datacenters. A probe using our project's Thai residential VPN egress the VPN Gate relay in Ayutthaya) verified that BMA's perimeter subnet (BMA server subnet) drops all incoming TCP SYN packets on ports 80/443 (tinyproxy 500), while other Thai agencies (`ews.dwr.go.th`, `hydro.navy.mi.th`) connect normally (HTTP 200). Furthermore, BMA's own dashboard does not host multi-week historical time series.
 - **Decision:**
   1. **Dual Ingestion Architecture:**
@@ -442,7 +442,7 @@
 
 
 ### D-054 — BMA canal history from HII, and a nearest-gauge canal gate
-- **Date:** 2026-09-28 · **Status:** accepted (owner grill: "1 year, hourly"; "nearest gauges first")
+- **Date:** 2026-09-27 · **Status:** accepted (owner grill: "1 year, hourly"; "nearest gauges first")
 - **Evidence:** HII `waterlevel_graph?station_type=canal&station_id=…` (found in thaiwater.net's app) serves BMA's `WL.*` gauges at 15 min back to at least 2024-01; values identical to the relay (WL.SSB.07: 46 matching times, difference 0.0 m, 2026-09-27). BMA gauges had ~28 h of our own history, so all 199 fell back to "no change". Over a grid of 64 Bangkok points the old gate (all gauges within 8 km must agree) gave "ประเมินไม่ได้" at **53 (83 %)**; the nearest gauge is typically 1.9 km away.
 - **Decision:**
   1. Collector `bma_history`: one year hourly for every BMA gauge (5 per run until done, progress saved per gauge), then a daily 3-day refresh that fills relay gaps. Same BMA values and datum as the relay; never mixed with HII m MSL.
@@ -450,7 +450,7 @@
   3. The panel leads the canal factor with **the nearest canal gauge** (name, distance, agency, status, 24 h and 48 h change), notes "ห่างเกิน 3 กม. …" when it is far, and folds the other stations into one line. Area words use the combined short labels (ใกล้ตลิ่ง/คลองเต็ม) because an area mixes HII (bank) and BMA (drainage-level) gauges.
 
 ### D-055 — 48 h line everywhere, honestly labelled; lists show 24 h; shorter rain sentence
-- **Date:** 2026-09-28 · **Status:** accepted (owner: "add a longer 48 h trend"; "show 24 h instead of 12 h in lists"; "shorten the redundant rain sentence") · **Amends D-050 §1**
+- **Date:** 2026-09-27 · **Status:** accepted (owner: "add a longer 48 h trend"; "show 24 h instead of 12 h in lists"; "shorten the redundant rain sentence") · **Amends D-050 §1**
 - **Decision:**
   1. `change48` is given wherever a forecast exists, with `proven` = the 48 h backtest gives "medium". Proven: direction chip + likely range, as for 12/24 h. **Unproven: a dashed grey "? 48 ชม." chip, "ยังบอกทิศทางไม่ได้ · ช่วงที่น่าจะเป็น A ถึง B ซม."** — a range, never a direction (e.g. BKK008: −10 to +31 cm).
   2. The "too wide to show" rule tests the likely (50 %) range, which is what is printed (> 0.75 m), instead of the 90 % band (> 1.5 m). BKK005-type bands stay hidden; BKK008's 48 h range is shown.

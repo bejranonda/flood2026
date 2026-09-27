@@ -65,6 +65,9 @@ const CONF_WHY = {
 };
 const changeRange = ([lo, hi], dir) => {
   const a = Math.round(lo * 100), b = Math.round(hi * 100);
+  // "Steady" (median inside its own band) is always worded neutrally, even when the range is one-sided: the live site
+  // showed "→ ทรงตัว … เพิ่มขึ้น 1–22 ซม." (WL.SSB.06, 2026-09-27), a chip and a sentence that contradict each other.
+  if (dir === "steady") return `อาจแกว่งตัว ${a > 0 ? "+" : ""}${a} ถึง ${b > 0 ? "+" : ""}${b} ซม.`;
   if (a >= 0) return a === b ? `เพิ่มขึ้นราว ${b} ซม.` : `เพิ่มขึ้น ${a}–${b} ซม.`;
   if (b <= 0) return a === b ? `ลดลงราว ${-a} ซม.` : `ลดลง ${-b}–${-a} ซม.`;
   // Zero-crossing (a < 0 and b > 0): "ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)"
@@ -431,7 +434,7 @@ function chartSVG(obs, fc, bank, crit = null) {
 
 /* ---------- texts ---------- */
 // A time window without false precision (D-005): whole hours for a short window, dates only for a long one
-// (a resident read "30 ก.ย. 01:12 – 2 ต.ค. 05:12" as exact, 2026-09-28 UX check).
+// (a resident read "30 ก.ย. 01:12 – 2 ต.ค. 05:12" as exact, 2026-09-27 UX check).
 function whenText(hMin, hMax) {
   const d = (h) => new Date(Date.now() + h * 3600e3);
   const day = (x) => x.toLocaleDateString("th-TH", { ...TZ, day: "numeric", month: "short" });

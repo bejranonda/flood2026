@@ -2,7 +2,11 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## v0.10.0 — 2026-09-28
+## v0.10.1 — 2026-09-27
+- **Fixed a contradiction found on the live site:** a "steady" chip next to a one-sided range read "→ ทรงตัว … เพิ่มขึ้น
+  1–22 ซม." (WL.SSB.06). Steady ranges are now always worded neutrally: "อาจแกว่งตัว +1 ถึง +22 ซม.".
+
+## v0.10.0 — 2026-09-27
 - **BMA canal gauges get a year of history (D-054).** HII serves BMA's own `WL.*` gauges through
   `waterlevel_graph?station_type=canal` back to 2024, identical to the relay (0.0 m difference). New collector
   `bma_history`: one-year hourly backfill for all 199 gauges, then a daily 3-day refresh. BMA gauges now enter the
