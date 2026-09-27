@@ -457,3 +457,14 @@
   3. Station lists show the 24 h change (12 h only where 24 h is missing).
   4. The outlook sentence no longer repeats the rain amount (it is in the rain factor): "มีรายงานน้ำรอระบายในพื้นที่ และคาดฝนปานกลาง อาจมีน้ำขังบนถนนช่วงฝนตก".
   5. Recovery times are windows without false precision: dates only when the window is ≥ 24 h, whole hours otherwise (was "30 ก.ย. 01:12 – 2 ต.ค. 05:12").
+
+### D-056 — One trend format and one direction rule in every view
+- **Date:** 2026-09-27 · **Status:** accepted (owner: "why do 24 h and 48 h have different formats?"; "the panel and station formats are confusing and inconsistent"; "compact the canal factor"; grill: aligned rows, same rule for all horizons, trend first in the sheet) · **Amends D-047, D-055**
+- **Evidence (audit at 390 px, 2026-09-27):** 12/24 h put the direction in the chip and the horizon in the text, 48 h the reverse; 24 h showed a direction even for the "no change" model while 48 h withheld it; horizons differed per view; status was a pill, coloured text or a headline; the sheet kept emojis and a duplicate "ทรงตัว" headline; two note boxes pushed the trend below the fold; CPY015 read "ใกล้ตลิ่ง" while 158 cm below its bank.
+- **Decision:**
+  1. **Aligned rows everywhere** (list: 24 h; panel: 24 + 48 h; sheet: 12 + 24 + 48 h): `ใน N ชม. · chip · signed range · ⓘ`.
+  2. **A direction only where a real model beat "no change" at that horizon** (method ≠ persistence, i.e. the backtest's own gate); otherwise a dashed grey "? ไม่แน่ชัด" with the range. The ⓘ colour shows medium vs low confidence. The `proven` flag of D-055 is no longer used by the UI.
+  3. **Canal factor compacted:** one gauge line (name, distance, status pill), its rows and one "when it drops" line; a relay-only nearest canal gets a single line and "คาดการณ์จากคลองใกล้เคียง:" introduces the gauge that carries the trend; the why/where details sit behind "รายละเอียด".
+  4. **Sheet order:** status → BMA margin line → freshness (+ source/datum in ⓘ) → trend block (rows, when it drops, peak, chance of reaching the bank) → street note → chart → notes → method → feedback; no emojis in the sheet text.
+  5. **Say what is measured:** bank-based watch/warning with the bank still > 30 cm away read "น้ำเต็มลำน้ำ N %" (share of channel depth), not "ใกล้ตลิ่ง".
+  6. Kicker "คาดการณ์ข้างหน้า" (rows carry their own horizons); user depth reports counted as "N ราย".

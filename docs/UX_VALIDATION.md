@@ -122,6 +122,16 @@ Persona: a resident of Lat Phrao / Chatuchak on a phone at night during the floo
 | 63 | Owner: nearest canal (relay-only BMA gauge) showed no trend; the summary block was not understood | Second line "คลองใกล้ที่มีคาดการณ์"; "when it may drop" on each line; plain one-sentence summary (v0.10.2, KI-232) |
 | 62 | Issue #4: drag signifier did nothing on mobile | Real grip; pull down from the top (sheet at scroll 0) closes, > 90 px; ✕ kept. Verified with CDP touch events: short pull snaps back, long pull closes, scrolled content and mid-sheet pulls never close |
 
+### Round 11 (2026-09-27 ~20:50–21:20 UTC): one trend format, compact canal factor, text read-through (v0.11.0, D-056)
+| # | Finding | Done |
+|---|---|---|
+| 64 | 24 h vs 48 h rows had different grammar and chip content | Aligned rows `ใน N ชม. · chip · range · ⓘ` in list, panel and sheet |
+| 65 | 24 h showed "→ ทรงตัว" from the "no change" model; 48 h withheld a direction | One rule: direction only where a real model won the backtest at that horizon, else "? ไม่แน่ชัด" |
+| 66 | Canal factor long (two gauges, far notes, counts) | One gauge + rows + drop line; details folded; label for a borrowed forecast |
+| 67 | Sheet: emojis, duplicate trend headline, notes above the trend | Trend block first; emojis removed; BMA margin line under the headline; source/datum in ⓘ |
+| 68 | "ใกล้ตลิ่ง" 158 cm below the bank (CPY015) | "น้ำเต็มลำน้ำ 91 %" |
+| 69 | Kicker "12–24 ชม." above 24/48 h rows; "ท่วมถึงเข่า … 2" | "คาดการณ์ข้างหน้า"; "2 ราย" |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

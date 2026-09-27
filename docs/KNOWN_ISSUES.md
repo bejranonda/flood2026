@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-233 | Trend formats differed by horizon and view; 24 h showed a direction from the "no change" model; "ใกล้ตลิ่ง" 158 cm below the bank | UX / Product | 🟢 fixed v0.11.0 (D-056) |
 | KI-232 | Nearest canal had no forecast (relay-only BMA gauge), so the panel showed no trend at all; summary wording not understood | UX / Product | 🟢 fixed v0.10.2 (D-054 amended) |
 | KI-229 | Canal factor said "ประเมินไม่ได้" at 83 % of Bangkok pins (8 km agreement rule) | UX / Product | 🟢 fixed v0.10.0 (D-054: 39 %) |
 | KI-230 | BMA gauges had no forecast (≈ 28 h of history) | Modelling | 🟢 v0.10.0: 1-year backfill from HII (D-054) |
@@ -530,3 +531,6 @@ All 199 BMA gauges had only our own relay history (from 2026-09-26 16:30 UTC), s
 
 ### KI-232 — No trend in the panel although nearby canals had one · 🟢 fixed v0.10.2
 Owner screenshot 13.764,100.679 (2026-09-27): the nearest canal WL.SMK.01 (0.3 km, overflowing) is one of the 37 BMA gauges HII does not serve (history since 26 Sep) → no forecast, so the canal factor showed no trend, while WL.SSB.08 at 1.9 km had one. The folded text ("ใกล้จุด 3 แห่ง … ทั้งรัศมี 8 กม. …") was not understood either. Now `/api/point` also returns `nearest_canal_trend`; the panel shows both lines, each with "when it may drop", and the summary is one plain sentence. Test: `test_nearest_canal_with_a_trend_is_given_when_the_nearest_has_none`.
+
+### KI-233 — Inconsistent trend formats and a misleading "near bank" · 🟢 fixed v0.11.0 (D-056)
+Owner, 2026-09-27: "Why do 24 h and 48 h have different formats?" and "the panel and station formats are confusing". Audit: the 48 h line put the horizon in the chip, the others in the text; 24 h chips showed "→ ทรงตัว" for gauges whose model is "no change" (a tautology, not a forecast) while 48 h withheld a direction; horizons, status styles and "when it drops" wording differed between list, panel and sheet. Separately, CPY015 read "เตือนภัย (ใกล้ตลิ่ง) · ต่ำกว่าตลิ่ง 158 ซม.": watch/warning for bank gauges come from the share of channel depth (91 % of an 18 m deep river), so the label now says "น้ำเต็มลำน้ำ 91 %" when the bank is > 30 cm away.

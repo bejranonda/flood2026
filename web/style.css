@@ -326,3 +326,13 @@ a { color: var(--accent); }
 .pf-more { font-size: 13px; color: var(--muted); margin-top: 2px; }
 .pf-more summary { cursor: pointer; color: var(--accent); }
 .pf-g > div { margin-top: 2px; }
+/* v0.11: one trend format everywhere — aligned rows: horizon · chip · signed range · ⓘ (D-056) */
+.tr-rows { display: grid; grid-template-columns: max-content max-content 1fr max-content; gap: 3px 8px; align-items: center;
+  font-size: 13px; color: #374151; margin: 3px 0; }
+.tr-h { color: var(--muted); white-space: nowrap; }
+.tr-r { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tr-rows .chg { justify-self: start; }
+.pf-gline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.pf-gline .badge { font-size: 12px; }
+.sheet-trend { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin: 6px 0 10px; }
+.item .tr-rows { margin: 4px 0 2px; }

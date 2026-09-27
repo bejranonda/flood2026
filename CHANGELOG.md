@@ -2,6 +2,17 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.11.0 — 2026-09-27
+- **One trend format everywhere (D-056, KI-233):** list, point panel and station sheet use the same aligned rows —
+  "ใน 24 ชม. · [→ ทรงตัว] · −7 ถึง +7 ซม. · ⓘ". A direction is shown only where a real model beat "no change" at that
+  horizon; otherwise "? ไม่แน่ชัด" with the likely range (same rule for 12, 24 and 48 h).
+- **Compact canal factor:** one gauge with its rows and one "when it drops" line; details behind "รายละเอียด"; a
+  borrowed forecast is labelled "คาดการณ์จากคลองใกล้เคียง".
+- **Station sheet:** the trend block comes first (rows, when it drops, peak time, chance of reaching the bank);
+  emojis and the duplicate trend headline removed; BMA source and datum moved into ⓘ.
+- **Words match numbers:** bank gauges in watch/warning while the bank is > 30 cm away now say "น้ำเต็มลำน้ำ 91 %"
+  instead of "ใกล้ตลิ่ง" (CPY015 was "near bank" 158 cm below it). Kicker "คาดการณ์ข้างหน้า"; depth reports "N ราย".
+
 ## v0.10.2 — 2026-09-27
 - **The canal factor always shows a trend when one exists** (owner: "users cannot see the trend … show both"): when the
   nearest canal has no forecast (37 BMA gauges HII does not serve, history since 26 Sep), the panel adds **the nearest
