@@ -20,6 +20,7 @@
 | Issues #4, #5 | Pull-down-to-close on mobile (✕ kept; tested with CDP touch events); one heading style and one factor structure. Replied and closed | UX round 10 |
 | Found on the live site | "→ ทรงตัว … เพิ่มขึ้น 1–22 ซม." contradiction (steady chip, one-sided range) → neutral wording → **v0.10.1** | `changeRange` |
 | Also | Public IPs removed from maintained docs (D-028); `trailing_mean` vectorised; dates in this session's docs are UTC (27 Sep) | — |
+| My slip, caught after deploy | The bulk date correction (28 → 27 Sep) also rewrote two **test fixtures**; one test failed in the v0.10.1 image, and I missed it because the test output line printed empty. App code was unaffected; fixtures restored, 81 passing, image rebuilt. Lesson: never bulk-replace inside tests; always read the pytest summary line | `tests/test_parsing.py` |
 
 ## 2q. Session 2026-09-27 19:15–19:50 UTC: BMA canal telemetry historical access via HII TIWRM (v0.9.0, D-053)
 | Owner request / event | Result | Where |

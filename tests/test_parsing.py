@@ -120,7 +120,7 @@ FEWS_TXT = """station,date,time,value
 CPY014,2026-09-27,16:00:00,2.21
 CPY014,2026-09-27,17:00:00,2.22
 CPY014,2026-09-27,18:00:00,2.40
-CPY014,2026-09-27,17:00:00,2.14
+CPY014,2026-09-28,17:00:00,2.14
 CPY014,2026-09-29,17:00:00,999999
 CPY014,2026-09-30,17:00:00,
 """
@@ -131,13 +131,13 @@ def test_fews_forecast_keeps_only_rows_from_issue_time_in_utc():
     rows = parsing.parse_fews_forecast(FEWS_TXT, issue)
     # 16:00 and 17:00 ICT are before 17:05 ICT (hindcast/observed part) -> dropped; sentinel and blank dropped
     assert [(r["valid_time"].isoformat(), r["value"]) for r in rows] == [
-        ("2026-09-27T11:00:00+00:00", 2.40), ("2026-09-27T10:00:00+00:00", 2.14)]
+        ("2026-09-27T11:00:00+00:00", 2.40), ("2026-09-28T10:00:00+00:00", 2.14)]
     assert parsing.parse_fews_forecast("", issue) == []
 
 
 def test_fews_forecast_keeps_large_discharges_but_drops_the_999999_sentinel():
     # C.13 below the Chao Phraya Dam runs ~1,200-2,700 m3/s; the level sentinel cut-off (1000) dropped all of them.
-    txt = "station,date,time,value\r\nC13,2026-09-27,18:00:00,1950.06\r\nC13,2026-09-27,19:00:00,999999\r\n"
+    txt = "station,date,time,value\r\nC13,2026-09-28,18:00:00,1950.06\r\nC13,2026-09-28,19:00:00,999999\r\n"
     rows = parsing.parse_fews_forecast(txt, dt.datetime(2026, 9, 27, 10, 5, tzinfo=dt.timezone.utc))
     assert [r["value"] for r in rows] == [1950.06]
 
