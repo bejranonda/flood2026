@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import logging
 import math
 import os
 import re
@@ -19,6 +20,23 @@ from pydantic import BaseModel, Field
 from floodwatch import __version__, ai, db, geocode, point
 from floodwatch.config import DATUM_SUSPECT, RAIN_POINTS
 from floodwatch.forecast import change_summary, classify_status
+
+PRIVATE_QUERY_PATHS = ("/api/geocode", "/api/point", "/api/reverse", "/api/near")
+
+
+class RedactQuery(logging.Filter):
+    """Access logs must not keep what people search for or where they are (D-032): drop the query string of these
+    endpoints from uvicorn's access record (args = client, method, path, http version, status)."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str) and "?" in args[2]:
+            path = args[2].split("?", 1)[0]
+            if path in PRIVATE_QUERY_PATHS:
+                record.args = (*args[:2], path + "?…", *args[3:])
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(RedactQuery())
 
 app = FastAPI(title="BKK FloodWatch API", version=__version__, docs_url="/api/docs", openapi_url="/api/openapi.json")
 WEB_DIR = Path(os.environ.get("WEB_DIR", Path(__file__).resolve().parents[3] / "web"))
@@ -56,7 +74,9 @@ SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.c
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
        f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time,
        (f.payload->>'level_now')::float AS fc_now, f.payload->'path'->11->'q' AS q12, f.payload->'path'->23->'q' AS q24,
-       f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'outlook24' AS outlook24,
+       f.payload->'path'->47->'q' AS q48,
+       f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'skill'->'48' AS sk48,
+       f.payload->'outlook24' AS outlook24,
        p.prev_time, p.prev_level
 FROM station s
 LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM observation
@@ -108,10 +128,14 @@ def _change_fields(r: dict, status: str) -> dict:
     """Rise/fall, how much and how sure at +12 h and +24 h, from the stored forecast (D-047). Nothing for a gauge
     whose data are too old to judge; a peak window only where a tide model makes the path vary (outlook24)."""
     if status == "unknown" or r.get("fc_now") is None:
-        return {"change12": None, "change24": None, "peak_h": None}
+        return {"change12": None, "change24": None, "change48": None, "peak_h": None}
     o = r.get("outlook24") or {}
+    c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
     return {"change12": change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
             "change24": change_summary(r.get("q24"), r["fc_now"], r.get("sk24")),
+            # 48 h only where the 45-day backtest passes (7 of 102 gauges on 2026-09-27); elsewhere its range is
+            # wider than the distance to the bank, so we say nothing rather than "stable" (D-050)
+            "change48": c48 if c48 and c48["confidence"] == "medium" else None,
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 
@@ -122,7 +146,7 @@ def _station_row(r: dict) -> dict:
     notes = []
     if r["code"] in DATUM_SUSPECT:  # values not m MSL (KI-210): hide the level, keep the station
         notes.append("datum_suspect")
-        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None)
+        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None)
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])
     basis, over_crit = "bank", None
     if r.get("agency") == "BMA":
@@ -456,6 +480,18 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
 
 GEOCODE_PER_HOUR = 30
 _geo_hits: dict[str, list[float]] = {}  # per process, in memory: client hash -> recent call times (never the query)
+
+
+@app.get("/api/reverse")
+def reverse_geocode(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge=97, le=106)):
+    """Subdistrict, district, province for the point panel (issue #3). The page shows the panel first and fills this
+    in when it arrives, so a slow or failed lookup never delays the answer; failures return area=null."""
+    try:
+        with db.connect() as c:
+            area = geocode.reverse(lat, lon, c)
+    except Exception:
+        area = None
+    return _json({"area": area}, cache=True)
 
 
 @app.get("/api/geocode")

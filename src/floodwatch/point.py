@@ -187,6 +187,12 @@ def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: l
     out = _outlook(area, stations_forecast, stations_nearby, rain_24h_mm, reports_1km)
     usable = area.get("confidence") in ("low", "medium")
     out["gauges"] = [s["code"] for s in stations_forecast if s.get("change12")] if usable else []
+    # When the area gate gives no canal statement, the panel may still show the trend at the nearest *canal* gauge,
+    # named with its distance (D-048). Never a river gauge (its tide swing is not canal drainage, KI-223) and never
+    # beyond NEAR_KM, where a gauge says little about the pin (D-042 distance analysis).
+    canal = next((s for s in stations_forecast if s.get("water_body") == "khlong" and s.get("change12")
+                  and s.get("distance_km", 99) <= NEAR_KM), None)
+    out["nearest_canal"] = None if out["gauges"] or canal is None else canal["code"]
     return out
 
 

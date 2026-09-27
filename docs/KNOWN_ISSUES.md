@@ -17,6 +17,7 @@
 | KI-108 | Large, slow HII payloads | Data access | 🟡 |
 | KI-109 | Key stations missing from HII (C.29A, Memorial Bridge, Fort Chula) | Data access | 🔴 (Fort Chula tide *predictions* found in HII FEWS, 2026-09-27) |
 | KI-110 | DWR EWS and RID Telerid answer only from a Thai IP; DWR status `9` on a third of stations; Buddhist-year dates | Data access | 🟡 (Thai egress; not collected yet) |
+| KI-112 | HII FEWS forecast files: overwritten each issue; pre-issue part equals observations; C.13 held constant; discharge > 1000 dropped by a sentinel rule | Data quality | 🟡 archived + scored (D-050); sentinel fixed |
 | KI-111 | HII national feeds mix fresh and long-dead rows (gates 12/2,315 fresh; 1970 placeholders) | Data quality | 🟡 (freshness filter required) |
 | KI-207 | Chart-only stations: missing from the main feed, HTTP 500, no coordinates or bank | Data access | 🟡 |
 | KI-201 | Datum mixing (MSL / LLW / gauge zero / EGM2008); LLW offsets unknown | Data quality | 🔴 |
@@ -39,6 +40,8 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-227 | "Nearest canal" fallback showed a river gauge (CPY015, tide) at very low confidence | UX / Product | 🟢 fixed v0.7.0 (D-051) |
+| KI-228 | Tapping ⓘ inside a list item opened the station instead of the tip | UI | 🟢 fixed v0.7.0 |
 | KI-225 | Literal delta interval "ลด 11 ถึงเพิ่ม 17 ซม." and "มั่นใจต่ำ" caused citizen confusion | UX / Product | 🟢 fixed v0.6.4 (D-048) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
@@ -64,6 +67,7 @@
 | KI-508 | AI triage provider (GLM / Workers AI) | Infrastructure | 🟢 (GLM live verified, D-030) |
 | KI-509 | A GloFAS point query can hit a side cell (Nong Khai 3 vs ~9,000 m³/s) | Data quality | 🟡 (snap rule, APPROACH §19.5) |
 | KI-510 | GISTDA answered 404 (outdated path, key sent as a query parameter) while `owner_status.py` showed ✅ | Infrastructure | 🟢 fixed 2026-09-27 (documented API; real check in the script) |
+| KI-512 | Access logs kept place-search text and point coordinates (D-032 breach) | Privacy | 🟢 fixed v0.7.0 (redaction filter) |
 | KI-511 | No database backup at all; disk 84 % full (12 GB free, shared host) | Infrastructure | 🔴 |
 
 ---
@@ -486,3 +490,19 @@ Conformal prediction intervals crossing zero were printed literally as "น่�
   3. The closest forecast canal station is displayed in the point check banner with distance attribution even when surrounding area confidence is low/none.
   4. Redundant urgent alert banner suppressed when forecast banner is active in high-risk alert mode.
 
+
+### KI-112 — HII's official forecast files need care · 🟡 archived and scored (D-050)
+Found 2026-09-27 (`fews2.hii.or.th/model-output/data_portal/{hii_waterlevel,rid_discharge}/forecast/{CODE}.txt`).
+- **Overwritten on every issue:** no history is kept by HII, so skill can only be measured from our own archive (`external_forecast`, collector `hii_fews_forecast`).
+- **The first ~6 days of each file are not a forecast:** they match our observations to 1–3 cm (assimilated/observed). Only rows after `Last-Modified` are stored.
+- **C.13 dam discharge is held constant** (1,950 m³/s for 7 days on 2026-09-27): downstream forecasts assume the release stays as it is. Say so when showing them.
+- **Sentinel bug (fixed before release):** the level rule "≥ 1000 = missing" dropped every discharge row (Chao Phraya ~1,200–2,700 m³/s). The FEWS parser now drops only ≥ 99,999 (the 999999 code).
+
+### KI-227 — "Nearest canal" showed a river gauge · 🟢 fixed v0.7.0
+v0.6.4 (D-048) showed `stations_forecast[0]` as "คลองใกล้เคียงที่สุด" when the area gate withheld a canal statement. At 13.70,100.50 that was CPY015 on the Chao Phraya, whose "ลดลงมาก" is the tide going out — the KI-223 error again. Now `point.py` picks the nearest **canal** gauge within 3 km with a forecast (`forecast.nearest_canal`), or nothing; covered by a test.
+
+### KI-228 — ⓘ in a list item opened the station · 🟢 fixed v0.7.0
+The document-level click handler ran after the list item's own handler, so `stopPropagation()` came too late. The handler now runs in the capture phase. Verified by driving headless Chrome over CDP (title unchanged, tip shown).
+
+### KI-512 — Access logs kept search text and coordinates · 🟢 fixed v0.7.0
+D-032 says place-search queries are never logged. Uvicorn's access log nevertheless recorded the full URL: on 2026-09-27, 124 `/api/geocode?q=…` queries and 1,236 `/api/point?lat=…&lon=…` positions in 24 h (container logs on this server only, never published). `api.RedactQuery` now strips the query string of `/api/geocode`, `/api/point`, `/api/reverse`, `/api/near` (test in `test_api.py`). Recreating the container on deploy discards the old logs.

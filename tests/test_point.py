@@ -188,3 +188,21 @@ def test_info_outlook_says_disagree_not_far_when_a_gauge_is_close():
     out = point.assess(13.70, 100.50, st, 0, {}, 24.0)
     assert out["area"]["confidence"] == "very_low" and out["area"]["nearest_km"] <= point.NEAR_KM
     assert "ไม่ตรงกัน" in out["forecast"]["title"] and "ใกล้พอ" not in out["forecast"]["title"]
+
+
+def test_nearest_canal_is_a_khlong_within_3_km_never_a_river_gauge():
+    # 13.70,100.50 on 2026-09-27: CPY015 (Chao Phraya, tide) 0.8 km was shown as "คลองใกล้เคียงที่สุด" (review bug).
+    ch = {"dir": "falling", "level": "strong_fall", "median": -0.5, "likely": [-0.7, -0.33], "confidence": "medium"}
+    river = {"code": "CPY015", "lat": 13.7005, "lon": 100.5075, "status": "watch", "stale": False,
+             "river": "แม่น้ำเจ้าพระยา", "trend12": "falling", "delta12_median": -0.5, "change12": ch}
+    far_canal = {"code": "K9", "lat": 13.74, "lon": 100.50, "status": "normal", "stale": False, "river": "คลองดาวคะนอง",
+                 "trend12": "steady", "delta12_median": 0.0, "change12": {**ch, "dir": "steady", "level": "steady"}}
+    out = point.assess(13.70, 100.50, [river, far_canal], 0, {}, 5.0)
+    assert out["forecast"]["nearest_canal"] is None  # river gauge excluded; the canal is 4.4 km away (> 3 km)
+    # Close gauges that agree: the area statement lists them itself, so no separate "nearest canal" line.
+    near_canal = {**far_canal, "code": "K1", "lat": 13.71}
+    out = point.assess(13.70, 100.50, [river, near_canal], 0, {}, 5.0)
+    assert out["forecast"]["gauges"] and out["forecast"]["nearest_canal"] is None
+    # Close gauges that disagree (river normal, canal overflowing): gate closed -> fall back to the nearest canal.
+    out = point.assess(13.70, 100.50, [{**river, "status": "normal"}, {**near_canal, "status": "critical"}], 0, {}, 5.0)
+    assert out["forecast"]["gauges"] == [] and out["forecast"]["nearest_canal"] == "K1"

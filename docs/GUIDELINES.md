@@ -146,7 +146,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 9. **Compact statistics only:** status counts (tap to filter), rising/falling counts, 24 h rain, and data freshness. Anything more goes to `/api/health`.
 10. **No invented surfaces:** never interpolate water levels across land, walls or polders (D-019). Don't draw lines across data gaps > 90 min. A reading older than 24 h shows status "unknown".
 11. **"Nearest gauge" isn't "your home":** say so wherever distance-based results appear (Bangkok isn't flat; walls split areas).
-12. **Point check (D-021):** show a category with its range and confidence, never a level or depth at the pin. The four warnings are always visible. No verdict at very low confidence. Put citizen reports next to the gauges.
+12. **Point check (D-021, D-051):** show a category with its range and confidence, never a level or depth at the pin. The caveats (gauge ≠ street/home, walls and polders, distance) sit behind the panel's ⓘ since v0.7.0 (owner decision, D-051) — so the visible wording itself must never imply a level at the pin, and the canal factor says "ประเมินไม่ได้" (grey) when gauges are far or disagree. No verdict at very low confidence. Put citizen reports next to the gauges.
 13. **Charts need a rough time axis:** day markers with short Thai dates (owner feedback 2026-09-26); no fine ticks.
 14. **Filter values, never stations (D-024):** keep every station visible and hide only the misleading value (wrong datum, implausible, stale), always with a note saying why. Approximate positions are dashed and give their radius.
 15. **Version on screen (D-025):** the header badge and footer show the deployed version from the API.
@@ -159,6 +159,9 @@ People using the app may be stressed, on the move, or protecting their home. Be 
     - Confidence indicator: Single color-coded `ⓘ` button (sky-blue for tide-calibrated models, slate-gray for baseline persistence) with desktop hover tooltip and touch-triggered non-blocking toast on mobile.
     - Technical surveying datum (`ม.รทก.`): Prioritize observation freshness on the main line; tuck raw surveying elevation into an interactive `[ม.รทก. ⓘ]` button.
     - Textual chart legends: Make collapsible (`<details class="chart-legend">`) to preserve vertical mobile viewport height.
+
+22. **Horizons only where proven (D-050):** a 12/24 h change is shown per gauge; a 48 h line only where the 48 h backtest gives "medium" confidence. When a high gauge shows no fall in 24 h, say "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า" — never "stable for 48 h". Outside forecasts (HII) are shown only after our scoring shows they beat "no change" and ours, labelled with their assumptions.
+23. **Logs are data too (D-032, KI-512):** access logs must not contain search text or coordinates; `RedactQuery` strips the query string of `/api/geocode`, `/api/point`, `/api/reverse`, `/api/near`. Any new endpoint that takes a place or a position is added to `PRIVATE_QUERY_PATHS`.
 
 ---
 

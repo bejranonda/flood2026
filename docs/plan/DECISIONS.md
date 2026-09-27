@@ -400,3 +400,22 @@
   4. **Compact forecast banner:** Moved forecast basis to a header button `อ้างอิงข้อมูล ⓘ`, and integrated canal disclaimer into a label tooltip `ⓘ`.
   5. **Footer methodology legend:** Added the confidence color key directly to the "ที่มาข้อมูลและวิธีคาดการณ์" popup.
 
+
+### D-050 — 48-hour forecasts only where proven; archive and score HII's official forecast; next model = network STAR + rain
+- **Date:** 2026-09-27 · **Status:** accepted (owner grill: "12+24 h, 48 h only if skilled"; "no sign of falling yet"; "prove the forecast from HII"; "research how to improve 48 h"; "should the model include forecast rain?"; "review STAR / SSN / k-NN / GTWR / ST-GNN")
+- **Evidence:** [research/2026-09-27_forecast_48h.md](../../research/2026-09-27_forecast_48h.md). Production backtest: only 7 of 102 gauges beat "no change" by ≥ 30 % at 48 h (all tidal river/estuary); median 90 % band 80 cm at 48 h. HII publishes an official hourly 7-day forecast for CPY011, CPY014, PAS008 and RID discharges (C.13 flat at 1,950 m³/s = constant-release assumption). Experiments: upstream + dam release cut Ayutthaya's 48 h error 26.8 → 18.6 cm; forecast rain (issued 1–2 days early) cut Lat Phrao canal 42.9 → 36.5 cm and Samsen 22.3 → 18.1 cm; network neighbours beat proximity neighbours and k-NN analogues everywhere.
+- **Decision:**
+  1. **Horizons:** 12 h and 24 h as now; a **48 h line only at gauges whose 48 h backtest gives "medium" confidence** (`change48` in the API).
+  2. **No-fall wording:** at watch/warning/critical gauges whose 24 h forecast is not falling, say "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า". Never "stable for 48 h".
+  3. **HII forecast:** collector `hii_fews_forecast` archives every issue (table `external_forecast`); `scripts/score_hii_forecast.py` compares HII, "no change" and ours on the same issue times. **Not shown** until it beats both at a station and lead; then labelled as HII's, with the dam-release assumption.
+  4. **Next model (not built yet):** per-gauge network space-time AR (own tide/trend + upstream gauges + C.13 release) **plus archived rain forecasts**, behind the existing skill gate, validated on ≥ 3 windows with rolling origin and event scores. SSN only for along-river values later; k-NN and GTWR (as recency weighting) revisited with more history; ST-GNN not now.
+
+### D-051 — One point panel (issue #3) and a report button (issue #2); all caveats behind one ⓘ
+- **Date:** 2026-09-27 · **Status:** accepted (owner: "keep the information from the current version"; "everything into ⓘ"; "dots follow the confidence gate"; "reverse geocode if it doesn't slow the click"; "button → popup sheet")
+- **Decision:**
+  1. The point sheet shows one panel: kicker "แนวโน้ม 12–24 ชม. ข้างหน้า" + ⓘ, a large headline, then "ปัจจัยที่ใช้คาดการณ์" — canal, rain, street reports — each with a **coloured dot and a word**. The separate street banner, overview card and disclaimer box are merged in; decorative emojis removed.
+  2. **Canal dot follows the gate (D-042):** grey "ประเมินไม่ได้" when gauges are far or disagree (never red from one overflowing gauge among calm ones); otherwise the area category colour. Rain = TMD colour; street = red ≥ 3 reports/1 km/6 h, amber 1–2, grey 0.
+  3. **Caveats behind ⓘ (amends D-021 / GUIDELINES §6.12):** sources, "gauge ≠ your street/home", walls and polders, distance notes live in the ⓘ box of the panel. The panel wording itself never states a level at the pin, and the canal factor says "ประเมินไม่ได้" when it cannot judge.
+  4. **Nearest canal (fixes the D-048 fallback):** only a *canal* gauge within 3 km, chosen server-side (`forecast.nearest_canal`), never a river gauge.
+  5. **District line** under the coordinates from `/api/reverse` (Nominatim via our server, rounded to ~1 km, cached, never logged); filled in after the panel renders, so it never delays the answer.
+  6. **Report form** opens from one full-width button in a popup. Baseline before the change: 57 reports in 24 h (56 with a depth); compare after release.

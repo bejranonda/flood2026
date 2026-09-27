@@ -94,6 +94,18 @@ CREATE TABLE IF NOT EXISTS source_health (
     last_data_time       timestamptz
 );
 
+-- Forecasts issued by others, archived as issued so their skill can be measured (HII FEWS files are overwritten
+-- daily, D-050). Never mixed with our forecast_run; value in the source's unit (m MSL or m3/s).
+CREATE TABLE IF NOT EXISTS external_forecast (
+    source      text NOT NULL,
+    code        text NOT NULL,                 -- our station code (C.13, CPY014)
+    issue_time  timestamptz NOT NULL,          -- the file's Last-Modified
+    valid_time  timestamptz NOT NULL,
+    value       double precision NOT NULL,
+    unit        text NOT NULL,
+    PRIMARY KEY (source, code, issue_time, valid_time)
+);
+
 -- Small key/value store for collector bookkeeping (e.g. which stations were backfilled).
 CREATE TABLE IF NOT EXISTS collector_state (
     key         text PRIMARY KEY,

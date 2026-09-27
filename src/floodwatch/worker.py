@@ -23,6 +23,7 @@ TASKS = [
     ("hii_history", 6 * 3600),
     ("hii_backfill", 600),  # a few stations per run until the 1-year backfill is complete (D-018)
     ("bma_dds", 3 * 3600),
+    ("hii_fews_forecast", 3 * 3600),  # HII official forecast files, new issue ~daily (D-050)
     ("forecast", 1800),
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),

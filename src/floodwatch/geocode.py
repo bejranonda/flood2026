@@ -103,3 +103,49 @@ def search(q: str, conn) -> list[dict]:
         while len(_cache) > CACHE_MAX:
             _cache.popitem(last=False)
     return results
+
+
+# --- Reverse lookup for the point panel's district line (issue #3). Same rules as search: our server calls
+# Nominatim at most 1/s, coordinates are rounded to ~1 km before the call and cached, nothing is logged or stored.
+REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
+PREFIXES = ("แขวง", "เขต", "ตำบล", "อำเภอ", "จังหวัด")
+_rcache: OrderedDict[tuple[float, float], tuple[float, str | None]] = OrderedDict()
+
+
+def reverse_key(lat: float, lon: float) -> tuple[float, float]:
+    return (round(lat, 2), round(lon, 2))  # ~1.1 km cells: enough for แขวง/เขต, and never the exact position
+
+
+def reverse_label(addr: dict) -> str | None:
+    """"คลองจั่น, บางกะปิ, กรุงเทพมหานคร": subdistrict, district, province without the administrative prefixes."""
+    parts = []
+    for keys in (("quarter", "village", "town", "municipality", "suburb_sub"), ("suburb", "county", "city_district"),
+                 ("city", "province", "state")):
+        v = next((addr[k] for k in keys if addr.get(k)), None)
+        if v:
+            for p in PREFIXES:
+                if v.startswith(p) and len(v) > len(p):
+                    v = v[len(p):]
+                    break
+            parts.append(v.strip())
+    return ", ".join(parts) or None
+
+
+def reverse(lat: float, lon: float, conn) -> str | None:
+    key = reverse_key(lat, lon)
+    with _lock:
+        hit = _rcache.get(key)
+        if hit and time.time() - hit[0] < CACHE_TTL_S:
+            return hit[1]
+    _throttle(conn)
+    r = requests.get(REVERSE_URL, params={"lat": key[0], "lon": key[1], "format": "jsonv2", "zoom": 14,
+                                          "addressdetails": 1, "accept-language": "th"},
+                     headers={"User-Agent": settings.user_agent}, timeout=4)
+    conn.commit()
+    r.raise_for_status()
+    label = reverse_label((r.json() or {}).get("address") or {})
+    with _lock:
+        _rcache[key] = (time.time(), label)
+        while len(_rcache) > CACHE_MAX:
+            _rcache.popitem(last=False)
+    return label

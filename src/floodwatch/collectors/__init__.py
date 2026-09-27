@@ -290,6 +290,41 @@ def bma_klong() -> dt.datetime | None:
     return max((o["obs_time"] for o in obs), default=None)
 
 
+FEWS = "https://fews2.hii.or.th/model-output/data_portal"
+# HII's official forecasts for our area (D-050): (FEWS folder, FEWS code, our code, unit). Collected and scored,
+# not shown until they beat "no change" and our own model on the archived record.
+FEWS_FORECASTS = [("hii_waterlevel", "CPY011", "CPY011", "m"), ("hii_waterlevel", "CPY014", "CPY014", "m"),
+                  ("hii_waterlevel", "PAS008", "PAS008", "m"), ("rid_discharge", "C13", "C.13", "m3/s"),
+                  ("rid_discharge", "C2", "C.2", "m3/s"), ("rid_discharge", "C3", "C.3", "m3/s"),
+                  ("rid_discharge", "C7A", "C.7A", "m3/s"), ("rid_discharge", "C35", "C.35", "m3/s")]
+
+
+def hii_fews_forecast() -> dt.datetime | None:
+    """Archive each new issue of HII's official forecast files (one per station, overwritten daily)."""
+    from email.utils import parsedate_to_datetime
+    newest = None
+    with db.connect() as c:
+        for folder, fcode, code, unit in FEWS_FORECASTS:
+            url = f"{FEWS}/{folder}/forecast/{fcode}.txt"
+            r = fetch(url, retries=2)
+            if r.status != 200 or not r.last_modified:
+                log.warning("fews forecast %s: HTTP %s", fcode, r.status)
+                continue
+            issue = parsedate_to_datetime(r.last_modified).astimezone(dt.timezone.utc)
+            if c.execute("SELECT 1 FROM external_forecast WHERE source='hii_fews' AND code=%s AND issue_time=%s LIMIT 1",
+                         (code, issue)).fetchone():
+                continue  # this issue is already archived
+            archive.store("hii_fews_forecast", url, r.status, r.body, ext="txt")
+            rows = parsing.parse_fews_forecast(r.body.decode("utf-8", "replace"), issue)
+            with c.cursor() as cur:
+                cur.executemany("""INSERT INTO external_forecast (source, code, issue_time, valid_time, value, unit)
+                                   VALUES ('hii_fews', %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING""",
+                                [(code, issue, x["valid_time"], x["value"], unit) for x in rows])
+            c.commit()
+            newest = max(filter(None, [newest, issue]))
+    return newest
+
+
 def bma_dds() -> dt.datetime | None:
     """BMA blocks non-Thai IPs (KI-101). Only runs through a configured Thai egress (D-014).
     Archives the raw page so a parser can be written once the real format is visible."""
@@ -304,4 +339,5 @@ def bma_dds() -> dt.datetime | None:
 
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
-                  "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds}[source])
+                  "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
+                  "hii_fews_forecast": hii_fews_forecast}[source])

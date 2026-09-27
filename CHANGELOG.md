@@ -2,6 +2,28 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.7.0 — 2026-09-27
+- **Point panel redesigned (issue #3, D-051):** one panel instead of three boxes — "แนวโน้ม 12–24 ชม. ข้างหน้า" with a
+  single ⓘ for sources and caveats (owner: "everything into ⓘ"), a larger headline, and "ปัจจัยที่ใช้คาดการณ์": canal,
+  rain and street reports, each with a coloured dot **and** a word. The canal dot follows the confidence gate (grey
+  "ประเมินไม่ได้" when gauges are far or disagree, never red from one overflowing gauge). District line under the
+  coordinates (`/api/reverse`, e.g. "คลองจั่น, บางกะปิ, กรุงเทพมหานคร"), filled in after the panel shows.
+- **Report form behind a button (issue #2):** "รายงานน้ำที่จุดของคุณ" opens the form in a popup. Baseline for
+  comparison: 57 reports in the 24 h before release.
+- **48-hour line only where proven (D-050):** station sheets show +48 h only at gauges whose 48 h backtest is "medium"
+  (7 of 102 today, tidal river/estuary). High gauges with no forecast fall say "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า".
+- **HII's official 7-day forecast archived, not shown yet (D-050, KI-112):** new collector `hii_fews_forecast` (every
+  3 h; CPY011, CPY014, PAS008, C.13, C.2, C.3, C.7A, C.35) → table `external_forecast`; `scripts/score_hii_forecast.py`
+  compares HII, "no change" and ours on the same issue times.
+- **Research (research/2026-09-27_forecast_48h.md):** measured what limits 48 h forecasts and what fixes it — upstream
+  flow and dam release (Ayutthaya 48 h error 26.8 → 18.6 cm), forecast rain (canal 42.9 → 36.5 cm), network vs
+  proximity space-time AR, k-NN analogues; SSN/GTWR/ST-GNN assessed and kept for the national phase.
+- **Fixed:** "nearest canal" could be a river gauge (KI-227); tapping ⓘ in a list opened the station (KI-228); access
+  logs kept place-search text and point coordinates, against D-032 (KI-512); rain words "ไม่มีฝน"/"ฝนเล็กน้อย" below
+  4.5:1 contrast.
+- Tests: 67 passing (+6). Checked at 390 px at three probe points; popup, ⓘ toggle and list-ⓘ verified by driving
+  headless Chrome.
+
 ## v0.6.5 — 2026-09-27
 - **Compact UI: single ⓘ confidence indicator, collapsible legends, and datum tooltips (D-049, owner feedback):**
   - **Single ⓘ confidence symbol:** Replaced multi-dot meter with a single circular `ⓘ` button (sky-blue `.conf-medium` for tide-validated models, slate-gray `.conf-low` for baseline statistical models). Eliminates mobile line wrap. Includes desktop hover tooltips and touch-triggered non-blocking toast notifications (`showToast`).

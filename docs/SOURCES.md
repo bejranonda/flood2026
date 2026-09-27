@@ -108,6 +108,18 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | GISTDA flood extent (key) | `GET https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/{1day,3days,7days,30days}` and `/features/flood-freq`, header `API-Key`, params `limit`/`offset`/`bbox` (docs: `disaster.gistda.or.th/services/open-api`) | 200. National flooded H3 cells (~0.12 km²): 3 d 38,461 · 7 d 49,761 · 30 d 52,778, with area, exposure and source passes (Sentinel-1, Radarsat-2, COSMO-SkyMed); 1 d empty (no pass); **Bangkok 0 in 7 d** (radar misses urban water) | ✅ satellite extent nationally; never "no flood" in cities (KI-510) |
 | thaiwater.net pages (`/water/wl`, `/water`, `/water/gate`) | — | JS single-page app over the `api-v3` endpoints above | ✅ use the API, not the page |
 
+### 2e. Forecast and ONWR sources (probed 2026-09-27 16:45–17:15 UTC, honest UA; D-050)
+| Source | Endpoint | Found | Verdict |
+|---|---|---|---|
+| **HII official forecast** | `GET https://fews2.hii.or.th/model-output/data_portal/hii_waterlevel/forecast/{CODE}.txt`, `…/rid_discharge/forecast/{CODE}.txt` (codes as in `metadata/*.csv`: CPY011, C13) | 200, keyless, from Germany; hourly `station,date,time,value`, Thai time, ~6 days before + 7 days after the issue; `Last-Modified` = issue time; overwritten each issue; C.13 release held constant | ✅ **archived** (`hii_fews_forecast` → `external_forecast`), not shown until scored (KI-112) |
+| HII FEWS observed discharge | `…/rid_discharge/observe/{CODE}.txt` | referenced by the ONWR app; not needed (C.13 discharge arrives via `waterlevel_load`) | ⚠️ not used |
+| ONWR National Thai Water | `https://nationalthaiwater.onwr.go.th/waterlevel`, `/dam` | React app over the same `api-v3.thaiwater.net/api/v1/thaiwater30` endpoints we already use (`waterlevel_load`, `analyst/dam`) | ✅ nothing new; use the API directly |
+| ONWR public API | `https://ntw-admin.onwr.go.th/api/v1/public/disaster`, `/reportwater/events`, `/reportwater/events/option` | Timeout from Germany; 200 via the Thai egress. `disaster` empty on 2026-09-27; `reportwater/events`: 8 official event reports in 2026 (North/Northeast, none in Bangkok) | 🟡 low value for Bangkok; keep for the national phase |
+| HII token API in the ONWR bundle | `api.hii.or.th/v2/<token>/isohyet/...` | token hard-coded in a public web bundle | ⛔ never use copied tokens |
+| Open-Meteo historical forecast | `https://historical-forecast-api.open-meteo.com/v1/forecast?...&hourly=precipitation` | 200, keyless; a year of hourly rain at any point (stitched early forecast hours) | ✅ training data (upper-bound tests) |
+| Open-Meteo previous runs | `https://previous-runs-api.open-meteo.com/v1/forecast?...&hourly=precipitation_previous_day1,precipitation_previous_day2` | 200, keyless; forecasts issued 1–2 days earlier, a year back | ✅ **honest** training data for a rain-aware model (D-050) |
+| Nominatim reverse | `https://nominatim.openstreetmap.org/reverse?lat&lon&format=jsonv2&zoom=14&accept-language=th` | 0.15–0.23 s; แขวง/เขต in Bangkok, อำเภอ/จังหวัด elsewhere | ✅ district line (D-051), ≤ 1 req/s shared with search, rounded ~1 km, never logged |
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |

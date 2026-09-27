@@ -100,3 +100,13 @@ def test_change_summary_levels_and_hidden_wide_bands():
     assert wide["wide"] is True and wide["likely"] is None
     assert forecast.change_summary(None, 1.0, sk) is None
     assert forecast.change_summary([1, 1, 1, 1, 1], None, sk) is None
+
+
+def test_score_external_compares_with_persistence_at_each_lead():
+    # pairs: (lead_h, forecast, observed_at_valid, observed_at_issue)
+    pairs = [(24, 2.10, 2.14, 2.50), (24, 2.30, 2.20, 2.20), (48, 2.0, 2.3, 2.25)]
+    out = forecast.score_external(pairs)
+    assert out[24]["n"] == 2 and abs(out[24]["mae"] - 0.07) < 1e-9 and abs(out[24]["mae_persistence"] - 0.18) < 1e-9
+    assert abs(out[24]["skill"] - (1 - 0.07 / 0.18)) < 1e-9
+    assert out[48]["skill"] < 0  # worse than "no change" at 48 h
+    assert forecast.score_external([]) == {}

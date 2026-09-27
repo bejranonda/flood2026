@@ -1,10 +1,10 @@
 # `web/` — Thai, mobile-first web app
 
-> **Status:** Production live at https://flood.autobahn.bot (**v0.6.2**). Built with vanilla HTML5, CSS3, and JavaScript, served directly by FastAPI and Cloudflare Tunnel for high performance on mobile devices.
+> **Status:** Production live at https://flood.autobahn.bot (**v0.7.0**). Built with vanilla HTML5, CSS3, and JavaScript, served directly by FastAPI and Cloudflare Tunnel for high performance on mobile devices.
 
 ## Features
 - **Mobile-first Thai interface**: Summary statistics, status chips, Bangkok first, Leaflet interactive map with custom telemetry markers, bottom-sheet station details with 24 h outlook, trend arrows, recovery date predictions, and BMA drainage criteria.
-- **Categorized point check (`#p=lat,lon`, D-040)**: Tap anywhere on the map or use GPS. Disclaimers collapsed into expandable `<details>`, dynamic street-flooding alerts shown prominently, stations split into 📈 Predictable (12–72h ML forecast) and 📍 Nearest active canal/river gauges, stale gauges filtered out.
+- **Point check (`#p=lat,lon`, D-021, D-051)**: tap anywhere on the map or use GPS. One panel: 12–24 h outlook headline, "ปัจจัยที่ใช้คาดการณ์" (canal / rain / street reports, each a coloured dot + word; the canal dot follows the confidence gate), district line from `/api/reverse`, sources and caveats behind one ⓘ, report form behind a button (popup). Station lists below: gauges with a forecast (12/24 h change, 48 h only where proven, D-050) and nearest active gauges.
 - **Enhanced Traffy street flood layer**: Increased hotspot visibility with refined purple stroke and translucent fill to make citizen street flooding instantly clear.
 - **Place search**: Fast geocoding via OpenStreetMap Nominatim for soi / street / district search without third-party tracking.
 - **Brand & Web Assets**: Modern, high-contrast, scalable favicon and PWA icon suite:

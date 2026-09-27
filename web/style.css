@@ -148,15 +148,6 @@ a { color: var(--accent); }
 .legend label { display: block; }
 
 /* Point check enhancements (D-040) */
-.point-disclaimer { margin: 8px 0; font-size: 13px; color: var(--muted); border: 1px dashed #d0d7de; border-radius: 8px; padding: 6px 10px; background: #fafbfc; }
-.point-disclaimer summary { cursor: pointer; color: var(--accent); font-weight: 600; list-style: none; display: flex; align-items: center; gap: 4px; }
-.point-disclaimer summary::-webkit-details-marker { display: none; }
-.point-disclaimer summary::before { content: "▸ "; color: var(--muted); }
-.point-disclaimer[open] summary::before { content: "▾ "; }
-.point-disclaimer .disclaimer-body { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); line-height: 1.5; color: #444c56; }
-.point-disclaimer .disclaimer-body p { margin: 4px 0; }
-.overview-box { background: #f8fafc; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
-.overview-box .ov-item { padding: 4px 0; line-height: 1.5; }
 /* Rain: TMD word in its colour + a 4-step mini scale (no text legend) */
 .rain { white-space: nowrap; }
 .rscale { display: inline-flex; gap: 2px; vertical-align: middle; margin-left: 4px; }
@@ -245,21 +236,6 @@ a { color: var(--accent); }
   line-height: 1.45;
 }
 
-.forecast-banner .fc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
-.forecast-banner .fc-basis-btn {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 11px;
-  color: #64748b;
-  cursor: pointer;
-  text-decoration: underline dotted;
-}
-.forecast-banner .fc-basis-btn:hover { color: #1e293b; }
-.forecast-banner .fc-gauges { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(0, 0, 0, 0.12); display: grid; gap: 4px; }
-.forecast-banner .fc-g-label { font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between; }
-.forecast-banner .fc-gname { font-size: 13px; font-weight: 600; margin-right: 4px; }
 .canal-disclaimer-btn {
   appearance: none;
   background: rgba(0, 0, 0, 0.04);
@@ -281,14 +257,6 @@ a { color: var(--accent); }
 .sec-heading .sub { font-size: 12px; font-weight: normal; color: var(--muted); }
 
 /* Point Forecast Outlook Banner (USP: D-041) */
-.forecast-banner { border-radius: 12px; padding: 10px 14px; margin: 8px 0; border: 1px solid var(--line); border-left: 5px solid var(--accent); background: #f0f7ff; }
-.forecast-banner.risk-high { background: #fff5f5; border-color: #fca5a5; border-left-color: var(--critical); }
-.forecast-banner.risk-mod { background: #fffbeb; border-color: #fde68a; border-left-color: var(--warning); }
-.forecast-banner.risk-low { background: #f0fdf4; border-color: #bbf7d0; border-left-color: #16a34a; }
-.forecast-banner.risk-info { background: #f8fafc; border-color: var(--line); border-left-color: var(--muted); }
-.forecast-banner .fc-badge { font-size: 12px; font-weight: 700; color: var(--muted); }
-.forecast-banner .fc-title { font-size: 15px; font-weight: 700; color: var(--ink); margin: 2px 0 4px; }
-.forecast-banner .fc-desc { font-size: 13px; color: #374151; line-height: 1.45; }
 
 /* Sleek global toast */
 .toast {
@@ -315,3 +283,34 @@ a { color: var(--accent); }
   transform: translateX(-50%) translateY(0);
 }
 
+
+/* Point panel (issue #3, D-051): one box — kicker + ⓘ, big headline, factors with a coloured dot AND a word */
+.pt-area { margin: -4px 0 8px; font-size: 14px; color: var(--muted); min-height: 1.2em; }
+.pf { border: 1px solid var(--line); border-left: 5px solid var(--muted); border-radius: 12px; padding: 10px 14px 12px; margin: 4px 0 10px; background: #f8fafc; }
+.pf.risk-high { background: #fff5f5; border-color: #fca5a5; border-left-color: var(--critical); }
+.pf.risk-mod { background: #fffbeb; border-color: #fde68a; border-left-color: var(--warning); }
+.pf.risk-low { background: #f0fdf4; border-color: #bbf7d0; border-left-color: #16a34a; }
+.pf-top { display: flex; justify-content: space-between; align-items: center; }
+.pf-kicker { font-size: 13px; font-weight: 600; color: var(--muted); }
+.pf-info-btn { font: inherit; font-size: 18px; line-height: 1; min-width: 44px; min-height: 44px; margin: -10px -10px -10px 0;
+  border: 0; background: none; color: var(--muted); cursor: pointer; }
+.pf-info-btn[aria-expanded="true"] { color: var(--accent); }
+.pf-info { font-size: 13px; line-height: 1.5; color: #374151; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0 6px; }
+.pf-info p { margin: 3px 0; }
+.pf-title { font-size: 21px; line-height: 1.3; font-weight: 800; margin: 2px 0 4px; color: var(--ink); }
+.pf-desc { font-size: 14px; line-height: 1.5; color: #374151; margin: 0 0 8px; }
+.pf-h { font-size: 13px; font-weight: 700; color: var(--muted); margin-top: 6px; }
+.pf-factors { list-style: none; margin: 4px 0 0; padding: 0; }
+.pf-factors > li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid rgba(0, 0, 0, 0.07); font-size: 15px; line-height: 1.45; }
+.pf-factors > li:first-child { border-top: 0; }
+.pf-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; }
+.pf-word { font-weight: 600; }
+.pf-sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
+.pf-gauges { margin-top: 4px; display: grid; gap: 4px; font-size: 13px; }
+.pf-gname { font-weight: 600; margin-right: 4px; }
+.pf-nofall { font-size: 12.5px; color: #92400e; }
+/* Report form in a popup (issue #2) */
+.report-open { width: 100%; margin: 4px 0 12px; }
+.report-dlg { width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 48px); border: 0; border-radius: 14px; padding: 8px 16px 16px; }
+.report-dlg::backdrop { background: rgba(15, 23, 42, 0.45); }
+.report-dlg .feedback { border-top: 0; margin-top: 0; padding-top: 0; }

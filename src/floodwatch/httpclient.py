@@ -19,6 +19,7 @@ class Fetched:
     status: int
     body: bytes
     content_type: str
+    last_modified: str = ""
 
 
 def fetch(url: str, *, via_thai_egress: bool = False, retries: int = 3, method: str = "GET",
@@ -44,7 +45,8 @@ def fetch(url: str, *, via_thai_egress: bool = False, retries: int = 3, method: 
                     chunks.append(chunk)
                     if time.monotonic() > deadline:  # a server trickling bytes once hung the worker for 15+ min
                         raise TimeoutError(f"total deadline {2 * settings.timeout_s:.0f}s exceeded")
-                return Fetched(url, resp.status_code, b"".join(chunks), resp.headers.get("content-type", ""))
+                return Fetched(url, resp.status_code, b"".join(chunks), resp.headers.get("content-type", ""),
+                               resp.headers.get("last-modified", ""))
         except Exception as e:  # network error or 5xx: back off and retry
             last = e
             wait = min(8, 2 ** attempt)

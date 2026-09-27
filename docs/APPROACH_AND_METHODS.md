@@ -558,4 +558,14 @@ A point query returns the 5 km cell under the point, which may be a side cell: a
 2. **Local nightly backup** before national data grows (none exists today, KI-511).
 3. **National collectors behind a flag**, lean: dams daily, FEWS thresholds daily, FFPI every 6 h, tide daily, DWR hourly via the Thai egress; 90-day retention for high-volume series; freshness filters on every HII national feed (KI-111).
 4. **National map** only after HII/DWR/RID have been informed (D-046) and a reliable Thai egress exists.
-5. **Forecasts per flood type**, each with its own backtest on verified events.
+5. **Forecasts per flood type**, each with its own backtest on verified events. Candidate models by flood type, from the Bangkok experiments of 2026-09-27 (network STAR + rain, SSN, k-NN analogues, GTWR, ST-GNN): [research note §8](../research/2026-09-27_forecast_48h.md#8-keep-for-the-nationwide-phase-owner-2026-09-27-the-other-methods-might-be-useful-outside-bangkok).
+
+## 20. Forecasting 48 h ahead and outside forecasts (D-050, 2026-09-27)
+Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../research/2026-09-27_forecast_48h.md).
+- **What is shown:** 12 h and 24 h change per gauge (§4, `change_summary`); a **48 h line only where the 48 h backtest gives "medium"** (7 of 102 gauges on 2026-09-27, all tidal river/estuary). At high gauges with no forecast fall: "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า". Never "stable for 48 h".
+- **Why the model stops at ~24 h:** it uses only each gauge's own past (tide + trend). Two inputs are missing, and both were measured to help (single 45-day window, honest split):
+  - **Upstream flow and dam release** (network space-time AR): Ayutthaya 48 h RMSE 26.8 → 18.6 cm; little gain on the tidal reach.
+  - **Forecast rain** (Open-Meteo `previous_runs`, forecasts issued 1–2 days earlier): canal BKK021 42.9 → 36.5 cm, Samsen 22.3 → 18.1 cm; biggest gains before heavy rain.
+- **Neighbourhoods:** neighbours along the river network beat neighbours by distance and k-NN analogues everywhere; distance neighbours can hurt (they mix canals and basins). SSN, GTWR and ST-GNN assessed and kept for later (research note §4, §8), with notes on where they may fit nationally.
+- **Outside forecast (HII FEWS):** archived per issue in `external_forecast` and scored by `scripts/score_hii_forecast.py` against "no change" and ours on the same issue times; shown only if it wins, with its assumption (C.13 release held constant).
+- **Next step:** per-gauge network STAR + rain behind the skill gate, validated on ≥ 3 windows with rolling origin, interval coverage and event scores ("reaches the bank within 48 h").

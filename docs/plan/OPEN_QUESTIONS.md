@@ -10,6 +10,8 @@
 |---|---|---|---|
 | **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
 | **Q29** | **Local backup (KI-511):** may an agent add the nightly `pg_dump` (host cron or a worker task) and run one restore test? It only reads the DB and writes `data/backups/` (~150–250 MB each, keep 3) | No backup exists today; BMA history can't be re-fetched | **1** |
+| **Q32** | **Build the next forecast model (network STAR + rain, D-050)?** Needs: archive Open-Meteo `previous_runs` per rain point, validation on ≥ 3 windows, a release behind the skill gate. About one focused session | The only measured route to useful 48 h forecasts and to any canal skill | **1** |
+| Q33 | **Report rate after the popup (issue #2):** baseline 57 reports/24 h (56 with depth) on 2026-09-27. If it drops by more than ~30 % in a week, keep the button but show the depth choice inline? | Reports are our only ground truth at street level | 2 |
 | Q30 | **Flood season priority for the national view:** which region first after Bangkok? (South Gulf floods mainly Oct–Jan per the research ⚠️; Northeast/Mekong now) | Order of D-046 collectors and thresholds | 2 |
 | Q31 | **Officials/volunteers:** what do they need that residents don't (a table view, an export, LINE alerts, a login)? Anyone to ask? | Scope of the "officials" audience (A28) | 2 |
 | RID | **Gate coordinates** (`code,lat,lon`) for the 15 unplaced and 14 approximate stations | Exact map positions, point checks ([KI-207](../KNOWN_ISSUES.md)) | 2 |
@@ -39,6 +41,14 @@
 | A35 | How to use the 262 BMA road sensors? | **Map layer + point-check evidence** (2026-09-27) | [D-045](DECISIONS.md) |
 | A36 | Owner steps | **Fix the GISTDA key; apply for the Google Flood API** (2026-09-27). GISTDA: the owner sent the API docs; the agent fixed our outdated path/header, the key works ✅ (KI-510). Google: open | [OWNER_ACTIONS](../OWNER_ACTIONS.md) |
 | A37 | Q18 (bot challenge) | Bot Fight Mode off (owner, 2026-09-26 17:33 UTC); removed from the open list 2026-09-27 | [D-035](DECISIONS.md) |
+| A38 | 12/24 h → 24/48 h? | **12 + 24 h; 48 h only where skilled** (2026-09-27) | [D-050](DECISIONS.md) |
+| A39 | Wording when no fall is forecast | **"No sign of falling yet"**, never "stable for 48 h" (2026-09-27) | [D-050](DECISIONS.md) |
+| A40 | HII's official forecast | **Prove it first**; research whether our own model can be improved (2026-09-27) → archived + scored; experiments in the research note | [D-050](DECISIONS.md) |
+| A41 | Should the model use forecast rain? | Asked by the owner; measured: **yes** (research §3b) — next model | [D-050](DECISIONS.md) |
+| A42 | STAR / SSN / k-NN / GTWR / ST-GNN? | Tested/assessed; **network STAR + rain next**; others kept for the national phase (owner: "keep the results") | [research 2026-09-27](../../research/2026-09-27_forecast_48h.md) |
+| A43 | Issue #3 disclaimers | **Everything into ⓘ** (2026-09-27) | [D-051](DECISIONS.md) |
+| A44 | Issue #3 district line / dot colours | **Reverse geocode if fast** (0.15–0.23 s, filled in after render); **dots follow the confidence gate** | [D-051](DECISIONS.md) |
+| A45 | Issue #2 / release | **Button → popup**; **full bundle, deploy** (2026-09-27) | [D-051](DECISIONS.md) |
 | A22 | Q24: BMA khlong data via the People's Party relay? | **Use and show it**, credit BMA and the relay (2026-09-26) | [D-031](DECISIONS.md) |
 | A23 | Q27: Who is the app for in the next two weeks? | **Bangkok residents** (2026-09-26) | D-031, D-033 |
 | A24 | Q26: Default list region? | **Bangkok, this week**; revisit 2026-10-03 (2026-09-26) | [D-033](DECISIONS.md) |

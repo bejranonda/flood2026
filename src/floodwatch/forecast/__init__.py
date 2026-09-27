@@ -246,6 +246,21 @@ def change_summary(q: list[float] | None, level_now: float | None, skill: dict |
             "coverage90": None if sk.get("coverage90_backtest") is None else round(sk["coverage90_backtest"], 2)}
 
 
+def score_external(pairs: list[tuple[int, float, float, float]]) -> dict:
+    """Skill of an outside forecast (e.g. HII's official one, D-050) per lead time, against "no change".
+    `pairs` = (lead_h, forecast value, observed value at the valid time, observed value at the issue time)."""
+    by: dict[int, list] = {}
+    for lead, f, o, o0 in pairs:
+        by.setdefault(int(lead), []).append((f, o, o0))
+    out = {}
+    for lead, rows in sorted(by.items()):
+        mae = sum(abs(f - o) for f, o, _ in rows) / len(rows)
+        mae_p = sum(abs(o0 - o) for _, o, o0 in rows) / len(rows)
+        out[lead] = {"n": len(rows), "mae": mae, "mae_persistence": mae_p,
+                     "skill": (1 - mae / mae_p) if mae_p > 0 else None}
+    return out
+
+
 def recovery(y, ybar, y0, bank, path, rain_next24) -> dict:
     """Milestone 1 (below bank) as a range with conditions (APPROACH §12, D-005)."""
     if bank is None:

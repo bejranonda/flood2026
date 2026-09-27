@@ -233,3 +233,24 @@ def parse_bma_klongmap(payload: dict, raw_ref: str) -> tuple[list[dict], list[di
         obs.append({"code": code, "obs_time": t, "level_msl": level, "discharge": None, "situation_level": None,
                     "source": "bma_klongmap", "quality_flag": flag, "raw_ref": raw_ref})
     return list(stations.values()), obs
+
+
+def parse_fews_forecast(text: str, issue_time: dt.datetime) -> list[dict[str, Any]]:
+    """HII FEWS forecast file (`station,date,time,value`, Thai time, hourly). The file starts ~6 days before the
+    issue time (a series matching observations to 1-3 cm, i.e. not a forecast) and runs 7 days ahead; only rows after
+    the issue time (the file's Last-Modified) are the forecast (D-050)."""
+    out = []
+    for line in (text or "").splitlines()[1:]:
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) < 4 or not parts[3]:
+            continue
+        try:
+            v = float(parts[3])
+        except ValueError:
+            continue
+        t = parse_local(f"{parts[1]} {parts[2]}")
+        # 999999 = missing (KI-206). Not SENTINEL_ABS: discharge files carry real values above 1000 m3/s.
+        if t is None or not math.isfinite(v) or abs(v) >= 99999 or t <= issue_time:
+            continue
+        out.append({"valid_time": t, "value": v})
+    return out

@@ -121,3 +121,28 @@ def test_bma_status_uses_bma_drainage_levels_then_bank():
     assert api.bma_status(0.80, 0.75, 0.10, 0.22)[0] == "critical"
     assert api.bma_status(0.30, 0.75, None, None) == ("normal", None)  # no BMA levels: bank only
     assert api.bma_status(None, 0.75, 0.1, 0.2) == ("unknown", None)
+
+
+def test_access_log_never_records_search_text_or_coordinates_d032():
+    import logging
+    from floodwatch import api
+    f = api.RedactQuery()
+    def rec(path):
+        r = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d',
+                              ("1.2.3.4:5", "GET", path, "1.1", 200), None)
+        f.filter(r)
+        return r.getMessage()
+    assert "ซอย" not in rec("/api/geocode?q=%E0%B8%8B%E0%B8%AD%E0%B8%A2") and "?q=" not in rec("/api/geocode?q=soi")
+    assert "13.7" not in rec("/api/point?lat=13.766&lon=100.646")
+    assert "13.7" not in rec("/api/reverse?lat=13.77&lon=100.64") and "100.6" not in rec("/api/near?lat=13.7&lon=100.6")
+    assert "scope=focus" in rec("/api/stations?scope=focus")  # other endpoints unchanged
+
+
+def test_reverse_label_from_nominatim_address():
+    from floodwatch import geocode
+    bkk = {"quarter": "แขวงคลองจั่น", "suburb": "เขตบางกะปิ", "city": "กรุงเทพมหานคร"}
+    assert geocode.reverse_label(bkk) == "คลองจั่น, บางกะปิ, กรุงเทพมหานคร"  # the wireframe of issue #3
+    rural = {"village": "ตำบลบางปลาม้า", "county": "อำเภอบางปลาม้า", "province": "จังหวัดสุพรรณบุรี"}
+    assert geocode.reverse_label(rural) == "บางปลาม้า, บางปลาม้า, สุพรรณบุรี"
+    assert geocode.reverse_label({}) is None
+    assert geocode.reverse_key(13.7764, 100.6412) == geocode.reverse_key(13.7801, 100.6449)  # same ~1 km cell

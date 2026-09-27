@@ -42,7 +42,7 @@ const rainLabel = (mm) => RAIN_TMD.find(([max], i) => (i === 0 ? mm < max : mm <
 const rainMm = (mm) => (mm < 1 || rainLabel(Math.round(mm)) !== rainLabel(mm)) ? mm.toFixed(1) : String(Math.round(mm));
 const rainText = (mm) => mm < 0.1 ? "ไม่มีฝน" : `${rainLabel(mm)} (ประมาณ ${rainMm(mm)} มม.)`;
 // Colour + a 4-step mini scale say "how much" without a text legend (owner 2026-09-27: the legend line was too much).
-const RAIN_COLOR = { "ไม่มีฝน": "#9ca3af", "ฝนเล็กน้อย": "#60a5fa", "ฝนปานกลาง": "#2563eb", "ฝนหนัก": "#7c3aed", "ฝนหนักมาก": "#be185d" };
+const RAIN_COLOR = { "ไม่มีฝน": "#6b7280", "ฝนเล็กน้อย": "#0e7490", "ฝนปานกลาง": "#2563eb", "ฝนหนัก": "#7c3aed", "ฝนหนักมาก": "#be185d" };
 const rainPill = (mm) => {
   const label = rainLabel(mm), idx = RAIN_TMD.findIndex(([, l]) => l === label), c = RAIN_COLOR[label];
   const bars = [1, 2, 3, 4].map((i) => `<i style="background:${i <= idx ? c : "#e5e7eb"}"></i>`).join("");
@@ -82,6 +82,11 @@ function changeHTML(ch, hours, s) {
   const tooltip = `${confTh}: ${why}`;
   return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${peak} <button type="button" class="conf-badge conf-${esc(ch.confidence)}" title="${esc(tooltip)}" aria-label="${esc(confTh)}">ⓘ</button></span>`;
 }
+// When the level is high and the 24 h forecast shows no fall, say exactly that. Never "stable for 48 h": for most gauges
+// the 48 h range is wider than the distance to the bank (owner question 2026-09-27, D-050).
+const noFallText = (s) => (s.change24 && s.change24.dir !== "falling" && ["watch", "warning", "critical"].includes(s.status))
+  ? "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า" : "";
+
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
 const freeboardText = (fb) => {
   if (fb == null) return "";
@@ -467,6 +472,25 @@ function feedbackForm(code, loc) {
   </form>`;
 }
 
+// Issue #2: the report form opens from one button in a popup, so the panel stays short. Report counts before the
+// change (2026-09-27): 57 in 24 h, 56 with a depth — compare after release (HANDOFF).
+function reportButton(loc) {
+  return `<button type="button" class="btn primary report-open">รายงานน้ำที่จุดของคุณ</button>
+    <dialog class="report-dlg" aria-label="รายงานน้ำที่จุดของคุณ">
+      <div class="tools"><button type="button" class="btn report-close" aria-label="ปิด">✕</button></div>
+      ${feedbackForm(null, loc)}
+    </dialog>`;
+}
+
+function bindReport(root) {
+  const dlg = root.querySelector(".report-dlg"), open = root.querySelector(".report-open");
+  if (!dlg || !open) return;
+  open.addEventListener("click", () => (dlg.showModal ? dlg.showModal() : dlg.setAttribute("open", "")));
+  dlg.querySelector(".report-close").addEventListener("click", () => (dlg.close ? dlg.close() : dlg.removeAttribute("open")));
+  dlg.addEventListener("click", (e) => { if (e.target === dlg && dlg.close) dlg.close(); });  // tap outside closes
+  bindFeedback(dlg.querySelector(".feedback"));
+}
+
 function bindFeedback(form) {
   let verdict = null;
   form.querySelectorAll("[data-verdict]").forEach((b) => b.addEventListener("click", () => {
@@ -534,7 +558,7 @@ async function showDetail(code) {
       ${bma ? `<div class="warnbox">ℹ️ สถานีของสำนักการระบายน้ำ กทม. ดึงผ่านเว็บ <a href="https://flood69.peoplesparty.or.th/#klong" target="_blank" rel="noopener">flood69 (พรรคประชาชน)</a> ซึ่งสำเนาข้อมูล กทม. ทุก 5 นาที ·
         ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ที่อยู่ใกล้กัน 30–60 ซม. จึงเทียบกับตลิ่งของสถานีนี้เท่านั้น · ประวัติย้อนหลังเริ่มเก็บ 26 ก.ย.</div>` : ""}
       <p class="big"${!hasForecast(s) && !observedText(s) && isNew(s) ? " hidden" : ""}>${esc(hasForecast(s) ? TREND[s.trend12] : observedText(s) || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
-      ${s.change12 ? `<p class="chg-row">${changeHTML(s.change12, 12, s)}</p>` : ""}${s.change24 ? `<p class="chg-row">${changeHTML(s.change24, 24, s)}</p>` : ""}
+      ${s.change12 ? `<p class="chg-row">${changeHTML(s.change12, 12, s)}</p>` : ""}${s.change24 ? `<p class="chg-row">${changeHTML(s.change24, 24, s)}</p>` : ""}${s.change48 ? `<p class="chg-row">${changeHTML(s.change48, 48, s)}</p>` : ""}${noFallText(s) ? `<p class="chg-row muted">${esc(noFallText(s))}</p>` : ""}
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
@@ -578,92 +602,63 @@ function pointHTML(d, src, place = "") {
   const a = d.area, ev = d.evidence;
   const depths = Object.entries(ev.user_depth_reports_1km_24h || {}).map(([k, n]) => `${esc(DEPTH[k] || k)} ${Number(n)}`).join(" · ");
 
-  // Separate dynamic warnings (street flood alerts) from static educational disclaimers
-  const hasStreetFlood = (d.warnings || []).includes("street_flooding_despite_channels");
-  const staticWarnings = (d.warnings || []).filter((w) => w !== "street_flooding_despite_channels");
-
   const fc = d.forecast || {};
-  // Avoid stacked alert fatigue: if forecastBanner is already high risk (which covers street water waiting to drain),
-  // suppress the redundant urgentBanner right above it
-  const urgentBanner = (hasStreetFlood && (!fc.title || fc.risk !== "high"))
-    ? `<div class="urgent">⚠️ ${WARN.street_flooding_despite_channels}</div>`
-    : "";
-
-  // Concise canal status summary for the area
-  let canalSummary = "";
-  if (a.category && a.confidence === "very_low") {
-    canalSummary = `มีทั้ง “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” <span class="muted">(${a.n} สถานีใน 8 กม., ใกล้สุด ${a.nearest_km} กม.)</span>`;
-  } else if (a.category) {
-    canalSummary = `<b style="color:${STATUS[a.category].color}">${esc(STATUS[a.category].long)}</b> <span class="muted">(${a.n} สถานีใน 8 กม., ใกล้สุด ${a.nearest_km} กม.)</span>`;
-  } else {
-    canalSummary = `<span class="muted">ไม่มีสถานีในระยะ 8 กม.</span>`;
-  }
-
-  // Point Forecast Outlook Banner (USP: D-041, confidence-gated per D-042 — never a canal verdict from a
-  // gauge that is too far or disagrees; "info" means only rain/reports were usable, not "all clear")
-  const FC_RISK = {
-    high: { cls: "risk-high", icon: "⚠️" },
-    moderate: { cls: "risk-mod", icon: "🌧️" },
-    low: { cls: "risk-low", icon: "✅" },
-    info: { cls: "risk-info", icon: "ℹ️" },
+  const FC_RISK = {  // one icon, on the headline only (issue #3: fewer emojis)
+    high: { cls: "risk-high", icon: "⚠️" }, moderate: { cls: "risk-mod", icon: "⚠️" },
+    low: { cls: "risk-low", icon: "" }, info: { cls: "risk-info", icon: "" },
   };
   const fcR = FC_RISK[fc.risk] || FC_RISK.info;
-  const FC_BASIS = { rain: "ฝนคาดการณ์", reports: "รายงานถนน", gauges: "สถานีใกล้เคียง" };
-  const fcBasis = (fc.basis || []).map((b) => FC_BASIS[b] || b).join(" · ");
-
-  // Canal forecast for this point:
-  // If the area allows an area-wide canal outlook, fc.gauges lists the agreeing gauges.
-  // If area gauges disagree or are further away, show the nearest available forecast gauge
-  // clearly labeled with its distance, so the visitor gets the rise/fall forecast they need!
+  const FC_BASIS = { rain: "ฝนคาดการณ์ (Open-Meteo)", reports: "รายงานน้ำท่วมถนน (Traffy Fondue)", gauges: "สถานีวัดน้ำ (สสน. / กทม.)" };
   const byCode = Object.fromEntries((d.stations_forecast || []).map((s) => [s.code, s]));
-  let fcGaugesHTML = "";
-  const canalDisclaimerTip = "ระดับน้ำที่สถานีคลอง ไม่ใช่ระดับน้ำที่จุดนี้หรือบนถนน";
-  if (fc.gauges && fc.gauges.length) {
-    const items = fc.gauges.map((c) => byCode[c]).filter(Boolean).map((s) =>
-      `<div class="fc-g"><span class="fc-gname">${esc(s.name_th)} <span class="muted">${esc(s.distance_km)} กม.</span></span> ${changeHTML(s.change12, 12, s)}</div>`).join("");
-    if (items) {
-      fcGaugesHTML = `<div class="fc-gauges"><div class="fc-g-label"><span>🌊 สถานีคลองใกล้เคียง:</span> <button type="button" class="canal-disclaimer-btn" title="${esc(canalDisclaimerTip)}" aria-label="หมายเหตุระดับน้ำคลอง">ⓘ</button></div>${items}</div>`;
-    }
-  } else if (d.stations_forecast && d.stations_forecast.length && d.stations_forecast[0].change12) {
-    const s = d.stations_forecast[0];
-    fcGaugesHTML = `
-      <div class="fc-gauges">
-        <div class="fc-g-label">
-          <span>🌊 คลองใกล้เคียงที่สุด (${esc(s.name_th)} ห่าง ${esc(s.distance_km)} กม.)</span>
-          <button type="button" class="canal-disclaimer-btn" title="${esc(canalDisclaimerTip)}" aria-label="หมายเหตุระดับน้ำคลอง">ⓘ</button>
-        </div>
-        <div class="fc-g">${changeHTML(s.change12, 12, s)}</div>
-      </div>`;
+  const gaugeLine = (s) => `<div class="pf-g"><span class="pf-gname">${esc(s.name_th)} <span class="muted">${esc(s.distance_km)} กม.</span></span>
+    ${changeHTML(s.change12, 12, s)}${noFallText(s) ? `<div class="pf-nofall">${esc(noFallText(s))}</div>` : ""}</div>`;
+
+  // Factor 1: canals. The dot follows the confidence gate (D-042): grey "can't assess" when gauges are far or
+  // disagree — never red from one overflowing gauge among calm ones (owner 2026-09-27, issue #3).
+  let canal;
+  if (!a.category) {
+    canal = { color: "#9ca3af", word: "ประเมินไม่ได้", sub: "ไม่มีสถานีวัดน้ำในระยะ 8 กม." };
+  } else if (a.confidence === "very_low" || a.confidence === "none") {
+    canal = { color: "#9ca3af", word: "ประเมินไม่ได้",
+      sub: `สถานีรอบจุดให้ผลต่างกัน ตั้งแต่ “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” (${a.n} สถานีใน 8 กม.)` };
+  } else {
+    canal = { color: STATUS[a.category].color, word: STATUS[a.category].long, sub: `${a.n} สถานีใน 8 กม. ใกล้สุด ${a.nearest_km} กม.` };
   }
+  const shown = (fc.gauges && fc.gauges.length ? fc.gauges : fc.nearest_canal ? [fc.nearest_canal] : []).map((c) => byCode[c]).filter(Boolean);
+  const canalGauges = shown.length ? `<div class="pf-gauges">${fc.nearest_canal && !(fc.gauges || []).length ? `<div class="muted">คลองใกล้ที่สุด:</div>` : ""}${shown.map(gaugeLine).join("")}</div>` : "";
 
-  const basisTip = fcBasis ? `ข้อมูลที่ใช้ประเมิน: ${fcBasis}` : "";
-  const forecastBanner = fc.title ? `
-    <div class="forecast-banner ${fcR.cls}">
-      <div class="fc-top">
-        <span class="fc-badge">🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า</span>
-        ${fcBasis ? `<button type="button" class="fc-basis-btn" title="${esc(basisTip)}" aria-label="อ้างอิงข้อมูล">อ้างอิงข้อมูล ⓘ</button>` : ""}
-      </div>
-      <div class="fc-title">${fcR.icon} ${esc(fc.title)}</div>
-      <div class="fc-desc">${esc(fc.desc)}</div>
-      ${fcGaugesHTML}
-    </div>` : "";
+  // Factor 2: rain (TMD words and colours). Factor 3: street reports (≥ 3 in 1 km / 6 h = the alert level, STREET_ALERT).
+  const rain = d.rain_next24_mm;
+  const rainF = rain == null ? { color: "#9ca3af", body: "ไม่มีข้อมูล" }
+    : { color: RAIN_COLOR[rainLabel(rain)], body: rainPill(rain) };
+  const nRep = Number(ev.traffy_flood_reports_1km_6h || 0);
+  const streetF = nRep >= 3 ? { color: "#c62828", word: `มีแจ้ง ${nRep} เรื่อง` } : nRep > 0 ? { color: "#b45309", word: `มีแจ้ง ${nRep} เรื่อง` }
+    : { color: "#9ca3af", word: "ยังไม่มีรายงาน" };
+  const hasStreetFlood = (d.warnings || []).includes("street_flooding_despite_channels");
 
-  // Unified, clean overview card (no long academic walls of text or misleading dead links)
-  const overviewCard = `
-    <div class="overview-box">
-      <div class="ov-item">🌊 <b>คลองรอบจุด</b>: ${canalSummary}</div>
-      <div class="ov-item">🌧️ <b>ฝน 24 ชม. ข้างหน้า</b>: ${d.rain_next24_mm != null ? rainPill(d.rain_next24_mm) : "ไม่มีข้อมูล"} <span class="muted">(Open-Meteo)</span></div>
-      <div class="ov-item">🚗 <b>น้ำท่วมบนถนน (1 กม.)</b>: ${ev.traffy_flood_reports_1km_6h ? `มีแจ้ง <b>${Number(ev.traffy_flood_reports_1km_6h)} จุด</b> (ดูจุดสีม่วงบนแผนที่)` : "ยังไม่มีรายงานใน 6 ชม."}${depths ? ` <span class="muted">· แจ้งระดับ: ${depths}</span>` : ""}</div>
-    </div>`;
+  // Everything that explains or qualifies goes behind one ⓘ (owner 2026-09-27: "everything into ⓘ", issue #3).
+  const staticWarnings = (d.warnings || []).filter((w) => w !== "street_flooding_despite_channels");
+  const infoBody = `<p><b>ข้อมูลที่ใช้:</b> ${esc((fc.basis || []).map((b) => FC_BASIS[b] || b).join(" · ") || "-")}</p>
+    ${staticWarnings.map((w) => `<p>• ${WARN[w] || esc(w)}</p>`).join("")}
+    <p>• ระดับน้ำที่สถานีคลองหรือแม่น้ำ ไม่ใช่ระดับน้ำที่จุดนี้ บนถนน หรือในบ้าน</p>
+    <p>• ความมั่นใจของแต่ละสถานีดูได้ที่ปุ่ม ⓘ ข้างตัวเลข · คาดการณ์ 48 ชม. แสดงเฉพาะสถานีที่ทดสอบย้อนหลังผ่าน</p>`;
 
-  const disclaimerBox = staticWarnings.length
-    ? `<details class="point-disclaimer">
-        <summary>ℹ️ ข้อจำกัดของข้อมูล (ระดับน้ำคลอง ≠ ระดับถนนหรือในบ้าน)</summary>
-        <div class="disclaimer-body">
-          ${staticWarnings.map((w) => `<p>• ${WARN[w] || esc(w)}</p>`).join("")}
-        </div>
-      </details>`
-    : "";
+  const panel = `
+    <section class="pf ${fcR.cls}" aria-labelledby="pf-title">
+      <div class="pf-top"><span class="pf-kicker">แนวโน้ม 12–24 ชม. ข้างหน้า</span>
+        <button type="button" class="pf-info-btn" aria-expanded="false" aria-controls="pf-info" aria-label="ที่มาและข้อจำกัดของข้อมูล">ⓘ</button></div>
+      <div id="pf-info" class="pf-info" hidden>${infoBody}</div>
+      ${fc.title ? `<h3 id="pf-title" class="pf-title">${fcR.icon ? `${fcR.icon} ` : ""}${esc(fc.title)}</h3>
+      <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
+      <div class="pf-h">ปัจจัยที่ใช้คาดการณ์</div>
+      <ul class="pf-factors">
+        <li><span class="pf-dot" style="background:${canal.color}"></span><div><b>ระดับน้ำในคลอง</b> · <span class="pf-word">${esc(canal.word)}</span>
+          <div class="pf-sub">${canal.sub}</div>${canalGauges}</div></li>
+        <li><span class="pf-dot" style="background:${rainF.color}"></span><div><b>ฝน 24 ชม. ข้างหน้า</b> · ${rainF.body}</div></li>
+        <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b>น้ำท่วมบนถนน</b> · <span class="pf-word">${esc(streetF.word)}</span>
+          <div class="pf-sub">${hasStreetFlood ? "<b>น้ำรอระบายรอบจุดนี้ แม้คลองใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · " : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
+      </ul>
+    </section>`;
 
   // Categorize stations: predictable vs nearby
   const fcStations = d.stations_forecast || (d.stations || []).filter(hasForecast);
@@ -672,24 +667,22 @@ function pointHTML(d, src, place = "") {
 
   let stationListHTML = "";
   if (fcStations.length) {
-    stationListHTML += `<div class="sec-heading"><span>📈 สถานีที่มีการคาดการณ์ (12–72 ชม.)</span> <span class="sub">ดูแนวโน้มล่วงหน้า</span></div>
+    stationListHTML += `<div class="sec-heading"><span>สถานีที่มีการคาดการณ์</span> <span class="sub">แตะเพื่อดูกราฟ 72 ชม.</span></div>
       <ul class="list">${fcStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("")}</ul>`;
   }
   if (nearbyStations.length) {
-    stationListHTML += `<div class="sec-heading"><span>📍 สถานีคลอง/แม่น้ำใกล้จุดนี้</span> <span class="sub">ระดับน้ำเรียลไทม์</span></div>
+    stationListHTML += `<div class="sec-heading"><span>สถานีใกล้จุดนี้</span> <span class="sub">ระดับน้ำล่าสุด</span></div>
       <ul class="list">${nearbyStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("")}</ul>`;
   }
   if (!fcStations.length && !nearbyStations.length) {
     stationListHTML = `<p class="muted">ไม่มีสถานีที่ส่งข้อมูลในรัศมี 15 กม.</p>`;
   }
 
-  return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : place ? `📌 ${esc(place)}` : "📌 จุดที่เลือก"} <span class="muted">${d.lat}, ${d.lon}</span></h2>
-    ${urgentBanner}
-    ${forecastBanner}
-    ${overviewCard}
-    ${disclaimerBox}
-    ${stationListHTML}
-    ${feedbackForm(null, { lat: d.lat, lon: d.lon, src })}`;
+  return `<h2 id="sheet-title">${src === "gps" ? "📍 ตำแหน่งของคุณ" : place ? `📌 ${esc(place)}` : `📌 พิกัด ${d.lat}, ${d.lon}`}</h2>
+    <p class="pt-area" id="pt-area">${src === "pin" && !place ? "" : `<span class="muted">${d.lat}, ${d.lon}</span>`}</p>
+    ${panel}
+    ${reportButton({ lat: d.lat, lon: d.lon, src })}
+    ${stationListHTML}`;
 }
 
 async function checkPoint(lat, lon, src, place = "") {
@@ -705,12 +698,25 @@ async function checkPoint(lat, lon, src, place = "") {
     const d = await getJSON(`/api/point?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`);
     box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div>${pointHTML(d, src, place)}${place ? `<p class="muted">ตำแหน่งจากชื่อสถานที่ (OpenStreetMap) อาจคลาดเคลื่อนได้ แตะบนแผนที่เพื่อเลือกจุดที่ตรงกว่า</p>` : ""}`;
     bindItems(box);
-    bindFeedback(box.querySelector(".feedback"));
+    bindReport(box);
+    const info = box.querySelector(".pf-info-btn"), infoBox = box.querySelector("#pf-info");
+    if (info && infoBox) info.addEventListener("click", () => { infoBox.hidden = !infoBox.hidden; info.setAttribute("aria-expanded", String(!infoBox.hidden)); });
+    if (src === "pin" && !place) fillArea(lat, lon);
   } catch (e) {
     box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div><p>โหลดข้อมูลไม่สำเร็จ (${esc(e.message)})</p>`;
   }
   box.querySelector(".close").addEventListener("click", closeDetail);
   sheet.scrollTop = 0;
+}
+
+// District line under the coordinates (issue #3). Filled in after the panel is shown, so a slow lookup never delays
+// it; nothing is shown if it fails. The server rounds to ~1 km and never logs the position (D-032).
+async function fillArea(lat, lon) {
+  try {
+    const r = await getJSON(`/api/reverse?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`);
+    const el = document.getElementById("pt-area");
+    if (el && r.area) el.textContent = r.area;
+  } catch { /* the coordinates in the heading are enough */ }
 }
 
 /* ---------- near me ---------- */
@@ -791,11 +797,14 @@ function showToast(msg) {
   t._timer = setTimeout(() => t.classList.remove("show"), 3200);
 }
 
+// Capture phase: runs before the list item's own click handler, so tapping ⓘ shows the tip instead of opening
+// the station (bug found in the v0.6.5 review).
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".conf-badge, .msl-btn, .canal-disclaimer-btn, .fc-basis-btn");
   if (btn) {
     e.stopPropagation();
+    e.preventDefault();
     const tip = btn.getAttribute("title") || btn.getAttribute("aria-label");
     if (tip) showToast(tip);
   }
-});
+}, true);

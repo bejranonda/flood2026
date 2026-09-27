@@ -97,6 +97,15 @@ Live `/api/point` probes on 4 real coordinates (KI-223), before and after the fi
 |---|---|---|
 | 47 | Owner's phone screenshot: `ฝน 24 ชม.: ~27 มม. (Open-Meteo)` read as "−27 mm", with no sense of little vs a lot, and no hint that it is a forecast | `ฝน 24 ชม. ข้างหน้า: ฝนปานกลาง (ประมาณ 27 มม.)` + a 2-line TMD legend ("ฝนหนักช่วงสั้นทำถนนท่วมได้แม้ยอดรวมไม่มาก"); all user-facing `~` removed; unknown → "ไม่มีข้อมูล". Checked at 390 px on a throwaway preview of the branch (same pin, Bang Kapi) |
 
+### Round 9 (2026-09-27 ~17:30 UTC): issues #2 and #3, v0.6.5 review bugs (v0.7.0, D-051)
+| # | Finding | Done |
+|---|---|---|
+| 48 | Issue #3 (kcskrittapas): 3 stacked boxes, small headline, emojis, disclaimers in the way, no district name | One panel: kicker + ⓘ, 21 px headline, "ปัจจัยที่ใช้คาดการณ์" with dot + word per factor, district line from `/api/reverse`, caveats behind ⓘ (owner). Checked at 390 px at 13.776,100.64 · 13.70,100.50 · 14.30,100.20 |
+| 49 | Wireframe coloured the mixed-canal factor red | Grey "ประเมินไม่ได้" when gauges are far or disagree (owner: follow the gate) |
+| 50 | Issue #2: report form long in the panel | Full-width button → `<dialog>` popup; opened/closed via CDP-driven headless Chrome; baseline 57 reports/24 h to compare |
+| 51 | Review: river gauge shown as "nearest canal"; ⓘ in a list opened the station | Server-side canal-only rule (≤ 3 km); capture-phase click handler; both verified |
+| 52 | Rain words "ไม่มีฝน"/"ฝนเล็กน้อย" 2.5:1 contrast | grey-500 / cyan-700 (≥ 4.5:1) |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.
