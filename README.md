@@ -16,22 +16,21 @@
 > **Nationwide (validated plan, not built):** monitor first, forecast later ([D-044](docs/plan/DECISIONS.md), [APPROACH §19](docs/APPROACH_AND_METHODS.md), [phase 5](docs/plan/phase-5-nationwide.md)); the sources were probed live in [research/VALIDATION_2026-09-27_nationwide.md](research/VALIDATION_2026-09-27_nationwide.md).
 >
 > **Core USP & Highlights:**
-> - **🔮 Point Forecast Outlook (D-041, D-042, D-048, D-049, D-051):** Tap any coordinate in Bangkok/BMR for an instant 12–24h outlook combining nearest ML channel trends, 24h precipitation, canal drainage capacity, and citizen street reports.
-> - **🌊 Comprehensive Bangkok Canal Telemetry (D-031, D-053):** Dual-channel ingestion covers all **199 BMA canal & pump stations** (`WL.*` series via live 5-min relay) plus **30-day 10-minute resolution history** (4,310+ points) via HII TIWRM telemetering (`BKK*` series, e.g. Khlong Lat Phrao `BKK001`, Khlong Saen Saep `BKK008`, Khlong Phasi Charoen `BKK005`).
-> - **Compact UI & Single ⓘ Confidence Symbol (D-049):** Replaced wide text and multi-dot meters with a single color-coded `ⓘ` button (sky-blue `.conf-medium` for tide-calibrated models, slate-gray `.conf-low` for baseline statistical models) with mobile toast tap feedback and desktop hover tooltips; collapsible chart legend (`ℹ️ สัญลักษณ์กราฟ ▾`); observation timestamp prioritized with MSL surveying datum tucked into an adjacent `[ม.รทก. ⓘ]` button; compact point forecast banner.
-> - **Human-Centered Forecast Phrasing (D-048):** Intuitive natural Thai wording for steady/swing intervals (`ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`).
-> - **Categorized Station Detail (D-040):** Stations split into 📈 Predictable (12–72h ML forecast) and 📍 Nearest active canal/river gauges. Stale gauges (>24h inactive) are filtered out.
-> - **Enhanced Street Flooding Hotspots:** Traffy Fondue citizen reports rendered with high contrast over Leaflet map tiles.
+> - **🔮 Point check with an outlook (D-021, D-051, D-054–D-056):** tap any place in Bangkok/BMR. One panel gives a short outlook headline and the factors behind it — **nearest canal** (status, 24/48 h change, when it may drop), **rain** (TMD words), **street reports** — with a coloured dot and a word each; caveats sit behind one ⓘ. The canal verdict is judged from the nearest ≤ 3 gauges within 3 km; it never gives a water level at the pin.
+> - **📈 Forecasts that earn their place (D-047, D-050, D-052, D-056):** every gauge is backtested per horizon; the method `star` (own tide/trend + upstream gauges + Chao Phraya Dam release + forecast rain) is used only where it beats "no change". One trend format everywhere — `ใน 24 ชม. · [→ ทรงตัว] · −7 ถึง +7 ซม. · ⓘ` — and a direction only where a real model won; otherwise "? ไม่แน่ชัด" with the likely range. 48 h lines everywhere, honestly labelled.
+> - **🌊 Bangkok canals, all 199 BMA gauges (D-031, D-054):** live every 5 min via the relay of BMA's KlongMap, plus **one year of hourly history for 158 of them from HII** (`waterlevel_graph?station_type=canal`, identical values), so BMA gauges enter the same backtest.
+> - **🛰️ Official sources, archived and scored (D-050):** HII's official 7-day forecast (Ayutthaya, Nonthaburi, C.13 …) is archived per issue and scored against ours before it is ever shown; GISTDA satellite flood extent is reachable (KI-510).
+> - **Mobile-first and plain Thai:** summary chips, list (Bangkok first), place search, map, Chao Phraya profile, share links; station sheet leads with the trend block; report form behind one button; pull-down to close on mobile.
 > - **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md). Status: `python3 scripts/owner_status.py`.
 >
 > It collects:
-> - HII telemetry (805 stations in the main feed plus chart-only stations → **111 in focus** across the whole Bangkok Metropolitan Region and the lower Chao Phraya; **every station is on the map or listed**, with up to **one year** of hourly history);
-> - **BMA khlong gauges (199, Bangkok)** via the People's Party relay of BMA's KlongMap (D-031) + **30-day 10-min historical telemetering** via HII TIWRM (D-053);
-> - Open-Meteo rain forecasts;
-> - Traffy reports;
-> - **citizen feedback** from the site itself.
+> - HII telemetry (805 stations in the main feed plus chart-only stations; the whole Bangkok Metropolitan Region and the lower Chao Phraya in focus; **every station is on the map or listed**, with up to **one year** of hourly history);
+> - **BMA khlong gauges (199)** via the People's Party relay (D-031), with one year of history for 158 from HII's canal graph (D-054);
+> - Open-Meteo rain forecasts, and rain **as it was forecast 1–2 days earlier** (training data for `star`, D-052);
+> - HII's official forecast files (archived for scoring, D-050);
+> - Traffy reports and **citizen feedback** from the site itself.
 >
-> It keeps a raw archive and a Postgres database, serves backtested baseline forecasts with uncertainty bands and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list (region chips, Bangkok first), **place search** (ซอย/ถนน/ย่าน via OpenStreetMap), map, the Chao Phraya profile, share links, and a **point check** (tap anywhere: gauges around the pin, citizen reports and warnings; no invented water level). **Cloudflare Workers AI** triages feedback notes in the background, and the site works the same without it. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
+> It keeps a raw archive and a Postgres database, serves backtested forecasts (12/24/48 h, split-conformal ranges; `star` where it wins) and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list (region chips, Bangkok first), **place search** (ซอย/ถนน/ย่าน via OpenStreetMap), map, the Chao Phraya profile, share links, and a **point check** (tap anywhere: gauges around the pin, citizen reports and warnings; no invented water level). **Cloudflare Workers AI** triages feedback notes in the background, and the site works the same without it. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
 
 ---
 
@@ -71,7 +70,7 @@ All workstreams run in parallel during the flood ([D-012](docs/plan/DECISIONS.md
 | RID portals | 🟡 reachable; Bang Sai (C.29A) feed still to find | Upstream boundary, releases |
 | Navy tide tables | 🔴 URL moved + bot challenge → our own harmonic fit as the interim | Tide |
 | BMA KlongMap via flood69 relay | ✅ live since v0.3.0: 199 Bangkok gauges, 5-min copies; BMA direct is unreachable from here | Bangkok khlongs, gates (inside/outside) |
-| HII TIWRM Bangkok Canal Telemetry | ✅ live: 30-day 10-min history for key Bangkok canals (`BKK*` series, e.g. BKK001, BKK008); direct BMA subnet BMA server subnet blackholes VPN egress | 30-day historical telemetering |
+| HII canal history (BMA gauges) | ✅ live since v0.10.0: one year of hourly history for 158 of the 199 BMA gauges via `waterlevel_graph?station_type=canal`, identical to the relay (D-054); HII's own `BKK*` gauges come through the main feed and chart. BMA's own servers block foreign and VPN IPs | BMA canal forecasts (backtest) |
 | OSM Nominatim | ✅ place search only, on demand | Find a soi, open the point check |
 | Traffy Fondue public API | 🟡 overloaded since 2026-09-26 15:11 UTC (HTTP 502); requests cut to 40 tickets, age shown in the UI | Street flooding beside each gauge (D-036), point check |
 

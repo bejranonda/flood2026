@@ -376,7 +376,7 @@ The repository was released as open source under the **MIT License** ([LICENSE](
 The Thai egress uses a VPN Gate volunteer relay ([D-016](plan/DECISIONS.md)). Risks: the operator can see destinations and unencrypted metadata; the relay can drop or throttle (it needed one restart during testing); its IP class is blocked by some sites; legacy AES-128-CBC/SHA1. **Mitigations:** the proxy is opt-in per request; HTTPS certificates are verified; no credentials or personal data go through it; a watchdog restarts the tunnel; the `.ovpn` is git-ignored. **Better:** an owner-controlled Thai host (SSH SOCKS) or a paid VPN with a Thai exit.
 - **Probe Update (2026-09-27 19:30 UTC, Exit the VPN Gate relay in Ayutthaya, TH):**
   - **Reachable via VPN:** `https://ews.dwr.go.th/` (200 OK) and `https://hydro.navy.mi.th/` (200 OK) — successfully bypasses foreign IP geo-blocks.
-  - **Still failing via VPN:** Both `weather.bangkok.go.th` (BMA server) and `dds.bangkok.go.th` (BMA server) time out on ports 80 and 443. Traceroute shows packets are completely dropped at BMA's perimeter firewall subnet BMA server subnet. Tinyproxy returns `500 Unable to connect`.
+  - **Still failing via VPN:** Both `weather.bangkok.go.th` (BMA server) and `dds.bangkok.go.th` (BMA server) time out on ports 80 and 443. Traceroute shows packets are completely dropped at BMA's perimeter firewall subnet. Tinyproxy returns `500 Unable to connect`.
   - **Resolution (D-053):** Do not rely on BMA direct web pages for historical telemetry. Use HII TIWRM (`getGraphFirst/{BKK_CODE}`) for 30-day high-resolution history and the `bma_klong` relay for 199 live 5-minute snapshot gauges.
 
 ### KI-506 — `autobahn.bot` zone challenges non-browser clients · 🟡
