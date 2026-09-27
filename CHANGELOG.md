@@ -2,6 +2,15 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.6.5 — 2026-09-27
+- **Compact UI: single ⓘ confidence indicator, collapsible legends, and datum tooltips (D-049, owner feedback):**
+  - **Single ⓘ confidence symbol:** Replaced multi-dot meter with a single circular `ⓘ` button (sky-blue `.conf-medium` for tide-validated models, slate-gray `.conf-low` for baseline statistical models). Eliminates mobile line wrap. Includes desktop hover tooltips and touch-triggered non-blocking toast notifications (`showToast`).
+  - **Collapsible chart legend:** Folded dense 3-line textual SVG chart definitions (`เส้นทึบ = ...`) into a sleek `<details class="chart-legend"><summary>ℹ️ สัญลักษณ์กราฟ</summary>...` collapse, reclaiming 3–4 lines of vertical screen height.
+  - **Observation time prioritized & MSL datum tucked:** Main line keeps the actionable observation timestamp (`ข้อมูล 27 ก.ย. 18:40 (15 นาทีที่แล้ว)`), tucking raw technical surveying datum into an adjacent `[ม.รทก. ⓘ]` button.
+  - **Compact point forecast banner:** Relocated forecast basis to a top-row button (`อ้างอิงข้อมูล ⓘ`) and integrated canal distance warnings into an inline label tooltip `ⓘ`.
+  - **Methodology legend in footer:** Added confidence indicator color key to the "ที่มาข้อมูลและวิธีคาดการณ์" popup.
+  - Cache-busters bumped: `style.css?v=19`, `app.js?v=28`.
+
 ## v0.6.4 — 2026-09-27
 - **Human-centered forecast phrasing and confidence indicators (D-048, owner feedback):**
   - **Zero-crossing interval clarity:** Replaced confusing literal delta intervals like "น่าจะลด 11 ถึงเพิ่ม 17 ซม." with intuitive citizen wording: `ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`.

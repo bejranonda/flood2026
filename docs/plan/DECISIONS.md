@@ -385,3 +385,18 @@
   2. **Progressive confidence scale:** Replace "มั่นใจต่ำ" with dot indicators and friendly phrasing: `●○○ คาดการณ์เบื้องต้น` and `●●○ คาดการณ์ปานกลาง`, with an explanatory tooltip on the 45-day backtest.
   3. **Point outlook nearest canal visibility:** When area-wide confidence is low/none, the forecast banner explicitly displays the nearest forecast canal gauge (`คลองใกล้เคียงที่สุด (ชื่อสถานี ห่าง X.X กม.)`) with its rise/fall forecast and disclaimer `*(ระดับน้ำที่สถานีคลอง ไม่ใช่ระดับน้ำที่จุดนี้หรือบนถนน)*` (D-021).
   4. **Alert deduplication:** Suppress the top urgent road banner when the forecast banner is already in high-risk alert mode.
+
+### D-049 — Compact UI: single ⓘ confidence indicator, collapsible legends, and progressive technical detail
+- **Date:** 2026-09-27 · **Status:** accepted (owner feedback on v0.6.4: "can we show only a single symbol with a color or sign, and put the description in tooltip to reduce text length? Can we put descriptions and legends into tooltips or collapse to save space?")
+- **Evidence & UX Problems:**
+  1. Three-dot meter and text labels wrapped awkwardly on 390px mobile viewports.
+  2. Technical surveying datum (`ระดับน้ำ 1.06 ม.รทก. · ตลิ่ง 0.88 ม.รทก.`) was displayed before observation freshness, cluttering the top of the station sheet for ordinary citizens.
+  3. The SVG chart's dense 3-line textual legend (`เส้นทึบ = ...`) pushed actionable user feedback and survey tools down.
+  4. The point check forecast banner suffered from vertical bloat due to standalone disclaimer and basis lines.
+- **Decision:**
+  1. **Single ⓘ confidence symbol with color:** Replaced multi-dot meter with a single circular `ⓘ` button (sky-blue for medium/tide, slate-gray for low/baseline). Full explanation in `title` for desktop hover, plus touch-triggered non-blocking toast (`showToast`) for mobile tap.
+  2. **Collapsible chart legend:** Folded chart line definitions into `<details class="chart-legend"><summary>ℹ️ สัญลักษณ์กราฟ</summary>...` saving 3–4 lines of vertical space by default.
+  3. **Elevation datum tucked into tooltip button:** Kept freshness prominent on the main line (`ข้อมูล 27 ก.ย. 18:40 (15 นาทีที่แล้ว)`), tucking raw surveying numbers into an adjacent `[ม.รทก. ⓘ]` button.
+  4. **Compact forecast banner:** Moved forecast basis to a header button `อ้างอิงข้อมูล ⓘ`, and integrated canal disclaimer into a label tooltip `ⓘ`.
+  5. **Footer methodology legend:** Added the confidence color key directly to the "ที่มาข้อมูลและวิธีคาดการณ์" popup.
+

@@ -11,13 +11,14 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > [!IMPORTANT]
-> **Current status (2026-09-27): v0.6.4 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
+> **Current status (2026-09-27): v0.6.5 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
 >
 > **Nationwide (validated plan, not built):** monitor first, forecast later ([D-044](docs/plan/DECISIONS.md), [APPROACH §19](docs/APPROACH_AND_METHODS.md), [phase 5](docs/plan/phase-5-nationwide.md)); the sources were probed live in [research/VALIDATION_2026-09-27_nationwide.md](research/VALIDATION_2026-09-27_nationwide.md).
 >
 > **Core USP & Highlights:**
-> - **🔮 Point Forecast Outlook (D-041, D-042, D-048):** Tap any coordinate in Bangkok/BMR for an instant 12–24h outlook combining nearest ML channel trends, 24h precipitation, canal drainage capacity, and citizen street reports. Even when surrounding gauges have mixed statuses, the nearest canal gauge's rise/fall forecast is clearly surfaced with honest distance attribution.
-> - **Human-Centered Forecast Phrasing & Friendly Confidence (D-048):** Intuitive natural Thai wording for steady/swing intervals (`ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`) and progressive dot scale badges (`●○○ คาดการณ์เบื้องต้น` / `●●○ คาดการณ์ปานกลาง`) with 45-day backtest tooltips.
+> - **🔮 Point Forecast Outlook (D-041, D-042, D-048, D-049):** Tap any coordinate in Bangkok/BMR for an instant 12–24h outlook combining nearest ML channel trends, 24h precipitation, canal drainage capacity, and citizen street reports.
+> - **Compact UI & Single ⓘ Confidence Symbol (D-049):** Replaced wide text and multi-dot meters with a single color-coded `ⓘ` button (sky-blue `.conf-medium` for tide-calibrated models, slate-gray `.conf-low` for baseline statistical models) with mobile toast tap feedback and desktop hover tooltips; collapsible chart legend (`ℹ️ สัญลักษณ์กราฟ ▾`); observation timestamp prioritized with MSL surveying datum tucked into an adjacent `[ม.รทก. ⓘ]` button; compact point forecast banner.
+> - **Human-Centered Forecast Phrasing (D-048):** Intuitive natural Thai wording for steady/swing intervals (`ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`).
 > - **Categorized Station Detail (D-040):** Stations split into 📈 Predictable (12–72h ML forecast) and 📍 Nearest active canal/river gauges. Stale gauges (>24h inactive) are filtered out.
 > - **Enhanced Street Flooding Hotspots:** Traffy Fondue citizen reports rendered with high contrast over Leaflet map tiles.
 > - **Ultra-compact Footer:** Reclaims ~50px of vertical map viewport.

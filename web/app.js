@@ -56,7 +56,6 @@ const CHANGE = {
   rise: { th: "เพิ่มขึ้น", icon: "↗", color: "#b45309" }, strong_rise: { th: "เพิ่มขึ้นมาก", icon: "⬆", color: "#c62828" },
 };
 const CONF_TH = { medium: "คาดการณ์ปานกลาง", low: "คาดการณ์เบื้องต้น" };
-const CONF_DOTS = { medium: "●●○", low: "●○○" };
 const CONF_WHY = {
   medium: "แบบจำลองน้ำขึ้นน้ำลงทดสอบย้อนหลัง 45 วัน แม่นกว่าการถือว่าน้ำคงที่ และช่วงที่ให้ถูกราว 9 ใน 10 ครั้ง",
   low: "แบบจำลองเบื้องต้น (อิงความคงที่หรือสถิติ 45 วัน) ตัวเลขเป็นกรอบความคลาดเคลื่อนจากการทดสอบย้อนหลัง",
@@ -77,11 +76,11 @@ function changeHTML(ch, hours, s) {
   if (!ch) return "";
   const c = CHANGE[ch.level] || CHANGE.steady;
   const nums = ch.wide ? "ช่วงคาดการณ์กว้างเกินไป จึงไม่แสดงตัวเลข" : changeRange(ch.likely, ch.dir);
-  const dots = CONF_DOTS[ch.confidence] || "";
   const confTh = CONF_TH[ch.confidence] || ch.confidence;
   const why = CONF_WHY[ch.confidence] || "";
   const peak = hours === 12 ? esc(peakText(s)) : "";
-  return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${peak} <span class="conf-badge conf-${esc(ch.confidence)}" title="${esc(why)}"><span class="sep">·</span> <span class="dots" aria-hidden="true">${dots}</span> ${esc(confTh)}</span></span>`;
+  const tooltip = `${confTh}: ${why}`;
+  return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${peak} <button type="button" class="conf-badge conf-${esc(ch.confidence)}" title="${esc(tooltip)}" aria-label="${esc(confTh)}">ⓘ</button></span>`;
 }
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
 const freeboardText = (fb) => {
@@ -412,7 +411,7 @@ function chartSVG(obs, fc, bank, crit = null) {
     ${dayTicks(tmin, tmax, x, H)}
     <line x1="${x(t0)}" x2="${x(t0)}" y1="8" y2="${H - 20}" stroke="#555" stroke-width=".8"/>
     <text x="${x(t0)}" y="9" font-size="10" text-anchor="middle" fill="#333" font-weight="600">ตอนนี้</text></svg>
-    <p class="muted">เส้นทึบ = ค่าตรวจวัด (ช่วงที่ขาดหายไม่ได้ลากเส้นเชื่อม) · เส้นประน้ำเงิน = ค่ากลางคาดการณ์ · แถบเข้ม/อ่อน = ช่วง 50%/90% · หน่วย ม.รทก.</p>`;
+    <details class="chart-legend"><summary>ℹ️ สัญลักษณ์กราฟ</summary><div class="legend-body">เส้นทึบ = ค่าตรวจวัดจริง (ช่วงที่ขาดหายไม่ได้ลากเส้นเชื่อม) · เส้นประน้ำเงิน = ค่ากลางคาดการณ์ · แถบเข้ม/อ่อน = ช่วง 50%/90% · หน่วย ม.รทก.</div></details>`;
 }
 
 /* ---------- texts ---------- */
@@ -530,8 +529,7 @@ async function showDetail(code) {
         : s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
         : `${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}`}</p>
       ${bmaNote(s)}
-      <p class="muted">ระดับน้ำ ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit} ·
-        ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})${s.stale ? " ⚠️ ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว" : ""}</p>
+      <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}`)}" aria-label="ระดับเทียบ ม.รทก.">ม.รทก. ⓘ</button>${s.stale ? ` <span class="warn-pill">⚠️ ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${notesText(s) ? `<div class="warnbox">ℹ️ ${esc(notesText(s))}</div>` : ""}
       ${bma ? `<div class="warnbox">ℹ️ สถานีของสำนักการระบายน้ำ กทม. ดึงผ่านเว็บ <a href="https://flood69.peoplesparty.or.th/#klong" target="_blank" rel="noopener">flood69 (พรรคประชาชน)</a> ซึ่งสำเนาข้อมูล กทม. ทุก 5 นาที ·
         ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ที่อยู่ใกล้กัน 30–60 ซม. จึงเทียบกับตลิ่งของสถานีนี้เท่านั้น · ประวัติย้อนหลังเริ่มเก็บ 26 ก.ย.</div>` : ""}
@@ -619,29 +617,35 @@ function pointHTML(d, src, place = "") {
   // clearly labeled with its distance, so the visitor gets the rise/fall forecast they need!
   const byCode = Object.fromEntries((d.stations_forecast || []).map((s) => [s.code, s]));
   let fcGaugesHTML = "";
+  const canalDisclaimerTip = "ระดับน้ำที่สถานีคลอง ไม่ใช่ระดับน้ำที่จุดนี้หรือบนถนน";
   if (fc.gauges && fc.gauges.length) {
     const items = fc.gauges.map((c) => byCode[c]).filter(Boolean).map((s) =>
       `<div class="fc-g"><span class="fc-gname">${esc(s.name_th)} <span class="muted">${esc(s.distance_km)} กม.</span></span> ${changeHTML(s.change12, 12, s)}</div>`).join("");
     if (items) {
-      fcGaugesHTML = `<div class="fc-gauges"><div class="fc-g-label">🌊 สถานีคลองใกล้เคียง:</div>${items}</div>`;
+      fcGaugesHTML = `<div class="fc-gauges"><div class="fc-g-label"><span>🌊 สถานีคลองใกล้เคียง:</span> <button type="button" class="canal-disclaimer-btn" title="${esc(canalDisclaimerTip)}" aria-label="หมายเหตุระดับน้ำคลอง">ⓘ</button></div>${items}</div>`;
     }
   } else if (d.stations_forecast && d.stations_forecast.length && d.stations_forecast[0].change12) {
     const s = d.stations_forecast[0];
     fcGaugesHTML = `
       <div class="fc-gauges">
-        <div class="fc-g-label">🌊 คลองใกล้เคียงที่สุด (${esc(s.name_th)} ห่าง ${esc(s.distance_km)} กม.):</div>
+        <div class="fc-g-label">
+          <span>🌊 คลองใกล้เคียงที่สุด (${esc(s.name_th)} ห่าง ${esc(s.distance_km)} กม.)</span>
+          <button type="button" class="canal-disclaimer-btn" title="${esc(canalDisclaimerTip)}" aria-label="หมายเหตุระดับน้ำคลอง">ⓘ</button>
+        </div>
         <div class="fc-g">${changeHTML(s.change12, 12, s)}</div>
-        <div class="fc-subnote">*(ระดับน้ำที่สถานีคลอง ไม่ใช่ระดับน้ำที่จุดนี้หรือบนถนน)*</div>
       </div>`;
   }
 
+  const basisTip = fcBasis ? `ข้อมูลที่ใช้ประเมิน: ${fcBasis}` : "";
   const forecastBanner = fc.title ? `
     <div class="forecast-banner ${fcR.cls}">
-      <div class="fc-badge">🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า</div>
+      <div class="fc-top">
+        <span class="fc-badge">🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า</span>
+        ${fcBasis ? `<button type="button" class="fc-basis-btn" title="${esc(basisTip)}" aria-label="อ้างอิงข้อมูล">อ้างอิงข้อมูล ⓘ</button>` : ""}
+      </div>
       <div class="fc-title">${fcR.icon} ${esc(fc.title)}</div>
       <div class="fc-desc">${esc(fc.desc)}</div>
       ${fcGaugesHTML}
-      ${fcBasis ? `<div class="fc-basis">อ้างอิง: ${esc(fcBasis)}</div>` : ""}
     </div>` : "";
 
   // Unified, clean overview card (no long academic walls of text or misleading dead links)
@@ -771,3 +775,27 @@ setTopH();
 setTab("list");
 load().then(openFromHash);
 setInterval(load, 5 * 60 * 1000);
+
+function showToast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.className = "toast";
+    t.setAttribute("role", "status");
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".conf-badge, .msl-btn, .canal-disclaimer-btn, .fc-basis-btn");
+  if (btn) {
+    e.stopPropagation();
+    const tip = btn.getAttribute("title") || btn.getAttribute("aria-label");
+    if (tip) showToast(tip);
+  }
+});
