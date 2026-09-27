@@ -41,7 +41,39 @@ const RAIN_TMD = [[0.1, "ไม่มีฝน"], [10.0, "ฝนเล็กน�
 const rainLabel = (mm) => RAIN_TMD.find(([max], i) => (i === 0 ? mm < max : mm <= max))[1];
 const rainMm = (mm) => (mm < 1 || rainLabel(Math.round(mm)) !== rainLabel(mm)) ? mm.toFixed(1) : String(Math.round(mm));
 const rainText = (mm) => mm < 0.1 ? "ไม่มีฝน" : `${rainLabel(mm)} (ประมาณ ${rainMm(mm)} มม.)`;
-const RAIN_LEGEND = "เกณฑ์กรมอุตุฯ: เล็กน้อย ≤10 · ปานกลาง ≤35 · หนัก ≤90 · หนักมาก >90 มม. · ฝนหนักช่วงสั้นทำถนนท่วมได้แม้ยอดรวมไม่มาก";
+// Colour + a 4-step mini scale say "how much" without a text legend (owner 2026-09-27: the legend line was too much).
+const RAIN_COLOR = { "ไม่มีฝน": "#9ca3af", "ฝนเล็กน้อย": "#60a5fa", "ฝนปานกลาง": "#2563eb", "ฝนหนัก": "#7c3aed", "ฝนหนักมาก": "#be185d" };
+const rainPill = (mm) => {
+  const label = rainLabel(mm), idx = RAIN_TMD.findIndex(([, l]) => l === label), c = RAIN_COLOR[label];
+  const bars = [1, 2, 3, 4].map((i) => `<i style="background:${i <= idx ? c : "#e5e7eb"}"></i>`).join("");
+  return `<span class="rain"><b style="color:${c}">${esc(label)}</b>${mm >= 0.1 ? ` ประมาณ ${esc(rainMm(mm))} มม.` : ""} <span class="rscale" aria-hidden="true">${bars}</span></span>`;
+};
+// Change at a gauge in 12/24 h, five colour steps (D-047): blue = falling, grey = steady, orange/red = rising.
+// Always "at this gauge", with the likely range in words and an honest confidence ("ปานกลาง" at best, never "สูง").
+const CHANGE = {
+  strong_fall: { th: "ลดลงมาก", icon: "⬇", color: "#1d4e89" }, fall: { th: "ลดลง", icon: "↘", color: "#2f6ba0" },
+  steady: { th: "ทรงตัว", icon: "→", color: "#6b7280" },
+  rise: { th: "เพิ่มขึ้น", icon: "↗", color: "#b45309" }, strong_rise: { th: "เพิ่มขึ้นมาก", icon: "⬆", color: "#c62828" },
+};
+const CONF_TH = { medium: "มั่นใจปานกลาง", low: "มั่นใจต่ำ" };
+const CONF_WHY = {
+  medium: "แบบจำลองน้ำขึ้นน้ำลงทดสอบย้อนหลัง 45 วัน แม่นกว่าการถือว่าน้ำคงที่ และช่วงที่ให้ถูกราว 9 ใน 10 ครั้ง",
+  low: "ยังคาดการณ์ได้ไม่ดีกว่าการถือว่าน้ำคงที่ ตัวเลขเป็นช่วงความคลาดเคลื่อนจากการทดสอบย้อนหลัง 45 วัน",
+};
+const changeRange = ([lo, hi]) => {
+  const a = Math.round(lo * 100), b = Math.round(hi * 100);
+  if (a >= 0) return a === b ? `เพิ่มราว ${b} ซม.` : `เพิ่ม ${a}–${b} ซม.`;
+  if (b <= 0) return a === b ? `ลดราว ${-a} ซม.` : `ลด ${-b}–${-a} ซม.`;
+  return `ลด ${-a} ถึงเพิ่ม ${b} ซม.`;
+};
+const peakText = (s) => (s.peak_h && s.forecast_time)
+  ? ` · สูงสุดราว ${fmtHour(Date.parse(s.forecast_time) + (s.peak_h - 1) * 3600e3)}–${fmtHour(Date.parse(s.forecast_time) + (s.peak_h + 1) * 3600e3)} น.` : "";
+function changeHTML(ch, hours, s) {
+  if (!ch) return "";
+  const c = CHANGE[ch.level] || CHANGE.steady;
+  const nums = ch.wide ? "ช่วงคาดการณ์กว้างเกินไป จึงไม่แสดงตัวเลข" : `น่าจะ${changeRange(ch.likely)}`;
+  return `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span> <span class="chg-txt">ใน ${hours} ชม. ${esc(nums)}${hours === 12 ? esc(peakText(s)) : ""} · <span title="${esc(CONF_WHY[ch.confidence])}">${esc(CONF_TH[ch.confidence])}</span></span>`;
+}
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
 const freeboardText = (fb) => {
   if (fb == null) return "";
@@ -111,7 +143,7 @@ function renderSummary(st) {
   const rain = st.rain_bkk_next24_mm_max;
   document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>
     <p class="sumline">${esc(TREND.rising)} <b>${f.trend12.rising}</b> · ${esc(TREND.falling)} <b>${f.trend12.falling}</b> สถานี (12 ชม.)
-      ${rain != null ? ` · 🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: <span title="${esc(RAIN_LEGEND)}">${esc(rainText(rain))}</span>` : ""}</p>
+      ${rain != null ? ` · 🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: ${rainPill(rain)}` : ""}</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั้งประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
@@ -131,8 +163,9 @@ function itemHTML(s, extra = "") {
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(levelText(s))}</span></div>
-    <div class="meta">${esc(trendLine(s))}
-      · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>${(s.street_reports_6h || 0) >= STREET_MIN
+    ${s.change12 ? `<div class="meta">${changeHTML(s.change12, 12, s)}</div>
+    <div class="meta">ข้อมูลล่าสุด ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`
+      : `<div class="meta">${esc(trendLine(s))} · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`}${(s.street_reports_6h || 0) >= STREET_MIN
         ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
 }
 
@@ -394,7 +427,7 @@ function outlookText(fc, s) {
   const o = fc?.outlook24;
   if (!o) return "";
   const parts = [];
-  if (o.varies && fc.issue_time) {
+  if (o.varies && o.peak_h >= 3 && fc.issue_time) {  // peak 1-2 h out = "highest now, falling after"
     const tp = Date.parse(fc.issue_time) + o.peak_h * 3600e3;
     parts.push(`ระดับสูงสุดใน 24 ชม. ข้างหน้า ช่วงประมาณ <b>${esc(fmtHour(tp - 3600e3))}–${esc(fmtHour(tp + 3600e3))} น.</b>
       ที่ราว ${o.peak_q[1].toFixed(2)}–${o.peak_q[3].toFixed(2)} ม.รทก.`);
@@ -494,6 +527,7 @@ async function showDetail(code) {
       ${bma ? `<div class="warnbox">ℹ️ สถานีของสำนักการระบายน้ำ กทม. ดึงผ่านเว็บ <a href="https://flood69.peoplesparty.or.th/#klong" target="_blank" rel="noopener">flood69 (พรรคประชาชน)</a> ซึ่งสำเนาข้อมูล กทม. ทุก 5 นาที ·
         ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ที่อยู่ใกล้กัน 30–60 ซม. จึงเทียบกับตลิ่งของสถานีนี้เท่านั้น · ประวัติย้อนหลังเริ่มเก็บ 26 ก.ย.</div>` : ""}
       <p class="big"${!hasForecast(s) && !observedText(s) && isNew(s) ? " hidden" : ""}>${esc(hasForecast(s) ? TREND[s.trend12] : observedText(s) || TREND.unknown)}${s.delta12_median != null ? ` <span class="muted">(ค่ากลาง ${esc(cm(s.delta12_median))} ใน 12 ชม.)</span>` : ""}</p>
+      ${s.change12 ? `<p class="chg-row">${changeHTML(s.change12, 12, s)}</p>` : ""}${s.change24 ? `<p class="chg-row">${changeHTML(s.change24, 24, s)}</p>` : ""}
       ${outlookText(fc, s)}
       <p>${recoveryText(s.recovery)}</p>
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
@@ -567,12 +601,18 @@ function pointHTML(d, src, place = "") {
   const fcR = FC_RISK[fc.risk] || FC_RISK.info;
   const FC_BASIS = { rain: "ฝนคาดการณ์", reports: "รายงานถนน", gauges: "สถานีใกล้เคียง" };
   const fcBasis = (fc.basis || []).map((b) => FC_BASIS[b] || b).join(" · ");
+  // Rise/fall, how much and how sure at each gauge the outlook used (D-047), named with its distance: a change at
+  // that gauge, never a level at the pin (D-021). Listed only when the area allows a canal statement (D-042).
+  const byCode = Object.fromEntries((d.stations_forecast || []).map((s) => [s.code, s]));
+  const fcGauges = (fc.gauges || []).map((c) => byCode[c]).filter(Boolean).map((s) =>
+    `<div class="fc-g"><span class="fc-gname">${esc(s.name_th)} <span class="muted">${esc(s.distance_km)} กม.</span></span> ${changeHTML(s.change12, 12, s)}</div>`).join("");
 
   const forecastBanner = fc.title ? `
     <div class="forecast-banner ${fcR.cls}">
       <div class="fc-badge">🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า</div>
       <div class="fc-title">${fcR.icon} ${esc(fc.title)}</div>
       <div class="fc-desc">${esc(fc.desc)}</div>
+      ${fcGauges ? `<div class="fc-gauges">${fcGauges}</div>` : ""}
       ${fcBasis ? `<div class="fc-basis">อ้างอิง: ${esc(fcBasis)}</div>` : ""}
     </div>` : "";
 
@@ -580,8 +620,7 @@ function pointHTML(d, src, place = "") {
   const overviewCard = `
     <div class="overview-box">
       <div class="ov-item">🌊 <b>คลองรอบจุด</b>: ${canalSummary}</div>
-      <div class="ov-item">🌧️ <b>ฝน 24 ชม. ข้างหน้า</b>: ${d.rain_next24_mm != null ? `<b>${esc(rainText(d.rain_next24_mm))}</b>` : "ไม่มีข้อมูล"} <span class="muted">(คาดการณ์ Open-Meteo)</span>
-        <div class="ov-note">${esc(RAIN_LEGEND)}</div></div>
+      <div class="ov-item">🌧️ <b>ฝน 24 ชม. ข้างหน้า</b>: ${d.rain_next24_mm != null ? rainPill(d.rain_next24_mm) : "ไม่มีข้อมูล"} <span class="muted">(Open-Meteo)</span></div>
       <div class="ov-item">🚗 <b>น้ำท่วมบนถนน (1 กม.)</b>: ${ev.traffy_flood_reports_1km_6h ? `มีแจ้ง <b>${Number(ev.traffy_flood_reports_1km_6h)} จุด</b> (ดูจุดสีม่วงบนแผนที่)` : "ยังไม่มีรายงานใน 6 ชม."}${depths ? ` <span class="muted">· แจ้งระดับ: ${depths}</span>` : ""}</div>
     </div>`;
 

@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from floodwatch import __version__, ai, db, geocode, point
 from floodwatch.config import DATUM_SUSPECT, RAIN_POINTS
-from floodwatch.forecast import classify_status
+from floodwatch.forecast import change_summary, classify_status
 
 app = FastAPI(title="BKK FloodWatch API", version=__version__, docs_url="/api/docs", openapi_url="/api/openapi.json")
 WEB_DIR = Path(os.environ.get("WEB_DIR", Path(__file__).resolve().parents[3] / "web"))
@@ -55,6 +55,8 @@ SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.c
        s.river, s.coord_source, s.coord_precision_km, o.obs_time, o.level_msl, o.discharge, o.situation_level,
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
        f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time,
+       (f.payload->>'level_now')::float AS fc_now, f.payload->'path'->11->'q' AS q12, f.payload->'path'->23->'q' AS q24,
+       f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'outlook24' AS outlook24,
        p.prev_time, p.prev_level
 FROM station s
 LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM observation
@@ -102,13 +104,25 @@ def _observed_change(r: dict) -> dict:
     return {"change_m": round(lvl - prev, 2), "change_hours": round((t - tp).total_seconds() / 3600, 1)}
 
 
+def _change_fields(r: dict, status: str) -> dict:
+    """Rise/fall, how much and how sure at +12 h and +24 h, from the stored forecast (D-047). Nothing for a gauge
+    whose data are too old to judge; a peak window only where a tide model makes the path vary (outlook24)."""
+    if status == "unknown" or r.get("fc_now") is None:
+        return {"change12": None, "change24": None, "peak_h": None}
+    o = r.get("outlook24") or {}
+    return {"change12": change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
+            "change24": change_summary(r.get("q24"), r["fc_now"], r.get("sk24")),
+            # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
+            "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
+
+
 def _station_row(r: dict) -> dict:
     """One station for the UI. Misleading values are filtered, never the station: `notes` says what and why."""
     r = dict(r)
     notes = []
     if r["code"] in DATUM_SUSPECT:  # values not m MSL (KI-210): hide the level, keep the station
         notes.append("datum_suspect")
-        r.update(level_msl=None, trend12=None, delta12=None, recovery=None)
+        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None)
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])
     basis, over_crit = "bank", None
     if r.get("agency") == "BMA":
@@ -136,6 +150,7 @@ def _station_row(r: dict) -> dict:
         "status": status, "pct_bank": None if pct is None else round(pct, 1),
         "freeboard_m": None if (r["level_msl"] is None or r["bank_msl"] is None) else round(r["bank_msl"] - r["level_msl"], 2),
         "trend12": r["trend12"], "delta12_median": r["delta12"], "recovery": r["recovery"],
+        **_change_fields(r, status),
         "forecast_time": _iso(r["forecast_time"]), "notes": notes,
         "coord_precision_km": r.get("coord_precision_km"),
         # When our record of this gauge begins. New gauges (e.g. BMA since 2026-09-26) have no chart or forecast yet;

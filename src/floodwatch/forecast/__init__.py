@@ -210,6 +210,42 @@ def outlook24(path: list[dict], bank: float | None) -> dict | None:
     return out
 
 
+WIDE_BAND_M = 1.5          # a 90 % band wider than this says nothing useful to a resident; hide the numbers (D-024)
+STRONG_CHANGE_M = 0.20     # colour steps for citizens (D-047): |median change| >= 20 cm is "มาก"
+MEDIUM_SKILL = 0.30        # skill over "no change" needed before we call a forecast "ปานกลาง" (never "สูง")
+
+
+def change_summary(q: list[float] | None, level_now: float | None, skill: dict | None) -> dict | None:
+    """Rise or fall, by how much, and how sure — for one gauge at one horizon (D-047).
+
+    `q` are the forecast quantiles (5/25/50/75/95 %) of the level at the horizon, `skill` is that horizon's backtest
+    (method, skill_vs_persistence, coverage90_backtest). Everything is a *change at this gauge*, never a level at a
+    user's pin (D-021). Direction uses the same rule as `trend12`: steady unless the median moves by more than
+    max(2 cm, half the 50 % band). Confidence is "medium" only when a real model beats "no change" by ≥ 30 % and its
+    90 % band held in the backtest; otherwise "low". There is no "high" (gauges are not the ground at the pin)."""
+    if not q or level_now is None or len(q) != 5 or any(v is None for v in q):
+        return None
+    d = [v - level_now for v in q]
+    med, half50 = d[2], (d[3] - d[1]) / 2
+    direction = "steady" if abs(med) <= max(0.02, half50) else ("rising" if med > 0 else "falling")
+    if direction == "steady":
+        level = "steady"
+    elif direction == "rising":
+        level = "strong_rise" if med >= STRONG_CHANGE_M else "rise"
+    else:
+        level = "strong_fall" if med <= -STRONG_CHANGE_M else "fall"
+    sk = skill or {}
+    good_model = sk.get("method") not in (None, "persistence") and (sk.get("skill_vs_persistence") or 0) >= MEDIUM_SKILL
+    calibrated = (sk.get("coverage90_backtest") or 0) >= 0.85
+    wide = (q[4] - q[0]) > WIDE_BAND_M
+    return {"dir": direction, "level": level, "median": round(med, 2),
+            "likely": None if wide else [round(d[1], 2), round(d[3], 2)],
+            "range90": None if wide else [round(d[0], 2), round(d[4], 2)],
+            "wide": wide, "confidence": "medium" if (good_model and calibrated and not wide) else "low",
+            "method": sk.get("method"), "skill": sk.get("skill_vs_persistence"),
+            "coverage90": None if sk.get("coverage90_backtest") is None else round(sk["coverage90_backtest"], 2)}
+
+
 def recovery(y, ybar, y0, bank, path, rain_next24) -> dict:
     """Milestone 1 (below bank) as a range with conditions (APPROACH §12, D-005)."""
     if bank is None:

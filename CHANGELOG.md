@@ -2,6 +2,23 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.6.3 — 2026-09-27
+- **Forecast banner now says how much, and how sure (D-047, owner feedback):** "จะเพิ่มหรือลด เมื่อไหร่ เท่าไหร่ และ
+  มั่นใจแค่ไหน" — the plain trend arrow gained a coloured chip (5 steps: ลดลงมาก/ลดลง/ทรงตัว/เพิ่มขึ้น/เพิ่มขึ้นมาก) with
+  a likely range in cm at +12 h and +24 h, taken from each gauge's own conformal forecast band, plus an honest
+  confidence label ("มั่นใจปานกลาง" only when a real model beats persistence and its 90% band held in the 45-day
+  backtest — otherwise "มั่นใจต่ำ"; there is no "มั่นใจสูง", a gauge is not the ground at the user's pin, D-021).
+  A tidal peak window is shown only when it is ≥ 3 h out (a "peak" 1–2 h away is just "still falling"). Bands wider
+  than 1.5 m hide the numbers instead of printing a meaningless range. New `forecast.change_summary()`, `/api/*`
+  fields `change12`/`change24`/`peak_h` per station, and `forecast.gauges` on `/api/point` (only the gauges the
+  point outlook actually used, so the banner never cites one it didn't rely on).
+- **Removed the rain-legend paragraph** (owner: "is it too much?") from the point card and summary strip. Rain now
+  shows as a short coloured pill (TMD word + a 4-step mini scale) instead of a full sentence explaining the bands.
+- **`/api/point` outlook wording fixed:** when a gauge sits close by but the confidence gate still withholds a
+  verdict, the banner now says the nearby gauges *disagree* (different water body/polder) rather than claiming
+  none is "close enough" — the old wording was misleading when a gauge was in fact under a kilometre away.
+- Tests: 61 passing (+5). Checked at 390 px on a throwaway preview container; production untouched until deploy.
+
 ## v0.6.2 — 2026-09-27
 - **Fixed issue #1 "ฝน -27 มม. แปลว่าอะไร"** (KI-224): the point card showed `ฝน 24 ชม.: ~27 มม.`. On a phone the
   `~` read as a minus sign, the amount had no meaning attached, and "24 ชม." did not say it is a forecast.

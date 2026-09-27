@@ -166,3 +166,25 @@ def test_rain_text_never_uses_a_tilde_and_keeps_label_and_number_consistent():
     assert "35.1 มม." in point._rain_phrase(35.1)[1] and point._rain_phrase(35.1)[1].startswith("ฝนหนัก")
     assert point.assess(14.30, 100.20, [], 0, {}, 27.3)["rain_band"] == "moderate"
     assert point.assess(14.30, 100.20, [], 0, {}, None)["rain_band"] is None
+
+
+def test_outlook_lists_gauge_changes_only_when_a_canal_statement_is_allowed_d047():
+    ch = {"dir": "rising", "level": "rise", "median": 0.1, "likely": [0.05, 0.15], "confidence": "low"}
+    close = [{"code": "C1", "lat": 13.821, "lon": 100.601, "status": "watch", "stale": False, "river": "คลองสามเสน",
+              "trend12": "rising", "delta12_median": 0.1, "change12": ch},
+             {"code": "C2", "lat": 13.822, "lon": 100.599, "status": "watch", "stale": False, "river": "คลองบางซื่อ",
+              "trend12": "rising", "delta12_median": 0.1, "change12": ch}]
+    assert point.assess(13.82, 100.60, close, 0, {}, 5.0)["forecast"]["gauges"] == ["C1", "C2"]
+    far = [{**close[0], "lat": 13.87}]  # one gauge 5.6 km away -> very_low -> no gauge lines in the banner (D-042)
+    out = point.assess(13.82, 100.60, far, 0, {}, 5.0)
+    assert out["area"]["confidence"] == "very_low" and out["forecast"]["gauges"] == []
+
+
+def test_info_outlook_says_disagree_not_far_when_a_gauge_is_close():
+    # 13.70, 100.50 on 2026-09-27: CPY015 (river) 0.8 km away, canals beyond -> very_low from disagreement, not distance.
+    st = [{"code": "R", "lat": 13.7005, "lon": 100.5075, "status": "watch", "stale": False, "river": "แม่น้ำเจ้าพระยา"},
+          {"code": "K1", "lat": 13.72, "lon": 100.51, "status": "critical", "stale": False, "river": "คลองดาวคะนอง"},
+          {"code": "K2", "lat": 13.73, "lon": 100.49, "status": "normal", "stale": False, "river": "คลองบางไส้ไก่"}]
+    out = point.assess(13.70, 100.50, st, 0, {}, 24.0)
+    assert out["area"]["confidence"] == "very_low" and out["area"]["nearest_km"] <= point.NEAR_KM
+    assert "ไม่ตรงกัน" in out["forecast"]["title"] and "ใกล้พอ" not in out["forecast"]["title"]

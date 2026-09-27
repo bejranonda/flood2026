@@ -180,7 +180,18 @@ def _rain_phrase(rain_mm: float) -> tuple[str, str]:
 
 
 def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
-                    rain_24h_mm: float | None, reports_1km: int) -> dict:
+                   rain_24h_mm: float | None, reports_1km: int) -> dict:
+    """The outlook (below) plus the gauges whose own forecast change the banner may show (D-047). Gauges are listed
+    only when the area confidence allows a canal statement at all (D-042); each keeps its name and distance, so the
+    change is read as "at that gauge", never as a level at the pin (D-021)."""
+    out = _outlook(area, stations_forecast, stations_nearby, rain_24h_mm, reports_1km)
+    usable = area.get("confidence") in ("low", "medium")
+    out["gauges"] = [s["code"] for s in stations_forecast if s.get("change12")] if usable else []
+    return out
+
+
+def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
+             rain_24h_mm: float | None, reports_1km: int) -> dict:
     """Synthesize a forward-looking 12-24h outlook for the clicked point from whatever evidence actually reaches
     it (USP: D-041, gated per D-042): canal/river gauges only when they are close enough and agree (area
     confidence low/medium — see area_index); rainfall and street reports are usable everywhere and are worded
@@ -257,11 +268,18 @@ def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: l
                 "title": "สถานีใกล้เคียงยังไม่มีสัญญาณน้ำเพิ่มผิดปกติ",
                 "desc": f"คลอง/แม่น้ำใกล้จุดนี้ยังทรงตัว{extra}"}
 
-    # 4. No usable gauge and no strong local evidence: say so, worded from rain alone, never a "safe" verdict
+    # 4. No usable gauge and no strong local evidence: say so, worded from rain alone, never a "safe" verdict.
+    # Say *why*: gauges close by that disagree (e.g. a river gauge 0.8 km away and canals beyond it) are not "far".
+    near = area.get("nearest_km")
+    if near is not None and near <= NEAR_KM:
+        title = "สถานีรอบจุดนี้ให้ข้อมูลไม่ตรงกัน จึงยังสรุประดับคลองที่จุดนี้ไม่ได้"
+        why = "สถานีใกล้เคียงวัดคนละแหล่งน้ำ (แม่น้ำ/คลอง) หรือคนละพื้นที่ปิดล้อม ดูแนวโน้มของแต่ละสถานีด้านล่าง"
+    else:
+        title = "ไม่มีสถานีวัดน้ำใกล้พอที่จะประเมินคลองที่จุดนี้"
+        why = "สถานีวัดน้ำใกล้เคียงอยู่ไกลหรือคนละลุ่มน้ำ จึงบอกระดับคลองที่จุดนี้ไม่ได้"
     if rain_sentence:
-        return {"risk": "info", "channel_trend": "unknown", "basis": basis,
-                "title": "ไม่มีสถานีวัดน้ำใกล้พอที่จะประเมินคลองที่จุดนี้",
-                "desc": f"{rain_sentence} สถานีวัดน้ำใกล้เคียงอยู่ไกลหรือคนละลุ่มน้ำ จึงบอกระดับคลองที่จุดนี้ไม่ได้"}
+        return {"risk": "info", "channel_trend": "unknown", "basis": basis, "title": title,
+                "desc": f"{rain_sentence} {why}"}
     return {"risk": "info", "channel_trend": "unknown", "basis": basis,
             "title": "ไม่มีข้อมูลพอที่จะประเมินจุดนี้",
             "desc": "ไม่มีสถานีวัดน้ำหรือข้อมูลฝนใกล้พอที่จะประเมิน โปรดตรวจสอบประกาศของหน่วยงานในพื้นที่"}
