@@ -8,6 +8,7 @@ distance and disagreement, and nearby citizen evidence. Pure functions only; the
 from __future__ import annotations
 
 import math
+from collections import Counter
 
 RANK = {"normal": 0, "watch": 1, "warning": 2, "critical": 3}
 LEVELS = ["normal", "watch", "warning", "critical"]
@@ -15,6 +16,16 @@ RADIUS_KM = 8.0        # beyond this a gauge says too little about the point
 NEAR_KM = 3.0
 LIST_KM = 15.0
 STREET_ALERT = 3      # street-flood reports within ~1 km in 6 h that override a calm channel picture
+
+# 24h rainfall bands, approximating TMD's rainfall-intensity classes (⚠️ not cited from a live TMD source;
+# revisit if an official 24h band table is found). Used only to word a condition, never a verdict on its own.
+RAIN_MODERATE_MM = 10.0
+RAIN_HEAVY_MM = 35.0
+RAIN_VERY_HEAVY_MM = 90.0
+
+# A trend needs a strict majority of same-water-body forecast gauges to be reported (D-042): any single tidal
+# river gauge or lone khlong reading is not enough to call a point "rising" (KI: false "rising" on tidal noise).
+TREND_DELTA_M = 0.04
 
 
 def haversine_km(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
@@ -103,96 +114,126 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
             "rain_next24_mm": rain_next24_mm, "warnings": warnings}
 
 
+def _station_trend(s: dict) -> str | None:
+    """One gauge's own 12h direction, from its tested trend label or its forecast delta."""
+    t = s.get("trend12")
+    if t in ("rising", "falling", "steady"):
+        return t
+    d = s.get("delta12_median")
+    if d is None:
+        return None
+    if d >= TREND_DELTA_M:
+        return "rising"
+    if d <= -TREND_DELTA_M:
+        return "falling"
+    return "steady"
+
+
+def _majority_trend(stations: list[dict]) -> str | None:
+    """A strict majority of same-water-body gauges must agree, or the trend is reported as unclear (D-042):
+    one tidal river gauge's routine swing, or a single outlier, must not read as a point-wide "rising"."""
+    votes = [t for t in (_station_trend(s) for s in stations) if t]
+    if not votes:
+        return None
+    counts = Counter(votes)
+    top, n = counts.most_common(1)[0]
+    return top if n > len(votes) / 2 else "mixed"
+
+
+def _rain_phrase(rain_mm: float) -> tuple[str, str]:
+    """(band label, sentence) for a 24h rainfall total. Never invoked when rain is unknown."""
+    if rain_mm < RAIN_MODERATE_MM:
+        return "light", f"ฝนคาดการณ์น้อย (~{round(rain_mm)} มม./24 ชม.)"
+    if rain_mm < RAIN_HEAVY_MM:
+        return "moderate", f"ฝนคาดการณ์ปานกลาง (~{round(rain_mm)} มม./24 ชม.) อาจมีน้ำขังบนถนนช่วงฝนตก"
+    if rain_mm < RAIN_VERY_HEAVY_MM:
+        return "heavy", f"ฝนคาดการณ์หนัก (~{round(rain_mm)} มม./24 ชม.) จุดที่ระบายช้าเสี่ยงน้ำขังบนถนน"
+    return "very_heavy", f"ฝนคาดการณ์หนักมาก (~{round(rain_mm)} มม./24 ชม.) เสี่ยงน้ำขังบนถนนหลายจุด"
+
+
 def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
-                   rain_24h_mm: float | None, reports_1km: int) -> dict:
-    """Synthesize a forward-looking 12-24h forecast outlook for the clicked point (USP: D-041)."""
+                    rain_24h_mm: float | None, reports_1km: int) -> dict:
+    """Synthesize a forward-looking 12-24h outlook for the clicked point from whatever evidence actually reaches
+    it (USP: D-041, gated per D-042): canal/river gauges only when they are close enough and agree (area
+    confidence low/medium — see area_index); rainfall and street reports are usable everywhere and are worded
+    as conditions, never as a verdict about a channel that has no gauge near this point."""
     cat = area.get("category")
-    rain = rain_24h_mm or 0.0
+    gauge_usable = area.get("confidence") in ("low", "medium")
+    basis = []
 
-    # Hydrological channel trend from nearest forecastable gauges
-    trends = [s.get("trend12") for s in stations_forecast if s.get("trend12") in ("rising", "falling", "steady")]
-    deltas = [s.get("delta12_median") for s in stations_forecast if s.get("delta12_median") is not None]
+    rain_band = rain_sentence = None
+    if rain_24h_mm is not None:
+        rain_band, rain_sentence = _rain_phrase(rain_24h_mm)
+        basis.append("rain")
 
-    if "rising" in trends or any(d >= 0.04 for d in deltas):
-        channel_trend = "rising"
-    elif "falling" in trends or any(d <= -0.04 for d in deltas):
-        channel_trend = "falling"
-    elif trends or deltas:
-        channel_trend = "steady"
-    else:
-        channel_trend = "unknown"
+    channel_trend = "unknown"
+    khlong_trend = None
+    if gauge_usable:
+        khlong = [s for s in stations_forecast if s.get("water_body") == "khlong"]
+        khlong_trend = _majority_trend(khlong)
+        river_trend = _majority_trend([s for s in stations_forecast if s.get("water_body") == "river"])
+        channel_trend = khlong_trend or (f"river_{river_trend}" if river_trend else "unknown")
+        if khlong_trend or river_trend:
+            basis.append("gauges")
 
-    rain_round = round(rain)
+    if reports_1km >= STREET_ALERT:
+        basis.append("reports")
 
-    # 1. High risk conditions
-    if reports_1km >= STREET_ALERT and rain >= 20:
-        return {
-            "risk": "high",
-            "channel_trend": channel_trend,
-            "title": "เฝ้าระวังน้ำท่วมขังบนถนนต่อเนื่อง",
-            "desc": f"มีรายงานน้ำรอระบายในพื้นที่ และมีฝนตกต่อเนื่อง ~{rain_round} มม. ใน 24 ชม."
-        }
-    if cat in ("critical", "warning") and rain >= 30:
-        return {
-            "risk": "high",
-            "channel_trend": channel_trend,
-            "title": "เสี่ยงน้ำท่วมขังเพิ่มขึ้นจากฝนตกหนัก",
-            "desc": f"คลองรอบจุดอยู่ในระดับสูง (ใกล้เต็ม) รองรับฝนตกหนัก ~{rain_round} มม. ได้จำกัด ระวังน้ำรอระบายบนถนน"
-        }
-    if cat == "critical":
-        return {
-            "risk": "high",
-            "channel_trend": channel_trend,
-            "title": "ระดับน้ำในคลองล้นตลิ่ง/วิกฤต",
-            "desc": "คลองสายหลักรอบจุดนี้ล้นตลิ่ง เฝ้าระวังน้ำเอ่อล้นพื้นที่ลุ่มต่ำริมตลิ่ง"
-        }
+    # 1. High risk: strong, local evidence of water on the street or a channel already over its bank
+    if reports_1km >= STREET_ALERT and rain_24h_mm is not None and rain_24h_mm >= 20:
+        return {"risk": "high", "channel_trend": channel_trend, "basis": basis,
+                "title": "เฝ้าระวังน้ำท่วมขังบนถนนต่อเนื่อง",
+                "desc": f"มีรายงานน้ำรอระบายในพื้นที่ และ{rain_sentence}"}
+    if gauge_usable and cat in ("critical", "warning") and rain_band in ("heavy", "very_heavy"):
+        return {"risk": "high", "channel_trend": channel_trend, "basis": basis,
+                "title": "เสี่ยงน้ำท่วมขังเพิ่มขึ้นจากฝนตกหนัก",
+                "desc": f"คลองรอบจุดอยู่ในระดับสูง (ใกล้เต็ม) รองรับฝนตกหนัก ~{round(rain_24h_mm)} มม./24 ชม. ได้จำกัด ระวังน้ำรอระบายบนถนน"}
+    if gauge_usable and cat == "critical":
+        return {"risk": "high", "channel_trend": channel_trend, "basis": basis,
+                "title": "ระดับน้ำในคลองล้นตลิ่ง/วิกฤต",
+                "desc": "คลองสายหลักรอบจุดนี้ล้นตลิ่ง เฝ้าระวังน้ำเอ่อล้นพื้นที่ลุ่มต่ำริมตลิ่ง"}
 
-    # 2. Moderate risk conditions
-    if channel_trend == "rising" and cat in ("warning", "watch"):
-        rain_str = f" และมีฝน ~{rain_round} มม." if rain >= 15 else ""
-        return {
-            "risk": "moderate",
-            "channel_trend": channel_trend,
-            "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นใน 12 ชม.",
-            "desc": f"สถานีคาดการณ์รอบจุดมีแนวโน้มสูงขึ้น{rain_str} โปรดติดตามสถานการณ์ใกล้ชิด"
-        }
-    if rain >= 35:
-        return {
-            "risk": "moderate",
-            "channel_trend": channel_trend,
-            "title": "เฝ้าระวังน้ำรอระบายจากฝนตกหนัก",
-            "desc": f"คาดการณ์ฝนสะสม ~{rain_round} มม. อาจมีน้ำท่วมขังชั่วคราวบนผิวถนนช่วงฝนตก"
-        }
-    if cat in ("warning", "watch"):
-        rain_str = f" มีฝนคาดการณ์ ~{rain_round} มม." if rain >= 15 else " หากไม่มีฝนตกหนักเพิ่มระดับน้ำจะค่อยๆ ทรงตัว"
-        return {
-            "risk": "moderate",
-            "channel_trend": channel_trend,
-            "title": "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว",
-            "desc": f"คลองยังระบายน้ำได้ต่อเนื่อง{rain_str}"
-        }
-    if channel_trend == "rising":
-        return {
-            "risk": "moderate",
-            "channel_trend": channel_trend,
-            "title": "ระดับน้ำคลองมีแนวโน้มสูงขึ้นเล็กน้อย",
-            "desc": "ระดับน้ำใน 12 ชม. มีแนวโน้มเพิ่มขึ้น แต่ยังอยู่ในเกณฑ์ที่คลองรับน้ำได้"
-        }
+    # 2. Moderate risk: heavy rain anywhere, a rising khlong nearby, or repeated street reports alone
+    if reports_1km >= STREET_ALERT:
+        return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
+                "title": "มีรายงานน้ำรอระบายบนถนนใกล้จุดนี้",
+                "desc": "ผู้ใช้งานแจ้งน้ำขังบนถนนในระยะ 1 กม. ช่วง 6 ชม.ที่ผ่านมา โปรดระวังการเดินทาง"}
+    if rain_band in ("heavy", "very_heavy"):
+        return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
+                "title": "เฝ้าระวังน้ำรอระบายจากฝนตกหนัก",
+                "desc": rain_sentence}
+    if gauge_usable and khlong_trend == "rising" and cat in ("warning", "watch"):
+        extra = f" {rain_sentence}" if rain_band == "moderate" else ""
+        return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
+                "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นใน 12 ชม.",
+                "desc": f"สถานีคาดการณ์รอบจุดมีแนวโน้มสูงขึ้น{extra} โปรดติดตามสถานการณ์ใกล้ชิด"}
+    if gauge_usable and cat in ("warning", "watch"):
+        extra = f" {rain_sentence}" if rain_band == "moderate" else " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำจะค่อยๆ ทรงตัว"
+        return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
+                "title": "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว",
+                "desc": f"คลองยังระบายน้ำได้ต่อเนื่อง{extra}"}
+    if gauge_usable and khlong_trend == "rising":
+        return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
+                "title": "ระดับน้ำคลองมีแนวโน้มสูงขึ้นเล็กน้อย",
+                "desc": "ระดับน้ำใน 12 ชม. มีแนวโน้มเพิ่มขึ้น แต่ยังอยู่ในเกณฑ์ที่คลองรับน้ำได้"}
 
-    # 3. Low risk conditions
-    if channel_trend == "falling":
-        rain_str = f" ฝนน้อย (~{rain_round} มม.)" if rain < 15 else ""
-        return {
-            "risk": "low",
-            "channel_trend": channel_trend,
-            "title": "ระดับน้ำคลองมีแนวโน้มลดลง",
-            "desc": f"ระดับน้ำในคลองมีแนวโน้มลดลงต่อเนื่อง{rain_str} ความเสี่ยงน้ำล้นต่ำ"
-        }
+    # 3. Low risk: only said when a nearby gauge is actually close enough to say it
+    if gauge_usable and khlong_trend == "falling":
+        extra = f" {rain_sentence}" if rain_band else ""
+        return {"risk": "low", "channel_trend": channel_trend, "basis": basis,
+                "title": "ระดับน้ำคลองมีแนวโน้มลดลง",
+                "desc": f"ระดับน้ำในคลองใกล้จุดนี้มีแนวโน้มลดลงต่อเนื่อง{extra}"}
+    if gauge_usable:
+        extra = f" {rain_sentence}" if rain_band else ""
+        return {"risk": "low", "channel_trend": channel_trend, "basis": basis,
+                "title": "สถานีใกล้เคียงยังไม่มีสัญญาณน้ำเพิ่มผิดปกติ",
+                "desc": f"คลอง/แม่น้ำใกล้จุดนี้ยังทรงตัว{extra}"}
 
-    # Default calm / steady
-    return {
-        "risk": "low",
-        "channel_trend": channel_trend,
-        "title": "สถานการณ์ปกติ / แนวโน้มทรงตัว",
-        "desc": f"คลองรอบจุดยังรับน้ำได้ดี คาดการณ์ฝนเบาบาง (~{rain_round} มม.) ความเสี่ยงน้ำท่วมต่ำ"
-    }
+    # 4. No usable gauge and no strong local evidence: say so, worded from rain alone, never a "safe" verdict
+    if rain_sentence:
+        return {"risk": "info", "channel_trend": "unknown", "basis": basis,
+                "title": "ไม่มีสถานีวัดน้ำใกล้พอที่จะประเมินคลองที่จุดนี้",
+                "desc": f"{rain_sentence} สถานีวัดน้ำใกล้เคียงอยู่ไกลหรือคนละลุ่มน้ำ จึงบอกระดับคลองที่จุดนี้ไม่ได้"}
+    return {"risk": "info", "channel_trend": "unknown", "basis": basis,
+            "title": "ไม่มีข้อมูลพอที่จะประเมินจุดนี้",
+            "desc": "ไม่มีสถานีวัดน้ำหรือข้อมูลฝนใกล้พอที่จะประเมิน โปรดตรวจสอบประกาศของหน่วยงานในพื้นที่"}

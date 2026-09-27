@@ -35,6 +35,7 @@
 | KI-220 | Canal "normal" next to flooded streets read as a contradiction; Traffy overloaded | UX / Data access | 🟢 relabelled (D-036); 🟡 Traffy down |
 | KI-221 | Favicon unrecognizable at 16×16 and blends into dark-mode browser tabs | UI / Brand | 🟢 redesigned with Flood Droplet & Wave (D-039) |
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
+| KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
@@ -363,6 +364,24 @@ Feedback (`/api/feedback`, [APPROACH §3.5](APPROACH_AND_METHODS.md)) is subject
 `/api/point` summarises gauges *around* a pin as a status category (D-021). It can't know the ground height, drains, walls or polder of the pin itself: Bangkok is not flat (KI-202, [APPROACH §2.10](APPROACH_AND_METHODS.md)).
 - **Mitigations:** confidence is never "high"; at very low confidence no verdict is shown; four warnings are always visible; citizen reports near the pin are shown.
 - **Fix path:** polder polygons → controlling gauge; FABDEM + σ → probability categories calibrated with user depth reports.
+
+### KI-223 — D-041's outlook banner gave a canal verdict without a usable gauge · 🟢 fixed v0.6.1 (D-042)
+`point_forecast()` (added in D-041, v0.6.0) read `area["category"]` and any single forecast gauge's `trend12`/
+`delta12_median` **without checking `area["confidence"]`** — the same gate the overview card already applies
+(KI-307, D-021). Found live on 2026-09-27 ~07:47 UTC:
+- `14.30,100.20` (`confidence=none`, 0 gauges within 8 km) → banner said "สถานการณ์ปกติ … ความเสี่ยงน้ำท่วมต่ำ" and
+  called 18 mm of rain "light" — a calm verdict manufactured from no data.
+- `13.82,100.60` (`confidence=very_low`, one gauge 5.6 km away) → the overview card correctly showed no verdict,
+  but the banner directly above it said "moderate / rising" from that same gauge: a contradiction on one sheet.
+- A lone tidal river gauge with routine tide movement (`delta12_median ≥ 0.04 m`) could read as the whole point
+  "rising", since the code took *any* forecast gauge rather than a majority of the same water body.
+- **Fix (D-042):** the canal/river layer of the outlook is now used only when `confidence ∈ {low, medium}`; trend
+  needs a strict majority of same-water-body gauges; rainfall (usable everywhere) is worded by 24h band, never
+  folded into "risk is low"; with no usable gauge and no strong local evidence the outlook returns `risk: "info"`
+  (ℹ️) stating that gauges are too far or in another basin to judge — never `"low"`/`"ปกติ"`. Distance-vs-agreement
+  evidence for the confidence bands themselves is in D-042.
+- **Still true:** the underlying distance/agreement proxy (KI-307) remains a proxy for basin membership, not a
+  real polder boundary; that fix is unchanged (polder polygons, HANDOFF §5 step 3).
 
 ### KI-508 — AI triage provider: GLM and Cloudflare Workers AI · 🟢 (mitigated, D-030)
 - **GLM Integration (D-030):** The project now supports **GLM (`glm-5.3-flash`)** via Zhipu AI OpenAPI (`open.bigmodel.cn/api/paas/v4/chat/completions`) as the primary AI triage provider. Tested and verified live in the worker container (`Parsed: {'category': 'local_drainage', 'urgent': False}`). Reasoning tokens are handled smoothly.

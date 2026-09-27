@@ -548,16 +548,25 @@ function pointHTML(d, src, place = "") {
     canalSummary = `<span class="muted">ไม่มีสถานีในระยะ 8 กม.</span>`;
   }
 
-  // Point Forecast Outlook Banner (USP: D-041)
+  // Point Forecast Outlook Banner (USP: D-041, confidence-gated per D-042 — never a canal verdict from a
+  // gauge that is too far or disagrees; "info" means only rain/reports were usable, not "all clear")
   const fc = d.forecast || {};
-  const fcRiskClass = fc.risk === "high" ? "risk-high" : fc.risk === "moderate" ? "risk-mod" : "risk-low";
-  const fcIcon = fc.risk === "high" ? "⚠️" : fc.risk === "moderate" ? "🌧️" : "✅";
+  const FC_RISK = {
+    high: { cls: "risk-high", icon: "⚠️" },
+    moderate: { cls: "risk-mod", icon: "🌧️" },
+    low: { cls: "risk-low", icon: "✅" },
+    info: { cls: "risk-info", icon: "ℹ️" },
+  };
+  const fcR = FC_RISK[fc.risk] || FC_RISK.info;
+  const FC_BASIS = { rain: "ฝนคาดการณ์", reports: "รายงานถนน", gauges: "สถานีใกล้เคียง" };
+  const fcBasis = (fc.basis || []).map((b) => FC_BASIS[b] || b).join(" · ");
 
   const forecastBanner = fc.title ? `
-    <div class="forecast-banner ${fcRiskClass}">
+    <div class="forecast-banner ${fcR.cls}">
       <div class="fc-badge">🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า</div>
-      <div class="fc-title">${fcIcon} ${esc(fc.title)}</div>
+      <div class="fc-title">${fcR.icon} ${esc(fc.title)}</div>
       <div class="fc-desc">${esc(fc.desc)}</div>
+      ${fcBasis ? `<div class="fc-basis">อ้างอิง: ${esc(fcBasis)}</div>` : ""}
     </div>` : "";
 
   // Unified, clean overview card (no long academic walls of text or misleading dead links)

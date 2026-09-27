@@ -10,10 +10,10 @@
 [![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
 
 > [!IMPORTANT]
-> **Current status (2026-09-26): v0.6.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
+> **Current status (2026-09-27): v0.6.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
 >
-> **Core USP & v0.6.0 Highlights:**
-> - **🔮 Point Forecast Outlook (D-041, Core USP):** Tap any coordinate in Bangkok/BMR to get an instant 12–24h synthesized forecast outlook combining nearest ML channel trends, 24h precipitation, canal drainage capacity, and citizen street reports.
+> **Core USP & Highlights:**
+> - **🔮 Point Forecast Outlook (D-041, confidence-gated per D-042):** Tap any coordinate in Bangkok/BMR for an instant 12–24h outlook combining nearest ML channel trends, 24h precipitation, canal drainage capacity, and citizen street reports — a canal trend is only claimed when a gauge is close enough and agrees; otherwise the outlook says so plainly instead of guessing.
 > - **Categorized Station Detail (D-040):** Stations split into 📈 Predictable (12–72h ML forecast) and 📍 Nearest active canal/river gauges. Stale gauges (>24h inactive) are filtered out.
 > - **Enhanced Street Flooding Hotspots:** Traffy Fondue citizen reports rendered with high contrast over Leaflet map tiles.
 > - **Ultra-compact Footer:** Reclaims ~50px of vertical map viewport.

@@ -2,6 +2,29 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.6.1 — 2026-09-27
+- **Fixed: the D-041 forecast banner could give a canal verdict without a usable gauge** (D-042, KI-223). Found in
+  a routine review: at `confidence=none` (0 gauges) the banner said "สถานการณ์ปกติ … ความเสี่ยงน้ำท่วมต่ำ" from no
+  data; at `confidence=very_low` it stated "moderate/rising" while the overview card above it correctly showed no
+  verdict — a contradiction on one sheet. A single tidal river gauge's routine swing could also read as the whole
+  point "rising".
+  - The canal/river gauge layer of the outlook is now used **only when `area.confidence ∈ {low, medium}`** — the
+    same gate the overview card already applies (D-021).
+  - Trend now needs a **strict majority** of same-water-body forecast gauges, computed separately for khlong
+    (drives "canal" wording) and river (tidal; labelled, never used alone).
+  - Rainfall (Open-Meteo 24h) is usable everywhere and worded by band (light/moderate/heavy/very heavy), as a
+    *condition*, never folded into a "risk is low" verdict; unknown rain no longer prints "~0 มม.".
+  - When neither a usable gauge nor strong local evidence (heavy rain, street reports) exists, the outlook returns
+    `risk: "info"` (ℹ️, new `.risk-info` style) — stating plainly that gauges are too far or in another basin to
+    judge the point, never dressed up as "low risk" or "ปกติ".
+  - A new `basis` field (`rain`/`reports`/`gauges`) is shown as a one-line footnote so a checked "low" doesn't look
+    identical to an unassessable "info".
+  - Evidence for the distance/confidence bands themselves: a 264-gauge snapshot shows status agreement between
+    nearby same-agency gauges falling from ~80% at ≤1 km to ~50% by 5–8 km; no polder polygons exist yet, so this
+    distance/agreement proxy (unchanged) remains the basis for "confidence", pending real basin boundaries.
+  - `src/floodwatch/point.py`, `tests/test_point.py` (+6 tests, 54 total), `web/app.js`/`web/style.css`
+    (`app.js?v=23`, `style.css?v=14`).
+
 ## v0.6.0 — 2026-09-26
 - **Point check redesigned for Bangkok resident clarity** (D-040, UX round 6):
   - **Collapsed static disclaimers:** Educational disclaimers ("นี่ไม่ใช่ระดับน้ำที่จุดนี้...", terrain variation, polders/gates) are collapsed into an expandable `<details class="point-disclaimer">` ("ℹ️ ข้อจำกัดของข้อมูล (สถานีคลอง ≠ ระดับถนนหรือในบ้าน)"), freeing up >40% vertical space on mobile and desktop.

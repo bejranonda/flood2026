@@ -165,6 +165,8 @@ a { color: var(--accent); }
 .forecast-banner.risk-high { background: #fff5f5; border-color: #fca5a5; border-left-color: var(--critical); }
 .forecast-banner.risk-mod { background: #fffbeb; border-color: #fde68a; border-left-color: var(--warning); }
 .forecast-banner.risk-low { background: #f0fdf4; border-color: #bbf7d0; border-left-color: #16a34a; }
+.forecast-banner.risk-info { background: #f8fafc; border-color: var(--line); border-left-color: var(--muted); }
 .forecast-banner .fc-badge { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
 .forecast-banner .fc-title { font-size: 15px; font-weight: 700; color: var(--ink); margin: 2px 0 4px; }
 .forecast-banner .fc-desc { font-size: 13px; color: #374151; line-height: 1.45; }
+.forecast-banner .fc-basis { font-size: 11px; color: var(--muted); margin-top: 4px; }

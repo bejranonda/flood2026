@@ -70,7 +70,7 @@ def test_categorized_stations_and_stale_filtering():
 
 
 def test_point_forecast_synthesis():
-    # Scenario A: High rain and canal warning/critical
+    # Scenario A: a close, usable khlong gauge in warning + heavy rain -> high, with the mm quoted
     st_heavy = [
         {"code": "BKK001", "lat": 13.87, "lon": 100.71, "status": "warning", "stale": False, "river": "คลองหกวา", "trend12": "steady", "delta12_median": 0.01}
     ]
@@ -78,11 +78,71 @@ def test_point_forecast_synthesis():
     assert out_heavy["forecast"]["risk"] == "high"
     assert "เสี่ยงน้ำท่วมขังเพิ่มขึ้น" in out_heavy["forecast"]["title"]
     assert "53" in out_heavy["forecast"]["desc"]
+    assert "gauges" in out_heavy["forecast"]["basis"] and "rain" in out_heavy["forecast"]["basis"]
 
-    # Scenario B: Calm conditions
+    # Scenario B: a close, usable, calm gauge with light rain -> low, worded as a condition (never "ปกติ" without
+    # any confidence check — D-042 also drops the old "ความเสี่ยงน้ำท่วมต่ำ" verdict phrasing)
     st_calm = [
         {"code": "BKK002", "lat": 13.87, "lon": 100.71, "status": "normal", "stale": False, "river": "คลองหกวา", "trend12": "steady", "delta12_median": 0.0}
     ]
     out_calm = point.assess(13.87, 100.71, st_calm, 0, {}, 2.0)
     assert out_calm["forecast"]["risk"] == "low"
-    assert "ปกติ" in out_calm["forecast"]["title"]
+    assert "ยังไม่มีสัญญาณน้ำเพิ่ม" in out_calm["forecast"]["title"]
+
+
+def test_point_forecast_gated_by_confidence_d042():
+    # A single gauge 5.6 km away is "very_low" confidence (area_index): the forecast must not carry a canal
+    # verdict from it, even though the raw gauge itself reads "warning" (D-021/D-042; was a real bug in v0.6.0
+    # where a far, disagreeing gauge still produced a "moderate / rising" banner).
+    far = [{"code": "X1", "lat": 13.87, "lon": 100.60, "status": "warning", "stale": False,
+            "river": "คลองสามเสน", "trend12": "rising", "delta12_median": 0.06}]
+    out = point.assess(13.82, 100.60, far, 0, {}, 16.0)
+    assert out["area"]["confidence"] == "very_low"
+    assert "gauges" not in out["forecast"]["basis"]
+    assert out["forecast"]["risk"] == "info"
+    assert "ไม่มีสถานีวัดน้ำใกล้พอ" in out["forecast"]["title"]
+
+
+def test_point_forecast_no_gauge_never_says_safe():
+    # No gauge within RADIUS_KM at all: moderate rain must not be reported as "light" or the point as "calm".
+    out = point.assess(14.30, 100.20, [], 0, {}, 18.0)
+    assert out["area"]["confidence"] == "none"
+    assert out["forecast"]["risk"] == "info"
+    assert "ปกติ" not in out["forecast"]["title"] and "ต่ำ" not in out["forecast"]["title"]
+    assert "ปานกลาง" in out["forecast"]["desc"]  # 18mm is TMD "moderate", not "light"/"none"
+
+
+def test_point_forecast_unknown_rain_omits_a_number():
+    out = point.assess(14.30, 100.20, [], 0, {}, None)
+    assert "มม." not in out["forecast"]["desc"]
+    assert out["forecast"]["basis"] == []
+
+
+def test_point_forecast_heavy_rain_alone_is_moderate_without_a_gauge():
+    out = point.assess(13.60, 100.95, [], 0, {}, 46.0)
+    assert out["forecast"]["risk"] == "moderate"
+    assert out["forecast"]["basis"] == ["rain"]
+
+
+def test_point_forecast_needs_a_majority_of_agreeing_khlong_gauges():
+    # One rising river gauge (tidal, ignored for canal risk) plus two steady khlong gauges close together
+    # (medium confidence): the point-wide trend must be the khlong majority ("steady"), not "rising".
+    st = [
+        {"code": "R1", "lat": 13.821, "lon": 100.601, "status": "watch", "stale": False,
+         "river": "แม่น้ำเจ้าพระยา", "trend12": "rising", "delta12_median": 0.10},
+        {"code": "C1", "lat": 13.822, "lon": 100.599, "status": "watch", "stale": False,
+         "river": "คลองสามเสน", "trend12": "steady", "delta12_median": 0.0},
+        {"code": "C2", "lat": 13.819, "lon": 100.602, "status": "watch", "stale": False,
+         "river": "คลองบางซื่อ", "trend12": "steady", "delta12_median": 0.0},
+    ]
+    out = point.assess(13.82, 100.60, st, 0, {}, 5.0)
+    assert out["area"]["confidence"] == "medium"
+    assert out["forecast"]["channel_trend"] == "steady"
+
+
+def test_point_forecast_street_reports_alone_are_moderate_not_high():
+    # Reports without a heavy-rain reading should not jump straight to "high" (D-042 keeps the >=20mm gate).
+    below = point.assess(13.82, 100.60, [], point.STREET_ALERT, {}, 18.0)
+    assert below["forecast"]["risk"] == "moderate"
+    at_or_above = point.assess(13.82, 100.60, [], point.STREET_ALERT, {}, 20.0)
+    assert at_or_above["forecast"]["risk"] == "high"

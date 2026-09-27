@@ -290,3 +290,39 @@
   2. Output a structured forecast outlook (`risk`: high/moderate/low, `channel_trend`, `title`, `desc`).
   3. Render a prominent `.forecast-banner` at the top of the point sheet (`🔮 คาดการณ์แนวโน้ม 12–24 ชม. ข้างหน้า`), immediately informing the user of upcoming flood risk.
 
+### D-042 — Gate the point forecast by confidence; never a canal verdict without a usable gauge
+- **Date:** 2026-09-27 · **Status:** accepted (owner asked for a review; "use the only available data for giving verdicts, e.g. rainfall, adjust the words"; "water is diverse by basin, not distance — how far is the criteria?")
+- **Bug found (D-041 shipped without a confidence check):** live probes on 2026-09-27 ~07:47 UTC showed the banner
+  giving a calm verdict from **zero gauges** (`14.30,100.20`: `confidence=none` → "สถานการณ์ปกติ … ความเสี่ยงน้ำท่วมต่ำ"
+  with 18 mm called "light"), and a **contradiction on one sheet**: at `13.82,100.60` the overview card correctly
+  withheld a verdict at `confidence=very_low` (per D-021, `web/app.js` canalSummary), while the banner above it stated
+  "moderate / rising" from the same far, disagreeing gauge. A single tidal river gauge's routine swing (`delta12 ≥
+  0.04 m`) could also read as "rising" for the whole point.
+- **Evidence for the distance criterion:** a snapshot of 264 fresh gauges (`/api/stations`, 2026-09-27) shows status
+  agreement between same-agency gauge pairs falls from 80–86% at 0–1 km to ~46–66% at 2–5 km to ~50% at 5–8 km
+  (vs. a ~31–45% random baseline at 8–15 km); ≥2-level disagreement is already ~21% by 1–2 km. Grouping by matching
+  river name (a crude basin proxy) gave no improvement over plain distance. **No polder polygons exist in this repo**
+  (APPROACH §2 lists them as a future data layer), so a true basin-aware boundary is not buildable yet — the
+  existing distance/agreement bands in `area_index()` (`confidence`: medium ≤3 km + agreeing, low ≤5 km + agreeing,
+  else very_low/none) remain the best available proxy and are reused rather than duplicated (KI: see KNOWN_ISSUES).
+- **Decision — three evidence layers, each worded for what it is:**
+  1. **Canal/river gauge trend** is only used when `area.confidence ∈ {low, medium}` (i.e. `area_index()` already
+     judged the nearby gauges close enough and in agreement). At `very_low`/`none`, the outlook carries **no canal
+     claim at all** — consistent with the overview card and D-021.
+  2. Trend requires a **strict majority** of same-water-body forecast gauges (`_majority_trend`), computed
+     separately for khlong (drives "canal" wording) and river (tidal; only labelled, never drives risk alone) —
+     not "any one gauge ≥ 0.04 m".
+  3. **Rainfall is usable everywhere** (it needs no nearby gauge), worded by 24h band (light/moderate/heavy/very
+     heavy — ⚠️ approximate, not cited from a live TMD source) as a *condition*, never folded into a "risk is low"
+     verdict. `rain_next24_mm = None` omits the rain sentence entirely (no more "~0 มม.").
+  4. **Street reports** (Traffy, ≥`STREET_ALERT` in 1 km/6 h) are usable everywhere and can raise risk on their own.
+  5. When neither a usable gauge nor strong local evidence exists, the outlook returns **`risk: "info"`** (ℹ️, new
+     `.risk-info` style) stating plainly that gauges are too far or in another basin to judge the point — never
+     `"low"`/`"ปกติ"`.
+  6. A new `"basis"` field (`["rain","reports","gauges"]`) lets the UI show a one-line footnote of which evidence
+     the outlook actually used (`web/app.js` `fcBasis`), so "info" doesn't look identical to a checked "low".
+- **Where:** `src/floodwatch/point.py` (`point_forecast`, `_majority_trend`, `_station_trend`, `_rain_phrase`),
+  `tests/test_point.py` (6 new cases), `web/app.js`/`web/style.css` (`risk-info`, `fc-basis`), cache-busters bumped.
+- **Follow-up (unchanged from HANDOFF §5):** polder/drainage-zone polygons are the real fix for "near me"; until
+  then this distance/agreement proxy is what confidence is built on, for both the overview card and this outlook.
+

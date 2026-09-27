@@ -82,6 +82,16 @@
 | 45 | Traffy flood hotspot circles barely visible on map (`fillOpacity: 0.14`, `weight: 0`) | Opacity boosted to 0.30–0.55 with 1px `#6a1b9a` stroke: crowd-verified street flooding clusters now pop out distinctly on OpenStreetMap tiles |
 | 46 | Dead private artifact link in point card | Linked to official BMA drainage department (`dds.bangkok.go.th`) alongside curated route guidance |
 
+### Round 7 (2026-09-27 ~08:00 UTC): D-041 outlook gave a verdict without evidence (v0.6.1, D-042)
+Live `/api/point` probes on 4 real coordinates (KI-223), before and after the fix:
+| Point | Area confidence | Before (v0.6.0) | After (v0.6.1) |
+|---|---|---|---|
+| 14.30, 100.20 (0 gauges in 8 km) | `none` | ✅ "สถานการณ์ปกติ … ความเสี่ยงน้ำท่วมต่ำ" (18 mm called "light") | ℹ️ "ไม่มีสถานีวัดน้ำใกล้พอ …" + rain condition, no verdict |
+| 13.82, 100.60 (1 gauge, 5.6 km) | `very_low` | 🌧️ "moderate / rising" — **contradicted the overview card**, which already showed no verdict at this confidence | Consistent with the card: no canal claim; rain/reports still shown |
+| 13.75, 100.50 (1 gauge at 0 km, tidal noise) | `low` | 🌧️ "rising" from one river gauge's routine tide swing | Trend now needs a same-water-body majority; a lone river gauge no longer drives risk |
+| 13.60, 100.95 (0 gauges, heavy rain) | `none` | 🌧️ "moderate" (rain only — this one was already reasonable) | Same outcome, now with an explicit `basis: ["rain"]` footnote |
+| — | — | — | See [D-042](plan/DECISIONS.md) for the distance/agreement evidence behind the confidence bands, and [KI-223](KNOWN_ISSUES.md) for the bug detail. |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.
