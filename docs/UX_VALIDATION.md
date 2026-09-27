@@ -130,6 +130,7 @@ Persona: a resident of Lat Phrao / Chatuchak on a phone at night during the floo
 | 66 | Canal factor long (two gauges, far notes, counts) | One gauge + rows + drop line; details folded; label for a borrowed forecast |
 | 67 | Sheet: emojis, duplicate trend headline, notes above the trend | Trend block first; emojis removed; BMA margin line under the headline; source/datum in ⓘ |
 | 68 | "ใกล้ตลิ่ง" 158 cm below the bank (CPY015) | "น้ำเต็มลำน้ำ 91 %" |
+| 71 | Owner: the "can't summarise" text repeated the reason at length | Short headline + rain condition only; the reason stays in the canal factor (v0.11.2, KI-235) |
 | 70 | Owner: one gauge name bold and one not; labels ran into long lines (v0.11.0) | One block per gauge: label line, bold name · distance · pill, then rows; divider between gauges (v0.11.1, KI-234) |
 | 69 | Kicker "12–24 ชม." above 24/48 h rows; "ท่วมถึงเข่า … 2" | "คาดการณ์ข้างหน้า"; "2 ราย" |
 

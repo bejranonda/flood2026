@@ -286,18 +286,14 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
                 "title": "สถานีใกล้เคียงยังไม่มีสัญญาณน้ำเพิ่มผิดปกติ",
                 "desc": f"คลอง/แม่น้ำใกล้จุดนี้ยังทรงตัว{extra}"}
 
-    # 4. No usable gauge and no strong local evidence: say so, worded from rain alone, never a "safe" verdict.
-    # Say *why*: gauges close by that disagree (e.g. a river gauge 0.8 km away and canals beyond it) are not "far".
+    # 4. No usable gauge and no strong local evidence: say so briefly, worded from rain alone, never a "safe" verdict.
+    # Close gauges that disagree are not "far"; the reason itself is shown in the panel's canal factor, so the text
+    # stays short (owner 2026-09-27: the long "why" sentence was not needed).
     near = area.get("nearest_km")
-    if near is not None and near <= NEAR_KM:
-        title = "สถานีรอบจุดนี้ให้ข้อมูลไม่ตรงกัน จึงยังสรุประดับคลองที่จุดนี้ไม่ได้"
-        why = "สถานีใกล้เคียงวัดคนละแหล่งน้ำ (แม่น้ำ/คลอง) หรือคนละพื้นที่ปิดล้อม ดูแนวโน้มของแต่ละสถานีด้านล่าง"
-    else:
-        title = "ไม่มีสถานีวัดน้ำใกล้พอที่จะประเมินคลองที่จุดนี้"
-        why = "สถานีวัดน้ำใกล้เคียงอยู่ไกลหรือคนละลุ่มน้ำ จึงบอกระดับคลองที่จุดนี้ไม่ได้"
+    title = ("สถานีรอบจุดไม่ตรงกัน ยังสรุประดับคลองไม่ได้" if near is not None and near <= NEAR_KM
+             else "ไม่มีสถานีวัดน้ำใกล้พอ ยังสรุประดับคลองไม่ได้")
     if rain_sentence:
-        return {"risk": "info", "channel_trend": "unknown", "basis": basis, "title": title,
-                "desc": f"{rain_sentence} {why}"}
+        return {"risk": "info", "channel_trend": "unknown", "basis": basis, "title": title, "desc": rain_sentence}
     return {"risk": "info", "channel_trend": "unknown", "basis": basis,
             "title": "ไม่มีข้อมูลพอที่จะประเมินจุดนี้",
             "desc": "ไม่มีสถานีวัดน้ำหรือข้อมูลฝนใกล้พอที่จะประเมิน โปรดตรวจสอบประกาศของหน่วยงานในพื้นที่"}

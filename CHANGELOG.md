@@ -2,6 +2,12 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.11.2 — 2026-09-27
+- **Shorter "can't summarise" outlook (owner review, KI-235):** the headline is now "สถานีรอบจุดไม่ตรงกัน ยังสรุป
+  ระดับคลองไม่ได้" (or "ไม่มีสถานีวัดน้ำใกล้พอ …") and the text under it is only the rain condition. The long reason
+  ("สถานีใกล้เคียงวัดคนละแหล่งน้ำ … ดูแนวโน้มของแต่ละสถานีด้านล่าง") is gone — the canal factor already says
+  "คลองรอบจุดต่างกันมาก". Tests: 83 passing (+1).
+
 ## v0.11.1 — 2026-09-27
 - **Canal factor readable at a glance (owner review, KI-234):** each gauge is its own block with the same structure —
   a small label on its own line ("คลองใกล้สุด" / "คาดการณ์จากคลองใกล้เคียง"), then the **bold name** · distance ·

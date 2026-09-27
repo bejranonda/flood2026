@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-235 | "Can't summarise" outlook repeated the reason at length | UX | 🟢 fixed v0.11.2 |
 | KI-234 | Canal factor: one gauge name bold, the other not; labels ran into long lines | UI | 🟢 fixed v0.11.1 |
 | KI-233 | Trend formats differed by horizon and view; 24 h showed a direction from the "no change" model; "ใกล้ตลิ่ง" 158 cm below the bank | UX / Product | 🟢 fixed v0.11.0 (D-056) |
 | KI-232 | Nearest canal had no forecast (relay-only BMA gauge), so the panel showed no trend at all; summary wording not understood | UX / Product | 🟢 fixed v0.10.2 (D-054 amended) |
@@ -538,3 +539,6 @@ Owner, 2026-09-27: "Why do 24 h and 48 h have different formats?" and "the panel
 
 ### KI-234 — Two gauge lines formatted differently · 🟢 fixed v0.11.1
 Owner screenshot 13.748,100.668 (2026-09-27): "คลองใกล้สุด ค.หัวหมาก-ซ.รามคำแหง 68 2.2 กม. [pill] · ยังไม่มีคาดการณ์" was one muted run-on line with a plain name, while the forecast gauge below had a bold name, and "คาดการณ์จากคลองใกล้เคียง:" sat on a line of its own — two formats for the same thing. Now one `gBlock` renders both: label line → bold name · distance · status pill → rows or "ยังไม่มีคาดการณ์"; a dashed divider between gauges.
+
+### KI-235 — Long "why" sentence in the can't-summarise outlook · 🟢 fixed v0.11.2
+Owner screenshot 13.875,100.542 (2026-09-27): "สถานีรอบจุดนี้ให้ข้อมูลไม่ตรงกัน จึงยังสรุประดับคลองที่จุดนี้ไม่ได้" followed by "สถานีใกล้เคียงวัดคนละแหล่งน้ำ (แม่น้ำ/คลอง) หรือคนละพื้นที่ปิดล้อม ดูแนวโน้มของแต่ละสถานีด้านล่าง" — long and redundant with the canal factor ("คลองรอบจุดต่างกันมาก"). Now: "สถานีรอบจุดไม่ตรงกัน ยังสรุประดับคลองไม่ได้" / "ไม่มีสถานีวัดน้ำใกล้พอ ยังสรุประดับคลองไม่ได้", and the text is only the rain condition. Test: `test_info_outlook_is_short_the_reason_lives_in_the_canal_factor`.

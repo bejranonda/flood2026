@@ -467,4 +467,4 @@
   3. *(Refined v0.11.1: every gauge is a block — label line, bold name · distance · pill, then its rows — KI-234.)* **Canal factor compacted:** one gauge line (name, distance, status pill), its rows and one "when it drops" line; a relay-only nearest canal gets a single line and "คาดการณ์จากคลองใกล้เคียง:" introduces the gauge that carries the trend; the why/where details sit behind "รายละเอียด".
   4. **Sheet order:** status → BMA margin line → freshness (+ source/datum in ⓘ) → trend block (rows, when it drops, peak, chance of reaching the bank) → street note → chart → notes → method → feedback; no emojis in the sheet text.
   5. **Say what is measured:** bank-based watch/warning with the bank still > 30 cm away read "น้ำเต็มลำน้ำ N %" (share of channel depth), not "ใกล้ตลิ่ง".
-  6. Kicker "คาดการณ์ข้างหน้า" (rows carry their own horizons); user depth reports counted as "N ราย".
+  6. *(v0.11.2: the can't-summarise outlook is one short headline + the rain condition, KI-235.)* Kicker "คาดการณ์ข้างหน้า" (rows carry their own horizons); user depth reports counted as "N ราย".

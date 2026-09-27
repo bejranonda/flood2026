@@ -244,3 +244,12 @@ def test_nearest_canal_with_a_trend_is_given_when_the_nearest_has_none():
     assert out["nearest_canal"]["code"] == "NEW" and out["nearest_canal_trend"]["code"] == "OLD"
     st2 = [{**st[0], "trend12": "steady", "change24": ch}, st[1]]
     assert point.assess(13.764, 100.679, st2, 0, {}, 5.0)["nearest_canal_trend"] is None  # nearest already has one
+
+
+def test_info_outlook_is_short_the_reason_lives_in_the_canal_factor():
+    # Owner 2026-09-27: "สถานีใกล้เคียงวัดคนละแหล่งน้ำ … ดูแนวโน้มของแต่ละสถานีด้านล่าง" was too long and not needed.
+    st = [{"code": "R", "lat": 13.7005, "lon": 100.5075, "status": "watch", "stale": False, "river": "แม่น้ำเจ้าพระยา"},
+          {"code": "K1", "lat": 13.72, "lon": 100.51, "status": "critical", "stale": False, "river": "คลองดาวคะนอง"},
+          {"code": "K2", "lat": 13.73, "lon": 100.49, "status": "normal", "stale": False, "river": "คลองบางไส้ไก่"}]
+    f = point.assess(13.70, 100.50, st, 0, {}, 24.0)["forecast"]
+    assert f["desc"] == point._rain_phrase(24.0)[1] and len(f["title"]) < 50
