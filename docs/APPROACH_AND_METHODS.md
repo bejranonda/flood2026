@@ -120,6 +120,7 @@ Gaps: short gaps (≤ 30 min) can be interpolated for features, with a flag. Lon
 
 - **Plausibility ceiling (live, D-024, KI-211):** level > bank + 3 m → `out_of_range`, using the stored bank on every insert. It caught BKK003's stuck 7.45 m (+5.4 m) and spikes at BKK006 / CPY012, while the largest genuine value in 30 days was +1.90 m (C.67). Flagged values stay in the DB and are hidden in the UI, and the station shows the last plausible value with a note.
 - **Show stations, filter values:** every station stays visible; the reason for each hidden value is a per-station `notes` code (D-024).
+- **Measured 24 h change (live, D-058, KI-240):** `qc.observed24` fits a straight line to the last 24 h of each gauge (dropouts removed, ≥ 20 h of readings); change = slope × 24 h, words by the rounded cm (< 2 / 2-4 / 5-19 / ≥ 20), "mixed" when R² < 0.5 and the residual wiggle ≥ 5 cm (tidal and pumped gauges).
 - **Dropouts and erratic gauges (live, D-057, KI-237):** `floodwatch.qc` runs every 10 min over the last 24 h. A reading ≥ 0.30 m away from the level before for one or two readings, then back within 10 cm, is flagged `dropout`. Three or more remaining steps of ≥ 0.30 m within 30 min mark the gauge erratic (pumps next to the sensor or a faulty sensor): its level, status, trend and forecast are hidden with the note `erratic`.
 ### 2.8 Validation in space and time
 - **Time:** rolling-origin walk-forward with an **embargo ≥ horizon**; report per lead time and per event.

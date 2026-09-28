@@ -63,7 +63,10 @@ def test_erratic_gauge_keeps_its_dot_but_not_its_level_status_or_trend():
            "obs_time": now, "trend12": "rising", "delta12": 0.19, "recovery": None, "forecast_time": now,
            "fc_now": -0.4, "q12": [-0.5, -0.3, -0.2, -0.1, 0.1], "coord_source": None, "coord_precision_km": None}
     assert api._station_row(row)["status"] == "normal"
-    r = api._station_row({**row, "erratic": {"steps": 24}})
+    obs = {"change_cm": -5, "r2": 0.83, "level": "fall"}
+    assert api._station_row({**row, "observed24": obs})["observed24"] == obs  # measured 24 h change passes through
+    r = api._station_row({**row, "erratic": {"steps": 24}, "observed24": obs})
+    assert r["observed24"] is None
     assert r["lat"] == 13.78 and "erratic" in r["notes"] and r["status"] == "unknown"
     assert r["level_msl"] is None and r["freeboard_m"] is None and r["trend12"] is None and r["change12"] is None
 

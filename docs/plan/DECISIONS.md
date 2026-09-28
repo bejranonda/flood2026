@@ -476,3 +476,11 @@
   1. **Dropouts** (≥ 0.30 m away from the level before for one or two readings, then back within 10 cm, all within 30 min) are flagged `dropout` and hidden everywhere; the gauge stays fully visible. This keeps real warnings such as WL.LPT.03 (critical) on screen.
   2. **Erratic gauges** (≥ 3 other steps of ≥ 0.30 m within 30 min in the last 24 h) keep their dot and chart of measured values; level, status, trend and forecast are hidden with the note `erratic` ("ระดับน้ำขึ้นลงเร็วผิดปกติ … อาจมีการสูบน้ำใกล้จุดวัด หรือเครื่องวัดขัดข้อง"), and they are not used in the point check. The 24 h window keeps a gauge hidden through calm spells between pump runs; it returns by itself after 24 calm hours.
   3. Thresholds live in `floodwatch.qc`; revisit when a gauge is wrongly hidden or a pump gauge slips through.
+
+### D-058 — Say what the water did in the last 24 h, in finer words
+- **Date:** 2026-09-28 · **Status:** accepted (owner: "a few cm lower in a flood is significant"; "replace it with finer words for small changes") · **Amends D-056** (the "no fall" sentence)
+- **Evidence:** KI-240 (48 of 48 clearly falling gauges showed no fall; the no-fall sentence at 26 falling gauges).
+- **Decision:**
+  1. A measured line "24 ชม. ที่ผ่านมา: <word> N ซม." under the trend rows in the sheet and the point panel (and in place of the 1-3 h change where a gauge has no forecast). It is a measurement, so it needs no model skill; forecast rows keep the D-056 rule unchanged.
+  2. Words by the rounded cm, so words match numbers: < 2 ทรงตัว (เปลี่ยนไม่ถึง 2 ซม.) · 2-4 ลดลง/เพิ่มขึ้นเล็กน้อย · 5-19 ลดลง/เพิ่มขึ้น · ≥ 20 ลดลง/เพิ่มขึ้นมาก; a direction only when a straight line explains ≥ 50 % of the 24 h (R²), otherwise "ขึ้นลงสลับกัน" (unless the ups and downs stay within 5 cm).
+  3. "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า" is retired. Never a flooded area or a depth at a pin from these centimetres (D-019, D-021).

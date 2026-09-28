@@ -2,6 +2,13 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.12.1 — 2026-09-28
+- **What the water did in the last 24 h, in finer words (owner, D-058, KI-240):** the sheet and the point panel show
+  "24 ชม. ที่ผ่านมา: ลดลง 5 ซม." from a straight-line fit of the measured levels (every 10 min, dropouts removed):
+  < 2 cm ทรงตัว · 2-4 cm เล็กน้อย · 5-19 cm ลดลง/เพิ่มขึ้น · ≥ 20 cm มาก, and "ขึ้นลงสลับกัน" for tide or pumps.
+  It replaces "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า", which the "no change" model showed at 26 gauges that had
+  clearly fallen (e.g. WL.CKS.01 −91 cm; BKK021 −5 cm). Tests: 91 passing (+2).
+
 ## v0.12.0 — 2026-09-28
 - **Erratic (pump-affected) gauges are hidden, dropouts removed (owner, D-057, KI-237):** a new worker task `qc`
   (every 10 min) flags single- or two-reading dropouts (e.g. -2.00 m at WL.LPT.03, WL.KPM.05) as `dropout`, and marks

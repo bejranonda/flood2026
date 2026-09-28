@@ -39,6 +39,27 @@ def test_smooth_rise_and_a_single_real_step_are_not_erratic():
     assert qc.assess(gate)["erratic_steps"] == 1 and not qc.assess(gate)["erratic"]
 
 
+def _day(f, step_s=600):
+    return [(T0 + k * step_s, f(k * step_s / 3600)) for k in range(24 * 3600 // step_s + 1)]
+
+
+def test_observed24_words_follow_the_rounded_centimetres():
+    # BKK021 on 2026-09-28: -4.6 cm in 24 h, steady (R² 0.83) -> shown as 5 cm, so the word is "ลดลง" (not "เล็กน้อย")
+    bkk021 = qc.observed24(_day(lambda h: 2.80 - 0.046 * h / 24))
+    assert bkk021["change_cm"] == -5 and bkk021["level"] == "fall"
+    assert qc.observed24(_day(lambda h: 2.80 - 0.035 * h / 24))["level"] == "small_fall"
+    assert qc.observed24(_day(lambda h: 2.80 - 0.22 * h / 24))["level"] == "strong_fall"
+    assert qc.observed24(_day(lambda h: 2.80 + 0.03 * h / 24))["level"] == "small_rise"
+    assert qc.observed24(_day(lambda h: 2.80 + 0.01 * h / 24))["level"] == "steady"
+
+
+def test_observed24_says_mixed_for_tide_and_nothing_without_a_day_of_data():
+    import math
+    tide = qc.observed24(_day(lambda h: 1.0 + 0.6 * math.sin(2 * math.pi * h / 12.42) - 0.03 * h / 24))
+    assert tide["level"] == "mixed"
+    assert qc.observed24(_day(lambda h: 2.0 - 0.1 * h / 24)[:60]) is None  # 10 h of data: no "24 h" claim
+
+
 def test_readings_far_apart_are_not_steps_and_the_newest_is_never_a_dropout():
     hourly = _ser([0.2, 0.9, 0.2, 0.9, 0.2], step_s=3600)  # hourly history: a 0.7 m change in 1 h is not judged
     assert qc.assess(hourly)["erratic_steps"] == 0

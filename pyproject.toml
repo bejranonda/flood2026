@@ -1,6 +1,6 @@
 [project]
 name = "floodwatch"
-version = "0.12.0"
+version = "0.12.1"
 description = "BKK FloodWatch 2026 — water-level monitoring and forecasting for Bangkok and the lower Chao Phraya"
 license = { text = "MIT" }
 classifiers = [

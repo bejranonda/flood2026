@@ -315,6 +315,8 @@ a { color: var(--accent); }
 .pf-gauges .pf-gname { color: var(--ink); }
 .pf-gname { font-weight: 600; margin-right: 4px; }
 .pf-nofall { font-size: 12.5px; color: #92400e; }
+.pf-obs { font-size: 12.5px; color: var(--muted); margin-top: 2px; }  /* measured 24 h change (D-058) */
+.pf-obs.obs-fall b { color: #1d4e89; } .pf-obs.obs-rise b { color: #b45309; }
 /* Report form in a popup (issue #2) */
 .report-open { width: 100%; margin: 4px 0 12px; }
 .report-dlg { width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 48px); border: 0; border-radius: 14px; padding: 8px 16px 16px; }

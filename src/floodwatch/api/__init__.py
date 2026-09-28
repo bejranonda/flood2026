@@ -78,7 +78,8 @@ SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.c
        f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'skill'->'48' AS sk48,
        f.payload->'outlook24' AS outlook24,
        p.prev_time, p.prev_level,
-       (SELECT value->s.code FROM collector_state WHERE key='erratic_gauges') AS erratic
+       (SELECT value->s.code FROM collector_state WHERE key='erratic_gauges') AS erratic,
+       (SELECT value->s.code FROM collector_state WHERE key='observed24') AS observed24
 FROM station s
 LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM observation
                    WHERE code=s.code AND level_msl IS NOT NULL AND quality_flag='ok'
@@ -151,6 +152,8 @@ def _station_row(r: dict) -> dict:
     elif r.get("erratic"):  # jumps back and forth (pumps at the sensor, or a faulty sensor): no level means anything
         notes.append("erratic")  # KI-237; the station and its measured chart stay, level/status/trend are hidden
         r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None, fc_now=None)
+    if notes:  # datum_suspect / erratic: no measured change either
+        r["observed24"] = None
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])
     basis, over_crit = "bank", None
     if r.get("agency") == "BMA":
@@ -190,6 +193,9 @@ def _station_row(r: dict) -> dict:
         # Observed change over the last 1-3 h: a trend from readings, available after an hour, long before a
         # forecast (which needs 7 days). Not a prediction; the UI says "ที่ผ่านมา" (owner: users want the trend).
         **_observed_change(r),
+        # What the level did over the last 24 h, measured (qc.observed24): {change_cm, r2, level}; a fact, not a forecast.
+        # Few cm matter in a flood (owner 2026-09-28), so small steady changes get their own words in the UI.
+        "observed24": r.get("observed24"),
         "history_days": None if r.get("first_time") is None else round(_age_min(r["first_time"]) / 1440, 1),
     }
 

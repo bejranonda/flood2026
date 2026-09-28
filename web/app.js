@@ -94,19 +94,31 @@ function trendRows(s, hours) {
   return rows ? `<div class="tr-rows">${rows}</div>` : "";
 }
 
-// When the level is high and the 24 h forecast shows no fall, say exactly that. Never "stable for 48 h": for most gauges
-// the 48 h range is wider than the distance to the bank (owner question 2026-09-27, D-050).
-const noFallText = (s) => (s.change24 && s.change24.dir !== "falling" && ["watch", "warning", "critical"].includes(s.status))
-  ? "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า" : "";
+// What the level did over the last 24 h, measured (qc.observed24; D-058). A few cm matter in a flood (owner 2026-09-28),
+// so small steady changes get their own words; the words follow the rounded cm shown (< 2 ทรงตัว · 2-4 เล็กน้อย · 5-19 ·
+// ≥ 20 มาก). It replaced "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า", which the "no change" model printed at 26 gauges that
+// had clearly fallen (e.g. WL.CKS.01 −91 cm, BKK021 −5 cm), KI-240.
+const OBS = { steady: "ทรงตัว", small_fall: "ลดลงเล็กน้อย", fall: "ลดลง", strong_fall: "ลดลงมาก",
+  small_rise: "เพิ่มขึ้นเล็กน้อย", rise: "เพิ่มขึ้น", strong_rise: "เพิ่มขึ้นมาก", mixed: "ขึ้นลงสลับกัน" };
+const obsDir = (o) => !o ? "" : o.level.endsWith("fall") ? "fall" : o.level.endsWith("rise") ? "rise" : "flat";
+const obsLine = (s) => {
+  const o = s.observed24;
+  if (!o || !OBS[o.level]) return "";
+  const cm = ["steady", "mixed"].includes(o.level) ? (o.level === "steady" ? " (เปลี่ยนไม่ถึง 2 ซม.)" : "") : ` ${Math.abs(o.change_cm)} ซม.`;
+  return `<div class="pf-obs obs-${obsDir(o)}">24 ชม. ที่ผ่านมา: <b>${esc(OBS[o.level])}</b>${esc(cm)}</div>`;
+};
 // When will it drop? The station's recovery estimate in dates/hours (never minutes, KI-231); shared by panel and sheet
 const dropText = (s) => {
   const r = s.recovery || {};
   if (r.state === "forecast") return `คาดว่าจะต่ำกว่าตลิ่ง: ${r.hours_max ? whenText(r.hours_min, r.hours_max) : "หลัง 72 ชม."}`;
   if (r.state === "extrapolated") return `หากลดในอัตราเดิม อาจต่ำกว่าตลิ่ง: ${whenText(r.hours_min, r.hours_max)}`;
   if (r.state === "not_estimable" && ["warning", "critical"].includes(s.status))
-    return r.reason === "heavy_rain_forecast" ? "ยังประเมินเวลาน้ำลดไม่ได้ (คาดฝนหนัก)" : (noFallText(s) || "ยังประเมินเวลาน้ำลดไม่ได้ (น้ำยังไม่ลดลง)");
-  return noFallText(s);
+    return r.reason === "heavy_rain_forecast" ? "ยังประเมินเวลาน้ำลดไม่ได้ (คาดฝนหนัก)"
+      : obsDir(s.observed24) === "fall" ? "ยังประเมินเวลาน้ำลดไม่ได้ (ลดลงช้าเกินกว่าจะประมาณ)" : "ยังประเมินเวลาน้ำลดไม่ได้ (น้ำยังไม่ลดลง)";
+  return "";
 };
+// Measured 24 h line first, then "when it drops": one block shared by panel and sheet.
+const changeLines = (s) => `${obsLine(s)}${dropText(s) ? `<div class="pf-nofall">${esc(dropText(s))}</div>` : ""}`;
 
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
 const freeboardText = (fb) => {
@@ -574,7 +586,7 @@ async function showDetail(code) {
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
-        ${dropText(s) ? `<div class="pf-nofall">${esc(dropText(s))}</div>` : ""}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE.erratic)}</div>` : `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
+        ${changeLines(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE.erratic)}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
       ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
@@ -650,7 +662,7 @@ function pointHTML(d, src, place = "") {
     <div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span><span class="muted">${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span>${pill(c.station)}</div>${body}</div>`;
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
-  const trendBody = (x) => `${trendRows(x, [24, 48])}${dropText(x) ? `<div class="pf-nofall">${esc(dropText(x))}</div>` : ""}`;
+  const trendBody = (x) => `${trendRows(x, [24, 48])}${changeLines(x)}`;
   const noTrendLine = near && near.station && main !== near
     ? gBlock("คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ (สถานีเริ่มเก็บข้อมูลไม่นาน)</div>`) : "";
   const mainBlock = main && main.station
