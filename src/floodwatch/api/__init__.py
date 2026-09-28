@@ -135,8 +135,8 @@ def _change_fields(r: dict, status: str) -> dict:
     c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
     return {"change12": change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
             "change24": change_summary(r.get("q24"), r["fc_now"], r.get("sk24")),
-            # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050), flagged: `proven` only where the
-            # 45-day backtest gives "medium"; the UI then states a direction, otherwise only the likely range
+            # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050). `proven` (medium confidence) is kept
+            # for API users only: since D-056 the UI shows a direction whenever a real model beat "no change" and ignores it.
             "change48": None if not c48 else {**c48, "proven": c48["confidence"] == "medium"},
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}

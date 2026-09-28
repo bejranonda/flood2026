@@ -2,12 +2,20 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## v0.12.1 — 2026-09-28
-- **What the water did in the last 24 h, in finer words (owner, D-058, KI-240):** the sheet and the point panel show
-  "24 ชม. ที่ผ่านมา: ลดลง 5 ซม." from a straight-line fit of the measured levels (every 10 min, dropouts removed):
+## v0.13.0 — 2026-09-28
+- **What the water did in the last 24 h, in finer words (owner, D-058, KI-240):** sheet, point panel and list cards
+  show "24 ชม. ที่ผ่านมา: ลดลง 5 ซม." from a straight-line fit of the measured levels (every 10 min, dropouts removed):
   < 2 cm ทรงตัว · 2-4 cm เล็กน้อย · 5-19 cm ลดลง/เพิ่มขึ้น · ≥ 20 cm มาก, and "ขึ้นลงสลับกัน" for tide or pumps.
   It replaces "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า", which the "no change" model showed at 26 gauges that had
-  clearly fallen (e.g. WL.CKS.01 −91 cm; BKK021 −5 cm). Tests: 91 passing (+2).
+  clearly fallen (e.g. WL.CKS.01 −91 cm; BKK021 −5 cm). Live: 272 gauges get a line.
+- **Review of v0.9.0 → v0.11.2 fixed (KI-239, D-059):** the "when it drops" line states its conditions again
+  ("หากไม่มีฝนตกหนักเพิ่ม", "ความเชื่อมั่นต่ำ"; D-005); river gauges no longer decide the canal factor; a lone gauge
+  within 3 km is not trusted when a gauge within 5 km disagrees by 2+ ranks (issue #3); the headline trend uses the
+  same distance band as the gate; the daily BMA history refresh runs 20 gauges per run and asks HII nothing when idle;
+  a gauge failing 3 backfill runs is set aside; sheet drag resets on `touchcancel`; a 12 h-only gauge shows its row;
+  a string payload from HII gives a clear error. Bangkok pins with a usable canal statement: 55 % → 50 %.
+- Zig-zag rows (KI-238) re-measured after v0.12.0: 3 of 221 gauges, none with opposite directions on screen; left open.
+- Tests: 96 passing (+7).
 
 ## v0.12.0 — 2026-09-28
 - **Erratic (pump-affected) gauges are hidden, dropouts removed (owner, D-057, KI-237):** a new worker task `qc`

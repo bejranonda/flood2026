@@ -56,6 +56,8 @@ Update `Last updated` on each file you touch. Docs are written in English; Thai 
 - **Circuit breaker:** retry with exponential backoff (1, 2, 4, 8 s, with a cap). Never crash the scheduler. After repeated failures, go to **degraded mode**: serve the last verified reading, its age, and a notice such as *"ข้อมูลล่าสุดเมื่อ 14:15 น. (แหล่งข้อมูลขัดข้องชั่วคราว)"*.
 - **Single-flight:** at most one outgoing request per source per cycle. Nothing is fetched upstream on the user's request path.
 - **QC flags, not deletion:** sentinel values (HII `999999`), range, rate of change, flatline, clock error, and neighbour consistency ([KI-206](KNOWN_ISSUES.md)).
+- **Judge a series, not only a reading** (D-057, KI-237): `qc_level` sees one value; one- or two-reading dropouts and gauges that jump back and forth (pumps at the sensor) pass it. `floodwatch.qc` flags dropouts and hides erratic gauges; a filter that also removes real pump drawdowns is not acceptable (measure false positives on clean gauges first).
+- **Never block the single worker loop** (KI-213, KI-239): a job that touches many stations spreads its work over runs (a few gauges per run), asks upstream nothing when it has nothing to do, and sets aside an item that keeps failing instead of retrying it first forever.
 - **Version metadata:** station bank level, datum, location and rating changes are versioned with effective dates, never overwritten.
 
 ---
@@ -64,6 +66,9 @@ Update `Last updated` on each file you touch. Docs are written in English; Thai 
 - **Judge a gauge by the yardstick its owner uses** (D-038): BMA canals by BMA's warning/critical (drainage), rivers and HII/RID gauges by the bank. Always name the yardstick ("เกินเกณฑ์ กทม.", "ต่ำกว่าตลิ่ง").
 - **Name what a gauge measures, not what the area is like** (D-036): never "ปกติ"/green for a channel below its bank; use "ต่ำกว่าตลิ่ง" (blue) and show street reports beside it. Hide gauges only when they say nothing about now (no data 24 h), and fold them away rather than deleting them from the page.
 - **Always state the age of a secondary layer** (Traffy) when it is more than an hour old.
+- **Measured facts and forecasts are different lines** (D-058): what the water did ("24 ชม. ที่ผ่านมา: ลดลง 5 ซม.") needs no model skill and is always shown; a forecast direction needs a model that beat "no change". Never let a "no change" model speak as if it had looked ("ยังไม่เห็นแนวโน้มลดลง…" at a falling gauge, KI-240).
+- **Words match the rounded number** (D-056, D-058): classify on the value you print (e.g. −4.6 cm prints 5 → "ลดลง", not "เล็กน้อย"); a few cm matter in a flood, so do not round small steady changes away.
+- **A river gauge is never canal evidence** (KI-223, D-059), in the canal factor, the gate or the headline.
 - **New stations must say they are new** (no empty chart without an explanation): the API gives `history_since`/`history_days`, the UI labels gauges with < 7 days of history.
 
 ## 4. Modelling and scientific rigour

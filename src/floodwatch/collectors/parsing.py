@@ -87,6 +87,8 @@ def parse_waterlevel_load(payload: dict, raw_ref: str) -> tuple[list[dict], list
 def parse_waterlevel_graph(code: str, payload: dict, bank: float | None, ground: float | None,
                            raw_ref: str) -> list[dict]:
     out = []
+    if not isinstance(payload, dict) or not isinstance(payload.get("data") or {}, dict):
+        raise ValueError(f"unexpected waterlevel_graph payload for {code}: {str(payload)[:80]!r}")  # e.g. an HII error string
     for p in (payload.get("data") or {}).get("graph_data") or []:
         t = parse_local(p.get("datetime"))
         if t is None:

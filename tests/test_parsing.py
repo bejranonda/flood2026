@@ -169,3 +169,11 @@ def test_canal_graph_tolerates_a_text_payload():
     # 2026-09-27 backfill: one gauge answered {"data": "<message>"}; the parser crashed the whole run.
     assert parsing.parse_canal_graph("WL.X.01", {"result": "OK", "data": "no data"}, "sha") == []
     assert parsing.parse_canal_graph("WL.X.01", "error page", "sha") == []
+
+
+def test_waterlevel_graph_string_payload_is_a_clear_error():
+    # KI-239: HII once answered with a string for Ct.4 / Ct.5A; the error read "'str' object has no attribute 'get'"
+    import pytest
+    from floodwatch.collectors import parsing
+    with pytest.raises(ValueError, match="unexpected waterlevel_graph payload for Ct.4"):
+        parsing.parse_waterlevel_graph("Ct.4", "Too many requests", None, None, "sha")

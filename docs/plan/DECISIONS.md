@@ -484,3 +484,11 @@
   1. A measured line "24 ชม. ที่ผ่านมา: <word> N ซม." under the trend rows in the sheet and the point panel (and in place of the 1-3 h change where a gauge has no forecast). It is a measurement, so it needs no model skill; forecast rows keep the D-056 rule unchanged.
   2. Words by the rounded cm, so words match numbers: < 2 ทรงตัว (เปลี่ยนไม่ถึง 2 ซม.) · 2-4 ลดลง/เพิ่มขึ้นเล็กน้อย · 5-19 ลดลง/เพิ่มขึ้น · ≥ 20 ลดลง/เพิ่มขึ้นมาก; a direction only when a straight line explains ≥ 50 % of the 24 h (R²), otherwise "ขึ้นลงสลับกัน" (unless the ups and downs stay within 5 cm).
   3. "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า" is retired. Never a flooded area or a depth at a pin from these centimetres (D-019, D-021).
+
+### D-059 — River gauges never judge canals; a lone close gauge is checked; one distance band
+- **Date:** 2026-09-28 · **Status:** accepted (owner: "review till no problem"; follows issue #3 "never red from one overflowing gauge among calm ones", KI-223, KI-239) · **Amends D-054**
+- **Evidence:** KI-239 (review) and the pin-grid comparison (426 Bangkok pins, live stations 2026-09-28): usable statements 55 % → 50 %, 9 red single-gauge statements removed where a gauge within 5 km disagreed by 2+ ranks.
+- **Decision:**
+  1. `area_index` skips river gauges: the river outside the walls is never evidence about canal drainage.
+  2. One gauge within 3 km still gives "low" confidence (D-054) unless a gauge between 3 and 5 km (`CHECK_KM`) differs from it by 2 or more ranks; then "very_low" (no canal verdict).
+  3. The headline trend uses gauges from the same band as the gate (3 km when a canal gauge is that close, otherwise 5 km), never gauges from other polders further away.

@@ -306,52 +306,68 @@ def bma_klong() -> dt.datetime | None:
 
 
 BMA_HISTORY_DAYS = 365
+BMA_REFRESH_PER_RUN = 20  # gauges per run in the daily refresh: ~20-40 s, so the 10-min collectors stay on time (KI-239)
+BMA_MAX_FAILURES = 3      # a gauge failing this many backfill runs in a row is set aside, so it cannot block the queue
 
 
 def bma_history(max_stations: int = 5, pause_s: float = 1.0) -> dt.datetime | None:
     """History for BMA canal gauges from HII (D-054): `waterlevel_graph?station_type=canal` serves the same BMA values
     as the relay, back to at least 2024. First a one-year hourly backfill, a few gauges per run; afterwards a daily
-    3-day refresh that fills gaps when the relay was down. Same BMA datum as the relay (never mixed with HII MSL)."""
-    feed, _ = _get_json("hii_canal_waterlevel", f"{HII}/canal_waterlevel")
-    ids = {r["station"]["canal_oldcode"]: r["station"]["id"] for r in feed.get("data") or [] if r.get("station")}
+    3-day refresh that fills gaps when the relay was down, spread over runs (BMA_REFRESH_PER_RUN each). Same BMA datum
+    as the relay (never mixed with HII MSL). The HII feed is fetched only when there is work (KI-239)."""
     today = dt.datetime.now(dt.timezone.utc).date()
-    newest = None
     with db.connect() as c:
         codes = [r["code"] for r in c.execute("SELECT code FROM station WHERE agency='BMA' AND code LIKE 'WL.%%' ORDER BY code").fetchall()]
-        state = db.get_state(c, "bma_history") or {"done": [], "missing": [], "refreshed": None}
-        pending = [x for x in codes if x not in state["done"] and x not in state["missing"]]
-        if pending:
-            todo, start = pending[:max_stations], today - dt.timedelta(days=BMA_HISTORY_DAYS)
-        elif state.get("refreshed") != today.isoformat():
-            todo, start = [x for x in codes if x in ids], today - dt.timedelta(days=3)
-        else:
-            return None
+        state = db.get_state(c, "bma_history") or {}
+    state = {"done": [], "missing": [], "failed": [], "failures": {}, "refreshed": None, "refresh_day": None,
+             "refresh_done": [], **state}
+    pending = [x for x in codes if x not in state["done"] and x not in state["missing"] and x not in state["failed"]]
+    if not pending and state.get("refreshed") == today.isoformat():
+        return None  # nothing to do today: no request to HII
+    if not pending and state.get("refresh_day") != today.isoformat():
+        state["refresh_day"], state["refresh_done"] = today.isoformat(), []
+    feed, _ = _get_json("hii_canal_waterlevel", f"{HII}/canal_waterlevel")
+    ids = {r["station"]["canal_oldcode"]: r["station"]["id"] for r in feed.get("data") or [] if r.get("station")}
+    if pending:
+        todo, start = pending[:max_stations], today - dt.timedelta(days=BMA_HISTORY_DAYS)
+    else:
+        left = [x for x in codes if x in ids and x not in state["refresh_done"]]
+        todo, start = left[:BMA_REFRESH_PER_RUN], today - dt.timedelta(days=3)
+    newest = None
+    with db.connect() as c:
         for code in todo:
             if code not in ids:
-                state["missing"].append(code)  # not in HII's canal feed: relay history only
+                if pending:
+                    state["missing"].append(code)  # not in HII's canal feed: relay history only
                 continue
             url = f"{HII}/waterlevel_graph?" + urllib.parse.urlencode(
                 {"station_type": "canal", "station_id": ids[code], "start_date": start.isoformat(), "end_date": today.isoformat()})
             try:
                 payload, sha = _get_json("hii_canal_graph", url)
+                rows = parsing.parse_canal_graph(code, payload, sha)
             except Exception as e:  # one gauge failing must not stop the others; it is retried next run
                 log.warning("bma_history %s: %s", code, e)
+                if pending:
+                    n = state["failures"][code] = state["failures"].get(code, 0) + 1
+                    if n >= BMA_MAX_FAILURES:
+                        state["failed"].append(code)  # set aside: relay history only (retry by clearing the state)
+                else:
+                    state["refresh_done"].append(code)  # the next daily refresh tries again
                 continue
-            rows = parsing.parse_canal_graph(code, payload, sha)
             db.insert_observations(c, rows)
-            if pending:
-                state["done"].append(code)
-                db.set_state(c, "bma_history", state)  # progress survives an interrupted run
+            (state["done"] if pending else state["refresh_done"]).append(code)
+            state["failures"].pop(code, None)
+            db.set_state(c, "bma_history", state)  # progress survives an interrupted run
             c.commit()
             if rows:
                 newest = max(filter(None, [newest, rows[-1]["obs_time"]]))
             time.sleep(pause_s)
-        if not pending:
+        if not pending and all(x in state["refresh_done"] for x in codes if x in ids):
             state["refreshed"] = today.isoformat()
         db.set_state(c, "bma_history", state)
         c.commit()
     log.info("bma_history: %d gauges (%s), %d still pending", len(todo), "backfill" if pending else "refresh",
-             max(0, len(pending) - len(todo)))
+             max(0, len(pending) - len(todo)) if pending else len([x for x in codes if x in ids and x not in state["refresh_done"]]))
     return newest
 
 

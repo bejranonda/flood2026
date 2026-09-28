@@ -110,8 +110,9 @@ const obsLine = (s) => {
 // When will it drop? The station's recovery estimate in dates/hours (never minutes, KI-231); shared by panel and sheet
 const dropText = (s) => {
   const r = s.recovery || {};
-  if (r.state === "forecast") return `คาดว่าจะต่ำกว่าตลิ่ง: ${r.hours_max ? whenText(r.hours_min, r.hours_max) : "หลัง 72 ชม."}`;
-  if (r.state === "extrapolated") return `หากลดในอัตราเดิม อาจต่ำกว่าตลิ่ง: ${whenText(r.hours_min, r.hours_max)}`;
+  // Always with its conditions (D-005; the v0.10 rewrite had dropped them, KI-239)
+  if (r.state === "forecast") return `คาดว่าจะต่ำกว่าตลิ่ง: ${r.hours_max ? whenText(r.hours_min, r.hours_max) : "หลัง 72 ชม."} (หากไม่มีฝนตกหนักเพิ่ม)`;
+  if (r.state === "extrapolated") return `หากลดในอัตราเดิมและไม่มีฝนหนัก อาจต่ำกว่าตลิ่ง: ${whenText(r.hours_min, r.hours_max)} (ประมาณคร่าว ๆ ความเชื่อมั่นต่ำ)`;
   if (r.state === "not_estimable" && ["warning", "critical"].includes(s.status))
     return r.reason === "heavy_rain_forecast" ? "ยังประเมินเวลาน้ำลดไม่ได้ (คาดฝนหนัก)"
       : obsDir(s.observed24) === "fall" ? "ยังประเมินเวลาน้ำลดไม่ได้ (ลดลงช้าเกินกว่าจะประมาณ)" : "ยังประเมินเวลาน้ำลดไม่ได้ (น้ำยังไม่ลดลง)";
@@ -210,9 +211,9 @@ function itemHTML(s, extra = "") {
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}</span><span class="fb">${esc(levelText(s))}</span></div>
-    ${(s.change24 || s.change12) ? `${trendRows(s, [s.change24 ? 24 : 12])}
+    ${(s.change24 || s.change12) ? `${trendRows(s, [s.change24 ? 24 : 12])}${obsLine(s)}
     <div class="meta">ข้อมูลล่าสุด ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`
-      : `<div class="meta">${esc(trendLine(s))} · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`}${(s.street_reports_6h || 0) >= STREET_MIN
+      : `${obsLine(s)}<div class="meta">${esc(trendLine(s))} · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`}${(s.street_reports_6h || 0) >= STREET_MIN
         ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
 }
 
@@ -662,7 +663,8 @@ function pointHTML(d, src, place = "") {
     <div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span><span class="muted">${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span>${pill(c.station)}</div>${body}</div>`;
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
-  const trendBody = (x) => `${trendRows(x, [24, 48])}${changeLines(x)}`;
+  // 24/48 h rows; a gauge with only a 12 h forecast (short history) shows that row instead of nothing (KI-239)
+  const trendBody = (x) => `${trendRows(x, [24, 48]) || trendRows(x, [12])}${changeLines(x)}`;
   const noTrendLine = near && near.station && main !== near
     ? gBlock("คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ (สถานีเริ่มเก็บข้อมูลไม่นาน)</div>`) : "";
   const mainBlock = main && main.station
@@ -838,8 +840,10 @@ setInterval(load, 5 * 60 * 1000);
   const sheet = document.getElementById("sheet");
   if (!sheet) return;
   let y0 = null, dy = 0;
+  const reset = () => { sheet.classList.remove("dragging"); sheet.style.transform = ""; y0 = null; dy = 0; };
   sheet.addEventListener("touchstart", (e) => {
     const top = sheet.getBoundingClientRect().top;
+    reset();  // a gesture iOS cancelled must not leave a stale start point that blocks scrolling (KI-239)
     if (sheet.scrollTop > 0 || e.touches.length !== 1 || e.touches[0].clientY - top > 56) return;
     y0 = e.touches[0].clientY; dy = 0; sheet.classList.add("dragging");
   }, { passive: true });
@@ -855,6 +859,7 @@ setInterval(load, 5 * 60 * 1000);
     sheet.style.transform = ""; y0 = null;
     setTimeout(() => sheet.classList.remove("snap"), 200);
   });
+  sheet.addEventListener("touchcancel", reset);
 })();
 
 function showToast(msg) {

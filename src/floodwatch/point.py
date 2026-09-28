@@ -43,6 +43,14 @@ def water_body(s: dict) -> str:
     return "river" if river.startswith("แม่น้ำ") else "khlong"
 
 
+CHECK_KM = 5.0  # a lone close gauge is checked against the gauges out to here (issue #3: never red from one gauge)
+
+
+def _outvoted(s: dict, near: list) -> bool:
+    """True when a gauge between NEAR_KM and CHECK_KM differs from the lone close gauge `s` by 2 or more ranks."""
+    return any(abs(RANK[o["status"]] - RANK[s["status"]]) >= 2 for d, o in near if NEAR_KM < d <= CHECK_KM)
+
+
 def area_index(lat: float, lon: float, stations: list[dict]) -> dict:
     """Inverse-distance-weighted status rank of fresh gauges within RADIUS_KM, reported as a category.
 
@@ -51,6 +59,8 @@ def area_index(lat: float, lon: float, stations: list[dict]) -> dict:
     near = []
     for s in stations:
         if s.get("lat") is None or s.get("lon") is None or s.get("stale") or s.get("status") not in RANK:
+            continue
+        if water_body(s) == "river":  # the river outside the walls is never canal evidence (KI-223, KI-239)
             continue
         d = haversine_km(lat, lon, s["lat"], s["lon"])
         if d <= RADIUS_KM:
@@ -71,8 +81,8 @@ def area_index(lat: float, lon: float, stations: list[dict]) -> dict:
     nearest = near[0][0]
     if len(close) >= 2 and spread <= 1:
         confidence = "medium"  # never "high": gauges measure channels, not the ground at the point
-    elif close and spread <= 1:
-        confidence = "low"  # one gauge within 3 km
+    elif close and spread <= 1 and not _outvoted(close[0][1], near):
+        confidence = "low"  # one gauge within 3 km, and no gauge within CHECK_KM disagrees by 2+ ranks
     elif not close and nearest <= 5.0 and len(near) >= 2 and spread <= 1:
         confidence = "low"
     else:
@@ -106,7 +116,11 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
     candidates = active if active else listed
 
     # Predictable stations: stations with tested forecast / trend12
-    stations_forecast = [s for s in candidates if s.get("trend12") in ("rising", "falling", "steady") or s.get("delta12_median") is not None][:3]
+    # Same distance band as the area gate (KI-239): NEAR_KM when a canal gauge is that close, else CHECK_KM.
+    # Before, the gate judged from ≤ 3 km while the headline trend could come from gauges 3-8 km away (other polders).
+    band = NEAR_KM if any(s["distance_km"] <= NEAR_KM and s["water_body"] == "khlong" for s in candidates) else CHECK_KM
+    stations_forecast = [s for s in candidates if s["distance_km"] <= band and (
+        s.get("trend12") in ("rising", "falling", "steady") or s.get("delta12_median") is not None)][:3]
     fc_codes = {s["code"] for s in stations_forecast}
 
     # Nearby local stations (avoiding duplicate cards that already appear in forecast)

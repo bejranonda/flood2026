@@ -53,17 +53,19 @@ def test_categorized_stations_and_stale_filtering():
     # Stations around point:
     # 1. Nearby but stale -> must be excluded from active recommendations
     # 2. Nearby live BMA canal gauge without forecast -> should be in stations_nearby
-    # 3. Slightly further station with forecast -> should be in stations_forecast
+    # 3. Slightly further station with forecast (within 3 km) -> should be in stations_forecast
+    # 4. A forecast gauge 3.7 km away while closer gauges exist -> not used for the headline (KI-239: same band as the gate)
     st = [
         {"code": "STALE_NEAR", "lat": 13.722, "lon": 100.696, "status": "unknown", "stale": True, "river": "คลองประเวศ"},
         {"code": "LIVE_LOCAL", "lat": 13.725, "lon": 100.698, "status": "warning", "stale": False, "river": "คลองประเวศ", "trend12": "unknown"},
-        {"code": "LIVE_FC", "lat": 13.750, "lon": 100.710, "status": "critical", "stale": False, "river": "คลองแสนแสบ", "trend12": "steady", "delta12_median": 0.02},
+        {"code": "LIVE_FC", "lat": 13.735, "lon": 100.705, "status": "critical", "stale": False, "river": "คลองแสนแสบ", "trend12": "steady", "delta12_median": 0.02},
+        {"code": "FAR_FC", "lat": 13.750, "lon": 100.710, "status": "normal", "stale": False, "river": "คลองแสนแสบ", "trend12": "falling", "delta12_median": -0.2},
     ]
     out = point.assess(13.720, 100.695, st, 0, {}, None)
     fc_codes = [s["code"] for s in out["stations_forecast"]]
     near_codes = [s["code"] for s in out["stations_nearby"]]
 
-    assert "LIVE_FC" in fc_codes
+    assert "LIVE_FC" in fc_codes and "FAR_FC" not in fc_codes
     assert "LIVE_LOCAL" in near_codes
     assert "STALE_NEAR" not in fc_codes
     assert "STALE_NEAR" not in near_codes
@@ -208,9 +210,9 @@ def test_nearest_canal_is_a_khlong_within_3_km_never_a_river_gauge():
     near_canal = {**far_canal, "code": "K1", "lat": 13.71}
     out = point.assess(13.70, 100.50, [river, near_canal], 0, {}, 5.0)
     assert out["forecast"]["gauges"] and out["forecast"]["nearest_canal"] is None
-    # Close gauges that disagree (river normal, canal overflowing): gate closed -> fall back to the nearest canal.
+    # River normal, canal overflowing: the river is not canal evidence (KI-239), so the close canal speaks alone ("low").
     out = point.assess(13.70, 100.50, [{**river, "status": "normal"}, {**near_canal, "status": "critical"}], 0, {}, 5.0)
-    assert out["forecast"]["gauges"] == [] and out["forecast"]["nearest_canal"] == "K1"
+    assert out["area"]["category"] == "critical" and out["area"]["confidence"] == "low" and "K1" in out["forecast"]["gauges"]
 
 
 def test_dense_city_is_judged_by_the_nearest_gauges_not_the_whole_8_km_d054():
@@ -253,3 +255,18 @@ def test_info_outlook_is_short_the_reason_lives_in_the_canal_factor():
           {"code": "K2", "lat": 13.73, "lon": 100.49, "status": "normal", "stale": False, "river": "คลองบางไส้ไก่"}]
     f = point.assess(13.70, 100.50, st, 0, {}, 24.0)["forecast"]
     assert f["desc"] == point._rain_phrase(24.0)[1] and len(f["title"]) < 50
+
+
+def test_river_gauges_never_decide_the_canal_factor():
+    # KI-239: a Chao Phraya gauge 0.5 km away was the only "close" gauge and set the canal category alone
+    st = [_st("R", 13.750, 100.500, "watch", river="แม่น้ำเจ้าพระยา"), _st("K", 13.790, 100.500, "normal")]
+    idx = point.area_index(13.7505, 100.5005, st)
+    assert idx["n"] == 1 and idx["category"] == "normal"
+
+
+def test_a_lone_close_gauge_outvoted_nearby_is_not_trusted():
+    # issue #3 / KI-239: one overflowing gauge at ~2.9 km, three calm ones at 3.1-4 km -> never "low" (usable) red
+    lone = [_st("A", 13.776, 100.500, "critical")]
+    calm = [_st(c, 13.750 + d, 100.500, "normal") for c, d in (("B", -0.028), ("C", -0.032), ("D", -0.036))]
+    assert point.area_index(13.750, 100.500, lone + calm)["confidence"] == "very_low"
+    assert point.area_index(13.750, 100.500, lone)["confidence"] == "low"  # alone, it may still speak (D-054)
