@@ -148,6 +148,18 @@ Real walk with `scripts/ux_walk.py` (Playwright, Android phone 390×844 with GPS
 | 71 | Chao Phraya tab started at Nakhon Sawan with a long legend | Bangkok first; one-line legend, the rest behind "อ่านกราฟนี้" |
 | — | Not done: tapping a crowded area hits a station instead of a point check; the header + disclaimer still take ~25 % of the first screen; no real residents interviewed yet | Next round |
 
+### Round 13 (2026-09-28 18:30–20:10 UTC): consistency proof across views and viewports (v0.15.0, D-062)
+Owner: "keep number to show"; "วิธีคาดการณ์ … collapsed"; "we do not need ควรทำอะไรตอนนี้"; "prove the consistency of panel and text"; "validate the UI in many possibilities". `scripts/ux_consistency.py`: 310 sheets, 67 pins (8×8 Bangkok grid + riverside, Ayutthaya side, outside the network), 405 panel blocks, 1,261 rows, viewports 360/390/768/1440 px.
+| # | Finding | Done |
+|---|---|---|
+| 72 | Measured rows had no numbers; restoring the past range made "ลดลง −7 ถึง +14" | "ราว −7 ซม." = trend continued, damped |
+| 73 | Headline "ทรงตัว"/"12 ชม. เพิ่มขึ้น" above falling 24/48 h rows (7 pins) | Headline = canal-factor gauge at 24 h; falling wording for high canals |
+| 74 | List "→ ทรงตัว" vs sheet "? ไม่แน่ชัด" (VLGE20) | Every view walks 12→24→48 h |
+| 75 | Model chip against its range (3 rows) | Direction only when the range agrees |
+| 76 | Pill repeated the factor word; measured line twice; action guide and method line too long | Removed / collapsed |
+| 77 | BKK008 recovery "หลัง 72 ชม." while 1 cm over the bank and falling | Window keeps its early end |
+Final run: 0 issues in C1–C3, C5, C6; 2 accepted (two gauges, same status).
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.
@@ -159,6 +171,7 @@ Real walk with `scripts/ux_walk.py` (Playwright, Android phone 390×844 with GPS
 8. **Real users**: 5–10 short interviews (riverside, polder, elderly) and a look at feedback counts after one week.
 
 ## 4. How to re-run this check
+- Consistency proof (all sheets, pins, 4 viewports): `python3 scripts/ux_consistency.py [out.json]`.
 - Real walk (phone + desktop, GPS, search, map tap, river tab, sheet): `python3 scripts/ux_walk.py <out_dir>` (needs Python Playwright; Chromium runs with `--no-sandbox` as root).
 - Screenshots: `chrome --headless=new --no-sandbox --window-size=390,844 --virtual-time-budget=8000 --screenshot=m.png http://localhost:3000/` (add `#s=BKK021` for the sheet).
 - Walk each persona's question in §1. Can it be answered in ≤ 10 s on the phone screenshot without scrolling past the first screen?

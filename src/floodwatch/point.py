@@ -128,7 +128,6 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
 
     combined = stations_forecast + stations_nearby
 
-    fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km)
 
     # The canal line the panel leads with (D-054): the nearest fresh canal gauge, never a river gauge (KI-227).
     nc = next((s for s in candidates if s.get("water_body") == "khlong" and not s.get("stale")
@@ -142,6 +141,11 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
         (x for x in candidates if x.get("water_body") == "khlong" and has_trend(x) and not x.get("stale")), None)
     nearest_trend = None if nt is None else {"code": nt["code"], "distance_km": nt["distance_km"],
                                              "far": nt["distance_km"] > NEAR_KM, "station": nt}
+    # The headline trend comes from the gauge the canal factor shows with rows (the nearest canal, or the nearest canal
+    # with a forecast), so the headline never contradicts the rows right under it (UX round 12, C6). A majority over
+    # several gauges read "ทรงตัว" above the nearest gauge's "↘ ลดลง" at 7 of 67 pins.
+    lead = nc if nc is not None and has_trend(nc) else nt
+    fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km, lead)
     return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx, "nearest_canal": nearest_canal,
             "nearest_canal_trend": nearest_trend,
             "forecast": fc_outlook,
@@ -154,7 +158,15 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
 
 
 def _station_trend(s: dict) -> str | None:
-    """One gauge's own 12h direction, from its tested trend label or its forecast delta."""
+    """One gauge's own 24 h direction — the same one its trend row shows (D-060: the measured trend where no model sees a
+    direction; a model direction only when its whole likely range agrees), so the headline never contradicts the rows."""
+    ch = s.get("change24") or s.get("change12")  # the panel shows 24/48 h rows: the headline speaks for 24 h
+    if ch and ch.get("dir") in ("rising", "falling", "steady"):
+        if ch.get("basis") == "measured_trend" or ch["dir"] == "steady":
+            return ch["dir"]
+        lk = ch.get("likely")
+        agrees = lk is not None and (lk[1] < 0 if ch["dir"] == "falling" else lk[0] > 0)
+        return ch["dir"] if agrees and ch.get("method") not in (None, "persistence") else "steady"
     t = s.get("trend12")
     if t in ("rising", "falling", "steady"):
         return t
@@ -206,11 +218,11 @@ def _rain_phrase(rain_mm: float) -> tuple[str, str]:
 
 
 def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
-                   rain_24h_mm: float | None, reports_1km: int) -> dict:
+                   rain_24h_mm: float | None, reports_1km: int, lead: dict | None = None) -> dict:
     """The outlook (below) plus the gauges whose own forecast change the banner may show (D-047). Gauges are listed
     only when the area confidence allows a canal statement at all (D-042); each keeps its name and distance, so the
     change is read as "at that gauge", never as a level at the pin (D-021)."""
-    out = _outlook(area, stations_forecast, stations_nearby, rain_24h_mm, reports_1km)
+    out = _outlook(area, [lead] if lead is not None else stations_forecast, stations_nearby, rain_24h_mm, reports_1km)
     usable = area.get("confidence") in ("low", "medium")
     out["gauges"] = [s["code"] for s in stations_forecast if s.get("change12")] if usable else []
     # When the area gate gives no canal statement, the panel may still show the trend at the nearest *canal* gauge,
@@ -276,17 +288,19 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
     if gauge_usable and khlong_trend == "rising" and cat in ("warning", "watch"):
         extra = f" {rain_sentence}" if band == "moderate" else ""
         return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
-                "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นใน 12 ชม.",
+                "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นใน 24 ชม.",
                 "desc": f"สถานีคาดการณ์รอบจุดมีแนวโน้มสูงขึ้น{extra} โปรดติดตามสถานการณ์ใกล้ชิด"}
     if gauge_usable and cat in ("warning", "watch"):
-        extra = f" {rain_sentence}" if band == "moderate" else " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำจะค่อยๆ ทรงตัว"
+        falling = khlong_trend == "falling"  # the headline says what the rows under it say (UX round 12, C6)
+        extra = f" {rain_sentence}" if band == "moderate" else (
+            " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำมีแนวโน้มค่อยๆ ลดลง" if falling else " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำจะค่อยๆ ทรงตัว")
         return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
-                "title": "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว",
+                "title": "ระดับน้ำคลองค่อนข้างสูง แต่มีแนวโน้มลดลง" if falling else "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว",
                 "desc": f"คลองยังระบายน้ำได้ต่อเนื่อง{extra}"}
     if gauge_usable and khlong_trend == "rising":
         return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
                 "title": "ระดับน้ำคลองมีแนวโน้มสูงขึ้นเล็กน้อย",
-                "desc": "ระดับน้ำใน 12 ชม. มีแนวโน้มเพิ่มขึ้น แต่ยังอยู่ในเกณฑ์ที่คลองรับน้ำได้"}
+                "desc": "ระดับน้ำใน 24 ชม. มีแนวโน้มเพิ่มขึ้น แต่ยังอยู่ในเกณฑ์ที่คลองรับน้ำได้"}
 
     # 3. Low risk: only said when a nearby gauge is actually close enough to say it
     if gauge_usable and khlong_trend == "falling":
@@ -298,7 +312,9 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
         extra = f" {rain_sentence}" if band else ""
         return {"risk": "low", "channel_trend": channel_trend, "basis": basis,
                 "title": "สถานีใกล้เคียงยังไม่มีสัญญาณน้ำเพิ่มผิดปกติ",
-                "desc": f"คลอง/แม่น้ำใกล้จุดนี้ยังทรงตัว{extra}"}
+                # "ทรงตัว" only when the rows say steady; with no trend at all, only the rain condition (C6)
+                "desc": (f"คลอง/แม่น้ำใกล้จุดนี้ยังทรงตัว{extra}" if channel_trend in ("steady", "river_steady")
+                         else extra.strip() or "ยังไม่มีคาดการณ์ทิศทางของคลองใกล้จุดนี้")}
 
     # 4. No usable gauge and no strong local evidence: say so briefly, worded from rain alone, never a "safe" verdict.
     # Close gauges that disagree are not "far"; the reason itself is shown in the panel's canal factor, so the text

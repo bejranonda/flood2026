@@ -77,7 +77,8 @@ const CONF_WHY = {
 // --- One trend format for list, panel and sheet (owner 2026-09-27, D-056) -------------------------------------------
 // Aligned rows: horizon · chip · signed range · ⓘ. A direction only where a real model beat "no change" at that horizon
 // (the backtest's own gate); "no change" itself can only ever say "steady", so it shows "? ไม่แน่ชัด" + its error range.
-const directional = (ch) => !!ch && ch.level !== "steady" && (ch.basis === "measured_trend" || (!!ch.method && ch.method !== "persistence"));
+const agrees = (ch) => !ch.likely || (ch.dir === "falling" ? ch.likely[1] < 0 : ch.dir === "rising" ? ch.likely[0] > 0 : true);
+const directional = (ch) => !!ch && ch.level !== "steady" && (ch.basis === "measured_trend" || (!!ch.method && ch.method !== "persistence" && agrees(ch)));
 const signedCm = (x) => { const v = Math.round(x * 100); return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v)}`; };
 const rangeText = (ch) => ch.wide || !ch.likely ? "ช่วงกว้างเกินไป"
   : signedCm(ch.likely[0]) === signedCm(ch.likely[1]) ? `ราว ${signedCm(ch.likely[0])} ซม.` : `${signedCm(ch.likely[0])} ถึง ${signedCm(ch.likely[1])} ซม.`;
@@ -94,15 +95,18 @@ function trendRow(ch, hours, unsure = false) {
     : `<span class="chg chg-unproven">? ไม่แน่ชัด</span>`;
   const measured = ch.basis === "measured_trend";  // D-060: the word follows the measured trend; numbers go in the ⓘ
   const tip = measured
-    ? `ตามแนวโน้มที่วัดได้ ไม่ใช่แบบจำลอง${ch.hit != null ? ` · ในอดีตเป็นแบบนี้ต่อ ${Math.round(ch.hit * 10)} ใน 10 ครั้ง` : ""}${ch.likely ? ` · ช่วงที่เคยเกิด ${rangeText(ch)}` : ""}`
+    ? `ถ้าเป็นไปตามแนวโน้มที่วัดได้ (ชะลอลงตามเวลา) ไม่ใช่แบบจำลอง${ch.hit != null ? ` · ในอดีตเป็นแบบนี้ต่อ ${Math.round(ch.hit * 10)} ใน 10 ครั้ง` : ""}`
     : dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}` : steady ? STEADY_TIP : UNPROVEN_TIP;
   const cls = dirn && ch.basis !== "measured_trend" ? `conf-${esc(ch.confidence)}` : "conf-low";
-  const html = `<span class="tr-h">ใน ${hours} ชม.</span>${chip}<span class="tr-r">${esc(measured ? "ตามแนวโน้มที่วัดได้" : rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
+  const html = `<span class="tr-h">ใน ${hours} ชม.</span>${chip}<span class="tr-r">${esc(rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
   return { html, unsure: unsure || (!dirn && !steady) };
 }
 function trendRows(s, hours) {
+  // Every view walks 12 → 24 → 48 h, printing only `hours`, so a list showing only 24 h says what the sheet says
+  // (VLGE20: list "→ ทรงตัว", sheet "? ไม่แน่ชัด" after its 12 h "?", consistency check C1).
   let unsure = false;
-  const rows = hours.map((h) => { const r = trendRow(s[`change${h}`], h, unsure); unsure = r.unsure; return r.html; }).filter(Boolean).join("");
+  const rows = [12, 24, 48].filter((h) => h <= Math.max(...hours)).map((h) => {
+    const r = trendRow(s[`change${h}`], h, unsure); unsure = r.unsure; return hours.includes(h) ? r.html : ""; }).filter(Boolean).join("");
   return rows ? `<div class="tr-rows">${rows}</div>` : "";
 }
 
@@ -123,7 +127,7 @@ const obsLine = (s) => {
 const dropText = (s) => {
   const r = s.recovery || {};
   // Always with its conditions (D-005; the v0.10 rewrite had dropped them, KI-239)
-  if (r.state === "forecast") return `คาดว่าจะต่ำกว่าตลิ่ง: ${r.hours_max ? whenText(r.hours_min, r.hours_max) : "หลัง 72 ชม."} (หากไม่มีฝนตกหนักเพิ่ม)`;
+  if (r.state === "forecast") return `คาดว่าจะต่ำกว่าตลิ่ง: ${r.hours_max ? whenText(r.hours_min, r.hours_max) : `${whenText(r.hours_min ?? r.hours_mid, r.hours_mid)} หรือนานกว่า 3 วัน`} (หากไม่มีฝนตกหนักเพิ่ม)`;
   if (r.state === "extrapolated") return `หากลดในอัตราเดิมและไม่มีฝนหนัก อาจต่ำกว่าตลิ่ง: ${whenText(r.hours_min, r.hours_max)} (ประมาณคร่าว ๆ ความเชื่อมั่นต่ำ)`;
   if (r.state === "not_estimable" && ["warning", "critical"].includes(s.status))
     return r.reason === "heavy_rain_forecast" ? "ยังประเมินเวลาน้ำลดไม่ได้ (คาดฝนหนัก)"
@@ -139,7 +143,7 @@ const ydayText = (s) => {
   const o = s.observed24;
   if (s.freeboard_m == null || !o || (o.hours || 24) !== 24 || ["steady", "mixed"].includes(o.level)) return "";
   const now = Math.round(s.freeboard_m * 100), then = now + o.change_cm;
-  return Math.sign(now) === Math.sign(then) && then !== 0 ? ` (เมื่อวาน ${Math.abs(then)})` : "";
+  return Math.sign(now) === Math.sign(then) && then !== 0 ? `\u00a0(เมื่อวาน\u00a0${Math.abs(then)})` : "";
 };
 const freeboardText = (fb) => {
   if (fb == null) return "";
@@ -224,24 +228,6 @@ function renderSummary(st) {
     renderList();
   }));
 }
-
-// What to do now (owner 2026-09-28: full action guide, collapsed, 3 bullets; D-061). Based on DDPM (ปภ.) public advice:
-// move belongings and vehicles up, cut the power, keep supplies and documents at hand, follow official notices.
-const ACTIONS = {
-  high: ["ย้ายของมีค่า เอกสาร และเครื่องใช้ไฟฟ้าขึ้นที่สูง ย้ายรถไปที่สูง",
-    "ถ้าน้ำเริ่มเข้าบ้าน ปิดสวิตช์ไฟ/สับคัตเอาท์ ห้ามแตะเครื่องใช้ไฟฟ้าขณะตัวเปียก",
-    "อย่าเดินหรือขับรถลุยน้ำไหลแรง · ขอความช่วยเหลือ 1784 (ปภ.) · 1555 (กทม.)"],
-  moderate: ["เตรียมยา อาหาร น้ำดื่ม ไฟฉาย และเอกสารสำคัญไว้ในที่หยิบได้ทันที",
-    "ยกของที่เสียหายง่ายขึ้นที่สูง หาที่จอดรถบนที่สูงไว้ล่วงหน้า",
-    "ติดตามระดับน้ำและประกาศของเขต/กทม. · เบอร์ฉุกเฉิน 1784 · 1555"],
-  low: ["ติดตามฝนและระดับน้ำเป็นระยะ", "เตรียมยา น้ำดื่ม และเอกสารสำคัญไว้ในที่หยิบได้ง่าย",
-    "จดเบอร์ฉุกเฉิน 1784 (ปภ.) · 1555 (กทม.)"],
-};
-const actionsHTML = (risk) => {
-  const a = ACTIONS[risk] || ACTIONS.low;
-  return `<details class="pf-act"><summary>ควรทำอะไรตอนนี้</summary><ul>${a.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
-    <p class="muted">ตามคำแนะนำของ ปภ. · ทำตามประกาศของเจ้าหน้าที่ก่อนเสมอ</p></details>`;
-};
 
 /* ---------- list ---------- */
 function itemHTML(s, extra = "") {
@@ -624,7 +610,7 @@ async function showDetail(code) {
       <p class="headline" style="color:${st.color}">${erratic ? (hid === "stuck" ? "ไม่แสดงระดับน้ำ (ค่าค้าง)" : "ไม่แสดงระดับน้ำ (ขึ้นลงผิดปกติ)") : s.status_basis === "bma_thresholds"
         ? `${esc(st.long)}${s.over_bma_critical_m != null && s.over_bma_critical_m > 0 && s.status !== "critical" ? ` · ${esc(levelText(s))}` : ""}`
         : s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
-        : `${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m) + ydayText(s))}` : ""}`}</p>
+        : `${esc(st.long)}${s.freeboard_m != null ? ` · <span class="nowrap">${esc(freeboardText(s.freeboard_m) + ydayText(s))}</span>` : ""}`}</p>
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
@@ -632,8 +618,8 @@ async function showDetail(code) {
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
       ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic" && n !== "stuck") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
-      <p class="muted">วิธีคาดการณ์: ${esc(erratic ? "ไม่คาดการณ์ (ค่าระดับน้ำไม่น่าเชื่อถือ)" : methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
-        · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p>
+      <details class="sumdetails"><summary>วิธีคาดการณ์</summary><p class="muted">${esc(erratic ? "ไม่คาดการณ์ (ค่าระดับน้ำไม่น่าเชื่อถือ)" : methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
+        · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p></details>
       ${feedbackCounts(d.feedback7d)}
       ${feedbackForm(s.code)}`;
     box.querySelector(".close").addEventListener("click", closeDetail);
@@ -700,8 +686,8 @@ function pointHTML(d, src, place = "") {
   const pill = (x) => `<span class="badge b-${esc(x.status)}">${esc(stOf(x).th)}</span>`;
   // One block per gauge, same structure for both (owner 2026-09-27: one name was bold, the other not, and the labels ran
   // into long lines): label on its own line → bold name · distance · status pill → that gauge's rows or "no forecast".
-  const gBlock = (label, c, body) => `<div class="pf-gauge"><div class="pf-glabel">${label}</div>
-    <div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span><span class="muted">${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span>${pill(c.station)}</div>${body}</div>`;
+  const gBlock = (label, c, body) => `<div class="pf-gauge" data-code="${esc(c.station.code)}"><div class="pf-glabel">${label}</div>
+    <div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span><span class="muted">${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span>${stOf(c.station).th.includes(canal.word) ? "" : pill(c.station)}</div>${body}</div>`;
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
   // 24/48 h rows; a gauge with only a 12 h forecast (short history) shows that row instead of nothing (KI-239)
@@ -735,17 +721,13 @@ function pointHTML(d, src, place = "") {
     <p>• ระดับน้ำที่สถานีคลองหรือแม่น้ำ ไม่ใช่ระดับน้ำที่จุดนี้ บนถนน หรือในบ้าน</p>
     <p>• ความมั่นใจของแต่ละสถานีดูได้ที่ปุ่ม ⓘ ข้างตัวเลข · คาดการณ์ 48 ชม. แสดงเฉพาะสถานีที่ทดสอบย้อนหลังผ่าน</p>`;
 
-  const nc = d.nearest_canal && d.nearest_canal.station, nObs = nc && nc.observed24;
-  const nearObs = nObs && OBS[nObs.level] && nObs.level !== "mixed"
-    ? `<p class="pf-obs obs-${obsDir(nObs)}">คลองใกล้สุด ${nObs.hours || 24} ชม. ที่ผ่านมา: <b>${esc(OBS[nObs.level])}</b>${nObs.level === "steady" ? "" : ` ${Math.abs(nObs.change_cm)} ซม.`}</p>` : "";
   const panel = `
     <section class="pf ${fcR.cls}" aria-labelledby="pf-title">
       <div class="pf-top"><span class="pf-h">คาดการณ์ข้างหน้า</span>
         <button type="button" class="pf-info-btn" aria-expanded="false" aria-controls="pf-info" aria-label="ที่มาและข้อจำกัดของข้อมูล">ⓘ</button></div>
       <div id="pf-info" class="pf-info" hidden>${infoBody}</div>
       ${fc.title ? `<h3 id="pf-title" class="pf-title">${fcR.icon ? `${fcR.icon} ` : ""}${esc(fc.title)}</h3>
-      <p class="pf-desc">${esc(fc.desc)}</p>` : ""}${nearObs}
-      ${actionsHTML(fc.risk)}
+      <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
       <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
         <li><span class="pf-dot" style="background:${canal.color}"></span><div><b>ระดับน้ำในคลอง</b> · <span class="pf-word">${esc(canal.word)}</span>

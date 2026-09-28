@@ -342,11 +342,7 @@ a { color: var(--accent); }
 .pf-gauge + .pf-gauge { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(0, 0, 0, 0.12); }
 .pf-glabel { font-size: 12px; color: var(--muted); }
 .pf-gline .pf-gname { font-weight: 700; color: var(--ink); }
-/* v0.14: operator lines behind one summary (resident first); action guide (D-061) */
+/* v0.14: operator lines and the forecast method behind one summary (resident first) */
 .sumdetails { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
 .sumdetails > summary { cursor: pointer; text-decoration: underline dotted; }
-.pf-act { margin: 8px 0 2px; font-size: 13.5px; }
-.pf-act > summary { cursor: pointer; font-weight: 700; color: #1565c0; }
-.pf-act ul { margin: 6px 0 4px; padding-left: 20px; }
-.pf-act li { margin: 2px 0; }
-.pf-act .muted { font-size: 12px; margin: 2px 0 0; }
+.nowrap { white-space: nowrap; }

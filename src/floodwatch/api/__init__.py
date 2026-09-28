@@ -129,21 +129,30 @@ def _observed_change(r: dict) -> dict:
 TREND_WORDS = {"small_fall", "fall", "strong_fall", "small_rise", "rise", "strong_rise"}
 
 
-def follow_measured(ch: dict | None, obs24: dict | None, sk: dict | None) -> dict | None:
+def follow_measured(ch: dict | None, obs24: dict | None, sk: dict | None, h: int = 24) -> dict | None:
     """12/24 h rows follow the measured 24 h trend where no model gives a direction (owner 2026-09-28, D-060: "there
     is a trend of lowering water level in the chart, but it said ทรงตัว and ? ไม่แน่ชัด"). The row then says what the
     level has been doing (qc.observed24), with the range this gauge showed after such trends (forecast.continuation)
     and how often they continued (`hit`, shown in the ⓘ; canals ~6 in 10, rivers ~9 in 10)."""
     if not ch or not obs24 or obs24.get("level") not in TREND_WORDS:
         return ch
-    if ch.get("method") != "persistence" and ch.get("level") != "steady":
-        return ch  # a model that beat "no change" and sees a direction keeps its word
+    lk = ch.get("likely")
+    agrees = not lk or (lk[1] < 0 if ch.get("dir") == "falling" else lk[0] > 0 if ch.get("dir") == "rising" else False)
+    if ch.get("method") != "persistence" and ch.get("level") != "steady" and agrees:
+        return ch  # a model that beat "no change" and sees a direction its whole likely range agrees with keeps its word
     d = "fall" if obs24["level"].endswith("fall") else "rise"
     c = ((sk or {}).get("cont") or {}).get(d) or {}
-    q = c.get("q") if (c.get("n") or 0) >= 20 else None
-    return {**ch, "dir": "falling" if d == "fall" else "rising", "level": obs24["level"], "basis": "measured_trend",
-            "likely": [round(q[1], 2), round(q[3], 2)] if q else ch.get("likely"),
-            "range90": [round(q[0], 2), round(q[4], 2)] if q else ch.get("range90"),
+    # The number is the measured trend continued and damped (as forecast "tide_trend": slope·h·e^(−h/48)), so word,
+    # number and label say the same thing (owner 2026-09-28: keep numbers; "prove the consistency"). The past range
+    # after such trends often leans the other way (canals rebound), so it is not printed next to the word.
+    rate = obs24["change_cm"] / 100 / (obs24.get("hours") or 24)
+    v = round(rate * h * math.exp(-h / 48.0), 2)
+    cm = abs(round(v * 100))
+    if cm < 1:
+        return ch
+    size = "small_" if cm < 5 else "strong_" if cm >= 20 else ""
+    return {**ch, "dir": "falling" if d == "fall" else "rising", "level": size + d, "basis": "measured_trend",
+            "median": v, "likely": [v, v], "range90": None, "wide": False,
             "hit": c.get("hit"), "hit_n": c.get("n")}
 
 
@@ -155,11 +164,11 @@ def _change_fields(r: dict, status: str) -> dict:
     o = r.get("outlook24") or {}
     c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
     obs = r.get("observed24")
-    return {"change12": follow_measured(change_summary(r.get("q12"), r["fc_now"], r.get("sk12")), obs, r.get("sk12")),
-            "change24": follow_measured(change_summary(r.get("q24"), r["fc_now"], r.get("sk24")), obs, r.get("sk24")),
+    return {"change12": follow_measured(change_summary(r.get("q12"), r["fc_now"], r.get("sk12")), obs, r.get("sk12"), 12),
+            "change24": follow_measured(change_summary(r.get("q24"), r["fc_now"], r.get("sk24")), obs, r.get("sk24"), 24),
             # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050). `proven` (medium confidence) is kept
             # for API users only: since D-056 the UI shows a direction whenever a real model beat "no change" and ignores it.
-            "change48": None if not c48 else follow_measured({**c48, "proven": c48["confidence"] == "medium"}, obs, r.get("sk48")),
+            "change48": None if not c48 else follow_measured({**c48, "proven": c48["confidence"] == "medium"}, obs, r.get("sk48"), 48),
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 

@@ -180,9 +180,13 @@ def test_rows_follow_the_measured_trend_unless_a_model_sees_a_direction():
     sk = {"cont": {"fall": {"n": 52, "hit": 0.596, "q": [-0.2, -0.1, -0.04, 0.02, 0.1]}}}
     none = {"dir": "steady", "level": "steady", "method": "persistence", "likely": [-0.16, 0.14]}
     r = api.follow_measured(none, obs, sk)
-    assert r["dir"] == "falling" and r["basis"] == "measured_trend" and r["likely"] == [-0.1, 0.02] and r["hit"] == 0.596
+    assert r["dir"] == "falling" and r["basis"] == "measured_trend" and r["hit"] == 0.596
+    assert r["likely"] == [-0.08, -0.08] and r["level"] == "fall"  # −14 cm/24 h continued, damped: word and number agree
+    assert api.follow_measured(none, {"change_cm": -3, "r2": 0.7, "level": "small_fall"}, sk, 12)["level"] == "small_fall"
     star_steady = {**none, "method": "star"}
     assert api.follow_measured(star_steady, obs, sk)["basis"] == "measured_trend"
-    star_rise = {**none, "method": "star", "dir": "rising", "level": "rise"}
+    star_rise = {**none, "method": "star", "dir": "rising", "level": "rise", "likely": [0.02, 0.14]}
     assert api.follow_measured(star_rise, obs, sk) is star_rise  # a model with a direction keeps its word
+    unsure_rise = {**star_rise, "likely": [-0.01, 0.14]}  # C2: "↗ เพิ่มขึ้น −1 ถึง +14" is not a direction
+    assert api.follow_measured(unsure_rise, obs, sk)["basis"] == "measured_trend"
     assert api.follow_measured(none, {"change_cm": 0, "r2": 0.1, "level": "mixed"}, sk) is none

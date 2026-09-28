@@ -505,3 +505,14 @@
 ### D-061 — Resident at home first; a short action guide
 - **Date:** 2026-09-28 · **Status:** accepted (owner answers, UX round 12: main user "resident at home"; advice "full action guide", "I draft and ship directly", "collapsed button, 3 bullets"; "collapse operator lines"; "hide stuck gauges"; "do not describe in panel too long")
 - **Decision:** "ควรทำอะไรตอนนี้" under the pin outlook, collapsed, 3 bullets per risk level (high / moderate / low), drawn from DDPM (ปภ.) public advice (move belongings and cars up, cut the power, keep supplies and documents at hand, follow official notices, 1784/1555), with "ทำตามประกาศของเจ้าหน้าที่ก่อนเสมอ". Operator lines behind "รายละเอียดข้อมูล"; the map opens on Bangkok; the Chao Phraya tab starts in Bangkok; the GPS panel names the district; every new panel text fits one or two lines at 390 px.
+
+### D-062 — One story per view: the headline, the rows and the list say the same thing
+- **Date:** 2026-09-28 · **Status:** accepted (owner: "prove the consistency of panel and text"; "keep number to show"; "we do not need ควรทำอะไรตอนนี้ … too much text"; "วิธีคาดการณ์ … should be in collapsed info") · **Amends D-060, D-061**
+- **Evidence:** KI-244 and the consistency proof (`scripts/ux_consistency.py`).
+- **Decision:**
+  1. The pin headline speaks for the gauge the canal factor shows with rows, and for 24 h (the horizon the panel shows); "ทรงตัว" only when that row is steady.
+  2. A model gives a direction only when its whole likely range agrees; otherwise the measured trend (D-060) or the ±5 cm rule applies. The same rule runs in the API and the UI.
+  3. Measured-trend rows show "ราว N ซม." = the measured trend continued and damped (slope·h·e^(−h/48)); the past odds stay in the ⓘ.
+  4. Every view evaluates 12 → 24 → 48 h even when it prints fewer rows.
+  5. D-061's action guide is withdrawn (too much text in the panel); the method line is collapsed.
+  6. Before a release, run `scripts/ux_consistency.py`; C1–C3, C5, C6 must be 0.

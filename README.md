@@ -11,14 +11,14 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > [!IMPORTANT]
-> **Current status (2026-09-28): v0.14.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
+> **Current status (2026-09-28): v0.15.0 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
 >
 > **Nationwide (validated plan, not built):** monitor first, forecast later ([D-044](docs/plan/DECISIONS.md), [APPROACH §19](docs/APPROACH_AND_METHODS.md), [phase 5](docs/plan/phase-5-nationwide.md)); the sources were probed live in [research/VALIDATION_2026-09-27_nationwide.md](research/VALIDATION_2026-09-27_nationwide.md).
 >
 > **Core USP & Highlights:**
 > - **🔮 Point check with an outlook (D-021, D-051, D-054–D-056):** tap any place in Bangkok/BMR. One panel gives a short outlook headline and the factors behind it — **nearest canal** (status, 24/48 h change, when it may drop), **rain** (TMD words), **street reports** — with a coloured dot and a word each; caveats sit behind one ⓘ. The canal verdict is judged from the nearest ≤ 3 gauges within 3 km; it never gives a water level at the pin.
 > - **📏 A few centimetres count (D-058, D-060):** every gauge shows what the water did in the last 24 h (or 48 h for slow changes), measured ("24 ชม. ที่ผ่านมา: ลดลง 5 ซม."); where no model sees a direction, the trend rows follow that measured trend, with the historical odds in the ⓘ.
-> - **🏠 Resident first (D-061):** a short "ควรทำอะไรตอนนี้" (DDPM advice by risk level), the district name for "near me", the map and the Chao Phraya profile start in Bangkok.
+> - **🏠 Resident first (D-061, D-062):** short panels, the district name for "near me", the map and the Chao Phraya profile start in Bangkok; the headline, the rows and the list tell one story, proven on every gauge by `scripts/ux_consistency.py`.
 > - **🧹 Pump-affected and faulty gauges handled (D-057):** one- or two-reading dropouts are removed; stuck loggers and gauges that jump back and forth (pumps at the sensor, faulty sensors) keep their dot and chart, but their level, status and trend are hidden with a note.
 > - **📈 Forecasts that earn their place (D-047, D-050, D-052, D-056):** every gauge is backtested per horizon; the method `star` (own tide/trend + upstream gauges + Chao Phraya Dam release + forecast rain) is used only where it beats "no change". One trend format everywhere — `ใน 24 ชม. · [→ ทรงตัว] · −7 ถึง +7 ซม. · ⓘ` — and a direction only where a real model won; otherwise "? ไม่แน่ชัด" with the likely range. 48 h lines everywhere, honestly labelled.
 > - **🌊 Bangkok canals, all 199 BMA gauges (D-031, D-054):** live every 5 min via the relay of BMA's KlongMap, plus **one year of hourly history for 158 of them from HII** (`waterlevel_graph?station_type=canal`, identical values), so BMA gauges enter the same backtest.

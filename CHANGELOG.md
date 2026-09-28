@@ -2,6 +2,21 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.15.0 — 2026-09-28
+- **Proven consistent (owner: "prove the consistency of panel and text", "validate the UI in many possibilities"):**
+  `scripts/ux_consistency.py` opens all 310 station sheets, 67 pins and 4 viewports (360/390/768/1440 px) and checks
+  list = sheet = pin panel, words vs numbers, horizon order, headline vs rows, duplicates and overflow. Final run:
+  1,261 rows, 0 issues (2 accepted: two different gauges with the same status). Fixed on the way (KI-244, D-062):
+  the pin headline spoke for 12 h and for a 3-gauge majority while the panel shows the nearest gauge's 24/48 h rows;
+  "ค่อนข้างสูง แต่แนวโน้มยังทรงตัว" above falling rows; "ยังทรงตัว" with no trend at all; a list 24 h row "→ ทรงตัว"
+  where the sheet said "?"; model chips with a range crossing zero ("↗ เพิ่มขึ้น −1 ถึง +14"); the gauge pill
+  repeating the factor word; the same measured line twice in the pin panel.
+- **Numbers back on measured-trend rows (owner):** "↘ ลดลง ราว −7 ซม." = the measured trend continued and damped
+  (slope·h·e^(−h/48)), so word and number agree; past odds stay in the ⓘ.
+- **Shorter panels (owner):** "ควรทำอะไรตอนนี้" removed; "วิธีคาดการณ์" collapsed; "(เมื่อวาน N)" kept on one line;
+  the recovery line keeps its early end ("29 ก.ย. ราว 02–05 น. หรือนานกว่า 3 วัน" instead of "หลัง 72 ชม.").
+- Tests: 103 passing (+2).
+
 ## v0.14.0 — 2026-09-28
 - **Trend rows follow what the chart shows (owner, D-060, KI-242):** where no model sees a direction, the 12/24/48 h
   rows follow the measured trend ("↘ ลดลง · ตามแนวโน้มที่วัดได้"; odds and past range in the ⓘ, e.g. "ในอดีตเป็นแบบนี้ต่อ
