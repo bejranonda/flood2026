@@ -468,3 +468,11 @@
   4. **Sheet order:** status → BMA margin line → freshness (+ source/datum in ⓘ) → trend block (rows, when it drops, peak, chance of reaching the bank) → street note → chart → notes → method → feedback; no emojis in the sheet text.
   5. **Say what is measured:** bank-based watch/warning with the bank still > 30 cm away read "น้ำเต็มลำน้ำ N %" (share of channel depth), not "ใกล้ตลิ่ง".
   6. *(v0.11.2: the can't-summarise outlook is one short headline + the rain condition, KI-235.)* Kicker "คาดการณ์ข้างหน้า" (rows carry their own horizons); user depth reports counted as "N ราย".
+
+### D-057 — Hide erratic (pump-affected) gauges; drop single-reading dropouts
+- **Date:** 2026-09-28 · **Status:** accepted (owner, on WL.SSB.08: "you can filter out this kind of stations, the water levels might be effected by pumping. It's not easy to predict.") · **Applies D-024**
+- **Evidence:** KI-237 (41 gauges with reversing spikes in 7 days, all stored `ok`; four patterns; a plain Hampel filter both missed the oscillating gauges and removed real readings).
+- **Decision:**
+  1. **Dropouts** (≥ 0.30 m away from the level before for one or two readings, then back within 10 cm, all within 30 min) are flagged `dropout` and hidden everywhere; the gauge stays fully visible. This keeps real warnings such as WL.LPT.03 (critical) on screen.
+  2. **Erratic gauges** (≥ 3 other steps of ≥ 0.30 m within 30 min in the last 24 h) keep their dot and chart of measured values; level, status, trend and forecast are hidden with the note `erratic` ("ระดับน้ำขึ้นลงเร็วผิดปกติ … อาจมีการสูบน้ำใกล้จุดวัด หรือเครื่องวัดขัดข้อง"), and they are not used in the point check. The 24 h window keeps a gauge hidden through calm spells between pump runs; it returns by itself after 24 calm hours.
+  3. Thresholds live in `floodwatch.qc`; revisit when a gauge is wrongly hidden or a pump gauge slips through.

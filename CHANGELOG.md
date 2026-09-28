@@ -2,6 +2,17 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.12.0 — 2026-09-28
+- **Erratic (pump-affected) gauges are hidden, dropouts removed (owner, D-057, KI-237):** a new worker task `qc`
+  (every 10 min) flags single- or two-reading dropouts (e.g. -2.00 m at WL.LPT.03, WL.KPM.05) as `dropout`, and marks
+  a gauge erratic after 3 or more steps of ≥ 0.30 m within 30 min in 24 h (WL.SSB.08 jumping ±0.8 m, pump cycling at
+  WL.BNJ.02). Erratic gauges keep their dot and measured chart; level, status, trend and forecast are hidden with a
+  note, and they are left out of the point check. 11 of 307 focus gauges on 2026-09-28. Tests: 89 passing (+6).
+- Station sheet of an erratic gauge leads with "ไม่แสดงระดับน้ำ (ขึ้นลงผิดปกติ)" and the reason instead of "no forecast
+  data"; the generic unknown label is now "ไม่ทราบสถานะ" (it said "no bank" also for old data). One-off clean-up of
+  45 days: 2,006 dropout readings at 54 gauges flagged (the history the forecast trains on).
+- Code review of v0.9.0 → v0.11.2 and the per-horizon zig-zag logged as open issues (KI-238, KI-239).
+
 ## v0.11.2 — 2026-09-27
 - **Shorter "can't summarise" outlook (owner review, KI-235):** the headline is now "สถานีรอบจุดไม่ตรงกัน ยังสรุป
   ระดับคลองไม่ได้" (or "ไม่มีสถานีวัดน้ำใกล้พอ …") and the text under it is only the rain condition. The long reason

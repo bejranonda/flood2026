@@ -55,6 +55,19 @@ def test_misleading_values_are_filtered_but_the_station_is_kept():
     assert "no_location" in api._station_row({**base, "code": "X", "lat": None})["notes"]
 
 
+def test_erratic_gauge_keeps_its_dot_but_not_its_level_status_or_trend():
+    now = dt.datetime.now(dt.timezone.utc)
+    row = {"code": "WL.SSB.08", "name_th": "x", "name_en": None, "lat": 13.78, "lon": 100.67, "bank_msl": 0.7,
+           "ground_msl": None, "critical_msl": 0.45, "warning_msl": 0.3, "agency": "BMA", "province": None,
+           "amphoe": None, "river": "คลองแสนแสบ", "level_msl": -0.4, "discharge": None, "situation_level": None,
+           "obs_time": now, "trend12": "rising", "delta12": 0.19, "recovery": None, "forecast_time": now,
+           "fc_now": -0.4, "q12": [-0.5, -0.3, -0.2, -0.1, 0.1], "coord_source": None, "coord_precision_km": None}
+    assert api._station_row(row)["status"] == "normal"
+    r = api._station_row({**row, "erratic": {"steps": 24}})
+    assert r["lat"] == 13.78 and "erratic" in r["notes"] and r["status"] == "unknown"
+    assert r["level_msl"] is None and r["freeboard_m"] is None and r["trend12"] is None and r["change12"] is None
+
+
 def test_alias_page_declares_itself_canonical_and_redirect_is_off_by_default(monkeypatch):
     monkeypatch.setattr(api, "REDIRECT_LEGACY", False)  # the default when REDIRECT_LEGACY_HOST is unset (production sets 1, D-034)
     html = '<link rel="canonical" href="https://flood.autobahn.bot/"><meta property="og:url" content="https://flood.autobahn.bot/">'

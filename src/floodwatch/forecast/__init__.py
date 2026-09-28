@@ -493,8 +493,12 @@ def run_all() -> int:
     n = 0
     from floodwatch.config import DATUM_SUSPECT
     cache: dict = {}
+    with db.connect() as c:
+        erratic = db.get_state(c, "erratic_gauges") or {}
     for s in stations:
         if s["code"] in DATUM_SUSPECT:  # values not in m MSL (KI-210): never forecast or show them
+            continue
+        if s["code"] in erratic:  # pumps at the sensor or a faulty sensor (KI-237): the level is not predictable
             continue
         with db.connect() as c:
             rows = c.execute(

@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import time
 
-from floodwatch import ai, archive, collectors, db, forecast
+from floodwatch import ai, archive, collectors, db, forecast, qc
 from floodwatch.config import settings
 
 log = logging.getLogger("floodwatch.worker")
@@ -17,6 +17,7 @@ TASKS = [
     ("hii_waterlevel", 600),
     ("traffy", 600),
     ("bma_klong", 600),  # BMA khlong gauges via the flood69 relay (relay refreshes every 5 min)
+    ("qc", 600),  # dropouts and erratic (pump-affected) gauges over the last 24 h (KI-237)
     ("hii_rain", 1800),
     ("openmeteo", 3600),
     ("hii_stations", 6 * 3600),
@@ -70,6 +71,13 @@ def run_task(name: str) -> None:
         except Exception as e:
             log.exception("forecast failed")
             db.record_health("forecast", False, error=str(e))
+    elif name == "qc":
+        try:
+            qc.run_all()
+            db.record_health("qc", True)
+        except Exception as e:
+            log.exception("qc failed")
+            db.record_health("qc", False, error=str(e))
     elif name == "disk":
         disk_check()
     elif name == "ai_triage":
@@ -93,7 +101,7 @@ def main() -> None:
             log.warning("db not ready (%s), retrying", e)
             time.sleep(2)
     # First run order: latest values -> history -> weather -> forecast.
-    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev", "traffy", "bma_klong", "hii_rain", "forecast", "disk"):
+    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev", "traffy", "bma_klong", "qc", "hii_rain", "forecast", "disk"):
         run_task(name)
     active = [(n, i) for n, i in TASKS if n != "bma_dds" or settings.thai_egress_proxy]
     next_run = {name: time.time() + interval for name, interval in active}

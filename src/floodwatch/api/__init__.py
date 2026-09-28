@@ -77,7 +77,8 @@ SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.c
        f.payload->'path'->47->'q' AS q48,
        f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'skill'->'48' AS sk48,
        f.payload->'outlook24' AS outlook24,
-       p.prev_time, p.prev_level
+       p.prev_time, p.prev_level,
+       (SELECT value->s.code FROM collector_state WHERE key='erratic_gauges') AS erratic
 FROM station s
 LEFT JOIN LATERAL (SELECT obs_time, level_msl, discharge, situation_level FROM observation
                    WHERE code=s.code AND level_msl IS NOT NULL AND quality_flag='ok'
@@ -147,6 +148,9 @@ def _station_row(r: dict) -> dict:
     if r["code"] in DATUM_SUSPECT:  # values not m MSL (KI-210): hide the level, keep the station
         notes.append("datum_suspect")
         r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None)
+    elif r.get("erratic"):  # jumps back and forth (pumps at the sensor, or a faulty sensor): no level means anything
+        notes.append("erratic")  # KI-237; the station and its measured chart stay, level/status/trend are hidden
+        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None, fc_now=None)
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])
     basis, over_crit = "bank", None
     if r.get("agency") == "BMA":
@@ -248,6 +252,8 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
     srow["street_source_age_min"] = tage
     if code in DATUM_SUSPECT:  # KI-210: the station is shown, its non-MSL values are not
         obs, fc = [], None
+    elif "erratic" in srow["notes"]:  # KI-237: the measured chart shows why; a forecast from it would mislead
+        fc = None
     return _json({"station": srow, "feedback7d": fb,
                   "observations": [[_iso(o["obs_time"]), o["level_msl"], o["discharge"]] for o in obs],
                   "forecast": fc["payload"] if fc else None})

@@ -8,7 +8,7 @@ const STATUS = {
   // Not "ปกติ" (normal): a canal below its bank says nothing about the street, which can flood from rain the drains
   // can't take while BMA keeps canals pumped low (owner report 2026-09-26, D-036). Blue = water in the channel, not "safe".
   normal: { th: "ยังรับน้ำได้", long: "น้ำต่ำกว่าตลิ่ง", color: "#2f6fb0" },
-  unknown: { th: "ไม่ทราบ", long: "ไม่ทราบ (ไม่มีระดับตลิ่ง)", color: "#8a94a3" },
+  unknown: { th: "ไม่ทราบ", long: "ไม่ทราบสถานะ", color: "#8a94a3" },  // why (no bank, old data, erratic…) is in the notes
 };
 // BMA canal gauges are judged by BMA's own drainage levels (D-038): the words say what the canal can still take.
 const BMA_LABEL = {
@@ -126,6 +126,7 @@ const DEFAULT_REGION = "bkk";
 let region = (() => { try { return REGIONS[localStorage.getItem("region")] ? localStorage.getItem("region") : DEFAULT_REGION; } catch { return DEFAULT_REGION; } })();
 const NOTE = {
   datum_suspect: "ค่าระดับน้ำของสถานีนี้ไม่ได้อยู่ในหน่วย ม.รทก. (ตรวจพบค่าผิดปกติ) จึงไม่แสดงค่า",
+  erratic: "ระดับน้ำขึ้นลงเร็วผิดปกติใน 24 ชม.ล่าสุด (อาจมีการสูบน้ำใกล้จุดวัด หรือเครื่องวัดขัดข้อง) จึงไม่แสดงระดับน้ำและแนวโน้ม",
   no_recent_data: "ไม่มีข้อมูลใหม่เกิน 24 ชม. สถานะจึงเป็น “ไม่ทราบ”",
   stale: "ข้อมูลเก่ากว่า 3 ชม.",
   no_bank: "ไม่มีข้อมูลระดับตลิ่ง จึงประเมินสถานะไม่ได้",
@@ -562,21 +563,22 @@ async function showDetail(code) {
     const methods = fc ? [...new Set(Object.values(fc.skill || {}).map((k) => k.method))] : [];
     const skill12 = fc?.skill?.["12"];
     const bma = s.agency === "BMA", unit = bma ? "ม. (หมุด กทม.)" : "ม.รทก.";  // BMA datum unverified vs HII (KI-217)
+    const erratic = (s.notes || []).includes("erratic");  // pumps at the sensor or a faulty sensor (D-057): the reason leads
     box.innerHTML = `<div class="tools"><button class="btn share" aria-label="แชร์">🔗 แชร์</button><button class="btn close" aria-label="ปิด">✕</button></div>
       <h2 id="sheet-title">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></h2>
       <div class="muted">${esc(s.river || "")} · ${esc(s.amphoe || "")} ${esc(s.province || "")} · ${esc(s.agency || "")}</div>
-      <p class="headline" style="color:${st.color}">${s.status_basis === "bma_thresholds"
+      <p class="headline" style="color:${st.color}">${erratic ? "ไม่แสดงระดับน้ำ (ขึ้นลงผิดปกติ)" : s.status_basis === "bma_thresholds"
         ? `${esc(st.long)}${s.over_bma_critical_m != null && s.over_bma_critical_m > 0 && s.status !== "critical" ? ` · ${esc(levelText(s))}` : ""}`
         : s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
         : `${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}`}</p>
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
-        ${dropText(s) ? `<div class="pf-nofall">${esc(dropText(s))}</div>` : ""}${outlookRows(fc, s)}</div>` : `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
+        ${dropText(s) ? `<div class="pf-nofall">${esc(dropText(s))}</div>` : ""}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE.erratic)}</div>` : `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
-      ${notesText(s) ? `<div class="warnbox">${esc(notesText(s))}</div>` : ""}
-      <p class="muted">วิธีคาดการณ์: ${esc(methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
+      ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
+      <p class="muted">วิธีคาดการณ์: ${esc(erratic ? "ไม่คาดการณ์ (ระดับน้ำขึ้นลงผิดปกติ)" : methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
         · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p>
       ${feedbackCounts(d.feedback7d)}
       ${feedbackForm(s.code)}`;
