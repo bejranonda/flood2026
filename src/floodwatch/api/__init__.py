@@ -126,6 +126,27 @@ def _observed_change(r: dict) -> dict:
     return {"change_m": round(lvl - prev, 2), "change_hours": round((t - tp).total_seconds() / 3600, 1)}
 
 
+TREND_WORDS = {"small_fall", "fall", "strong_fall", "small_rise", "rise", "strong_rise"}
+
+
+def follow_measured(ch: dict | None, obs24: dict | None, sk: dict | None) -> dict | None:
+    """12/24 h rows follow the measured 24 h trend where no model gives a direction (owner 2026-09-28, D-060: "there
+    is a trend of lowering water level in the chart, but it said ทรงตัว and ? ไม่แน่ชัด"). The row then says what the
+    level has been doing (qc.observed24), with the range this gauge showed after such trends (forecast.continuation)
+    and how often they continued (`hit`, shown in the ⓘ; canals ~6 in 10, rivers ~9 in 10)."""
+    if not ch or not obs24 or obs24.get("level") not in TREND_WORDS:
+        return ch
+    if ch.get("method") != "persistence" and ch.get("level") != "steady":
+        return ch  # a model that beat "no change" and sees a direction keeps its word
+    d = "fall" if obs24["level"].endswith("fall") else "rise"
+    c = ((sk or {}).get("cont") or {}).get(d) or {}
+    q = c.get("q") if (c.get("n") or 0) >= 20 else None
+    return {**ch, "dir": "falling" if d == "fall" else "rising", "level": obs24["level"], "basis": "measured_trend",
+            "likely": [round(q[1], 2), round(q[3], 2)] if q else ch.get("likely"),
+            "range90": [round(q[0], 2), round(q[4], 2)] if q else ch.get("range90"),
+            "hit": c.get("hit"), "hit_n": c.get("n")}
+
+
 def _change_fields(r: dict, status: str) -> dict:
     """Rise/fall, how much and how sure at +12 h and +24 h, from the stored forecast (D-047). Nothing for a gauge
     whose data are too old to judge; a peak window only where a tide model makes the path vary (outlook24)."""
@@ -133,11 +154,12 @@ def _change_fields(r: dict, status: str) -> dict:
         return {"change12": None, "change24": None, "change48": None, "peak_h": None}
     o = r.get("outlook24") or {}
     c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
-    return {"change12": change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
-            "change24": change_summary(r.get("q24"), r["fc_now"], r.get("sk24")),
+    obs = r.get("observed24")
+    return {"change12": follow_measured(change_summary(r.get("q12"), r["fc_now"], r.get("sk12")), obs, r.get("sk12")),
+            "change24": follow_measured(change_summary(r.get("q24"), r["fc_now"], r.get("sk24")), obs, r.get("sk24")),
             # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050). `proven` (medium confidence) is kept
             # for API users only: since D-056 the UI shows a direction whenever a real model beat "no change" and ignores it.
-            "change48": None if not c48 else {**c48, "proven": c48["confidence"] == "medium"},
+            "change48": None if not c48 else follow_measured({**c48, "proven": c48["confidence"] == "medium"}, obs, r.get("sk48")),
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 
@@ -149,8 +171,8 @@ def _station_row(r: dict) -> dict:
     if r["code"] in DATUM_SUSPECT:  # values not m MSL (KI-210): hide the level, keep the station
         notes.append("datum_suspect")
         r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None)
-    elif r.get("erratic"):  # jumps back and forth (pumps at the sensor, or a faulty sensor): no level means anything
-        notes.append("erratic")  # KI-237; the station and its measured chart stay, level/status/trend are hidden
+    elif r.get("erratic"):  # jumps back and forth (pumps at the sensor, or a faulty sensor), or stuck at one value
+        notes.append("stuck" if (r["erratic"] or {}).get("kind") == "stuck" else "erratic")  # KI-237, KI-241
         r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None, fc_now=None)
     if notes:  # datum_suspect / erratic: no measured change either
         r["observed24"] = None
@@ -258,7 +280,7 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
     srow["street_source_age_min"] = tage
     if code in DATUM_SUSPECT:  # KI-210: the station is shown, its non-MSL values are not
         obs, fc = [], None
-    elif "erratic" in srow["notes"]:  # KI-237: the measured chart shows why; a forecast from it would mislead
+    elif {"erratic", "stuck"} & set(srow["notes"]):  # KI-237/241: the measured chart shows why; a forecast would mislead
         fc = None
     return _json({"station": srow, "feedback7d": fb,
                   "observations": [[_iso(o["obs_time"]), o["level_msl"], o["discharge"]] for o in obs],

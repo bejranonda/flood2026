@@ -172,3 +172,17 @@ def test_change48_is_always_given_and_flagged_proven_only_at_medium_confidence()
     row["sk48"] = {"method": "star", "skill_vs_persistence": 0.4, "coverage90_backtest": 0.9}
     row["q48"] = [0.9, 0.95, 1.0, 1.05, 1.1]
     assert api._change_fields(row, "critical")["change48"]["proven"] is True
+
+
+def test_rows_follow_the_measured_trend_unless_a_model_sees_a_direction():
+    # owner 2026-09-28 (WL.KPM.04, WL.LBK.03): the chart falls, the rows said "? ไม่แน่ชัด" / "ทรงตัว"
+    obs = {"change_cm": -14, "r2": 0.9, "level": "fall"}
+    sk = {"cont": {"fall": {"n": 52, "hit": 0.596, "q": [-0.2, -0.1, -0.04, 0.02, 0.1]}}}
+    none = {"dir": "steady", "level": "steady", "method": "persistence", "likely": [-0.16, 0.14]}
+    r = api.follow_measured(none, obs, sk)
+    assert r["dir"] == "falling" and r["basis"] == "measured_trend" and r["likely"] == [-0.1, 0.02] and r["hit"] == 0.596
+    star_steady = {**none, "method": "star"}
+    assert api.follow_measured(star_steady, obs, sk)["basis"] == "measured_trend"
+    star_rise = {**none, "method": "star", "dir": "rising", "level": "rise"}
+    assert api.follow_measured(star_rise, obs, sk) is star_rise  # a model with a direction keeps its word
+    assert api.follow_measured(none, {"change_cm": 0, "r2": 0.1, "level": "mixed"}, sk) is none

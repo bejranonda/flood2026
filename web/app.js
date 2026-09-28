@@ -62,6 +62,7 @@ const rainPill = (mm) => {
 // Always "at this gauge", with the likely range in words and an honest confidence ("ปานกลาง" at best, never "สูง").
 const CHANGE = {
   strong_fall: { th: "ลดลงมาก", icon: "⬇", color: "#1d4e89" }, fall: { th: "ลดลง", icon: "↘", color: "#2f6ba0" },
+  small_fall: { th: "ลดลงเล็กน้อย", icon: "↘", color: "#2f6ba0" }, small_rise: { th: "เพิ่มขึ้นเล็กน้อย", icon: "↗", color: "#b45309" },
   steady: { th: "ทรงตัว", icon: "→", color: "#6b7280" },
   rise: { th: "เพิ่มขึ้น", icon: "↗", color: "#b45309" }, strong_rise: { th: "เพิ่มขึ้นมาก", icon: "⬆", color: "#c62828" },
 };
@@ -76,21 +77,32 @@ const CONF_WHY = {
 // --- One trend format for list, panel and sheet (owner 2026-09-27, D-056) -------------------------------------------
 // Aligned rows: horizon · chip · signed range · ⓘ. A direction only where a real model beat "no change" at that horizon
 // (the backtest's own gate); "no change" itself can only ever say "steady", so it shows "? ไม่แน่ชัด" + its error range.
-const directional = (ch) => !!ch && !!ch.method && ch.method !== "persistence";
+const directional = (ch) => !!ch && ch.level !== "steady" && (ch.basis === "measured_trend" || (!!ch.method && ch.method !== "persistence"));
 const signedCm = (x) => { const v = Math.round(x * 100); return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v)}`; };
 const rangeText = (ch) => ch.wide || !ch.likely ? "ช่วงกว้างเกินไป"
   : signedCm(ch.likely[0]) === signedCm(ch.likely[1]) ? `ราว ${signedCm(ch.likely[0])} ซม.` : `${signedCm(ch.likely[0])} ถึง ${signedCm(ch.likely[1])} ซม.`;
-const UNPROVEN_TIP = "ยังไม่แน่ชัด: ทดสอบย้อนหลังแล้วยังไม่แม่นกว่าการถือว่าน้ำคงที่ จึงไม่บอกทิศทาง ตัวเลขคือช่วงที่ระดับน้ำมักเปลี่ยนไปในครึ่งหนึ่งของครั้งที่ผ่านมา";
-function trendRow(ch, hours) {
-  if (!ch) return "";
-  const dirn = directional(ch), c = CHANGE[ch.level] || CHANGE.steady;
-  const chip = dirn ? `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span>` : `<span class="chg chg-unproven">? ไม่แน่ชัด</span>`;
-  const tip = dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}` : UNPROVEN_TIP;
-  const cls = dirn ? `conf-${esc(ch.confidence)}` : "conf-low";
-  return `<span class="tr-h">ใน ${hours} ชม.</span>${chip}<span class="tr-r">${esc(rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
+const UNPROVEN_TIP = "ยังไม่แน่ชัด: ช่วงที่ระดับน้ำอาจเปลี่ยนกว้างเกิน ±5 ซม. จึงไม่บอกทิศทาง ตัวเลขคือช่วงที่เกิดขึ้นครึ่งหนึ่งของครั้งที่ผ่านมา";
+const STEADY_TIP = "ทรงตัว: ครึ่งหนึ่งของครั้งที่ผ่านมา ระดับน้ำเปลี่ยนไม่เกิน ±5 ซม. ในช่วงเวลานี้";
+const STEADY_M = 0.05;  // "ทรงตัว" only when the likely range stays within ±5 cm: a few cm matter in a flood (D-060)
+const narrow = (ch) => !!ch.likely && !ch.wide && Math.max(Math.abs(ch.likely[0]), Math.abs(ch.likely[1])) <= STEADY_M;
+// One row: horizon · chip · range · ⓘ. `unsure` = a shorter horizon was already "?": a longer one is never surer (D-060).
+function trendRow(ch, hours, unsure = false) {
+  if (!ch) return { html: "", unsure };
+  const dirn = directional(ch), steady = !dirn && !unsure && narrow(ch), c = CHANGE[ch.level] || CHANGE.steady;
+  const chip = dirn ? `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span>`
+    : steady ? `<span class="chg" style="background:${CHANGE.steady.color}">→ ${esc(CHANGE.steady.th)}</span>`
+    : `<span class="chg chg-unproven">? ไม่แน่ชัด</span>`;
+  const measured = ch.basis === "measured_trend";  // D-060: the word follows the measured trend; numbers go in the ⓘ
+  const tip = measured
+    ? `ตามแนวโน้มที่วัดได้ ไม่ใช่แบบจำลอง${ch.hit != null ? ` · ในอดีตเป็นแบบนี้ต่อ ${Math.round(ch.hit * 10)} ใน 10 ครั้ง` : ""}${ch.likely ? ` · ช่วงที่เคยเกิด ${rangeText(ch)}` : ""}`
+    : dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}` : steady ? STEADY_TIP : UNPROVEN_TIP;
+  const cls = dirn && ch.basis !== "measured_trend" ? `conf-${esc(ch.confidence)}` : "conf-low";
+  const html = `<span class="tr-h">ใน ${hours} ชม.</span>${chip}<span class="tr-r">${esc(measured ? "ตามแนวโน้มที่วัดได้" : rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
+  return { html, unsure: unsure || (!dirn && !steady) };
 }
 function trendRows(s, hours) {
-  const rows = hours.map((h) => trendRow(s[`change${h}`], h)).filter(Boolean).join("");
+  let unsure = false;
+  const rows = hours.map((h) => { const r = trendRow(s[`change${h}`], h, unsure); unsure = r.unsure; return r.html; }).filter(Boolean).join("");
   return rows ? `<div class="tr-rows">${rows}</div>` : "";
 }
 
@@ -105,7 +117,7 @@ const obsLine = (s) => {
   const o = s.observed24;
   if (!o || !OBS[o.level]) return "";
   const cm = ["steady", "mixed"].includes(o.level) ? (o.level === "steady" ? " (เปลี่ยนไม่ถึง 2 ซม.)" : "") : ` ${Math.abs(o.change_cm)} ซม.`;
-  return `<div class="pf-obs obs-${obsDir(o)}">24 ชม. ที่ผ่านมา: <b>${esc(OBS[o.level])}</b>${esc(cm)}</div>`;
+  return `<div class="pf-obs obs-${obsDir(o)}">${o.hours || 24} ชม. ที่ผ่านมา: <b>${esc(OBS[o.level])}</b>${esc(cm)}</div>`;
 };
 // When will it drop? The station's recovery estimate in dates/hours (never minutes, KI-231); shared by panel and sheet
 const dropText = (s) => {
@@ -122,6 +134,13 @@ const dropText = (s) => {
 const changeLines = (s) => `${obsLine(s)}${dropText(s) ? `<div class="pf-nofall">${esc(dropText(s))}</div>` : ""}`;
 
 // Round first: -0.4 cm used to render as "ต่ำกว่าตลิ่ง 0 ซม." next to an "overflowing" badge (BKK009, 2026-09-26).
+// The bank distance 24 h ago, when the level moved steadily and stayed on the same side of the bank (D-060)
+const ydayText = (s) => {
+  const o = s.observed24;
+  if (s.freeboard_m == null || !o || (o.hours || 24) !== 24 || ["steady", "mixed"].includes(o.level)) return "";
+  const now = Math.round(s.freeboard_m * 100), then = now + o.change_cm;
+  return Math.sign(now) === Math.sign(then) && then !== 0 ? ` (เมื่อวาน ${Math.abs(then)})` : "";
+};
 const freeboardText = (fb) => {
   if (fb == null) return "";
   const c = Math.round(fb * 100);
@@ -140,6 +159,7 @@ let region = (() => { try { return REGIONS[localStorage.getItem("region")] ? loc
 const NOTE = {
   datum_suspect: "ค่าระดับน้ำของสถานีนี้ไม่ได้อยู่ในหน่วย ม.รทก. (ตรวจพบค่าผิดปกติ) จึงไม่แสดงค่า",
   erratic: "ระดับน้ำขึ้นลงเร็วผิดปกติใน 24 ชม.ล่าสุด (อาจมีการสูบน้ำใกล้จุดวัด หรือเครื่องวัดขัดข้อง) จึงไม่แสดงระดับน้ำและแนวโน้ม",
+  stuck: "ค่าระดับน้ำค้างที่ค่าเดิมตลอด 24 ชม. (เครื่องวัดอาจขัดข้อง) จึงไม่แสดงระดับน้ำและแนวโน้ม",
   no_recent_data: "ไม่มีข้อมูลใหม่เกิน 24 ชม. สถานะจึงเป็น “ไม่ทราบ”",
   stale: "ข้อมูลเก่ากว่า 3 ชม.",
   no_bank: "ไม่มีข้อมูลระดับตลิ่ง จึงประเมินสถานะไม่ได้",
@@ -190,12 +210,13 @@ function renderSummary(st) {
   const pct = (a, b) => Math.round((100 * a) / (b || 1));
   const rain = st.rain_bkk_next24_mm_max;
   document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>
-    <p class="sumline">${esc(TREND.rising)} <b>${f.trend12.rising}</b> · ${esc(TREND.falling)} <b>${f.trend12.falling}</b> สถานี (12 ชม.)
-      ${rain != null ? ` · 🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: ${rainPill(rain)}` : ""}</p>
+    ${rain != null ? `<p class="sumline">🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: ${rainPill(rain)}</p>` : ""}
+    <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
+    <p class="sumline">${esc(TREND.rising)} <b>${f.trend12.rising}</b> · ${esc(TREND.falling)} <b>${f.trend12.falling}</b> สถานี (คาดการณ์ 12 ชม.)</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั้งประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
-        · ในพื้นที่ติดตาม ${f.no_coords} สถานีไม่มีพิกัด, ${f.no_bank} สถานีไม่มีระดับตลิ่ง</details></div>`;
+        · ในพื้นที่ติดตาม ${f.no_coords} สถานีไม่มีพิกัด, ${f.no_bank} สถานีไม่มีระดับตลิ่ง</details></div></details>`;
   document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
     statusFilter = statusFilter === b.dataset.status ? null : b.dataset.status;
     document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.status === statusFilter)));
@@ -203,6 +224,24 @@ function renderSummary(st) {
     renderList();
   }));
 }
+
+// What to do now (owner 2026-09-28: full action guide, collapsed, 3 bullets; D-061). Based on DDPM (ปภ.) public advice:
+// move belongings and vehicles up, cut the power, keep supplies and documents at hand, follow official notices.
+const ACTIONS = {
+  high: ["ย้ายของมีค่า เอกสาร และเครื่องใช้ไฟฟ้าขึ้นที่สูง ย้ายรถไปที่สูง",
+    "ถ้าน้ำเริ่มเข้าบ้าน ปิดสวิตช์ไฟ/สับคัตเอาท์ ห้ามแตะเครื่องใช้ไฟฟ้าขณะตัวเปียก",
+    "อย่าเดินหรือขับรถลุยน้ำไหลแรง · ขอความช่วยเหลือ 1784 (ปภ.) · 1555 (กทม.)"],
+  moderate: ["เตรียมยา อาหาร น้ำดื่ม ไฟฉาย และเอกสารสำคัญไว้ในที่หยิบได้ทันที",
+    "ยกของที่เสียหายง่ายขึ้นที่สูง หาที่จอดรถบนที่สูงไว้ล่วงหน้า",
+    "ติดตามระดับน้ำและประกาศของเขต/กทม. · เบอร์ฉุกเฉิน 1784 · 1555"],
+  low: ["ติดตามฝนและระดับน้ำเป็นระยะ", "เตรียมยา น้ำดื่ม และเอกสารสำคัญไว้ในที่หยิบได้ง่าย",
+    "จดเบอร์ฉุกเฉิน 1784 (ปภ.) · 1555 (กทม.)"],
+};
+const actionsHTML = (risk) => {
+  const a = ACTIONS[risk] || ACTIONS.low;
+  return `<details class="pf-act"><summary>ควรทำอะไรตอนนี้</summary><ul>${a.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+    <p class="muted">ตามคำแนะนำของ ปภ. · ทำตามประกาศของเจ้าหน้าที่ก่อนเสมอ</p></details>`;
+};
 
 /* ---------- list ---------- */
 function itemHTML(s, extra = "") {
@@ -288,7 +327,7 @@ async function placeSearch(q) {
 /* ---------- map ---------- */
 function renderMap() {
   if (!map) {
-    map = L.map("map", { zoomControl: true }).setView([13.95, 100.55], 9);
+    map = L.map("map", { zoomControl: true }).setView(region === "bkk" ? [13.76, 100.56] : [13.95, 100.55], region === "bkk" ? 11 : 9);
     // Stations on top so they are always tappable; citizen-report cells below and non-interactive (owner
     // feedback: taps hit the Traffy circles first). A tap there opens the point check, which lists the counts.
     map.createPane("reports").style.zIndex = 350;
@@ -365,7 +404,9 @@ async function renderRiver() {
   box.innerHTML = "<p class='muted'>กำลังโหลด…</p>";
   try {
     const d = await getJSON("/api/profile");
-    const rows = d.stations.map((s) => {
+    // Bangkok first (resident first, 2026-09-28): from the mouth upstream; no river km -> estimate from latitude
+    const km = (s) => s.chainage_km ?? (s.lat - 13.5) * 111;
+    const rows = [...d.stations].sort((a, b) => km(a) - km(b)).map((s) => {
       const st = stOf(s);
       const pct = s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
       return `<div class="prow" data-code="${esc(s.code)}" role="button" tabindex="0">
@@ -373,9 +414,9 @@ async function renderRiver() {
         <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${st.color}"></span></span>
         <span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span></div>`;
     }).join("");
-    box.innerHTML = `<p class="muted">แม่น้ำเจ้าพระยา จากเหนือ (นครสวรรค์) ลงใต้ (ปากอ่าว) · แถบ = ความลึกน้ำเทียบตลิ่ง ·
-      ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง) · ระยะทางตามลำน้ำจากปากแม่น้ำโดยประมาณ (คลาดเคลื่อนได้ราว 10 กม.) ·
-      ค่าระหว่างสถานีไม่ได้ประมาณ เพราะตลิ่งและคันกั้นน้ำแต่ละช่วงสูงไม่เท่ากัน</p>${rows}`;
+    box.innerHTML = `<p class="muted">เจ้าพระยา จากกรุงเทพฯ ขึ้นไปทางเหนือ · ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง)
+      <details class="sumdetails"><summary>อ่านกราฟนี้</summary>แถบ = ความลึกน้ำเทียบตลิ่ง · ระยะทางตามลำน้ำจากปากแม่น้ำโดยประมาณ (คลาดเคลื่อนได้ราว 10 กม.) ·
+      ค่าระหว่างสถานีไม่ได้ประมาณ เพราะตลิ่งและคันกั้นน้ำแต่ละช่วงสูงไม่เท่ากัน</details></p>${rows}`;
     box.querySelectorAll(".prow").forEach((r) => {
       r.addEventListener("click", () => showDetail(r.dataset.code));
       r.addEventListener("keydown", (e) => { if (e.key === "Enter") showDetail(r.dataset.code); });
@@ -576,22 +617,22 @@ async function showDetail(code) {
     const methods = fc ? [...new Set(Object.values(fc.skill || {}).map((k) => k.method))] : [];
     const skill12 = fc?.skill?.["12"];
     const bma = s.agency === "BMA", unit = bma ? "ม. (หมุด กทม.)" : "ม.รทก.";  // BMA datum unverified vs HII (KI-217)
-    const erratic = (s.notes || []).includes("erratic");  // pumps at the sensor or a faulty sensor (D-057): the reason leads
+    const hid = (s.notes || []).find((n) => n === "erratic" || n === "stuck"), erratic = !!hid;  // pumps at the sensor or a faulty sensor (D-057): the reason leads
     box.innerHTML = `<div class="tools"><button class="btn share" aria-label="แชร์">🔗 แชร์</button><button class="btn close" aria-label="ปิด">✕</button></div>
       <h2 id="sheet-title">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></h2>
       <div class="muted">${esc(s.river || "")} · ${esc(s.amphoe || "")} ${esc(s.province || "")} · ${esc(s.agency || "")}</div>
-      <p class="headline" style="color:${st.color}">${erratic ? "ไม่แสดงระดับน้ำ (ขึ้นลงผิดปกติ)" : s.status_basis === "bma_thresholds"
+      <p class="headline" style="color:${st.color}">${erratic ? (hid === "stuck" ? "ไม่แสดงระดับน้ำ (ค่าค้าง)" : "ไม่แสดงระดับน้ำ (ขึ้นลงผิดปกติ)") : s.status_basis === "bma_thresholds"
         ? `${esc(st.long)}${s.over_bma_critical_m != null && s.over_bma_critical_m > 0 && s.status !== "critical" ? ` · ${esc(levelText(s))}` : ""}`
         : s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
-        : `${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m))}` : ""}`}</p>
+        : `${esc(st.long)}${s.freeboard_m != null ? ` · ${esc(freeboardText(s.freeboard_m) + ydayText(s))}` : ""}`}</p>
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
-        ${changeLines(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE.erratic)}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
+        ${changeLines(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
-      ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
-      <p class="muted">วิธีคาดการณ์: ${esc(erratic ? "ไม่คาดการณ์ (ระดับน้ำขึ้นลงผิดปกติ)" : methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
+      ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic" && n !== "stuck") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
+      <p class="muted">วิธีคาดการณ์: ${esc(erratic ? "ไม่คาดการณ์ (ค่าระดับน้ำไม่น่าเชื่อถือ)" : methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
         · ตลิ่งของสถานีอาจไม่เท่ากับระดับถนนหรือบ้านของคุณ</p>
       ${feedbackCounts(d.feedback7d)}
       ${feedbackForm(s.code)}`;
@@ -694,13 +735,17 @@ function pointHTML(d, src, place = "") {
     <p>• ระดับน้ำที่สถานีคลองหรือแม่น้ำ ไม่ใช่ระดับน้ำที่จุดนี้ บนถนน หรือในบ้าน</p>
     <p>• ความมั่นใจของแต่ละสถานีดูได้ที่ปุ่ม ⓘ ข้างตัวเลข · คาดการณ์ 48 ชม. แสดงเฉพาะสถานีที่ทดสอบย้อนหลังผ่าน</p>`;
 
+  const nc = d.nearest_canal && d.nearest_canal.station, nObs = nc && nc.observed24;
+  const nearObs = nObs && OBS[nObs.level] && nObs.level !== "mixed"
+    ? `<p class="pf-obs obs-${obsDir(nObs)}">คลองใกล้สุด ${nObs.hours || 24} ชม. ที่ผ่านมา: <b>${esc(OBS[nObs.level])}</b>${nObs.level === "steady" ? "" : ` ${Math.abs(nObs.change_cm)} ซม.`}</p>` : "";
   const panel = `
     <section class="pf ${fcR.cls}" aria-labelledby="pf-title">
       <div class="pf-top"><span class="pf-h">คาดการณ์ข้างหน้า</span>
         <button type="button" class="pf-info-btn" aria-expanded="false" aria-controls="pf-info" aria-label="ที่มาและข้อจำกัดของข้อมูล">ⓘ</button></div>
       <div id="pf-info" class="pf-info" hidden>${infoBody}</div>
       ${fc.title ? `<h3 id="pf-title" class="pf-title">${fcR.icon ? `${fcR.icon} ` : ""}${esc(fc.title)}</h3>
-      <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
+      <p class="pf-desc">${esc(fc.desc)}</p>` : ""}${nearObs}
+      ${actionsHTML(fc.risk)}
       <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
         <li><span class="pf-dot" style="background:${canal.color}"></span><div><b>ระดับน้ำในคลอง</b> · <span class="pf-word">${esc(canal.word)}</span>
@@ -753,7 +798,7 @@ async function checkPoint(lat, lon, src, place = "") {
     bindReport(box);
     const info = box.querySelector(".pf-info-btn"), infoBox = box.querySelector("#pf-info");
     if (info && infoBox) info.addEventListener("click", () => { infoBox.hidden = !infoBox.hidden; info.setAttribute("aria-expanded", String(!infoBox.hidden)); });
-    if (src === "pin" && !place) fillArea(lat, lon);
+    if ((src === "pin" || src === "gps") && !place) fillArea(lat, lon);
   } catch (e) {
     box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div><p>โหลดข้อมูลไม่สำเร็จ (${esc(e.message)})</p>`;
   }

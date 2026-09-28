@@ -134,6 +134,20 @@ Persona: a resident of Lat Phrao / Chatuchak on a phone at night during the floo
 | 70 | Owner: one gauge name bold and one not; labels ran into long lines (v0.11.0) | One block per gauge: label line, bold name · distance · pill, then rows; divider between gauges (v0.11.1, KI-234) |
 | 69 | Kicker "12–24 ชม." above 24/48 h rows; "ท่วมถึงเข่า … 2" | "คาดการณ์ข้างหน้า"; "2 ราย" |
 
+### Round 12 (2026-09-28 17:30–18:30 UTC): resident at home, live site on phone and desktop (v0.14.0, D-060, D-061)
+Real walk with `scripts/ux_walk.py` (Playwright, Android phone 390×844 with GPS at Bang Khen, and 1440×900): home → "สถานีใกล้ฉัน" → search "ลาดพร้าว" → map + tap → Chao Phraya tab → station sheet. List in 1.6–1.8 s, no console errors; phone 0.5–0.7 MB, desktop 1.6–1.9 MB (map tiles).
+| # | Finding (as a resident) | Done |
+|---|---|---|
+| 64 | Six gauges stuck at 1.00 m / 0.40 m showed statuses ("ถึงตลิ่ง 25–50 %") | Hidden with "ค่าค้าง" (KI-241) |
+| 65 | Rows "? / ? / → ทรงตัว" under a chart that clearly falls (owner screenshots KPM.04, LBK.03, PWT.03) | Rows follow the measured trend; ±5 cm "ทรงตัว"; 48 h for slow falls (D-060, KI-242) |
+| 66 | The pin panel said "ล้นตลิ่ง" but hid the good news (falling 13 cm/day) far below | One line under the headline: "คลองใกล้สุด 24 ชม. ที่ผ่านมา: ลดลง 14 ซม." |
+| 67 | No "what should I do" | "ควรทำอะไรตอนนี้" collapsed, 3 bullets by risk level, DDPM advice (D-061) |
+| 68 | GPS panel showed "13.854, 100.588" | District name ("อนุสาวรีย์, บางเขน") |
+| 69 | ~40 % of the first phone screen was header, banner, chips and operator lines | Operator lines behind "รายละเอียดข้อมูล" (small gain: list starts ~50 px higher) |
+| 70 | Map opened at Ayutthaya scale; Bangkok a corner | Opens on Bangkok when the region is กทม. |
+| 71 | Chao Phraya tab started at Nakhon Sawan with a long legend | Bangkok first; one-line legend, the rest behind "อ่านกราฟนี้" |
+| — | Not done: tapping a crowded area hits a station instead of a point check; the header + disclaimer still take ~25 % of the first screen; no real residents interviewed yet | Next round |
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.
@@ -145,5 +159,6 @@ Persona: a resident of Lat Phrao / Chatuchak on a phone at night during the floo
 8. **Real users**: 5–10 short interviews (riverside, polder, elderly) and a look at feedback counts after one week.
 
 ## 4. How to re-run this check
+- Real walk (phone + desktop, GPS, search, map tap, river tab, sheet): `python3 scripts/ux_walk.py <out_dir>` (needs Python Playwright; Chromium runs with `--no-sandbox` as root).
 - Screenshots: `chrome --headless=new --no-sandbox --window-size=390,844 --virtual-time-budget=8000 --screenshot=m.png http://localhost:3000/` (add `#s=BKK021` for the sheet).
 - Walk each persona's question in §1. Can it be answered in ≤ 10 s on the phone screenshot without scrolling past the first screen?

@@ -2,6 +2,19 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.14.0 — 2026-09-28
+- **Trend rows follow what the chart shows (owner, D-060, KI-242):** where no model sees a direction, the 12/24/48 h
+  rows follow the measured trend ("↘ ลดลง · ตามแนวโน้มที่วัดได้"; odds and past range in the ⓘ, e.g. "ในอดีตเป็นแบบนี้ต่อ
+  6 ใน 10 ครั้ง"). Slow falls count: 48 h is used when 24 h shows no trend, and whole-cm steps no longer read as
+  "ขึ้นลงสลับกัน" (WL.LBK.03). "→ ทรงตัว" only when the likely range stays within ±5 cm, and never after a "?".
+- **Stuck gauges hidden (KI-241):** one exact value in ≥ 90 % of 24 h (six BMA gauges at 1.00 m / 0.40 m) → note
+  "ค่าค้าง", no level, status or forecast.
+- **Resident first (D-061):** "ควรทำอะไรตอนนี้" (3 bullets per risk level, from DDPM advice, collapsed); the pin
+  panel shows the nearest canal's measured trend under the headline; GPS shows the district; operator lines behind
+  "รายละเอียดข้อมูล"; the map opens on Bangkok; the Chao Phraya tab starts in Bangkok; "(เมื่อวาน N)" after the bank
+  distance.
+- Tests: 101 passing (+5).
+
 ## v0.13.0 — 2026-09-28
 - **What the water did in the last 24 h, in finer words (owner, D-058, KI-240):** sheet, point panel and list cards
   show "24 ชม. ที่ผ่านมา: ลดลง 5 ซม." from a straight-line fit of the measured levels (every 10 min, dropouts removed):

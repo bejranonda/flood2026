@@ -189,6 +189,51 @@ def _star_target(y: np.ndarray, h: int) -> np.ndarray:
     return tg
 
 
+CONT_MIN_CM = 0.02   # a "steady trend" (same rule as qc.observed24): >= 2 cm over the last 24 h ...
+CONT_MIN_R2 = 0.5    # ... along a straight line
+CONT_HORIZONS = (12, 24, 48)
+
+
+def _mean3(y: np.ndarray, i: int) -> float:
+    w = y[max(0, i - 1):i + 2]
+    w = w[np.isfinite(w)]
+    return float(w.mean()) if len(w) else float("nan")
+
+
+def continuation(y: np.ndarray, start: int) -> dict:
+    """How often a steady measured 24 h trend kept its direction at this gauge (owner 2026-09-28: a few cm matter;
+    D-060). For every hour i >= start with a steady trend in the 24 h before it, the change over the next h hours (3 h
+    means at both ends). Returns {h: {"fall"|"rise": {"n", "hit", "q"}}}: q = 5/25/50/75/95 % of that change."""
+    xc = np.arange(25, dtype=float) - 12.0
+    sxx = float((xc ** 2).sum())
+    acc: dict = {h: {"fall": [], "rise": []} for h in CONT_HORIZONS}
+    for i in range(max(start, 24), len(y)):
+        w = y[i - 24:i + 1]
+        if not np.isfinite(w).all():
+            continue
+        b = float((xc * (w - w.mean())).sum() / sxx)
+        ss = float(((w - w.mean()) ** 2).sum())
+        r2 = 1 - float(((w - (w.mean() + b * xc)) ** 2).sum()) / ss if ss > 0 else 1.0
+        wiggle = math.sqrt(float(((w - (w.mean() + b * xc)) ** 2).mean()))
+        if abs(b * 24) < CONT_MIN_CM or (r2 < CONT_MIN_R2 and (wiggle >= 0.05 or wiggle > abs(b * 24) / 2)):
+            continue  # same trend rule as qc.observed24
+        now = _mean3(y, i)
+        for h in CONT_HORIZONS:
+            if i + h + 1 < len(y):
+                f = _mean3(y, i + h)
+                if np.isfinite(now) and np.isfinite(f):
+                    acc[h]["fall" if b < 0 else "rise"].append(f - now)
+    out: dict = {}
+    for h, d in acc.items():
+        for k, v in d.items():
+            if v:
+                a = np.array(v)
+                hit = float(np.mean(a < 0) if k == "fall" else np.mean(a > 0))
+                out.setdefault(h, {})[k] = {"n": int(len(a)), "hit": round(hit, 3),
+                                            "q": [round(float(np.quantile(a, q)), 3) for q in QUANTILES]}
+    return out
+
+
 def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
     """Rolling-origin backtest on the last EVAL_HOURS (or the last 40 % of a short record). The tide used in the
     backtest is fitted only on data before the window (no leakage). Returns per-horizon choice, skill, residuals."""
@@ -225,6 +270,7 @@ def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
             pred = _ridge(X[tr], tg[tr])(X[te])
             errs[h]["star"] = {i: float(tg[i] - p) for i, p in zip(te, pred)}
     result = {}
+    cont = continuation(y, split)
     for h in HORIZONS:
         rows = set(errs[h]["persistence"])
         for m in errs[h]:
@@ -242,7 +288,8 @@ def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
                      "n": int(len(res)), "q": [float(np.quantile(res, q)) for q in QUANTILES],
                      "coverage90_backtest": float(np.mean((res >= np.quantile(res, 0.05)) & (res <= np.quantile(res, 0.95)))),
                      # every method's error quantiles, so the live path can fall back with the right band
-                     "q_all": {m: [float(np.quantile(v, q)) for q in QUANTILES] for m, v in e.items() if len(v)}}
+                     "q_all": {m: [float(np.quantile(v, q)) for q in QUANTILES] for m, v in e.items() if len(v)},
+                     "cont": cont.get(h)}  # D-060: does a steady measured trend keep its direction here?
     return result
 
 

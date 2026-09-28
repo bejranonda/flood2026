@@ -56,17 +56,33 @@ def assess(xs: list[tuple[float, float]]) -> dict:
     return {"dropouts": drop, "erratic_steps": n, "erratic": n >= ERRATIC_STEPS}
 
 
+STUCK_SHARE = 0.90    # one exact value in >= 90 % of the last 24 h: a stuck logger (six BMA gauges at 1.00 m, 2026-09-28)
+STUCK_MIN_READINGS = 50
+
+
+def stuck(xs: list[tuple[float, float]]) -> float | None:
+    """The repeated value when one exact level makes up >= STUCK_SHARE of the readings (a placeholder, not water:
+    WL.BKA.04, BYI.01, PWT.06, SSB.11 at exactly 1.00 m and SSB.07 at 0.40 m for 48 h; KI-241). None otherwise."""
+    if len(xs) < STUCK_MIN_READINGS:
+        return None
+    counts: dict[float, int] = {}
+    for _, v in xs:
+        counts[v] = counts.get(v, 0) + 1
+    top, n = max(counts.items(), key=lambda kv: kv[1])
+    return top if n / len(xs) >= STUCK_SHARE else None
+
+
 OBS_MIN_SPAN_H = 20   # a "24 h" change needs readings over at least 20 of the 24 hours
 OBS_STEADY_R2 = 0.5   # below this the level went up and down: say so instead of a direction
 OBS_WIGGLE_M = 0.05   # ... unless the ups and downs are within 5 cm (then a small net change is still "steady")
 
 
-def observed24(xs: list[tuple[float, float]]) -> dict | None:
+def observed24(xs: list[tuple[float, float]], hours: int = 24) -> dict | None:
     """What the level did over the last 24 h, as a fact (owner 2026-09-28: "a few cm lower in a flood is
     significant"). Straight-line fit over `xs` = [(epoch s, level)] (the caller passes the last 24 h, dropouts
     removed): change = slope × 24 h. Words follow the *rounded* centimetres so they match the number shown:
     < 2 steady · 2-4 small · 5-19 plain · ≥ 20 strong; "mixed" when the level went up and down (tide, pumps)."""
-    if len(xs) < 6 or xs[-1][0] - xs[0][0] < OBS_MIN_SPAN_H * 3600:
+    if len(xs) < 6 or xs[-1][0] - xs[0][0] < OBS_MIN_SPAN_H / 24 * hours * 3600:
         return None
     n = len(xs)
     mx = sum(t for t, _ in xs) / n
@@ -76,22 +92,36 @@ def observed24(xs: list[tuple[float, float]]) -> dict | None:
     ss = sum((v - my) ** 2 for _, v in xs)
     res = sum((v - (my + b * (t - mx))) ** 2 for t, v in xs)
     r2 = 1 - res / ss if ss > 0 else 1.0
-    change = b * 24 * 3600
+    change = b * hours * 3600
     cm = round(change * 100)
     wiggle = (res / n) ** 0.5
     if r2 < OBS_STEADY_R2 and wiggle >= OBS_WIGGLE_M:
-        level = "mixed"
+        level = "mixed"  # big ups and downs (tide, pumps)
     elif abs(cm) < 2:
         level = "steady"
-    elif r2 < OBS_STEADY_R2:
-        level = "mixed"
-    else:
+    elif r2 < OBS_STEADY_R2 and wiggle > abs(change) / 2:
+        level = "mixed"  # small change lost in noise
+    else:  # incl. a slow trend under whole-cm steps (WL.LBK.03: −1 cm/day, R² 0.43, wiggle < 1 cm), D-060
         size = "small_" if abs(cm) < 5 else "strong_" if abs(cm) >= 20 else ""
         level = size + ("rise" if cm > 0 else "fall")
-    return {"change_cm": cm, "r2": round(r2, 2), "level": level}
+    return {"change_cm": cm, "r2": round(r2, 2), "level": level, "hours": hours}
 
 
-def run_all(hours: float = 25) -> dict:
+def observed(xs: list[tuple[float, float]]) -> dict | None:
+    """The measured trend shown to residents: the last 24 h, or the last 48 h when 24 h shows no clear trend (owner
+    2026-09-28: "the trend in chart shows lowering slowly in 48 hr, but we said ทรงตัว"; ~1 cm/day is clear over two
+    days, lost in whole-cm steps over one). `xs` = the last 48 h, dropouts removed."""
+    if not xs:
+        return None
+    end = xs[-1][0]
+    o24 = observed24([x for x in xs if x[0] > end - 24 * 3600], 24)
+    if o24 and o24["level"] not in ("steady", "mixed"):
+        return o24
+    o48 = observed24([x for x in xs if x[0] > end - 48 * 3600], 48)
+    return o48 if o48 and o48["level"] not in ("steady", "mixed") else o24
+
+
+def run_all(hours: float = 49) -> dict:
     """Flag dropouts (quality_flag 'dropout', never deleted) in the last `hours` of every focus gauge and store the
     erratic gauges of the last WINDOW_S in collector_state 'erratic_gauges' ({code: {"steps": n}}), which the API
     and the forecast read, and every other gauge's measured 24 h change in 'observed24' (`observed24`). A longer `hours` (e.g. 45 days) cleans the history the forecast trains on, once."""
@@ -109,7 +139,7 @@ def run_all(hours: float = 25) -> dict:
         series: dict[str, list] = {}
         for r in rows:
             series.setdefault(r["code"], []).append((r["obs_time"], float(r["level_msl"])))
-        flagged, erratic, observed = [], {}, {}
+        flagged, erratic, trends = [], {}, {}
         for code, obs in series.items():
             xs = [(t.timestamp(), v) for t, v in obs]
             drop = set(dropouts(xs))
@@ -117,17 +147,20 @@ def run_all(hours: float = 25) -> dict:
             start = now.timestamp() - WINDOW_S
             recent = [x for k, x in enumerate(xs) if x[0] > start and k not in drop]
             n = erratic_steps(recent, [])
-            if n >= ERRATIC_STEPS:
-                erratic[code] = {"steps": n}
-            elif recent:
-                o = observed24([x for x in recent if x[0] > recent[-1][0] - 24 * 3600])
+            flat = stuck(recent)
+            if flat is not None:
+                erratic[code] = {"kind": "stuck", "value": flat}
+            elif n >= ERRATIC_STEPS:
+                erratic[code] = {"kind": "erratic", "steps": n}
+            else:
+                o = observed([x for k, x in enumerate(xs) if k not in drop and x[0] > now.timestamp() - 48 * 3600])
                 if o:
-                    observed[code] = o
+                    trends[code] = o
         if flagged:
             with c.cursor() as cur:
                 cur.executemany("UPDATE observation SET quality_flag='dropout' WHERE code=%s AND obs_time=%s", flagged)
         db.set_state(c, "erratic_gauges", erratic)
-        db.set_state(c, "observed24", observed)  # the measured 24 h change per gauge, read by the API
+        db.set_state(c, "observed24", trends)  # the measured 24 h change per gauge, read by the API
         c.commit()
     logging.getLogger("floodwatch.qc").info("qc: %d dropouts flagged, %d erratic gauges (%s)", len(flagged),
                                             len(erratic), " ".join(sorted(erratic)))

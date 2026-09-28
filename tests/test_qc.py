@@ -65,3 +65,48 @@ def test_readings_far_apart_are_not_steps_and_the_newest_is_never_a_dropout():
     assert qc.assess(hourly)["erratic_steps"] == 0
     tail = _ser([1.61, 1.61, 1.61, 0.66])  # the latest reading may be a dropout, but only the next one can tell
     assert qc.assess(tail)["dropouts"] == []
+
+
+def test_a_logger_stuck_at_one_value_is_caught_but_a_calm_canal_is_not():
+    assert qc.stuck(_ser([1.00] * 120 + [1.01] * 6)) == 1.00  # WL.BKA.04-like: exactly 1.00 m for a day
+    calm = _ser([0.50 + 0.01 * ((k // 7) % 3) for k in range(126)])  # held by a gate, moving by a cm now and then
+    assert qc.stuck(calm) is None and qc.stuck(_ser([1.0] * 20)) is None
+
+
+def test_a_slow_fall_under_whole_cm_steps_is_a_small_fall_not_mixed():
+    # WL.LBK.03, 2026-09-28: 0.90 -> 0.87 m over 3 days, logged in whole cm; R² only ~0.4 but ups and downs < 1 cm
+    import random
+    rnd = random.Random(1)
+    xs = _day(lambda h: round(0.89 - 0.02 * h / 24 + rnd.choice((-0.005, 0, 0.005)), 2))
+    assert qc.observed24(xs)["level"] in ("small_fall", "fall")
+
+
+def test_a_fall_too_slow_for_24_h_is_reported_over_48_h():
+    xs = _day(lambda h: 0.90 - 0.015 * h / 24) + [(T0 + 86400 + k * 600, 0.885 - 0.015 * k / 144) for k in range(1, 145)]
+    o = qc.observed(xs)  # 1.5 cm/day: "steady" over 24 h, a small fall over 48 h
+    assert o["hours"] == 48 and o["level"] == "small_fall" and o["change_cm"] == -3
+    assert qc.observed(_day(lambda h: 0.9 - 0.1 * h / 24))["hours"] == 24  # a clear 24 h trend is reported as such
+
+
+def test_run_all_end_to_end_with_a_fake_database(monkeypatch):
+    # v0.14.0 slip: a local dict named `observed` shadowed qc.observed() and every run failed in production
+    import datetime as dt
+    from floodwatch import db
+    now = dt.datetime.now(dt.timezone.utc)
+    rows = [{"code": "K", "obs_time": now - dt.timedelta(minutes=10 * k), "level_msl": 1.0 + 0.001 * k} for k in range(300)][::-1]
+    rows += [{"code": "S", "obs_time": now - dt.timedelta(minutes=10 * k), "level_msl": 1.0} for k in range(200)][::-1]
+    state = {}
+
+    class C:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, *a, **k): return type("R", (), {"fetchall": lambda _s: rows})()
+        def cursor(self): return self
+        def executemany(self, *a): pass
+        def commit(self): pass
+
+    monkeypatch.setattr(db, "connect", lambda: C())
+    monkeypatch.setattr(db, "set_state", lambda c, k, v: state.update({k: v}))
+    out = qc.run_all()
+    assert out["erratic"] == ["S"] and state["erratic_gauges"]["S"]["kind"] == "stuck"
+    assert state["observed24"]["K"]["level"] in ("fall", "strong_fall")

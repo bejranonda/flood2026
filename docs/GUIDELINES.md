@@ -68,6 +68,9 @@ Update `Last updated` on each file you touch. Docs are written in English; Thai 
 - **Always state the age of a secondary layer** (Traffy) when it is more than an hour old.
 - **Measured facts and forecasts are different lines** (D-058): what the water did ("24 ชม. ที่ผ่านมา: ลดลง 5 ซม.") needs no model skill and is always shown; a forecast direction needs a model that beat "no change". Never let a "no change" model speak as if it had looked ("ยังไม่เห็นแนวโน้มลดลง…" at a falling gauge, KI-240).
 - **Words match the rounded number** (D-056, D-058): classify on the value you print (e.g. −4.6 cm prints 5 → "ลดลง", not "เล็กน้อย"); a few cm matter in a flood, so do not round small steady changes away.
+- **A row word never contradicts its numbers** (D-060): if the numbers would lean the other way (a "ลดลง" row with a range reaching +14 cm), keep the word and move the numbers into the ⓘ.
+- **Panel text is short** (owner 2026-09-28): a headline, one line, the rest behind "รายละเอียด"/ⓘ; check at 390 px.
+- **Resident first** (D-061): design for someone at home in a flooded or at-risk soi; operator statistics go behind a toggle.
 - **A river gauge is never canal evidence** (KI-223, D-059), in the canal factor, the gate or the headline.
 - **New stations must say they are new** (no empty chart without an explanation): the API gives `history_since`/`history_days`, the UI labels gauges with < 7 days of history.
 

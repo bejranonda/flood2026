@@ -492,3 +492,16 @@
   1. `area_index` skips river gauges: the river outside the walls is never evidence about canal drainage.
   2. One gauge within 3 km still gives "low" confidence (D-054) unless a gauge between 3 and 5 km (`CHECK_KM`) differs from it by 2 or more ranks; then "very_low" (no canal verdict).
   3. The headline trend uses gauges from the same band as the gate (3 km when a canal gauge is that close, otherwise 5 km), never gauges from other polders further away.
+
+### D-060 — Trend rows follow the measured trend; "ทรงตัว" only within ±5 cm
+- **Date:** 2026-09-28 · **Status:** accepted (owner: "a few cm lower in a flood is significant"; "the trend in chart shows lowering slowly in 48 hr, but we said ทรงตัว"; chose "Always follow the measured trend" over an odds chip or a ≥ 70 % gate) · **Amends D-056, D-058**
+- **Evidence:** KI-242; continuation backtest (canals 53–64 %, rivers 70–96 %).
+- **Decision:**
+  1. Where no model beat "no change" with a direction (persistence, or a model saying steady), the 12/24/48 h rows take the direction and size word of the measured trend (`qc.observed`: 24 h, else 48 h). The row shows "ตามแนวโน้มที่วัดได้" instead of numbers; the ⓘ gives how often such a trend continued at this gauge and the past range (`forecast.continuation`). A model that sees a direction keeps its word.
+  2. A measured trend needs ≥ 2 cm; it is "mixed" only when the ups and downs are ≥ 5 cm or larger than half the change (whole-cm steps are not noise).
+  3. "→ ทรงตัว" only when the likely range stays within ±5 cm; otherwise "? ไม่แน่ชัด"; a longer horizon is never shown surer than a shorter one.
+- **Known cost:** in canals such rows are right about 5–6 times in 10; the ⓘ says so.
+
+### D-061 — Resident at home first; a short action guide
+- **Date:** 2026-09-28 · **Status:** accepted (owner answers, UX round 12: main user "resident at home"; advice "full action guide", "I draft and ship directly", "collapsed button, 3 bullets"; "collapse operator lines"; "hide stuck gauges"; "do not describe in panel too long")
+- **Decision:** "ควรทำอะไรตอนนี้" under the pin outlook, collapsed, 3 bullets per risk level (high / moderate / low), drawn from DDPM (ปภ.) public advice (move belongings and cars up, cut the power, keep supplies and documents at hand, follow official notices, 1784/1555), with "ทำตามประกาศของเจ้าหน้าที่ก่อนเสมอ". Operator lines behind "รายละเอียดข้อมูล"; the map opens on Bangkok; the Chao Phraya tab starts in Bangkok; the GPS panel names the district; every new panel text fits one or two lines at 390 px.
