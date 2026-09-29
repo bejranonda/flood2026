@@ -516,3 +516,7 @@
   4. Every view evaluates 12 → 24 → 48 h even when it prints fewer rows.
   5. D-061's action guide is withdrawn (too much text in the panel); the method line is collapsed.
   6. Before a release, run `scripts/ux_consistency.py`; C1–C3, C5, C6 must be 0.
+
+### D-063 — v0.15 is the baseline; old issues are judged against it
+- **Date:** 2026-09-29 · **Status:** accepted (owner: "This version is already good and keep this concept"; "review git issues, but do not need to follow, because the issues could be outdated")
+- **Decision:** the v0.15 concept (D-058, D-060, D-062) stays. GitHub #6 (one-phrase factor headers) adopted — it shortens the panel without changing the concept; #7 (a one-line canal factor with the rows under รายละเอียด) not adopted, the owner keeps the rows and numbers visible; #8 (hover colour) and #9 (page fits the screen) fixed as bugs.

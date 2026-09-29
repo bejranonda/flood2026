@@ -160,6 +160,15 @@ Owner: "keep number to show"; "วิธีคาดการณ์ … collapse
 | 77 | BKK008 recovery "หลัง 72 ชม." while 1 cm over the bank and falling | Window keeps its early end |
 Final run: 0 issues in C1–C3, C5, C6; 2 accepted (two gauges, same status).
 
+### Round 14 (2026-09-29 ~10:00 UTC): open GitHub issues re-checked on v0.15 (v0.15.1, D-063)
+| # | Issue | Result |
+|---|---|---|
+| 78 | #9 page height should fit the screen | Still true (~100 px extra at 1366/1440/1920) → fixed: page = window height |
+| 79 | #8 simplify gauge boxes; hover colour = urgency | Hover colour fixed; boxes already one row + one measured line |
+| 80 | #6 merge factor headers | Adopted: one phrase per factor |
+| 81 | #7 declutter the canal factor | Kept as is (owner: rows and numbers stay visible) |
+Consistency proof after the change (311 sheets, 67 pins, 1,254 rows, 4 viewports): C2–C6 = 0; C1 = 2, both a forecast run at 11:52 UTC landing between two reads (re-read via the API: identical).
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.

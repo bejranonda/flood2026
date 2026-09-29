@@ -2,6 +2,12 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.15.1 — 2026-09-29
+- **GitHub issues reviewed against v0.15 (owner: keep the v0.15 concept):** #9 the desktop page now fits the screen
+  exactly (was ~100 px taller than the window at 1366/1440/1920 px: a fixed `calc(100vh − 145px)`); #8 a card's
+  hover/focus outline takes its urgency colour (red for ล้นตลิ่ง, was always blue); #6 each pin factor is one phrase
+  ("น้ำในคลองล้นตลิ่ง", "ฝนเล็กน้อยใน 24 ชม. ข้างหน้า", "มีแจ้งน้ำท่วมบนถนน 5 เรื่อง"); #7 kept as is (owner).
+
 ## v0.15.0 — 2026-09-28
 - **Proven consistent (owner: "prove the consistency of panel and text", "validate the UI in many possibilities"):**
   `scripts/ux_consistency.py` opens all 310 station sheets, 67 pins and 4 viewports (360/390/768/1440 px) and checks

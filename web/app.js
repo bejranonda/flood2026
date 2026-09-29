@@ -1,6 +1,10 @@
 "use strict";
 // BKK FloodWatch frontend. Talks only to our API (D-001). Every external string goes through esc().
 
+// Issue #6: each pin factor is one phrase ("น้ำในคลองล้นตลิ่ง"), not "title · word" (faster to read)
+const CANAL_HEAD = { "ล้นตลิ่ง": "น้ำในคลองล้นตลิ่ง", "ใกล้ตลิ่ง/คลองเต็ม": "น้ำในคลองใกล้ถึงตลิ่ง/คลองเต็ม",
+  "เฝ้าระวัง": "น้ำในคลองเริ่มสูง ควรเฝ้าระวัง", "ยังรับน้ำได้": "คลองยังรับน้ำได้", "ไม่ทราบ": "ยังไม่ทราบระดับน้ำในคลอง",
+  "ไม่มีสถานีใกล้": "ไม่มีสถานีวัดน้ำคลองใกล้จุดนี้", "คลองรอบจุดต่างกันมาก": "คลองรอบจุดต่างกันมาก", "สถานีอยู่ไกล": "สถานีวัดน้ำคลองอยู่ไกล" };
 const STATUS = {
   critical: { th: "ล้นตลิ่ง", long: "วิกฤต (ล้นตลิ่ง)", color: "#c62828" },
   warning: { th: "ใกล้ตลิ่ง/คลองเต็ม", long: "เตือนภัย (ใกล้ตลิ่ง)", color: "#e46c0a" },
@@ -730,11 +734,11 @@ function pointHTML(d, src, place = "") {
       <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
       <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
-        <li><span class="pf-dot" style="background:${canal.color}"></span><div><b>ระดับน้ำในคลอง</b> · <span class="pf-word">${esc(canal.word)}</span>
+        <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(CANAL_HEAD[canal.word] || canal.word)}</b>
           ${canalGauges}</div></li>
-        <li><span class="pf-dot" style="background:${rainF.color}"></span><div><b>ฝน 24 ชม. ข้างหน้า</b> · <span class="pf-word">${esc(rainF.word)}</span>
+        <li><span class="pf-dot" style="background:${rainF.color}"></span><div><b class="pf-word">${esc(rain == null ? "ยังไม่มีข้อมูลฝน" : `${rainF.word}ใน 24 ชม. ข้างหน้า`)}</b>
           ${rainF.sub ? `<div class="pf-sub">${rainF.sub}</div>` : ""}</div></li>
-        <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b>น้ำท่วมบนถนน</b> · <span class="pf-word">${esc(streetF.word)}</span>
+        <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b class="pf-word">${esc(nRep > 0 ? `มีแจ้งน้ำท่วมบนถนน ${nRep} เรื่อง` : "ยังไม่มีรายงานน้ำท่วมบนถนน")}</b>
           <div class="pf-sub">${hasStreetFlood ? "<b>น้ำรอระบายรอบจุดนี้ แม้คลองใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · " : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
       </ul>
     </section>`;
