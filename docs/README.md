@@ -3,7 +3,7 @@
 > Maintained documentation for BKK FloodWatch 2026. When `research/` and `docs/` disagree, **docs/ wins**.
 
 ## Reading order
-1. [../README.md](../README.md): what the project is and its current status
+1. [../README.md](../README.md): what the app does, screenshots, API, FAQ (public front page) · [../HANDOFF.md](../HANDOFF.md): live state and operations
 2. [brief/first_prompt.md](brief/first_prompt.md): the original brief (the owner's words)
 3. [plan/PLAN.md](plan/PLAN.md): roadmap, phase gates, where we are
 4. [KNOWLEDGE.md](KNOWLEDGE.md): the hydrology and domain facts you need
@@ -42,3 +42,11 @@
 | ❌ | Refuted |
 
 Research validity (🟢 reliable / 🟠 mixed) is explained in [../research/README.md](../research/README.md).
+
+## Checks and assets
+| Path | What |
+|---|---|
+| [../scripts/ux_consistency.py](../scripts/ux_consistency.py) | UI consistency proof: every sheet, a pin grid and 4 viewports (run before a release, D-062) |
+| [../scripts/ux_walk.py](../scripts/ux_walk.py) | Real-user walk on a phone and a desktop (screenshots, timings, console errors) |
+| [../scripts/owner_status.py](../scripts/owner_status.py) | What is still open for the owner |
+| [img/](img/) | README screenshots (WebP; retake with `ux_walk.py` when the UI changes) |

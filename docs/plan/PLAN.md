@@ -1,6 +1,6 @@
 # PLAN.md — Roadmap, phase gates and status
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-27
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-30 (v0.15.2)
 > **Mode (since 2026-09-26, D-012):** all workstreams run **in parallel**. An interim public MVP is live at **https://flood.autobahn.bot** (main domain since D-017; `flood.bejranonda.com` is an alias). Gates G0–G4 are now quality reviews, not blockers. Current state and next steps: [HANDOFF.md](../../HANDOFF.md).
 > **Brief:** [docs/brief/first_prompt.md](../brief/first_prompt.md) (the "Option 2" prompt plus the updated Phase 1 and Phase 4)
 
@@ -9,15 +9,15 @@
 | Item | Status |
 |---|---|
 | Documentation reorganised and reconciled; research validated claim by claim | ✅ 2026-09-26 |
-| Infrastructure: single server + Cloudflare Tunnel; main domain **flood.autobahn.bot** (D-017) | ✅ live; ⚠️ the new domain shows a bot challenge to non-browsers (KI-506, Q18) |
+| Infrastructure: single server + Cloudflare Tunnel; main domain **flood.autobahn.bot** (D-017) | ✅ live; bot challenges off (D-035); request path shares the station list for 60 s after the 2026-09-30 overload (KI-246) |
 | Code hosting: [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) | ✅ published 2026-09-26 (private first, D-011); **public** (owner action, D-028); **MIT License** ([LICENSE](../../LICENSE), [D-043](DECISIONS.md)) |
 | **MVP live** (collectors, raw archive, Postgres, baseline forecasts, API, Thai web) | ✅ 2026-09-26, https://flood.autobahn.bot (D-012, D-013, D-017) |
 | Phase 0 — sources | 🟡 HII, Open-Meteo and Traffy in production; BMA needs a Thai egress (D-014); RID C.29A and the Navy tide are still open |
-| Phase 1 — ingestion | 🟡 running; **110 focus stations**, whole BMR (D-015, D-023, KI-209/210); **1-year hourly backfill** from `waterlevel_graph` (D-018); missing: R2 off-site backup (blocked on R2 S3 credentials) and ~54 stations the chart endpoint won't serve (incl. GLF001, CPY013; all workarounds tested, KI-207) |
-| Phase 2 — forecasting | 🟡 **v0.10: BMA gauges backtested from a year of HII history (D-054); out of sample the gain held at 88–100 % of gauges, skill mostly at 12 h (pumps/gates drive canals, research §10).** **v0.8.0: `star` (network space-time AR + forecast rain + dam release) competes in the backtest per gauge and horizon (D-052); 48 h skill at 35 gauges (was 8); HII official forecast archived and scored (D-050).** Earlier: 🟡 L0/L1 + damped trend; tide fitted on up to a year, backtest on the last 45 days (D-018); 24 h outlook (peak window, chance of reaching the bank); interpolation assessed (D-019). L3–L5 and polder-aware depth are next |
-| Phase 3 — web | 🟡 **v0.11.2 live.** One point panel with factors and the nearest canal's 24/48 h change and drop time (D-051, D-054); one trend format and direction rule in every view (D-056); station sheet leads with the trend; report form behind a button; pull-to-close; district line; place search; every station shown with notes (D-024); citizen feedback (D-020); optional AI triage (D-022). Reviewed in [UX_VALIDATION](../UX_VALIDATION.md) (11 rounds). Next: polder-aware "near me", alerts (Q7), model page |
+| Phase 1 — ingestion | 🟡 running: **~310 focus gauges** (HII, RID, all 199 BMA canals every 5 min); 1-year hourly backfill (D-018, D-054); QC for dropouts, erratic and stuck gauges (D-057, KI-241); as-issued forecasts archived (KI-305 resolved). Missing: off-site backup (D-029, KI-511) |
+| Phase 2 — forecasting | 🟡 per gauge and horizon backtest; `star` (rain + upstream + dam) where it beats "no change" (D-052); where no model sees a direction, rows follow the measured 24/48 h trend with historical odds (D-060); continuation backtest: canals ≈ 55 %, rivers ≈ 88 % (KNOWLEDGE §4). Next: L3–L5, polder-aware depth |
+| Phase 3 — web | 🟡 **v0.15.2 live; the v0.15 concept is the owner-approved baseline (D-063).** One story per view — headline, rows and list agree, proven on every gauge by `scripts/ux_consistency.py` (D-062); measured 24 h change in finer words (D-058); short panels; Bangkok-first map and river profile. 14 UX rounds ([UX_VALIDATION](../UX_VALIDATION.md)). Next: map tap in crowded areas, polder-aware "near me", alerts (Q7), resident interviews |
 | Phase 5 — nationwide ([phase-5](phase-5-nationwide.md)) | 🔎 **Validated, not built** (2026-09-27): monitor first, forecast later (D-044); Bangkok first via HII's copy of BMA data (D-045); lean storage, local backup and agency notes before anything public (D-046). Research checked live in [VALIDATION_2026-09-27_nationwide](../../research/VALIDATION_2026-09-27_nationwide.md) |
-| Phase 4 — ops | 🟡 **Cloudflare Tunnel live** (no inbound ports); Thai VPN sidecar (D-016); monitoring alerts and R2 backups are next (KI-504, KI-505) |
+| Phase 4 — ops | 🟡 Cloudflare Tunnel live (no inbound ports); Thai VPN sidecar (D-016); **no external uptime alert yet** — a 4.5 h DB overload on 2026-09-30 went unnoticed (KI-246, OWNER_ACTIONS "UPTIME"); backups off by owner choice (D-029) |
 
 ## Phases and gates
 

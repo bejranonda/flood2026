@@ -31,6 +31,7 @@
 - Silent fallbacks to made-up values (e.g. "default Bang Sai flow 2,450 m³/s") are forbidden. Missing data is shown as missing.
 
 ### 2.3 Documentation upkeep
+- **README is the public front page** (2026-09-30): lead with what the app does, the live link, the safety notice and screenshots; plain words, no decision IDs above the fold; facts current (sample outputs from a live call with its time); FAQ in Thai and English. History and decisions belong in CHANGELOG/DECISIONS, operations in HANDOFF.
 | When you learn… | Update |
 |---|---|
 | A domain fact (hydrology, stations, datums) | [KNOWLEDGE.md](KNOWLEDGE.md) |

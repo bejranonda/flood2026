@@ -1,195 +1,140 @@
-# BKK FloodWatch 2026 🌊
-### Water-level monitoring and forecasting for Bangkok and the lower Chao Phraya
-> **ระบบติดตามและคาดการณ์ระดับน้ำ กรุงเทพมหานครและลุ่มเจ้าพระยาตอนล่าง (พ.ศ. 2569)**
+# BKK FloodWatch — Bangkok flood and canal water-level monitor 🌊
 
-[![Status: MVP live](https://img.shields.io/badge/status-MVP%20live%20(beta)-brightgreen.svg)](https://flood.autobahn.bot)
-[![Infra: single server + Cloudflare](https://img.shields.io/badge/infra-single%20server%20%2B%20Cloudflare-orange.svg)](HANDOFF.md)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](docs/GUIDELINES.md)
-[![Domain: Hydrology & Flood Forecasting](https://img.shields.io/badge/domain-hydrology%20%26%20flood%20forecast-0077b6.svg)](docs/APPROACH_AND_METHODS.md)
-[![Coverage: Bangkok & Chao Phraya](https://img.shields.io/badge/coverage-Bangkok%20%26%20Chao%20Phraya-023e8a.svg)](docs/KNOWLEDGE.md)
-[![Repo: bejranonda/flood2026](https://img.shields.io/badge/github-bejranonda%2Fflood2026-181717.svg?logo=github)](https://github.com/bejranonda/flood2026)
+**ติดตามระดับน้ำคลองและแม่น้ำเจ้าพระยา กรุงเทพฯ และปริมณฑล แบบเรียลไทม์ พร้อมแนวโน้ม 12–48 ชั่วโมง**
+Real-time water levels of Bangkok's canals (khlong) and the lower Chao Phraya, compared with the bank, with honest 12–48 h trends — in plain Thai, on your phone.
+
+**[▶ Open the app — flood.autobahn.bot](https://flood.autobahn.bot)** · [API docs](https://flood.autobahn.bot/api/docs) · [Changelog](CHANGELOG.md) · [Handoff (for developers)](HANDOFF.md)
+
+[![Live](https://img.shields.io/badge/live-flood.autobahn.bot-brightgreen.svg)](https://flood.autobahn.bot)
+[![Release](https://img.shields.io/github/v/release/bejranonda/flood2026?label=release)](https://github.com/bejranonda/flood2026/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-> [!IMPORTANT]
-> **Current status (2026-09-29): v0.15.1 live at https://flood.autobahn.bot** ([CHANGELOG](CHANGELOG.md)). **flood.autobahn.bot is the only domain**: `flood.bejranonda.com` redirects everything there (D-035); bot challenges are off, enabling direct curl, link previews, and programmatic AI agent queries.
->
-> **Nationwide (validated plan, not built):** monitor first, forecast later ([D-044](docs/plan/DECISIONS.md), [APPROACH §19](docs/APPROACH_AND_METHODS.md), [phase 5](docs/plan/phase-5-nationwide.md)); the sources were probed live in [research/VALIDATION_2026-09-27_nationwide.md](research/VALIDATION_2026-09-27_nationwide.md).
->
-> **Core USP & Highlights:**
-> - **🔮 Point check with an outlook (D-021, D-051, D-054–D-056):** tap any place in Bangkok/BMR. One panel gives a short outlook headline and the factors behind it — **nearest canal** (status, 24/48 h change, when it may drop), **rain** (TMD words), **street reports** — with a coloured dot and a word each; caveats sit behind one ⓘ. The canal verdict is judged from the nearest ≤ 3 gauges within 3 km; it never gives a water level at the pin.
-> - **📏 A few centimetres count (D-058, D-060):** every gauge shows what the water did in the last 24 h (or 48 h for slow changes), measured ("24 ชม. ที่ผ่านมา: ลดลง 5 ซม."); where no model sees a direction, the trend rows follow that measured trend, with the historical odds in the ⓘ.
-> - **🏠 Resident first (D-061, D-062):** short panels, the district name for "near me", the map and the Chao Phraya profile start in Bangkok; the headline, the rows and the list tell one story, proven on every gauge by `scripts/ux_consistency.py`.
-> - **🧹 Pump-affected and faulty gauges handled (D-057):** one- or two-reading dropouts are removed; stuck loggers and gauges that jump back and forth (pumps at the sensor, faulty sensors) keep their dot and chart, but their level, status and trend are hidden with a note.
-> - **📈 Forecasts that earn their place (D-047, D-050, D-052, D-056):** every gauge is backtested per horizon; the method `star` (own tide/trend + upstream gauges + Chao Phraya Dam release + forecast rain) is used only where it beats "no change". One trend format everywhere — `ใน 24 ชม. · [→ ทรงตัว] · −7 ถึง +7 ซม. · ⓘ` — and a direction only where a real model won; otherwise "? ไม่แน่ชัด" with the likely range. 48 h lines everywhere, honestly labelled.
-> - **🌊 Bangkok canals, all 199 BMA gauges (D-031, D-054):** live every 5 min via the relay of BMA's KlongMap, plus **one year of hourly history for 158 of them from HII** (`waterlevel_graph?station_type=canal`, identical values), so BMA gauges enter the same backtest.
-> - **🛰️ Official sources, archived and scored (D-050):** HII's official 7-day forecast (Ayutthaya, Nonthaburi, C.13 …) is archived per issue and scored against ours before it is ever shown; GISTDA satellite flood extent is reachable (KI-510).
-> - **Mobile-first and plain Thai:** summary chips, list (Bangkok first), place search, map, Chao Phraya profile, share links; station sheet leads with the trend block; report form behind one button; pull-down to close on mobile.
-> - **What the project needs from its owner:** [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md). Status: `python3 scripts/owner_status.py`.
->
-> It collects:
-> - HII telemetry (805 stations in the main feed plus chart-only stations; the whole Bangkok Metropolitan Region and the lower Chao Phraya in focus; **every station is on the map or listed**, with up to **one year** of hourly history);
-> - **BMA khlong gauges (199)** via the People's Party relay (D-031), with one year of history for 158 from HII's canal graph (D-054);
-> - Open-Meteo rain forecasts, and rain **as it was forecast 1–2 days earlier** (training data for `star`, D-052);
-> - HII's official forecast files (archived for scoring, D-050);
-> - Traffy reports and **citizen feedback** from the site itself.
->
-> It keeps a raw archive and a Postgres database, serves backtested forecasts (12/24/48 h, split-conformal ranges; `star` where it wins) and a 24 h outlook, and shows a **mobile-first Thai UI**: summary statistics, list (region chips, Bangkok first), **place search** (ซอย/ถนน/ย่าน via OpenStreetMap), map, the Chao Phraya profile, share links, and a **point check** (tap anywhere: gauges around the pin, citizen reports and warnings; no invented water level). **Cloudflare Workers AI** triages feedback notes in the background, and the site works the same without it. Runs on a single server with `docker compose`, published through a **Cloudflare Tunnel** (no inbound ports), with an optional **Thai VPN egress** for geo-blocked public pages ([D-012–D-016](docs/plan/DECISIONS.md)). **Continue from [HANDOFF.md](HANDOFF.md)** (live state, operations, prioritised next steps).
+> [!WARNING]
+> **Not an official warning service · ไม่ใช่ประกาศทางการ.** Always follow BMA, DDPM, RID and HII announcements.
+> Emergency: **กทม. 1555** · **ปภ. 1784**. A gauge measures the canal, not your street or your house.
 
----
+<p align="center">
+  <img src="docs/img/phone-point-check.webp" width="260" alt="BKK FloodWatch on a phone: point check for Bang Khen, Bangkok — nearest canal over its bank, falling about 12 cm in 24 hours, light rain, no street reports">
+  <img src="docs/img/phone-station-sheet.webp" width="260" alt="Station sheet for Khlong Lat Phrao (BKK021): 13 cm over the bank, 33 cm yesterday, falling trend at 12, 24 and 48 hours, water-level chart with forecast band">
+</p>
+<p align="center">
+  <img src="docs/img/desktop-map-list.webp" width="820" alt="BKK FloodWatch on a desktop: list of Bangkok canal gauges sorted by severity next to a map of about 310 gauges coloured by status">
+</p>
 
-## Why
-Bangkok and the central plain are flooding right now. HII shows several Bangkok khlongs (BKK008 Saen Saep, BKK021 Lat Phrao) **above bank**, and Ayutthaya stations at or above bank, with **~1,900 m³/s** passing C.13 and C.3 (26 Sep 2026). Official portals publish fragmented data: river discharge, canal levels relative to bank, tide tables in PDFs. Residents need two plain answers.
-
-## The two golden questions
-| # | Citizen question | What we compute | What we show |
-|---|---|---|---|
-| 1 | **"น้ำแถวบ้านจะขึ้นหรือลง ใน 12 ชม. – 3 วัน?"** | Quantile forecasts of H(t+h) at the **controlling** station (polder khlong or river), h = 12 h … 7 d | A trend arrow with a **range** in cm, the peak time window, a confidence level, and depth as a probability category |
-| 2 | **"เมื่อไหร่น้ำจะกลับสู่ปกติ?"** | A distribution of the dates when the level falls below bank → below warning → back within the seasonal normal band | A **date or time range with its conditions** ("หากไม่มีฝนตกหนักเพิ่ม…"), never a minute countdown |
-
-Methods: [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md).
-
-## The Three Waters (น้ำสามน้ำ)
-**น้ำเหนือ** (upstream flood wave: C.2 → C.13 → C.35 → Bang Sai) + **น้ำหนุน** (Gulf tide, mixed and mainly diurnal, plus surge) + **น้ำฝน** (convective rain above the ~60 mm/h drainage capacity), all modulated by **human control**: giant tunnels, gates, pumps, dam releases. East Bangkok needs a rain + polder model; the riverside needs routing + tide. See [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md).
-
-## Architecture (short)
-A **single-server core** (collectors → immutable raw archive → Postgres → forecasts → FastAPI) behind a **Cloudflare Tunnel** (no inbound ports; R2 backups pending). TimescaleDB/PostGIS come later. v1 uses **keyless** sources collected on the server. The browser only talks to our API. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Roadmap
-| Phase | Goal | Gate | Status |
-|---|---|---|---|
-| 0 | [Verify every source](docs/plan/phase-0-source-verification.md) | G0: approved source set | 🟡 HII, Open-Meteo, Traffy in production; BMA/Navy open |
-| 1 | [Collectors + our own archive + backfill](docs/plan/phase-1-ingestion-archive.md) | G1: 7 days collected, restore tested | 🟡 running; 1-year backfill; no R2 yet |
-| 2 | [Forecasting (spatio-temporal, calibrated)](docs/plan/phase-2-forecasting.md) | G2: beats persistence, coverage 85–95 % | 🟡 L0/L1 + trend, conformal bands, 24 h outlook |
-| 3 | [Thai web app](docs/plan/phase-3-web-app.md) | G3: UX review | 🟡 live, mobile-first, feedback ([UX_VALIDATION](docs/UX_VALIDATION.md)) |
-| 4 | [Deployment and ops hardening](docs/plan/phase-4-deployment-ops.md) | G4: load and redeploy drills | 🟡 tunnel live; backups and alerts next |
-
-All workstreams run in parallel during the flood ([D-012](docs/plan/DECISIONS.md)); the gates are quality reviews.
-
-## Data sources (v1, keyless)
-| Source | Status (probe 2026-09-26) | Use |
-|---|---|---|
-| HII ThaiWater public API + chart site | ✅ live (805 stations + **162 chart-only candidates**, 34 added; **up to 365 days** of hourly history via `waterlevel_graph`; ~54 chart codes return HTTP 500, incl. Fort Chula and Bang Sai; all workarounds tested) | Levels, bank, discharge (RID stations), rain |
-| Open-Meteo forecast / ensemble / flood (GloFAS) | ✅ live | Rain forcing, upstream prior |
-| RID portals | 🟡 reachable; Bang Sai (C.29A) feed still to find | Upstream boundary, releases |
-| Navy tide tables | 🔴 URL moved + bot challenge → our own harmonic fit as the interim | Tide |
-| BMA KlongMap via flood69 relay | ✅ live since v0.3.0: 199 Bangkok gauges, 5-min copies; BMA direct is unreachable from here | Bangkok khlongs, gates (inside/outside) |
-| HII canal history (BMA gauges) | ✅ live since v0.10.0: one year of hourly history for 158 of the 199 BMA gauges via `waterlevel_graph?station_type=canal`, identical to the relay (D-054); HII's own `BKK*` gauges come through the main feed and chart. BMA's own servers block foreign and VPN IPs | BMA canal forecasts (backtest) |
-| OSM Nominatim | ✅ place search only, on demand | Find a soi, open the point check |
-| Traffy Fondue public API | 🟡 overloaded since 2026-09-26 15:11 UTC (HTTP 502); requests cut to 40 tickets, age shown in the UI | Street flooding beside each gauge (D-036), point check |
-
-Full registry, including endpoints that were tested and **refuted**: [docs/SOURCES.md](docs/SOURCES.md).
-
-## Repository layout
-```
-docs/        maintained docs: PLAN, SOURCES, KNOWLEDGE, KNOWN_ISSUES, GUIDELINES, APPROACH_AND_METHODS, ARCHITECTURE
-  brief/     the original project brief (first_prompt.md)
-  plan/      roadmap, phase checklists, DECISIONS, OPEN_QUESTIONS
-research/    research snapshots (claude.ai / Gemini), VALIDATION report, validation/ script
-src/floodwatch/{collectors,archive,db,forecast,api}/   Python backend (MVP)
-web/                                                   Thai frontend (vanilla JS + Leaflet)
-infra/ (vpn/ sidecar, legacy Caddyfile)  scripts/ (build_chainage.py, owner_status.py)  tests/  docker-compose.yml  Dockerfile  HANDOFF.md
-```
-
-## Documentation
-| Doc | What's inside |
+## What it answers
+| You ask | The app shows |
 |---|---|
-| [CHANGELOG.md](CHANGELOG.md) | Releases (v0.1.0, v0.2.0, v0.2.1) |
-| [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) | **What the owner needs to do** (with steps and cost), and how to check it |
-| [docs/README.md](docs/README.md) | Index, reading order, evidence markers |
-| [docs/plan/PLAN.md](docs/plan/PLAN.md) | Roadmap, gates, risks · [DECISIONS](docs/plan/DECISIONS.md) · [OPEN_QUESTIONS](docs/plan/OPEN_QUESTIONS.md) |
-| [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) | Three Waters, datums, stations (HII live metadata), polders, the 2026 event, contacts |
-| [docs/SOURCES.md](docs/SOURCES.md) | Source registry with probe results; refuted endpoints |
-| [docs/APPROACH_AND_METHODS.md](docs/APPROACH_AND_METHODS.md) | Spatio-temporal framework (incl. **§2.9 is interpolation useful?**, **§2.10 point check**), model ladder L0–L7, statistics (§3.4), **feedback loop (§3.5)**, **Workers AI (§3.6)**, tide, routing, polders, conformal, recovery, depth |
-| [docs/GUIDELINES.md](docs/GUIDELINES.md) | Phase gates, evidence rule, data ethics, UX, code and security |
-| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | KI-101…KI-508 and KI-210…212 with status |
-| [docs/UX_VALIDATION.md](docs/UX_VALIDATION.md) | Resident personas, UX findings, what changed, what's still missing |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, storage, security, deployment, adding a source |
-| [research/README.md](research/README.md) | Research validity index · [VALIDATION report](research/VALIDATION_2026-09-26.md) |
+| **น้ำแถวบ้านจะขึ้นหรือลง?** Is the water near me going up or down? | Tap any place (or "สถานีใกล้ฉัน"): the nearest canal gauge, its status against the bank, what it did in the last 24 h ("ลดลง 20 ซม.") and its 24/48 h trend ("↘ ลดลง ราว −12 ซม."), rain in the next 24 h and street-flood reports around you. |
+| **เมื่อไหร่น้ำจะลด?** When will it drop below the bank? | A date range with its conditions ("หากลดในอัตราเดิมและไม่มีฝนหนัก … ความเชื่อมั่นต่ำ"), never a minute countdown. |
 
-## Repository and license
-Hosted at [github.com/bejranonda/flood2026](https://github.com/bejranonda/flood2026) — **public** (the owner changed visibility on 2026-09-26; the full history was scanned clean, see [D-028](docs/plan/DECISIONS.md)). **Open source under the [MIT License](LICENSE)** (Q10 closed): free to use, modify, and distribute with attribution. Data from third parties keeps its own terms ([docs/SOURCES.md](docs/SOURCES.md)).
+## Features
+- **Every gauge, one honest story.** About **310 gauges** (≈ 210 in Bangkok): HII, RID and all **199 BMA canal gauges**, every 5–10 minutes. The headline, the rows and the list always say the same thing — checked on every gauge before each release.
+- **A few centimetres count.** Each gauge shows what the water did in the last 24 h (or 48 h for slow changes) in plain words (ลดลงเล็กน้อย / ลดลง / ลดลงมาก), and the bank distance today vs yesterday.
+- **Forecasts that earn their place.** Every gauge is backtested for each horizon; a model is used only where it beats "no change". Otherwise the rows follow the measured trend, and the ⓘ says how often such a trend continued in the past (canals ≈ 5–6 in 10, rivers ≈ 9 in 10).
+- **Bad data is hidden, not shown as fact.** Single-reading dropouts are removed; gauges next to pumps or with stuck sensors keep their dot and chart, but not a level or a trend.
+- **Built for a phone during a flood.** Thai first, Bangkok first, short panels, place search (ซอย/ถนน/ย่าน), map, Chao Phraya profile, share links, and a one-tap water report from where you are.
+- **Open.** MIT-licensed code and a free, key-less JSON API.
 
-## Configuration
-Copy [`.env.example`](.env.example) to `.env` on the VPS and fill it in. `.env`, `certs/`, `*.pem` and `infra/openvpn/*.ovpn` are git-ignored; never commit secrets. v1 needs **no data API keys** to run basic monitoring. Cloudflare (tunnel token) is required for publishing. **R2 off-site backups are kept disabled by owner choice** ([D-029](docs/plan/DECISIONS.md)); data and archive stay on the local VPS disk. **AI feedback note triage supports GLM** (`glm-5.3-flash`, [D-030](docs/plan/DECISIONS.md)) and Cloudflare Workers AI. **GISTDA API key** is configured in `.env` for satellite flood extent.
-
-## Run it
-```bash
-cp .env.example .env    # then set POSTGRES_PASSWORD (and the Cloudflare values if publishing)
-docker compose --profile public --profile vpn up -d --build   # db, worker, app, Cloudflare Tunnel, Thai VPN egress
-docker compose run --rm --no-deps worker pytest -q
+## How it works
+```mermaid
+flowchart LR
+  S["HII · BMA canals · RID · Open-Meteo rain · Traffy reports"] --> C["Collectors<br/>(raw archive, every 5–10 min)"]
+  C --> DB[("Postgres")]
+  DB --> Q["Quality control<br/>dropouts · erratic & stuck gauges · measured trend"]
+  Q --> F["Forecasts per gauge<br/>backtested per horizon, conformal ranges"]
+  F --> API["FastAPI (JSON)"]
+  API --> W["Thai web app<br/>list · map · point check"]
 ```
-Operations and next steps: [HANDOFF.md](HANDOFF.md).
+One server with `docker compose`, published through a Cloudflare Tunnel (no open ports). Methods: [APPROACH_AND_METHODS](docs/APPROACH_AND_METHODS.md) · design: [ARCHITECTURE](docs/ARCHITECTURE.md).
 
-## 🤖 Agentic & API Integration (Machine-Readable Endpoints)
+## Data sources
+| Source | What we use | Status |
+|---|---|---|
+| [HII ThaiWater](https://www.thaiwater.net) (สสน.) | Water levels, banks, discharge, rain gauges; up to a year of hourly history; official forecasts (archived and scored) | ✅ live |
+| BMA canal gauges (สำนักการระบายน้ำ กทม.) | 199 Bangkok gauges every 5 min via the public KlongMap relay; a year of history for 158 from HII | ✅ live |
+| RID (กรมชลประทาน) | Upstream gauges and Chao Phraya Dam release via HII | ✅ live |
+| Open-Meteo | Rain forecast, and rain as it was forecast 1–2 days earlier (for honest backtests) | ✅ live |
+| Traffy Fondue | Street-flood reports around each gauge (counts only) | 🟡 often overloaded; age shown |
+| OpenStreetMap Nominatim | Place search, on request only (queries are never stored) | ✅ live |
 
-BKK FloodWatch exposes a clean, unauthenticated REST API designed for autonomous AI agents (Claude, Gemini, Auto-GPT, Perplexity, LangChain), disaster response bots, and civic tech dashboards. No API key is required.
+Full registry, including endpoints that were tested and refuted: [SOURCES](docs/SOURCES.md).
 
-### Key Endpoints for Agents
+## For developers
+### Free JSON API (no key)
+| Endpoint | Returns |
+|---|---|
+| `GET /api/point?lat=&lon=` | Outlook for a place: nearest canal, its measured and forecast change, rain, street reports |
+| `GET /api/stations` | All focus gauges with status, bank distance, measured 24 h change and 12/24/48 h trend |
+| `GET /api/stations/{code}?days=7` | One gauge: history and forecast path |
+| `GET /api/profile` | Chao Phraya profile by river km |
+| `GET /api/reports` · `/api/rain` · `/api/health` | Street-report cells · rain outlook · pipeline freshness |
 
-| Endpoint | Method | Key Parameters | Agent Capability & Use Case |
-|---|---|---|---|
-| `/api/point` | `GET` | `lat` (float), `lon` (float) | **Point flood assessment & 12–24h outlook (USP, D-041)**: Returns synthesized risk level (`high`, `moderate`, `low`), human-readable outlook, nearest canal telemetry, 24h precipitation, and Traffy street flood reports. |
-| `/api/stations` | `GET` | `all` (bool, default `false`) | **Full telemetry network**: Returns 310 telemetry gauges (209 in Bangkok) with latest level, bank margin, observed trends, and ML forecast metadata. |
-| `/api/stations/{code}` | `GET` | `days` (int, default `7`) | **Gauge deep dive**: Hourly historical hydrograph, metadata, and tested quantile forecasts (12h–72h). |
-| `/api/reports` | `GET` | `hours` (int, default `6`) | **Citizen street reports**: Spatial grid of crowdsourced street flooding reports from Traffy Fondue. |
-| `/api/rain` | `GET` | — | **Precipitation nowcast**: 24h and 72h accumulated rainfall forecast across 8 sub-basin points. |
-| `/api/profile` | `GET` | — | **Chao Phraya longitudinal profile**: Chainage (river km) from mouth with real-time water elevation. |
-| `/api/health` | `GET` | — | **Pipeline health**: Telemetry ingest freshness and latency per upstream source. |
-
-### Sample Agent Query: Point Forecast Outlook
 ```bash
-curl -s "https://flood.autobahn.bot/api/point?lat=13.8700&lon=100.7170"
+curl -s "https://flood.autobahn.bot/api/point?lat=13.8545&lon=100.588"
 ```
-**Response Contract:**
+Response, trimmed (live, 2026-09-30 05:38 UTC):
 ```json
 {
-  "lat": 13.87,
-  "lon": 100.717,
-  "forecast": {
-    "risk": "high",
-    "channel_trend": "steady",
-    "title": "เสี่ยงน้ำท่วมขังเพิ่มขึ้นจากฝนตกหนัก",
-    "desc": "คลองรอบจุดอยู่ในระดับสูง (ใกล้เต็ม) รองรับฝนตกหนัก ~53 มม. ได้จำกัด ระวังน้ำรอระบายบนถนน"
-  },
-  "area": {
-    "category": "warning",
-    "confidence": "low",
-    "nearest_km": 1.8,
-    "n": 5
-  },
-  "rain_next24_mm": 52.9,
-  "stations_forecast": [...],
-  "stations_nearby": [...],
-  "evidence": {
-    "traffy_flood_reports_1km_6h": 0,
-    "user_depth_reports_1km_24h": {}
-  }
+  "forecast": {"risk": "high", "title": "ระดับน้ำในคลองล้นตลิ่ง/วิกฤต",
+               "desc": "คลองสายหลักรอบจุดนี้ล้นตลิ่ง เฝ้าระวังน้ำเอ่อล้นพื้นที่ลุ่มต่ำริมตลิ่ง"},
+  "area": {"category": "critical", "confidence": "medium", "nearest_km": 0.1, "n": 27},
+  "nearest_canal": {"code": "BKK021", "distance_km": 0.1, "status": "critical",
+                    "observed24": {"change_cm": -20, "level": "strong_fall", "hours": 24},
+                    "change24": {"dir": "falling", "level": "fall", "median": -0.12, "basis": "measured_trend"}},
+  "rain_next24_mm": 1.4,
+  "evidence": {"traffy_flood_reports_1km_6h": 0}
 }
 ```
-OpenAPI documentation is available live at [`/api/docs`](https://flood.autobahn.bot/api/docs).
+Interactive docs: [`/api/docs`](https://flood.autobahn.bot/api/docs). Please keep requests reasonable; the payloads refresh once a minute.
 
-## Reproduce the source validation
+### Run it yourself
 ```bash
-pip install numpy   # only dependency
-python3 research/validation/validate_research_claims.py
+cp .env.example .env          # set POSTGRES_PASSWORD (and Cloudflare values only if you publish)
+docker compose up -d --build  # db, worker, app  (add --profile public for the tunnel)
+docker compose run --rm --no-deps worker pytest -q      # 104 tests
+python3 scripts/ux_consistency.py                        # UI consistency proof (Playwright), ~12 min
 ```
-Results depend on the host's country (this host is in Germany; BMA blocks it) ([KI-101](docs/KNOWN_ISSUES.md)).
+No data API keys are needed for basic monitoring. Secrets live only in `.env` (git-ignored). Operations, deploys and next steps: [HANDOFF](HANDOFF.md).
 
-## Search & AI discovery index
+## Project status
+Live since 2026-09-26, built during the 2026 flood; current release in the badge above. Next: an external uptime alert, polder-aware "near me", alerts for a saved place, and a nationwide view (monitoring first). Roadmap and decisions: [PLAN](docs/plan/PLAN.md) · [DECISIONS](docs/plan/DECISIONS.md).
 
-| Category | Keywords (EN / TH) |
+## Documentation
+| Doc | For |
 |---|---|
-| **Core Domain** | Bangkok flood monitoring, Chao Phraya flood forecasting, water-level prediction, urban flood risk, early warning system, point forecast outlook, ระบบติดตามน้ำท่วม, พยากรณ์ระดับน้ำ, คาดการณ์น้ำท่วม กรุงเทพมหานคร, จุดเสี่ยงน้ำท่วม |
-| **Geographic Coverage** | Bangkok (BMA / กทม.), lower Chao Phraya river basin, Ayutthaya, Nonthaburi, Pathum Thani, Samut Prakan, Khlong Saen Saep (คลองแสนแสบ), Khlong Lat Phrao (คลองลาดพร้าว), Khlong Prem Prachakon (คลองเปรมประชากร), Gulf of Thailand |
-| **Key Hydrological Stations** | C.2 (Nakhon Sawan), C.13 (Chao Phraya Dam), C.35 (Ayutthaya), C.29A (Bang Sai / บางไทร), Fort Chula (ป้อมพระจุลฯ), BKK008, BKK021, WL.SWA.01, WL.PSR.03 |
-| **Hydrological Phenomena** | The Three Waters (น้ำสามน้ำ): น้ำเหนือ (upstream river discharge), น้ำหนุน (Gulf tidal surge & harmonic tide), น้ำฝน (urban convective precipitation & polder drainage), น้ำรอระบาย (street ponding) |
-| **Data Providers** | HII (สสน. / ThaiWater), Royal Irrigation Department (RID / กรมชลประทาน), BMA Department of Drainage and Sewerage (สำนักการระบายน้ำ กทม.), Royal Thai Navy Hydrographic Dept (กรมอุทกศาสตร์ กองทัพเรือ), Traffy Fondue (ทราฟฟี่ฟองดูว์), Open-Meteo GloFAS |
-| **Architecture & Modeling** | Spatio-temporal graph modeling, lag routing, quantile regression, conformal prediction calibration, TimescaleDB, PostGIS, FastAPI, Leaflet, Cloudflare Tunnel, REST API for AI agents |
+| [HANDOFF](HANDOFF.md) | What is live, how to operate it, what to do next |
+| [KNOWLEDGE](docs/KNOWLEDGE.md) | The "three waters", datums, stations, polders, the 2026 event |
+| [APPROACH_AND_METHODS](docs/APPROACH_AND_METHODS.md) | QC, forecasts, backtests, conformal ranges, point check |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) · [SOURCES](docs/SOURCES.md) | System design · every data source and its test status |
+| [KNOWN_ISSUES](docs/KNOWN_ISSUES.md) · [GUIDELINES](docs/GUIDELINES.md) | Pitfalls with status (KI-IDs) · rules for code, data and UX |
+| [UX_VALIDATION](docs/UX_VALIDATION.md) · [OWNER_ACTIONS](docs/OWNER_ACTIONS.md) | Resident checks and findings · what the project needs from its owner |
+| [docs/README](docs/README.md) | Full index and reading order |
 
-## Safety notice and official contacts
-This project **doesn't replace official warnings**. Always follow BMA, DDPM, RID and HII announcements.
-- กรุงเทพมหานคร **1555** · ศูนย์ป้องกันน้ำท่วม กทม. **02-248-5115**
-- ปภ. (DDPM) **1784** · กรมชลประทาน (RID) **1460** (to re-verify before launch)
-- สสน. (HII): [thaiwater.net](https://www.thaiwater.net)
+## FAQ
+<details><summary><b>ข้อมูลมาจากไหน? · Where does the data come from?</b></summary>
 
-Data attribution: HII/สสน., RID/กรมชลประทาน, BMA/กทม., Navy Hydrographic Dept., TMD, GISTDA, Traffy Fondue, Open-Meteo / Copernicus GloFAS, as used.
+สถานีวัดน้ำของ สสน. (HII), กรมชลประทาน และสำนักการระบายน้ำ กทม. ฝนคาดการณ์จาก Open-Meteo และรายงานน้ำท่วมจาก Traffy Fondue — official gauges plus open rain and citizen-report feeds; see [Data sources](#data-sources).
+</details>
+<details><summary><b>บอกได้ไหมว่าบ้านฉันน้ำท่วมกี่เซนติเมตร? · Can it tell the depth at my house?</b></summary>
+
+ไม่ได้ สถานีวัดระดับน้ำในคลองเทียบตลิ่ง ไม่ใช่ระดับบนถนนหรือในบ้าน แอปจึงบอกสถานะคลองใกล้คุณ แนวโน้ม และรายงานน้ำท่วมรอบจุด — No: a gauge measures the canal against its bank, so the app shows the nearest canal, its trend and nearby reports, never a depth at your pin.
+</details>
+<details><summary><b>แม่นแค่ไหน? · How accurate are the trends?</b></summary>
+
+ทุกสถานีทดสอบย้อนหลังแยกตามช่วงเวลา ใช้แบบจำลองเฉพาะที่แม่นกว่า "ถือว่าน้ำคงที่" ปุ่ม ⓘ บอกความมั่นใจและโอกาสที่แนวโน้มจะเป็นต่อ — every gauge is backtested per horizon; the ⓘ next to each row gives the confidence or the historical odds.
+</details>
+<details><summary><b>ทำไมบางสถานีไม่แสดงระดับน้ำ? · Why is a gauge shown without a level?</b></summary>
+
+ค่าผิดปกติ เช่น ขึ้นลงเร็วเพราะการสูบน้ำใกล้เครื่องวัด หรือค่าค้างที่เดิม จะถูกซ่อนพร้อมหมายเหตุ แต่สถานียังอยู่บนแผนที่ — values that jump (pumps next to the sensor) or stay stuck are hidden with a note; the gauge stays on the map.
+</details>
+<details><summary><b>ใช้ข้อมูลต่อได้ไหม? · Can I reuse the data or the code?</b></summary>
+
+โค้ดเป็น MIT และมี API ฟรี ข้อมูลของแต่ละหน่วยงานเป็นไปตามเงื่อนไขของหน่วยงานนั้น — the code is MIT and the API is free; third-party data keeps its own terms ([SOURCES](docs/SOURCES.md)).
+</details>
+
+## Contributing
+Issues and pull requests are welcome: [open an issue](https://github.com/bejranonda/flood2026/issues). Please read [GUIDELINES](docs/GUIDELINES.md) first (evidence rule, no secrets, short panel text) and run the tests.
+
+## License and attribution
+Code: [MIT](LICENSE). Data: HII/สสน., RID/กรมชลประทาน, BMA/กทม., TMD, GISTDA, Traffy Fondue, Open-Meteo / Copernicus GloFAS, OpenStreetMap contributors — each under its own terms. Official contacts: กทม. **1555** · ศูนย์ป้องกันน้ำท่วม กทม. **02-248-5115** · ปภ. **1784** · กรมชลประทาน **1460** · [thaiwater.net](https://www.thaiwater.net).

@@ -8,6 +8,9 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
   40 connections, `/api/health` returned 500 and the worker restarted 452 times (collectors stalled). The station
   rows and the list/stats/street payloads are now computed once per minute and shared (single-flight lock).
   Load test after the fix (120 requests, 30 concurrent): 0 errors, median ~0.5 s, peak 11 DB connections.
+- Docs (after the tag): README rewritten as a public front page (value line in Thai/English, live link, safety
+  notice, screenshots with alt text, plain features, API with a live sample, FAQ); PLAN, docs index, GUIDELINES,
+  ARCHITECTURE, KNOWN_ISSUES (KI-305 resolved), OWNER_ACTIONS (UPTIME) updated.
 
 ## v0.15.1 — 2026-09-29
 - **GitHub issues reviewed against v0.15 (owner: keep the v0.15 concept):** #9 the desktop page now fits the screen
