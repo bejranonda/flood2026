@@ -28,7 +28,8 @@ def test_disagreeing_neighbours_lower_confidence():
 
 def test_water_body_label():
     assert point.water_body({"river": "แม่น้ำเจ้าพระยา"}) == "river"
-    assert point.water_body({"river": "คลองลาดพร้าว"}) == "khlong" and point.water_body({"river": None}) == "khlong"
+    assert point.water_body({"river": "คลองลาดพร้าว"}) == "khlong"
+    assert point.water_body({"river": None, "in_focus": True}) == "khlong"  # Bangkok gates without a river name
 
 
 def test_single_distant_gauge_is_very_low_confidence():

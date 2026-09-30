@@ -37,10 +37,29 @@ def haversine_km(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> floa
     return 12742 * math.asin(math.sqrt(h))
 
 
+_WORDS = (("แม่น้ำ", "แม่น้ำ"), ("แคว", "แม่น้ำ"), ("น้ำ", "แม่น้ำ"), ("คลอง", "คลอง"), ("คู", "คลอง"),
+          ("ลำ", "ลำน้ำ"), ("ห้วย", "ลำน้ำ"), ("เหมือง", "ลำน้ำ"), ("ร่อง", "ลำน้ำ"), ("บึง", "บึง"))
+
+
+def water_word(s: dict) -> str:
+    """What the gauge measures, in the UI's words ("น้ำใน<word>"): from the river name the agency gives, never
+    guessed from the station name (D-064). Without a name: BMA and Bangkok-area gauges (gates, canals) stay
+    "คลอง" as before; the Chao Phraya CPY* gauges are "แม่น้ำ"; elsewhere the neutral "ลำน้ำ"."""
+    code, river = s.get("code") or "", (s.get("river") or "").strip()
+    for prefix, word in _WORDS:
+        if river.startswith(prefix):
+            return word
+    if code.startswith("CPY"):
+        return "แม่น้ำ"
+    if code.startswith("BKK") or s.get("agency") == "BMA" or s.get("in_focus"):
+        return "คลอง"
+    return "ลำน้ำ"
+
+
 def water_body(s: dict) -> str:
-    """River gauges describe the river outside the walls; khlong gauges describe drainage inside polders."""
-    river = s.get("river") or ""
-    return "river" if river.startswith("แม่น้ำ") else "khlong"
+    """River gauges describe the river outside the walls; khlong gauges describe drainage inside polders.
+    Natural waterways (rivers, streams) count as river; canals, moats and ponds as khlong."""
+    return "river" if water_word(s) in ("แม่น้ำ", "ลำน้ำ") else "khlong"
 
 
 CHECK_KM = 5.0  # a lone close gauge is checked against the gauges out to here (issue #3: never red from one gauge)

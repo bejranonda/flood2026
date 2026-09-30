@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 from floodwatch import __version__, ai, db, geocode, point
 from floodwatch.config import DATUM_SUSPECT
-from floodwatch import rain_cells
+from floodwatch import rain_cells, regions
 from floodwatch.forecast import change_summary, classify_status
 
 PRIVATE_QUERY_PATHS = ("/api/geocode", "/api/point", "/api/reverse", "/api/near")
@@ -74,7 +74,7 @@ def health():
 
 
 STATIONS_SQL = """
-SELECT s.code, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.critical_msl, s.warning_msl, s.agency, s.province, s.amphoe,
+SELECT s.code, s.in_focus, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.critical_msl, s.warning_msl, s.agency, s.province, s.amphoe,
        s.river, s.coord_source, s.coord_precision_km, o.obs_time, o.level_msl, o.discharge, o.situation_level,
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
        f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time,
@@ -252,6 +252,7 @@ def _station_row(r: dict) -> dict:
         notes.append("approx_location")
     return {
         "code": r["code"], "name_th": r["name_th"] or r["code"], "name_en": r["name_en"], "lat": r["lat"],
+        "region": regions.region_of(r["province"]), "water": point.water_word(r), "in_focus": r.get("in_focus"),
         "lon": r["lon"], "bank_msl": r["bank_msl"], "agency": r["agency"], "province": r["province"],
         "amphoe": r["amphoe"], "river": r["river"], "level_msl": r["level_msl"], "discharge": r["discharge"],
         "obs_time": _iso(r["obs_time"]), "age_min": age, "stale": age is None or age > STALE_MIN,
@@ -305,8 +306,40 @@ def _traffy_age_min(c) -> float | None:
     return _age_min(r["last_success"]) if r else None
 
 
+TWIN_KM = 0.3  # two agencies' gauges this close measure the same place (E.29A RID / URTU07 EGAT, 2026-09-30)
+
+
+def find_twins(rows: list[dict]) -> dict[str, dict]:
+    """{code: {code, name_th, agency}} of the nearest other-agency gauge within TWIN_KM. Linked in the UI, never
+    merged: each keeps its own bank and datum (KI-217)."""
+    placed = [r for r in rows if r.get("lat") is not None and r.get("lon") is not None]
+    cells: dict[tuple[int, int], list[dict]] = {}
+    for r in placed:
+        cells.setdefault((int(r["lat"] * 100), int(r["lon"] * 100)), []).append(r)  # ~1 km cells
+    out = {}
+    for r in placed:
+        ci, cj = int(r["lat"] * 100), int(r["lon"] * 100)
+        best = None
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for o in cells.get((ci + di, cj + dj), []):
+                    if o["code"] == r["code"] or o.get("agency") == r.get("agency"):
+                        continue
+                    d = _haversine_km(r["lat"], r["lon"], o["lat"], o["lon"])
+                    if d <= TWIN_KM and (best is None or d < best[0]):
+                        best = (d, o)
+        if best:
+            o = best[1]
+            out[r["code"]] = {"code": o["code"], "name_th": o.get("name_th") or o["code"], "agency": o.get("agency")}
+    return out
+
+
+def _twins() -> dict[str, dict]:
+    return _memo(("twins",), lambda: find_twins(_station_rows(True)))
+
+
 @app.get("/api/stations")
-def stations(scope: str = Query("focus", pattern="^(focus|all)$")):
+def stations(scope: str = Query("all", pattern="^(focus|all)$")):
     return _json(_memo(("stations", scope), lambda: _stations_data(scope)))
 
 
@@ -314,7 +347,8 @@ def _stations_data(scope: str) -> dict:
     with db.connect() as c:
         rows = _station_rows(scope == "all")
         reps, tage = _street_reports(c), _traffy_age_min(c)
-    items = [_station_row(r) for r in rows]  # all stations; bad values filtered per station
+    tw = _twins()
+    items = [{**_station_row(r), "twin": tw.get(r["code"])} for r in rows]  # all stations; bad values filtered per station
     street_counts(items, reps)
     return {"generated": dt.datetime.now(dt.timezone.utc).isoformat(), "stations": items,
             "street_source": {"name": "Traffy Fondue", "hours": STREET_HOURS, "km": STREET_KM,
@@ -334,7 +368,7 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
                        (code,)).fetchone()
         fb = _feedback_counts(c, code).get(code)
         reps, tage = _street_reports(c), _traffy_age_min(c)
-    srow = _station_row(rows[0])
+    srow = {**_station_row(rows[0]), "twin": _twins().get(code)}
     street_counts([srow], reps)
     srow["street_source_age_min"] = tage
     if code in DATUM_SUSPECT:  # KI-210: the station is shown, its non-MSL values are not
@@ -357,7 +391,7 @@ def _haversine_km(a_lat, a_lon, b_lat, b_lon) -> float:
 def near(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge=97, le=106), n: int = Query(3, ge=1, le=10)):
     """Nearest stations by distance. ⚠️ Polder/controlling-water-body logic not implemented yet (APPROACH §13)."""
     with db.connect() as c:
-        rows = _station_rows(False)
+        rows = _station_rows(True)
     items = [(_haversine_km(lat, lon, r["lat"], r["lon"]), r) for r in rows if r["lat"] is not None and r["level_msl"] is not None]
     items.sort(key=lambda x: x[0])
     return _json({"note": "nearest_by_distance_only", "stations": [{**_station_row(r), "distance_km": round(d, 1)}
@@ -558,7 +592,7 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
     """What can be said about a place with no gauge: gauges around it, an area category (not a water level),
     nearby citizen evidence and warnings (APPROACH §2.10, D-021)."""
     with db.connect() as c:
-        rows = [_station_row(r) for r in _station_rows(False)]
+        rows = [_station_row(r) for r in _station_rows(True)]
         box = {"lat0": lat - 0.01, "lat1": lat + 0.01, "lon0": lon - 0.01, "lon1": lon + 0.01}
         traffy = c.execute("""SELECT count(*) AS n FROM crowd_report WHERE is_flood AND report_time > now() - interval '6 hours'
                               AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s""", box).fetchone()["n"]
