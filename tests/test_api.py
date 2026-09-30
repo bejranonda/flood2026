@@ -229,3 +229,15 @@ def test_home_page_carries_the_running_version_and_share_tags():
     for tag in ('og:image" content="https://flood.autobahn.bot/static/og-image.jpg', "twitter:card", "application/ld+json", '<link rel="canonical"'):
         assert tag in html
     assert (api.WEB_DIR / "og-image.jpg").exists()
+
+
+def test_a_memoised_payload_may_use_another_memoised_value(monkeypatch):
+    # v0.16 deploy, 2026-09-30 20:47 UTC: _stations_data (inside _memo) called _twins() (also _memo) and waited forever
+    # on the same non-reentrant lock; /api/stations hung for every visitor.
+    import threading
+    api._memo_cache.clear()
+    done = []
+    t = threading.Thread(target=lambda: done.append(api._memo(("outer",), lambda: api._memo(("inner",), lambda: 1) + 1)),
+                         daemon=True)
+    t.start(); t.join(2)
+    assert done == [2]

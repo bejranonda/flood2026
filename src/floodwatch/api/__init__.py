@@ -126,7 +126,7 @@ def _station_rows(all_: bool) -> list[dict]:
 
 
 _memo_cache: dict = {}
-_memo_lock = threading.Lock()
+_memo_lock = threading.RLock()  # re-entrant: a memoised payload may use another (twins inside the list)
 
 
 def _memo(key, fn, ttl: float = ROWS_TTL_S):
