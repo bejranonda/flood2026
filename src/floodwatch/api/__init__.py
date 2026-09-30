@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
@@ -651,8 +651,35 @@ async def legacy_redirect(request: Request, call_next):
 
 @app.get("/")
 def index(request: Request):
-    html = page_for_host((WEB_DIR / "index.html").read_text(), _host(request))
+    html = page_for_host((WEB_DIR / "index.html").read_text(), _host(request)).replace("__VERSION__", f"v{__version__}")
     return HTMLResponse(html, headers={"Cache-Control": "public, max-age=300"})
+
+
+ROBOTS_TXT = """User-agent: *
+Allow: /
+Disallow: /api/docs
+Disallow: /api/openapi.json
+Disallow: /api/point
+Sitemap: https://{host}/sitemap.xml
+"""
+SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://{host}/</loc><changefreq>hourly</changefreq></url></urlset>
+"""
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots(request: Request):
+    """Crawlers may read the page and its data; the docs and the per-coordinate point check (one DB-heavy call per
+    coordinate, KI-246) are kept out of search indexes."""
+    host = LEGACY_HOST if _host(request) == LEGACY_HOST else CANONICAL_HOST
+    return Response(ROBOTS_TXT.format(host=host), media_type="text/plain", headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap(request: Request):
+    """One URL: every view (station, point check) is a #fragment of the home page, which crawlers do not treat as a page."""
+    host = LEGACY_HOST if _host(request) == LEGACY_HOST else CANONICAL_HOST
+    return Response(SITEMAP_XML.format(host=host), media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
 
 
 @app.get("/favicon.ico", include_in_schema=False)

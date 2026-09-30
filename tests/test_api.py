@@ -208,3 +208,24 @@ def test_station_rows_are_computed_once_per_ttl_and_shared(monkeypatch):
         assert api._station_rows(False) == [{"code": "X"}]
     api._station_rows(True)
     assert len(calls) == 2  # one query per scope, not 51
+
+
+def _req(host):
+    from starlette.requests import Request
+    return Request({"type": "http", "method": "GET", "path": "/", "headers": [(b"host", host.encode())], "query_string": b""})
+
+
+def test_robots_and_sitemap_point_at_the_host_and_keep_heavy_routes_out():
+    r = api.robots(_req("flood.autobahn.bot")).body.decode()
+    assert "Sitemap: https://flood.autobahn.bot/sitemap.xml" in r and "Disallow: /api/point" in r and "Allow: /" in r
+    assert "Disallow: /api/stations" not in r  # the page itself needs its data
+    x = api.sitemap(_req("flood.autobahn.bot"))
+    assert x.media_type == "application/xml" and "<loc>https://flood.autobahn.bot/</loc>" in x.body.decode()
+
+
+def test_home_page_carries_the_running_version_and_share_tags():
+    html = api.index(_req("flood.autobahn.bot")).body.decode()
+    assert f"v{api.__version__}" in html and "__VERSION__" not in html
+    for tag in ('og:image" content="https://flood.autobahn.bot/static/og-image.jpg', "twitter:card", "application/ld+json", '<link rel="canonical"'):
+        assert tag in html
+    assert (api.WEB_DIR / "og-image.jpg").exists()

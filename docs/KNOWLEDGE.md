@@ -254,3 +254,6 @@ UX principles established through visitor testing during the 2026 flood season:
 - **Datum separation reminder (KI-217):** BMA gauges are referenced to local zero/datum, while HII stations are referenced to Mean Sea Level (m MSL / Ko Lak datum). Always display with proper unit attribution (`ม. (หมุด กทม.)` vs `ม.รทก.`).
 
 - **Trend display rule (v0.11, D-056):** a chip states a direction only where the backtest chose a real model (not "no change") at that horizon. On 2026-09-27 most BMA canal gauges therefore show "? ไม่แน่ชัด" at 24 h with their error range — pumps and gates, not tide or rain, drive them (research §10).
+
+- **Site head and crawlers (v0.15.3, KI-248, verified live 2026-09-30):** `/robots.txt` and `/sitemap.xml` are served by the app (200, `text/plain` / `application/xml`); `og:image` is `/static/og-image.jpg` (1200×630, 100 KB); the header/footer version is filled by the server (`__VERSION__`). `#fragment` views are not separate pages for search engines, so the sitemap lists only the home page. See [APPROACH §21](APPROACH_AND_METHODS.md).
+- **HII can stamp readings in the future (KI-247, 2026-09-30):** one `waterlevel_data` fetch carried 28 gauges at 2026-10-01 16:00 UTC, ~21 h ahead of the fetch; cause unknown ⚠️. Such rows are flagged `future_time` (15-min tolerance, as for BMA).

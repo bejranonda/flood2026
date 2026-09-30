@@ -49,4 +49,4 @@ Research validity (🟢 reliable / 🟠 mixed) is explained in [../research/READ
 | [../scripts/ux_consistency.py](../scripts/ux_consistency.py) | UI consistency proof: every sheet, a pin grid and 4 viewports (run before a release, D-062) |
 | [../scripts/ux_walk.py](../scripts/ux_walk.py) | Real-user walk on a phone and a desktop (screenshots, timings, console errors) |
 | [../scripts/owner_status.py](../scripts/owner_status.py) | What is still open for the owner |
-| [img/](img/) | README screenshots (WebP; retake with `ux_walk.py` when the UI changes) |
+| [img/](img/) | README screenshots (WebP; retake with `ux_walk.py` when the UI changes) and `social-preview.png` (GitHub social preview; rebuild with `scripts/make_social_images.py`) |

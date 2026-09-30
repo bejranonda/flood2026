@@ -78,6 +78,8 @@ def parse_waterlevel_load(payload: dict, raw_ref: str) -> tuple[list[dict], list
         if t is None:
             continue
         level, flag = qc_level(to_float(r.get("waterlevel_msl")), bank, ground)
+        if flag == "ok" and t > dt.datetime.now(dt.timezone.utc) + FUTURE_TOLERANCE:
+            flag = "future_time"  # 28 gauges arrived stamped ~21 h ahead in one fetch (2026-09-30); never the "latest" reading
         obs.append({"code": code, "obs_time": t, "level_msl": level, "discharge": to_float(r.get("discharge")),
                     "situation_level": r.get("situation_level"), "source": "hii_load",
                     "quality_flag": flag, "raw_ref": raw_ref})

@@ -9,6 +9,7 @@
 |---|---|---|---|
 | Q18 | `flood.autobahn.bot` challenged non-browser clients | ✅ **done** (owner turned Bot Fight Mode off, verified 17:33 UTC) | |
 | **UPTIME** | An external uptime check that alerts you when `/api/health` fails (KI-246: a 4.5 h overload on 2026-09-30 went unnoticed) | ⬜ open — new 2026-09-30 | 1 |
+| **SOCIAL** | Upload `docs/img/social-preview.png` as the GitHub repository social preview; optionally add the site to Google Search Console | ⬜ open — new 2026-09-30 | 3 |
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
 | **GISTDA** | GISTDA key works for the flood-extent service | ✅ **works** (2026-09-27 10:05 UTC): the key was fine; our endpoint path and key placement were outdated (KI-510). Fixed from the docs link you sent | |
@@ -95,6 +96,11 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 **Why:** on 2026-09-30 the database was saturated from ~01:00 to 05:44 UTC; visitors saw "โหลดข้อมูลไม่สำเร็จ" and nobody was told. The server cannot alert you by itself (no notification channel is configured).
 **Steps (≈ 5 min, free tier ⚠️ check the provider's current limits):** create a free account at an uptime service (e.g. UptimeRobot or Better Stack) → new HTTP(S) monitor → URL `https://flood.autobahn.bot/api/health` → interval 5 min → alert contact: your e-mail and/or the provider's mobile app / LINE integration → save.
 **Verify:** the monitor shows "up"; optionally pause the app for a minute (`docker compose stop app`, then `start`) and check that the alert arrives. Tell us which service you used; nothing secret goes into the repo.
+
+### SOCIAL — repository preview image and search console (new 2026-09-30, KI-248)
+**Why:** links to the repo on LINE/Facebook/X show a picture only if the repository social preview is set; GitHub has no API for it. The site's own share image is already served (`/static/og-image.jpg`).
+**Steps:** GitHub → repo Settings → General → Social preview → Edit → upload `docs/img/social-preview.png` (1280×640). Optional: Google Search Console → add `https://flood.autobahn.bot/` (DNS or HTML-tag verification; tell us which, the token goes in `web/index.html` only if it is a public meta tag) → submit `https://flood.autobahn.bot/sitemap.xml`.
+**Verify:** paste the repo link in a chat app and see the picture; Search Console shows the sitemap as "Success".
 
 ## 3. Decisions (answers only, no work)
 | # | Question | Default if you don't answer |

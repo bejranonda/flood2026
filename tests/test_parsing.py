@@ -177,3 +177,13 @@ def test_waterlevel_graph_string_payload_is_a_clear_error():
     from floodwatch.collectors import parsing
     with pytest.raises(ValueError, match="unexpected waterlevel_graph payload for Ct.4"):
         parsing.parse_waterlevel_graph("Ct.4", "Too many requests", None, None, "sha")
+
+
+def test_waterlevel_load_row_stamped_in_the_future_is_flagged():
+    payload = {"waterlevel_data": {"data": [{
+        "waterlevel_datetime": "2999-01-01 13:30", "waterlevel_msl": "2.82", "discharge": None, "situation_level": 5,
+        "agency": {"agency_shortname": {"en": "HII"}}, "geocode": {"province_name": {"th": "กรุงเทพมหานคร"}},
+        "station": {"id": 1, "tele_station_oldcode": "BKK021", "tele_station_name": {"th": "x"},
+                    "tele_station_lat": 13.85, "tele_station_long": 100.58, "min_bank": 2.2, "ground_level": -0.33}}]}}
+    _, obs = parsing.parse_waterlevel_load(payload, "sha")
+    assert obs[0]["quality_flag"] == "future_time"

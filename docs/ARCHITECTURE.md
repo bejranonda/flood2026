@@ -18,7 +18,7 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | Alias `flood.bejranonda.com` | Same tunnel, full alias (no redirect until KI-506 is fixed) |
 | Server | The single host `HZ-Agent` (Hetzner DE, 4 vCPU / 7.7 GB / ~13 GB free). **No other environment** ([D-013](plan/DECISIONS.md)). No inbound ports open |
 | Application | **Live MVP**: collectors, raw archive, forecasts, FastAPI + Thai web app, all in `docker compose` (`db`, `worker`, `app`, `cloudflared`, `vpn`) |
-| Request path (v0.15.2) | `STATIONS_SQL` rows and the `/api/stations`, `/api/stats`, `/api/reports` payloads are shared for 60 s (`_station_rows`, `_memo`, single-flight lock; KI-246); Postgres `max_connections` = 40 |
+| Request path (v0.15.2; v0.15.3 adds robots/sitemap and a server-filled `__VERSION__` in `index.html`) | `STATIONS_SQL` rows and the `/api/stations`, `/api/stats`, `/api/reports` payloads are shared for 60 s (`_station_rows`, `_memo`, single-flight lock; KI-246); Postgres `max_connections` = 40 |
 | Scheduled tasks (`worker.TASKS`, v0.15) | every 10 min: `hii_waterlevel`, `traffy`, `bma_klong`, **`qc`** (dropouts, erratic and stuck gauges, measured 24/48 h trend → `collector_state` `erratic_gauges` / `observed24`; D-057, D-058), `bma_history` (BMA history from HII: backfill, then a daily 3-day refresh 20 gauges per run, D-054, KI-239), `hii_backfill`; 30 min: `hii_rain`, `forecast` (backtest incl. `star`, D-052); 1 h: `openmeteo`, `disk`; 3 h: `hii_fews_forecast` (HII official forecast archive, D-050), `bma_dds` (only with a Thai egress); 6 h: `hii_stations`, `hii_history`; 15 min: `ai_triage`; daily: `openmeteo_prev` (rain as forecast 1–2 days earlier) |
 | Database | Plain PostgreSQL 16; TimescaleDB/PostGIS deferred ([D-013](plan/DECISIONS.md)) |
 | Off-site backup (R2) | **Not yet** (owner: Q15/Q16) |
@@ -37,6 +37,7 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | `GET /api/geocode?q=` | Place search (ซอย, ถนน, ย่าน) in the Bangkok region via OSM Nominatim, ≤ 1 req/s across workers, 30/h per visitor, queries never logged ([D-032](plan/DECISIONS.md)) |
 | `GET /api/point?lat=&lon=` | Point check for places without a gauge: area category, nearby gauges, citizen evidence, warnings ([D-021](plan/DECISIONS.md)) |
 | `GET /api/summary` | One deterministic Thai situation sentence (template, not AI) |
+| `GET /robots.txt`, `GET /sitemap.xml` | Crawler files (v0.15.3, KI-248): the page is allowed, `/api/docs`, `/api/openapi.json` and `/api/point` are kept out of indexes; one sitemap URL |
 
 ### 1.2 Optional Cloudflare Workers AI ([D-022](plan/DECISIONS.md))
 The worker task `ai_triage` (every 15 min) sends new feedback notes to Workers AI (SEA-LION v4) over REST and stores `user_feedback.ai_label`. It has a budget and a circuit breaker (state in `collector_state.ai_usage`), and **only the worker holds AI credentials**. If AI is unavailable, nothing user-facing changes.

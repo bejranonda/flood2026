@@ -2,6 +2,19 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.15.3 — 2026-09-30
+- **Site-level SEO and link previews (owner: "continue all as suggested").** `/robots.txt` (allow the page, keep
+  `/api/docs`, `/api/openapi.json` and the DB-heavy `/api/point` out of indexes) and `/sitemap.xml` (one URL: every
+  view is a `#fragment`); `og:image` (1200×630, real phone screenshots; `scripts/make_social_images.py`), `twitter:card`,
+  `og:site_name`/`og:locale`, JSON-LD `WebApplication`, a `<noscript>` line, and a description that says 12–48 h
+  (it said 12–72 h). The header/footer version now comes from the server (`__VERSION__`; the page showed a stale
+  `v0.9.0` until the JS ran). No UI or forecast change.
+- **HII readings stamped in the future are flagged (KI-247).** One fetch on 2026-09-30 delivered 28 `hii_load`
+  gauges stamped 2026-10-01 16:00 UTC (~21 h ahead), so `/api/health` showed a negative data age. `parse_waterlevel_load`
+  now flags such rows `future_time` (same 15-minute tolerance as BMA) so they are never a "latest" reading.
+- GitHub: shorter repository description; `docs/img/social-preview.png` (1280×640) for the owner to upload as the
+  repository social preview (GitHub has no API for it).
+
 ## v0.15.2 — 2026-09-30
 - **Hotfix: database overload under load (KI-246).** From ~01:00 to 05:44 UTC (08:00–12:44 ICT) visitors saw
   "โหลดข้อมูลไม่สำเร็จ": ~10 API requests/s each ran the 2–3 s station query, 39 at once filled Postgres'

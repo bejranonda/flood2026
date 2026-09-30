@@ -31,6 +31,8 @@
 - Silent fallbacks to made-up values (e.g. "default Bang Sai flow 2,450 m³/s") are forbidden. Missing data is shown as missing.
 
 ### 2.3 Documentation upkeep
+- **Site head is part of the product** (2026-09-30): every release keeps `index.html`'s title, description (same horizons as the app), canonical, `og:image`/`twitter:card`, JSON-LD and `<noscript>` line true; never hard-code a version in HTML (use `__VERSION__`); a new crawler-visible route goes through `robots.txt` (keep DB-heavy per-coordinate routes out); regenerate `web/og-image.jpg` and `docs/img/social-preview.png` with `scripts/make_social_images.py` after a visual change.
+- **A reading stamped in the future is never "latest"** (KI-247): every adapter flags `future_time` beyond 15 minutes.
 - **README is the public front page** (2026-09-30): lead with what the app does, the live link, the safety notice and screenshots; plain words, no decision IDs above the fold; facts current (sample outputs from a live call with its time); FAQ in Thai and English. History and decisions belong in CHANGELOG/DECISIONS, operations in HANDOFF.
 | When you learn… | Update |
 |---|---|
