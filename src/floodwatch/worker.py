@@ -43,6 +43,14 @@ FORECASTER_TASKS = [
 ]
 
 
+# First run order at start: latest values -> history -> weather (rain cells too, or pins wait 3 h for rain).
+FIRST_RUN = {
+    "collector": ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev",
+                  "openmeteo_cells", "openmeteo_prev_cells", "traffy", "bma_klong", "qc", "hii_rain", "disk"),
+    "forecaster": ("upstream_learn", "forecast"),  # upstream_learn only when never learned
+}
+
+
 def owns_schema(role: str) -> bool:
     """Only the collector runs schema.sql: two containers altering tables at start deadlocked with inserts."""
     return role != "forecaster"
@@ -139,13 +147,11 @@ def main(role: str = "collector") -> None:
         except Exception as e:
             log.warning("db not ready (%s), retrying", e)
             time.sleep(5)
+    first = FIRST_RUN[role if role == "forecaster" else "collector"]
     if role == "forecaster":
         with db.connect() as c:
-            learned = db.get_state(c, "upstream_learned")
-        first = ("forecast",) if learned is not None else ("upstream_learn", "forecast")
-    else:  # first run order: latest values -> history -> weather
-        first = ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev", "traffy",
-                 "bma_klong", "qc", "hii_rain", "disk")
+            if db.get_state(c, "upstream_learned") is not None:
+                first = tuple(n for n in first if n != "upstream_learn")
     for name in first:
         run_task(name)
     active = [(n, i) for n, i in tasks_for(role) if n != "bma_dds" or settings.thai_egress_proxy]

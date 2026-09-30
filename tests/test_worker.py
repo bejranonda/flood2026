@@ -33,3 +33,9 @@ def test_only_the_collector_changes_the_schema():
     # 2026-09-30 20:25 UTC: both containers ran init_schema at start; the forecaster's ALTER TABLE station deadlocked
     # with the collector's observation insert. One owner; the forecaster waits for the tables instead.
     assert worker.owns_schema("collector") and not worker.owns_schema("forecaster")
+
+
+def test_rain_cells_are_fetched_at_start_not_three_hours_later():
+    # 2026-09-30: after each restart the nationwide rain cells waited a full interval; pins read "ยังไม่มีข้อมูลฝน"
+    assert {"openmeteo_cells", "openmeteo_prev_cells"} <= set(worker.FIRST_RUN["collector"])
+    assert worker.FIRST_RUN["forecaster"][-1] == "forecast"
