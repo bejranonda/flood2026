@@ -133,7 +133,7 @@ def run_all(hours: float = 49) -> dict:
     with db.connect() as c:
         rows = c.execute(
             """SELECT o.code, o.obs_time, o.level_msl FROM observation o JOIN station s USING (code)
-               WHERE s.in_focus AND o.quality_flag='ok' AND o.level_msl IS NOT NULL
+               WHERE s.code !~ '^TEST' AND o.quality_flag='ok' AND o.level_msl IS NOT NULL
                  AND o.obs_time > now() - make_interval(secs => %s) ORDER BY o.code, o.obs_time""",
             (hours * 3600,)).fetchall()
         series: dict[str, list] = {}

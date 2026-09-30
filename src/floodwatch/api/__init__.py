@@ -63,7 +63,9 @@ def _iso(t):
 def health():
     with db.connect() as c:
         rows = c.execute("SELECT * FROM source_health ORDER BY source").fetchall()
-        last = c.execute("SELECT max(obs_time) AS t FROM observation").fetchone()["t"]
+        # flagged and future-stamped readings are not "latest" (KI-247: 28 HII rows stamped ~21 h ahead)
+        last = c.execute("""SELECT max(obs_time) AS t FROM observation WHERE quality_flag='ok'
+                            AND obs_time <= now() + interval '15 minutes'""").fetchone()["t"]
     return _json({"version": __version__, "now": dt.datetime.now(dt.timezone.utc).isoformat(), "latest_observation": _iso(last),
                   "latest_observation_age_min": _age_min(last),
                   "sources": [{k: (_iso(v) if isinstance(v, dt.datetime) else v) for k, v in r.items()} for r in rows]},

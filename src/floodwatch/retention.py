@@ -1,0 +1,39 @@
+"""Bounded history (D-064): a year of history for every gauge, never an ever-growing table.
+
+HII-network readings older than OBS_KEEP_DAYS are deleted: HII serves them again (`waterlevel_graph`, one year).
+BMA readings are never deleted: the flood69 relay keeps no history, so ours is the only copy (KI-218).
+Old rain-forecast issues are deleted after WF_KEEP_DAYS: only the latest issue is read; training uses
+`rain_hindcast`. Deletes run in small batches so no statement holds locks for long (KI-246).
+"""
+from __future__ import annotations
+
+import logging
+
+log = logging.getLogger(__name__)
+
+OBS_KEEP_DAYS = 400  # the one-year training window (forecast.LOOKBACK_DAYS = 370) plus a margin
+WF_KEEP_DAYS = 3
+BATCH = 50_000
+
+OBS_SQL = """DELETE FROM observation WHERE ctid IN (
+  SELECT o.ctid FROM observation o JOIN station s USING (code)
+  WHERE s.agency IS DISTINCT FROM 'BMA' AND o.obs_time < now() - make_interval(days => %(days)s)
+  LIMIT %(batch)s)"""
+WF_SQL = """DELETE FROM weather_forecast WHERE ctid IN (
+  SELECT ctid FROM weather_forecast WHERE issue_time < now() - make_interval(days => %(days)s) LIMIT %(batch)s)"""
+
+
+def _drain(c, sql: str, days: int) -> int:
+    total = 0
+    while True:
+        n = c.execute(sql, {"days": days, "batch": BATCH}).rowcount or 0
+        c.commit()
+        total += n
+        if n < BATCH:
+            return total
+
+
+def run(c) -> dict:
+    out = {"observation": _drain(c, OBS_SQL, OBS_KEEP_DAYS), "weather_forecast": _drain(c, WF_SQL, WF_KEEP_DAYS)}
+    log.info("retention: deleted %s", out)
+    return out

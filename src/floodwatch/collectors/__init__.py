@@ -70,12 +70,14 @@ def _graph(s: dict, days: int, end: dt.datetime) -> list[dict]:
     return parsing.parse_waterlevel_graph(s["code"], payload, s["bank_msl"], s["ground_msl"], sha)
 
 
-def hii_backfill(max_stations: int = 6, pause_s: float = 1.0) -> dt.datetime | None:
-    """One-time 365-day history per focus station (D-018), a few stations per call so the single worker loop
-    keeps its 10-min collectors on time. A no-op once every station is done."""
+def hii_backfill(max_stations: int = 12, pause_s: float = 1.0) -> dt.datetime | None:
+    """One-time 365-day history per HII-network station (D-018; every gauge in Thailand since v0.16, D-064), a few
+    stations per call so the single worker loop keeps its 10-min collectors on time. Focus gauges first. A no-op
+    once every station is done."""
     with db.connect() as c:
-        stations = c.execute("SELECT code, hii_id, bank_msl, ground_msl FROM station WHERE in_focus "
-                             "AND hii_id IS NOT NULL AND code !~ '^TEST' ORDER BY code").fetchall()
+        stations = c.execute("SELECT code, hii_id, bank_msl, ground_msl FROM station WHERE hii_id IS NOT NULL "
+                             "AND code !~ '^TEST' AND agency IS DISTINCT FROM 'BMA' "
+                             "ORDER BY in_focus DESC, code").fetchall()
         done = set(db.get_state(c, "hii_graph_backfilled") or [])
     todo = [s for s in stations if s["code"] not in done][:max_stations]
     end = dt.datetime.now(parsing.ICT)
@@ -97,17 +99,31 @@ def hii_backfill(max_stations: int = 6, pause_s: float = 1.0) -> dt.datetime | N
     return None
 
 
+HISTORY_SLICES = 6  # hii_history runs every 6 h: each nationwide gauge is refilled once a day
+
+
+def history_slice(codes: list[str], run_no: int, slices: int = HISTORY_SLICES) -> list[str]:
+    """The nationwide gauges one hii_history run refills: every `slices`-th code, rotating with the run number."""
+    return codes[run_no % slices::slices]
+
+
 def hii_history(pause_s: float = 0.7) -> dt.datetime | None:
-    """Refresh recent history for focus stations: api-v3 waterlevel_graph (hourly/10-min, with discharge, by
-    numeric id) for the last 3 days, plus the 10-min chart XHR for the tidal BKK/CPY/BKC/AIT gauges and for
-    stations missing from the latest-values feed. The one-year backfill is hii_backfill."""
+    """Refresh recent history: api-v3 waterlevel_graph (hourly/10-min, with discharge, by numeric id) for the last
+    3 days, plus the 10-min chart XHR for the tidal BKK/CPY/BKC/AIT gauges and for stations missing from the
+    latest-values feed. Focus gauges every run; the rest of the HII network in rotating slices (D-064), so one run
+    stays short (the latest-values feed already brings them an hourly value every 10 min). Backfill: hii_backfill."""
     with db.connect() as c:
         # HII stations only: BMA gauges (agency BMA, codes WL.*) have no HII chart and come from bma_klong. Without this
         # filter the 199 BMA codes each cost ~10 s of HTTP 500 retries and starved the worker loop (2026-09-26).
-        stations = c.execute(
-            "SELECT code, hii_id, bank_msl, ground_msl FROM station WHERE in_focus AND code !~ '^TEST' "
-            "AND agency IS DISTINCT FROM 'BMA' ORDER BY code").fetchall()
-    known = {s["code"] for s in stations}
+        rows = c.execute(
+            "SELECT code, hii_id, bank_msl, ground_msl, in_focus FROM station WHERE code !~ '^TEST' "
+            "AND agency IS DISTINCT FROM 'BMA' AND (in_focus OR hii_id IS NOT NULL) ORDER BY code").fetchall()
+        run_no = int(db.get_state(c, "hii_history_slice") or 0)
+        db.set_state(c, "hii_history_slice", run_no + 1)
+        c.commit()
+    part = set(history_slice([r["code"] for r in rows if not r["in_focus"]], run_no))
+    stations = [r for r in rows if r["in_focus"] or r["code"] in part]
+    known = {r["code"] for r in rows}
     end = dt.datetime.now(parsing.ICT)
     total, latest = 0, None
     for s in stations:
