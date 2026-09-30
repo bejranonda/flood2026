@@ -26,6 +26,8 @@ TASKS = [
     ("bma_dds", 3 * 3600),
     ("hii_fews_forecast", 3 * 3600),
     ("openmeteo_prev", 24 * 3600),
+    ("openmeteo_cells", 3 * 3600),  # rain forecast for the 0.5° cells of gauges outside the focus area (D-064)
+    ("openmeteo_prev_cells", 3600),  # their rain history: a year for 8 new cells per run, then 4 days daily
     ("bma_history", 600),  # BMA canal history from HII: backfill 5 gauges per run, then a daily 3-day refresh (D-054)  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
     ("forecast", 1800),
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable

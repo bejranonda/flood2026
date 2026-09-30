@@ -20,7 +20,8 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from floodwatch import __version__, ai, db, geocode, point
-from floodwatch.config import DATUM_SUSPECT, RAIN_POINTS
+from floodwatch.config import DATUM_SUSPECT
+from floodwatch import rain_cells
 from floodwatch.forecast import change_summary, classify_status
 
 PRIVATE_QUERY_PATHS = ("/api/geocode", "/api/point", "/api/reverse", "/api/near")
@@ -384,11 +385,11 @@ def _reports_data(hours: int) -> dict:
 def rain():
     with db.connect() as c:
         rows = c.execute(
-            """SELECT point, sum(precip_mm) FILTER (WHERE valid_time <= now() + interval '24 hours') AS mm24,
-                      sum(precip_mm) FILTER (WHERE valid_time <= now() + interval '72 hours') AS mm72,
-                      max(issue_time) AS issue
-               FROM weather_forecast WHERE issue_time=(SELECT max(issue_time) FROM weather_forecast)
-                 AND valid_time > now() GROUP BY point""").fetchall()
+            f"""SELECT w.point, sum(w.precip_mm) FILTER (WHERE w.valid_time <= now() + interval '24 hours') AS mm24,
+                      sum(w.precip_mm) FILTER (WHERE w.valid_time <= now() + interval '72 hours') AS mm72,
+                      max(w.issue_time) AS issue
+               FROM weather_forecast w JOIN ({rain_cells.LATEST_ISSUE}) l ON l.point=w.point AND l.t=w.issue_time
+               WHERE w.valid_time > now() GROUP BY w.point""").fetchall()
     return _json({"source": "Open-Meteo", "points": [{"point": r["point"], "mm24": r["mm24"], "mm72": r["mm72"],
                                                       "issue_time": _iso(r["issue"])} for r in rows]})
 
@@ -433,9 +434,9 @@ def _stats_data() -> dict:
         rows = c.execute(STATS_SQL).fetchall()
         focus = [_station_row(r) for r in _station_rows(False)]
         rain = c.execute(
-            """SELECT max(mm) AS mm24 FROM (SELECT point, sum(precip_mm) AS mm FROM weather_forecast
-               WHERE issue_time=(SELECT max(issue_time) FROM weather_forecast) AND point LIKE 'bkk%%'
-                 AND valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY point) x""").fetchone()
+            f"""SELECT max(mm) AS mm24 FROM (SELECT w.point, sum(w.precip_mm) AS mm FROM weather_forecast w
+               JOIN ({rain_cells.LATEST_ISSUE}) l ON l.point=w.point AND l.t=w.issue_time WHERE w.point LIKE 'bkk%%'
+                 AND w.valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY w.point) x""").fetchone()
     status = {k: 0 for k in ("critical", "warning", "watch", "normal", "unknown")}
     trend = {k: 0 for k in ("rising", "falling", "steady", "unknown")}
     for s in focus:
@@ -565,10 +566,10 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
             """SELECT depth, count(*) AS n FROM user_feedback WHERE depth IS NOT NULL AND lat IS NOT NULL
                AND created_at > now() - interval '24 hours'
                AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s GROUP BY 1""", box).fetchall()}
-        pt = min(RAIN_POINTS, key=lambda k: (RAIN_POINTS[k][0] - lat) ** 2 + (RAIN_POINTS[k][1] - lon) ** 2)
+        pt = rain_cells.rain_point_at(lat, lon)  # a Bangkok rain point nearby, else the place's 0.5° cell (D-064)
         rain = c.execute("""SELECT sum(precip_mm) AS mm FROM weather_forecast WHERE point=%s
-                            AND issue_time=(SELECT max(issue_time) FROM weather_forecast)
-                            AND valid_time BETWEEN now() AND now() + interval '24 hours'""", (pt,)).fetchone()["mm"]
+                            AND issue_time=(SELECT max(issue_time) FROM weather_forecast WHERE point=%s)
+                            AND valid_time BETWEEN now() AND now() + interval '24 hours'""", (pt, pt)).fetchone()["mm"]
     out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1))
     out["rain_point"] = pt
     return _json(out)

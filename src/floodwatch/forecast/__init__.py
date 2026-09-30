@@ -13,7 +13,7 @@ import math
 
 import numpy as np
 
-from floodwatch import db
+from floodwatch import db, rain_cells
 
 log = logging.getLogger(__name__)
 VERSION = "star-0.2"  # D-052: network space-time AR + rain competes in the backtest
@@ -493,9 +493,10 @@ def upstream_of(code: str, chain: dict[str, float], k: int = 2, min_km: float = 
     return ups[:k]
 
 
-def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict) -> dict | None:
-    """Raw inputs for the star model from the database (cached across stations within one run)."""
-    from floodwatch.config import RAIN_POINTS
+def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict, in_focus: bool = True) -> dict | None:
+    """Raw inputs for the star model from the database (cached across stations within one run). Rain: the Bangkok
+    rain point for focus gauges, the gauge's 0.5° cell elsewhere (D-064)."""
+    from floodwatch import rain_cells
     if lat is None:
         return None
     chain = cache.setdefault("chain", _chainage())
@@ -509,7 +510,7 @@ def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict) ->
             cache[key] = ([r["obs_time"] for r in rows], [float(r["v"]) for r in rows])
         return cache[key]
 
-    pt = min(RAIN_POINTS, key=lambda k: (RAIN_POINTS[k][0] - lat) ** 2 + (RAIN_POINTS[k][1] - lon) ** 2)
+    pt = rain_cells.rain_point_for(in_focus, lat, lon)
     if ("rain", pt) not in cache:
         hind = {int(r["valid_time"].timestamp() // 3600): (r["day1"], r["day2"]) for r in c.execute(
             "SELECT valid_time, day1, day2 FROM rain_hindcast WHERE point=%s", (pt,)).fetchall()}
@@ -529,14 +530,13 @@ def run_all() -> int:
     now = dt.datetime.now(dt.timezone.utc)
     with db.connect() as c:
         stations = c.execute(
-            """SELECT s.code, s.bank_msl, s.lat, s.lon FROM station s
-               WHERE s.in_focus AND EXISTS (SELECT 1 FROM observation o WHERE o.code=s.code
+            """SELECT s.code, s.bank_msl, s.lat, s.lon, s.in_focus FROM station s
+               WHERE s.code !~ '^TEST' AND EXISTS (SELECT 1 FROM observation o WHERE o.code=s.code
                      AND o.obs_time > now() - interval '12 hours' AND o.level_msl IS NOT NULL)""").fetchall()
         rain = {r["point"]: r["mm"] for r in c.execute(
-            """SELECT point, sum(precip_mm) AS mm FROM weather_forecast
-               WHERE issue_time=(SELECT max(issue_time) FROM weather_forecast)
-                 AND valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY point""").fetchall()}
-    from floodwatch.config import RAIN_POINTS
+            f"""SELECT w.point, sum(w.precip_mm) AS mm FROM weather_forecast w
+               JOIN ({rain_cells.LATEST_ISSUE}) l ON l.point=w.point AND l.t=w.issue_time
+               WHERE w.valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY w.point""").fetchall()}
     n = 0
     from floodwatch.config import DATUM_SUSPECT
     cache: dict = {}
@@ -553,14 +553,13 @@ def run_all() -> int:
                    AND obs_time > now() - make_interval(days => %s) ORDER BY obs_time""", (s["code"], LOOKBACK_DAYS)).fetchall()
         try:
             with db.connect() as c:
-                exo = load_exo(c, s["code"], s["lat"], s["lon"], cache)
+                exo = load_exo(c, s["code"], s["lat"], s["lon"], cache, s["in_focus"])
         except Exception:
             log.exception("star inputs for %s failed; own methods only", s["code"])
             exo = None
         rain24 = None
         if s["lat"] is not None and rain:
-            pt = min(RAIN_POINTS, key=lambda k: (RAIN_POINTS[k][0] - s["lat"]) ** 2 + (RAIN_POINTS[k][1] - s["lon"]) ** 2)
-            rain24 = rain.get(pt)
+            rain24 = rain.get(rain_cells.rain_point_for(s["in_focus"], s["lat"], s["lon"]))
         try:
             fc = forecast_station(s["code"], [r["obs_time"] for r in rows], [r["level_msl"] for r in rows],
                                   s["bank_msl"], rain24, exo)

@@ -419,6 +419,91 @@ def openmeteo_prev() -> dt.datetime | None:
     return newest
 
 
+def cell_requests(cells: dict[str, tuple[float, float]], base: str, params: dict) -> list[tuple[list[str], str]]:
+    """One Open-Meteo request per batch of cells (comma-separated coordinates; the answer is a list in this order)."""
+    from floodwatch import rain_cells
+    out = []
+    for ids in rain_cells.batches(sorted(cells)):
+        q = {"latitude": ",".join(f"{cells[i][0]:.1f}" for i in ids),
+             "longitude": ",".join(f"{cells[i][1]:.1f}" for i in ids), **params}
+        out.append((ids, f"{base}?{urllib.parse.urlencode(q)}"))
+    return out
+
+
+def _cells() -> dict[str, tuple[float, float]]:
+    from floodwatch import rain_cells
+    with db.connect() as c:
+        return rain_cells.all_cells(c.execute(
+            "SELECT in_focus, lat, lon FROM station WHERE code !~ '^TEST' AND agency IS DISTINCT FROM 'BMA'").fetchall())
+
+
+def openmeteo_cells() -> dt.datetime | None:
+    """Rain forecast for the 0.5° cells of gauges outside the focus area (D-064), every 3 h, 50 cells per request.
+    One issue time per run; readers take each point's latest issue (rain_cells.LATEST_ISSUE)."""
+    from floodwatch import rain_cells
+    issue = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0, microsecond=0)
+    n = 0
+    for ids, url in cell_requests(_cells(), "https://api.open-meteo.com/v1/forecast",
+                                  {"hourly": "precipitation", "forecast_days": 4, "past_days": 1, "timezone": "UTC"}):
+        payload, _ = _get_json("openmeteo_cells", url)
+        rows = [r for cid, p in rain_cells.split_payload(payload, ids) for r in parsing.parse_openmeteo(cid, p, issue)]
+        with db.connect() as c, c.cursor() as cur:
+            cur.executemany(
+                """INSERT INTO weather_forecast (point, issue_time, valid_time, model, precip_mm)
+                   VALUES (%(point)s,%(issue_time)s,%(valid_time)s,%(model)s,%(precip_mm)s) ON CONFLICT DO NOTHING""",
+                rows)
+            c.commit()
+        n += len(rows)
+        time.sleep(1.0)
+    log.info("openmeteo_cells: %d hourly values (issue %s)", n, issue)
+    return issue
+
+
+CELL_BACKFILL_PER_RUN = 8  # a year per cell weighs ~26 Open-Meteo calls: 8 cells/h stays well inside the free quota
+
+
+def openmeteo_prev_cells() -> dt.datetime | None:
+    """Rain-forecast history for the cells (training data for star, D-052/D-064): a year for a few new cells each
+    hour until all are done, then once a day the last 4 days for every cell."""
+    from floodwatch import rain_cells
+    today = dt.datetime.now(dt.timezone.utc).date()
+    cells = _cells()
+    with db.connect() as c:
+        have = {r["point"] for r in c.execute(
+            "SELECT DISTINCT point FROM rain_hindcast WHERE left(point, 2) = 'g_'").fetchall()}
+        refreshed = db.get_state(c, "cells_prev_refreshed")
+    new = {k: v for k, v in cells.items() if k not in have}
+    jobs = []
+    if new:
+        todo = dict(sorted(new.items())[:CELL_BACKFILL_PER_RUN])
+        jobs.append((todo, today - dt.timedelta(days=LOOKBACK_RAIN_DAYS)))
+    if refreshed != today.isoformat():
+        jobs.append(({k: v for k, v in cells.items() if k in have}, today - dt.timedelta(days=4)))
+    newest = None
+    for group, start in jobs:
+        for ids, url in cell_requests(group, "https://previous-runs-api.open-meteo.com/v1/forecast",
+                                      {"start_date": start.isoformat(), "end_date": today.isoformat(),
+                                       "hourly": "precipitation_previous_day1,precipitation_previous_day2",
+                                       "timezone": "UTC"}):
+            payload, _ = _get_json("openmeteo_prev_cells", url)
+            rows = [r for cid, p in rain_cells.split_payload(payload, ids) for r in parsing.parse_openmeteo_prev(cid, p)]
+            with db.connect() as c, c.cursor() as cur:
+                cur.executemany("""INSERT INTO rain_hindcast (point, valid_time, day1, day2)
+                                   VALUES (%(point)s, %(valid_time)s, %(day1)s, %(day2)s)
+                                   ON CONFLICT (point, valid_time) DO UPDATE SET day1=EXCLUDED.day1, day2=EXCLUDED.day2""", rows)
+                c.commit()
+            if rows:
+                newest = max(filter(None, [newest, max(r["valid_time"] for r in rows)]))
+            time.sleep(1.0)
+    if refreshed != today.isoformat() and have:
+        with db.connect() as c:
+            db.set_state(c, "cells_prev_refreshed", today.isoformat())
+            c.commit()
+    log.info("openmeteo_prev_cells: %d new cells this run, %d of %d cells have history", min(len(new), CELL_BACKFILL_PER_RUN),
+             len(have) + min(len(new), CELL_BACKFILL_PER_RUN), len(cells))
+    return newest
+
+
 def hii_fews_forecast() -> dt.datetime | None:
     """Archive each new issue of HII's official forecast files (one per station, overwritten daily)."""
     from email.utils import parsedate_to_datetime
@@ -460,4 +545,5 @@ def bma_dds() -> dt.datetime | None:
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
-                  "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history}[source])
+                  "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
+                  "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells}[source])
