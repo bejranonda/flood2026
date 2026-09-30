@@ -190,3 +190,21 @@ def test_rows_follow_the_measured_trend_unless_a_model_sees_a_direction():
     unsure_rise = {**star_rise, "likely": [-0.01, 0.14]}  # C2: "↗ เพิ่มขึ้น −1 ถึง +14" is not a direction
     assert api.follow_measured(unsure_rise, obs, sk)["basis"] == "measured_trend"
     assert api.follow_measured(none, {"change_cm": 0, "r2": 0.1, "level": "mixed"}, sk) is none
+
+
+def test_station_rows_are_computed_once_per_ttl_and_shared(monkeypatch):
+    # KI-246: ~10 requests/s each ran STATIONS_SQL; 39 at once exhausted Postgres (max_connections 40)
+    calls = []
+
+    class C:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, p):
+            calls.append(p); return type("R", (), {"fetchall": lambda _s: [{"code": "X"}]})()
+
+    monkeypatch.setattr(api.db, "connect", lambda: C())
+    monkeypatch.setattr(api, "_rows_cache", {})
+    for _ in range(50):
+        assert api._station_rows(False) == [{"code": "X"}]
+    api._station_rows(True)
+    assert len(calls) == 2  # one query per scope, not 51

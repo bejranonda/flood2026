@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-246 | DB overload: ~10 req/s each ran the station query; Postgres max_connections (40) exhausted for ~4.5 h; worker crash-looped | Infrastructure | 🟢 fixed v0.15.2; 🟡 no external uptime alert yet |
 | KI-245 | GitHub #9: desktop page ~100 px taller than the screen; #8: hover outline always blue | UI | 🟢 fixed v0.15.1 |
 | KI-244 | Panel texts contradicted each other (headline 12 h / majority vs 24 h rows of the nearest gauge; list vs sheet chip; model chip vs range; repeated lines; recovery lost its early end) | UX | 🟢 fixed v0.15.0 (D-062) |
 | KI-243 | `qc.run_all` crashed after deploy: a local dict named `observed` shadowed the new `observed()` | Code | 🟢 fixed v0.14.0 (end-to-end test with a fake DB) |
@@ -64,7 +65,7 @@
 | KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
 | KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
 | KI-304 | Unsourced street-elevation benchmarks | Modelling | 🔴 |
-| KI-305 | No archive of as-issued forecasts yet (perfect-prognosis risk) | Modelling | 🔴 |
+| KI-305 | No archive of as-issued forecasts yet (perfect-prognosis risk) | Modelling | 🟢 resolved (forecast_run since 2026-09-26; rain as forecast since 2025-09-22) |
 | KI-306 | Spatial and temporal scale mismatch between data sources | Modelling | ℹ️ |
 | KI-401 | Research files of mixed validity | Docs integrity | 🟢 |
 | KI-402 | Config contradictions (`.env.example` vs guidelines) | Docs integrity | 🟢 |
@@ -326,7 +327,8 @@ Dam releases, diversions, gate closures and pump outages change the system abrup
 ### KI-304 — Unsourced street-elevation benchmarks · 🔴
 The `bkk_stations_elevation.json` values in [API_noKey-1.md](../research/API_noKey-1.md) and the "hotspot road elevation" table in the old KNOWLEDGE.md have **no source**. They were removed from the docs. Replace them with survey data or DEM-with-uncertainty in Phase 2/3.
 
-### KI-305 — No archive of as-issued forecasts yet · 🔴
+### KI-305 — No archive of as-issued forecasts yet · 🟢 resolved (checked 2026-09-30)
+**Update 2026-09-30:** every forecast issue is stored in `forecast_run` (45,106 runs for 305 gauges since 2026-09-26) and rain *as it was forecast* 1–2 days earlier in `rain_hindcast` (80,784 hourly rows back to 2025-09-22, D-052), so skill is scored on as-issued forecasts. Original note:
 Training on observed future rain ("perfect prognosis") overstates skill. **Workaround:** archive **every** Open-Meteo run from day one of Phase 1. Until enough runs exist, train on observed rain but **widen the intervals** and state this on the model page.
 
 ### KI-306 — Spatial and temporal scale mismatch · ℹ️
@@ -595,3 +597,6 @@ Found by `scripts/ux_consistency.py` (2026-09-28 19:00–20:10 UTC, live, one br
 
 ### KI-245 — Desktop page taller than the screen; hover colour · 🟢 fixed v0.15.1
 GitHub #9 and #8 (filed 2026-09-27, re-checked on v0.15.0 on 2026-09-29): the desktop list and map had a fixed `calc(100vh − 145px)` while header, banner, summary and tabs take ~245 px, so the page was ~100 px taller than the window at 1366×768, 1440×900 and 1920×1080 (measured: document 1002 px in a 900 px window). Now the page is a flex column of exactly 100dvh (the list and map take the rest; the footer stays visible; windows under ~670 px tall still scroll because the map keeps 420 px). A card's hover/focus border was always the accent blue; it now takes the card's urgency colour. Verified live: document height = window height at all three sizes; a critical card's hover border is `#c62828`.
+
+### KI-246 — Database overload under load · 🟢 fixed v0.15.2; 🟡 no external alert
+Found 2026-09-30 05:38 UTC while taking README screenshots: the page showed "โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่". Evidence: `pg_stat_activity` showed 40 of 40 connections active, 39 of them the same STATIONS_SQL from the app, 2–3 s each; app log 6,058 requests in 10 min (`/api/stations` 1,850, `/api/stats` 1,552, `/api/reports` 1,387, `/api/point` 347); `/api/health` HTTP 500, `/api/stations` 11 s; worker `RestartCount` 452 with "FATAL: sorry, too many clients already" from 2026-09-30 01:xx UTC (2,003 errors). Cause: every endpoint rebuilt all 310 station rows per request (the per-row `collector_state` lookups added in v0.12–v0.14 made the query heavier), so a traffic rise saturated the pool. Fix: `_station_rows` and `_memo` share the rows and the `/stations`, `/stats`, `/reports` payloads for 60 s behind a lock. Verified: health 200, `/api/stations` 0.3 s idle; load test 120 requests at 30 concurrent → 0 errors, median ~0.5 s, peak 11 connections. Gap: nothing alerted anyone for 4.5 h → OWNER_ACTIONS "UPTIME".

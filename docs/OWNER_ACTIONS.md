@@ -1,6 +1,6 @@
 # OWNER_ACTIONS.md — What the project needs from the owner
 
-> **Single tracker** (D-026). Anything an AI harness or developer needs from the owner goes here, with the reason, the exact steps and how it will be verified. Last verified **2026-09-27 ~10:15 UTC** (v0.6.2, live).
+> **Single tracker** (D-026). Anything an AI harness or developer needs from the owner goes here, with the reason, the exact steps and how it will be verified. Last verified **2026-09-30 ~05:55 UTC** (v0.15.2, live; `scripts/owner_status.py`: 2 scripted items open).
 > **Check the current status any time:** `python3 scripts/owner_status.py` (read-only; it never prints a secret). Open questions with their history are in [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md).
 > **Handing over secrets:** put them only in `/root/flood2026/.env` on the server. Never paste them in chat or commit them. Tell the agent the *key name* you set; it will check the value works without printing it.
 
@@ -8,6 +8,7 @@
 | # | Item | Status | Priority |
 |---|---|---|---|
 | Q18 | `flood.autobahn.bot` challenged non-browser clients | ✅ **done** (owner turned Bot Fight Mode off, verified 17:33 UTC) | |
+| **UPTIME** | An external uptime check that alerts you when `/api/health` fails (KI-246: a 4.5 h overload on 2026-09-30 went unnoticed) | ⬜ open — new 2026-09-30 | 1 |
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
 | **GISTDA** | GISTDA key works for the flood-extent service | ✅ **works** (2026-09-27 10:05 UTC): the key was fine; our endpoint path and key placement were outdated (KI-510). Fixed from the docs link you sent | |
@@ -89,6 +90,11 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 ### Optional · keep the host and the public history tidy
 - **Server IP in old commits (KI-214):** 8 commits from earlier today still show it; it is gone from the current files. It is low risk because the site is only reachable through the Cloudflare Tunnel and no web ports are open. Removing it from history means `git filter-repo` plus a force-push, which rewrites history and breaks existing clones and forks. **Only do this if you want it; say so and I will.**
 - **SSH:** 15,754 failed logins in 24 hours (normal scanning). Password login cannot succeed today (root is key-only; no other account has a password), but `PasswordAuthentication yes` is still set. If you want the log noise and the theoretical risk gone: `PasswordAuthentication no` in `/etc/ssh/sshd_config`, `sshd -t && systemctl reload ssh` (keep your current session open while testing a new key login), and `apt install fail2ban`. I did not touch this: it is a shared host and a lockout would be costly.
+
+### UPTIME — alert when the site fails (new 2026-09-30, KI-246)
+**Why:** on 2026-09-30 the database was saturated from ~01:00 to 05:44 UTC; visitors saw "โหลดข้อมูลไม่สำเร็จ" and nobody was told. The server cannot alert you by itself (no notification channel is configured).
+**Steps (≈ 5 min, free tier ⚠️ check the provider's current limits):** create a free account at an uptime service (e.g. UptimeRobot or Better Stack) → new HTTP(S) monitor → URL `https://flood.autobahn.bot/api/health` → interval 5 min → alert contact: your e-mail and/or the provider's mobile app / LINE integration → save.
+**Verify:** the monitor shows "up"; optionally pause the app for a minute (`docker compose stop app`, then `start`) and check that the alert arrives. Tell us which service you used; nothing secret goes into the repo.
 
 ## 3. Decisions (answers only, no work)
 | # | Question | Default if you don't answer |

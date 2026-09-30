@@ -8,6 +8,8 @@ import math
 import os
 import re
 import secrets
+import threading
+import time
 from pathlib import Path
 from typing import Literal
 
@@ -96,6 +98,47 @@ LEFT JOIN LATERAL (SELECT obs_time AS prev_time, level_msl AS prev_level FROM ob
                    ORDER BY obs_time ASC LIMIT 1) p ON true
 WHERE (%(all)s OR s.in_focus) AND s.code !~ '^TEST'
 """
+
+
+ROWS_TTL_S = 60  # the station list is shared by all requests for a minute (collectors refresh every 10 min)
+_rows_cache: dict[bool, tuple[float, list]] = {}
+_rows_lock = threading.Lock()
+
+
+def _station_rows(all_: bool) -> list[dict]:
+    """STATIONS_SQL once per minute, shared by /stations, /stats, /point, /near, /profile and station sheets.
+    2026-09-30: ~10 requests/s each ran the 2-3 s query; 39 ran at once, Postgres hit max_connections (40),
+    /api/health returned 500 and the worker restarted 452 times (KI-246). The lock makes a burst wait for one query."""
+    hit = _rows_cache.get(all_)
+    if hit and time.monotonic() - hit[0] < ROWS_TTL_S:
+        return hit[1]
+    with _rows_lock:
+        hit = _rows_cache.get(all_)
+        if hit and time.monotonic() - hit[0] < ROWS_TTL_S:
+            return hit[1]
+        with db.connect() as c:
+            rows = c.execute(STATIONS_SQL, {"all": all_}).fetchall()
+        _rows_cache[all_] = (time.monotonic(), rows)
+        return rows
+
+
+_memo_cache: dict = {}
+_memo_lock = threading.Lock()
+
+
+def _memo(key, fn, ttl: float = ROWS_TTL_S):
+    """The same payload for everyone for `ttl` seconds (list, stats, street cells): one DB round per minute instead
+    of one per visitor (KI-246). Ages inside the payload may be up to a minute old; the UI rounds to minutes."""
+    hit = _memo_cache.get(key)
+    if hit and time.monotonic() - hit[0] < ttl:
+        return hit[1]
+    with _memo_lock:
+        hit = _memo_cache.get(key)
+        if hit and time.monotonic() - hit[0] < ttl:
+            return hit[1]
+        val = fn()
+        _memo_cache[key] = (time.monotonic(), val)
+        return val
 
 
 def bma_status(level: float | None, bank: float | None, warning: float | None,
@@ -261,20 +304,24 @@ def _traffy_age_min(c) -> float | None:
 
 @app.get("/api/stations")
 def stations(scope: str = Query("focus", pattern="^(focus|all)$")):
+    return _json(_memo(("stations", scope), lambda: _stations_data(scope)))
+
+
+def _stations_data(scope: str) -> dict:
     with db.connect() as c:
-        rows = c.execute(STATIONS_SQL, {"all": scope == "all"}).fetchall()
+        rows = _station_rows(scope == "all")
         reps, tage = _street_reports(c), _traffy_age_min(c)
     items = [_station_row(r) for r in rows]  # all stations; bad values filtered per station
     street_counts(items, reps)
-    return _json({"generated": dt.datetime.now(dt.timezone.utc).isoformat(), "stations": items,
-                  "street_source": {"name": "Traffy Fondue", "hours": STREET_HOURS, "km": STREET_KM,
-                                    "last_update_age_min": tage}})
+    return {"generated": dt.datetime.now(dt.timezone.utc).isoformat(), "stations": items,
+            "street_source": {"name": "Traffy Fondue", "hours": STREET_HOURS, "km": STREET_KM,
+                              "last_update_age_min": tage}}
 
 
 @app.get("/api/stations/{code}")
 def station(code: str, days: int = Query(7, ge=1, le=35)):
     with db.connect() as c:
-        rows = c.execute(STATIONS_SQL + " AND s.code=%(code)s", {"all": True, "code": code}).fetchall()
+        rows = [r for r in _station_rows(True) if r["code"] == code]
         if not rows:
             raise HTTPException(404, "unknown station")
         obs = c.execute(
@@ -307,7 +354,7 @@ def _haversine_km(a_lat, a_lon, b_lat, b_lon) -> float:
 def near(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge=97, le=106), n: int = Query(3, ge=1, le=10)):
     """Nearest stations by distance. ⚠️ Polder/controlling-water-body logic not implemented yet (APPROACH §13)."""
     with db.connect() as c:
-        rows = c.execute(STATIONS_SQL, {"all": False}).fetchall()
+        rows = _station_rows(False)
     items = [(_haversine_km(lat, lon, r["lat"], r["lon"]), r) for r in rows if r["lat"] is not None and r["level_msl"] is not None]
     items.sort(key=lambda x: x[0])
     return _json({"note": "nearest_by_distance_only", "stations": [{**_station_row(r), "distance_km": round(d, 1)}
@@ -317,14 +364,18 @@ def near(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge=97, le
 @app.get("/api/reports")
 def reports(hours: int = Query(6, ge=1, le=48)):
     """Aggregated Traffy flood reports per ~1 km cell (privacy: counts only; KI-107)."""
+    return _json(_memo(("reports", hours), lambda: _reports_data(hours)))
+
+
+def _reports_data(hours: int) -> dict:
     with db.connect() as c:
         rows = c.execute(
             """SELECT round(lat::numeric, 2) AS lat, round(lon::numeric, 2) AS lon, count(*) AS n
                FROM crowd_report WHERE is_flood AND report_time > now() - make_interval(hours => %s)
                GROUP BY 1, 2 ORDER BY n DESC""", (hours,)).fetchall()
         tage = _traffy_age_min(c)
-    return _json({"hours": hours, "cells": [[float(r["lat"]), float(r["lon"]), r["n"]] for r in rows],
-                  "last_update_age_min": tage})
+    return {"hours": hours, "cells": [[float(r["lat"]), float(r["lon"]), r["n"]] for r in rows],
+            "last_update_age_min": tage}
 
 
 @app.get("/api/rain")
@@ -372,13 +423,13 @@ def _freshness(times: list[dt.datetime | None]) -> dict:
 def stats():
     """Compact network summary: reporting freshness (focus area and the whole HII network), status and trend
     counts for the focus area, metadata gaps, and the rain forecast for Bangkok."""
-    return _json(_stats_data())
+    return _json(_memo(("stats",), _stats_data))
 
 
 def _stats_data() -> dict:
     with db.connect() as c:
         rows = c.execute(STATS_SQL).fetchall()
-        focus = [_station_row(r) for r in c.execute(STATIONS_SQL, {"all": False}).fetchall()]
+        focus = [_station_row(r) for r in _station_rows(False)]
         rain = c.execute(
             """SELECT max(mm) AS mm24 FROM (SELECT point, sum(precip_mm) AS mm FROM weather_forecast
                WHERE issue_time=(SELECT max(issue_time) FROM weather_forecast) AND point LIKE 'bkk%%'
@@ -405,7 +456,7 @@ def profile():
     APPROACH §2.9). chainage_km = approximate river km from the mouth along HII's centreline (±10 km near
     branches); stations without chainage fall back to latitude order."""
     with db.connect() as c:
-        rows = c.execute(STATIONS_SQL + " AND s.river='แม่น้ำเจ้าพระยา' AND s.lat IS NOT NULL", {"all": False}).fetchall()
+        rows = [r for r in _station_rows(False) if r["river"] == "แม่น้ำเจ้าพระยา" and r["lat"] is not None]
     items = [_station_row(r) for r in rows]
     for s in items:
         s["chainage_km"] = (CHAINAGE.get(s["code"]) or {}).get("chainage_km")
@@ -504,7 +555,7 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
     """What can be said about a place with no gauge: gauges around it, an area category (not a water level),
     nearby citizen evidence and warnings (APPROACH §2.10, D-021)."""
     with db.connect() as c:
-        rows = [_station_row(r) for r in c.execute(STATIONS_SQL, {"all": False}).fetchall()]
+        rows = [_station_row(r) for r in _station_rows(False)]
         box = {"lat0": lat - 0.01, "lat1": lat + 0.01, "lon0": lon - 0.01, "lon1": lon + 0.01}
         traffy = c.execute("""SELECT count(*) AS n FROM crowd_report WHERE is_flood AND report_time > now() - interval '6 hours'
                               AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s""", box).fetchone()["n"]

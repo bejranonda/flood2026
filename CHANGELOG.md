@@ -2,6 +2,13 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.15.2 — 2026-09-30
+- **Hotfix: database overload under load (KI-246).** From ~01:00 to 05:44 UTC (08:00–12:44 ICT) visitors saw
+  "โหลดข้อมูลไม่สำเร็จ": ~10 API requests/s each ran the 2–3 s station query, 39 at once filled Postgres'
+  40 connections, `/api/health` returned 500 and the worker restarted 452 times (collectors stalled). The station
+  rows and the list/stats/street payloads are now computed once per minute and shared (single-flight lock).
+  Load test after the fix (120 requests, 30 concurrent): 0 errors, median ~0.5 s, peak 11 DB connections.
+
 ## v0.15.1 — 2026-09-29
 - **GitHub issues reviewed against v0.15 (owner: keep the v0.15 concept):** #9 the desktop page now fits the screen
   exactly (was ~100 px taller than the window at 1366/1440/1920 px: a fixed `calc(100vh − 145px)`); #8 a card's

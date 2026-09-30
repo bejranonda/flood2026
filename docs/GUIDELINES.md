@@ -57,6 +57,7 @@ Update `Last updated` on each file you touch. Docs are written in English; Thai 
 - **Single-flight:** at most one outgoing request per source per cycle. Nothing is fetched upstream on the user's request path.
 - **QC flags, not deletion:** sentinel values (HII `999999`), range, rate of change, flatline, clock error, and neighbour consistency ([KI-206](KNOWN_ISSUES.md)).
 - **Judge a series, not only a reading** (D-057, KI-237): `qc_level` sees one value; one- or two-reading dropouts and gauges that jump back and forth (pumps at the sensor) pass it. `floodwatch.qc` flags dropouts and hides erratic gauges; a filter that also removes real pump drawdowns is not acceptable (measure false positives on clean gauges first).
+- **Per-request work must not scale with visitors** (KI-246): anything every visitor gets (station list, stats, street cells) is computed once per minute and shared; a heavy query on the request path needs a cache or a precomputed table. Load-test (≥ 30 concurrent) after touching `STATIONS_SQL`.
 - **Never block the single worker loop** (KI-213, KI-239): a job that touches many stations spreads its work over runs (a few gauges per run), asks upstream nothing when it has nothing to do, and sets aside an item that keeps failing instead of retrying it first forever.
 - **Version metadata:** station bank level, datum, location and rating changes are versioned with effective dates, never overwritten.
 
