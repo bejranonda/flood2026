@@ -39,7 +39,7 @@ TASKS = [
 # wait for them (the forecast of 277 gauges held the single loop ~4.5 min on 2026-09-30).
 FORECASTER_TASKS = [
     ("forecast", 1800),
-    ("upstream_learn", 7 * 24 * 3600),  # upstream gauges learned per basin for gauges off the Chao Phraya chain
+    ("upstream_learn", 24 * 3600),  # upstream gauges learned per basin for gauges off the Chao Phraya chain (daily: history grows)
 ]
 
 

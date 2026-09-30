@@ -88,7 +88,7 @@ def learn(series: dict[str, tuple[np.ndarray, np.ndarray]], meta: dict[str, dict
 
 
 def run_all() -> int:
-    """Weekly: learn upstream gauges for every gauge outside the focus area, basin by basin (bounded memory),
+    """Daily: learn upstream gauges for every gauge outside the focus area, basin by basin (bounded memory),
     and store them in collector_state 'upstream_learned'."""
     from floodwatch import db
     from floodwatch.forecast import EVAL_HOURS, LOOKBACK_DAYS, hourly_grid

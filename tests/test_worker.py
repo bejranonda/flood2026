@@ -39,3 +39,8 @@ def test_rain_cells_are_fetched_at_start_not_three_hours_later():
     # 2026-09-30: after each restart the nationwide rain cells waited a full interval; pins read "ยังไม่มีข้อมูลฝน"
     assert {"openmeteo_cells", "openmeteo_prev_cells"} <= set(worker.FIRST_RUN["collector"])
     assert worker.FIRST_RUN["forecaster"][-1] == "forecast"
+
+
+def test_upstream_gauges_are_relearned_daily():
+    # the first learn after a deploy sees only days of nationwide history; a weekly cycle left star without inputs
+    assert dict(worker.FORECASTER_TASKS)["upstream_learn"] <= 24 * 3600
