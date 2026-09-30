@@ -50,6 +50,16 @@ services:
       db: { condition: service_healthy }
     mem_limit: 1g
 
+  # Forecasts in their own container (D-064): ~1,000 gauges take minutes; the collectors never wait for them.
+  forecaster:
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "floodwatch.worker", "--role", "forecaster"]
+    environment: *appenv
+    depends_on:
+      db: { condition: service_healthy }
+    mem_limit: 1g
+
   app:
     build: .
     restart: unless-stopped

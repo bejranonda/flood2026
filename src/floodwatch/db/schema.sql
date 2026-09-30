@@ -85,6 +85,14 @@ CREATE TABLE IF NOT EXISTS forecast_run (
     UNIQUE (code, issue_time)
 );
 
+-- The backtest (evaluate) per gauge, reused by the 30-min forecast for about a day (D-064).
+CREATE TABLE IF NOT EXISTS forecast_model (
+    code        text PRIMARY KEY,
+    trained_at  timestamptz NOT NULL,
+    n_rows      integer NOT NULL,              -- readings in the training window when trained (retrain on +20 %)
+    payload     jsonb NOT NULL                 -- evaluate() result: method, skill, quantiles per horizon
+);
+
 CREATE TABLE IF NOT EXISTS source_health (
     source               text PRIMARY KEY,
     last_success         timestamptz,

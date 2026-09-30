@@ -207,3 +207,27 @@ def test_trailing_mean_vectorised_matches_the_reference_loop():
     y = rng.normal(0, 1, 2000); y[rng.random(2000) < 0.3] = np.nan; y[100:160] = np.nan
     for centered in (False, True):
         assert np.allclose(forecast.trailing_mean(y, 25, centered), ref(y, 25, centered), equal_nan=True)
+
+
+# --- v0.16 (D-064): a daily cached backtest; the 30-min run only applies it --------------------------------------
+def test_a_cached_backtest_gives_the_same_forecast_as_a_fresh_one():
+    times, y, exo = _driven()
+    fresh = forecast.forecast_station("X", times, y, None, None, exo)
+    cached = forecast.ev_from_json(json.loads(json.dumps(fresh["skill"])))  # as stored in forecast_model (jsonb)
+    again = forecast.forecast_station("X", times, y, None, None, exo, ev=cached)
+    assert again["path"] == fresh["path"] and again["skill"] == fresh["skill"]
+
+
+def test_a_gauge_without_rain_history_still_gets_a_forecast():
+    times, vals = _synthetic(days=30)
+    fc = forecast.forecast_station("X", times, vals, 2.0, None, None)  # load_exo returned None (no hindcast yet)
+    assert fc and len(fc["path"]) == 72
+
+
+def test_cached_backtests_expire_after_a_day_or_when_history_grows():
+    now = dt.datetime(2026, 10, 1, 12, tzinfo=dt.timezone.utc)
+    row = {"trained_at": now - dt.timedelta(hours=5), "n_rows": 1000}
+    assert forecast.model_is_fresh(row, 1100, now)
+    assert not forecast.model_is_fresh(row, 1300, now)  # a backfill added history: backtest again
+    assert not forecast.model_is_fresh({**row, "trained_at": now - dt.timedelta(hours=21)}, 1000, now)
+    assert not forecast.model_is_fresh(None, 1000, now)

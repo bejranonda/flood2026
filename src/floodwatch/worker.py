@@ -1,6 +1,7 @@
 """Single-process scheduler: collectors, forecasts and a disk guard on fixed intervals.
 
-Run: python -m floodwatch.worker
+Run: python -m floodwatch.worker                     (collectors, QC, retention)
+     python -m floodwatch.worker --role forecaster  (forecasts and learned upstream gauges, own container, D-064)
 """
 from __future__ import annotations
 
@@ -29,11 +30,21 @@ TASKS = [
     ("openmeteo_cells", 3 * 3600),  # rain forecast for the 0.5° cells of gauges outside the focus area (D-064)
     ("openmeteo_prev_cells", 3600),  # their rain history: a year for 8 new cells per run, then 4 days daily
     ("bma_history", 600),  # BMA canal history from HII: backfill 5 gauges per run, then a daily 3-day refresh (D-054)  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
-    ("forecast", 1800),
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),
     ("retention", 24 * 3600),  # HII-network readings older than 400 days, rain-forecast issues older than 3 days (D-064)
 ]
+
+# The forecaster runs in its own container (D-064): ~1,000 gauges take minutes, and the 10-min collectors must never
+# wait for them (the forecast of 277 gauges held the single loop ~4.5 min on 2026-09-30).
+FORECASTER_TASKS = [
+    ("forecast", 1800),
+    ("upstream_learn", 7 * 24 * 3600),  # upstream gauges learned per basin for gauges off the Chao Phraya chain
+]
+
+
+def tasks_for(role: str) -> list[tuple[str, int]]:
+    return FORECASTER_TASKS if role == "forecaster" else TASKS
 
 
 BACKOFF_CAP = {"hii_waterlevel": 2, "hii_history": 2}  # core telemetry: never fall more than 2 intervals behind
@@ -74,6 +85,14 @@ def run_task(name: str) -> None:
         except Exception as e:
             log.exception("forecast failed")
             db.record_health("forecast", False, error=str(e))
+    elif name == "upstream_learn":
+        try:
+            from floodwatch.forecast import upstream
+            upstream.run_all()
+            db.record_health("upstream_learn", True)
+        except Exception as e:
+            log.exception("upstream_learn failed")
+            db.record_health("upstream_learn", False, error=str(e))
     elif name == "qc":
         try:
             qc.run_all()
@@ -102,7 +121,7 @@ def run_task(name: str) -> None:
         collectors.run(name)
 
 
-def main() -> None:
+def main(role: str = "collector") -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     for attempt in range(30):  # wait for the database container
         try:
@@ -111,10 +130,16 @@ def main() -> None:
         except Exception as e:
             log.warning("db not ready (%s), retrying", e)
             time.sleep(2)
-    # First run order: latest values -> history -> weather -> forecast.
-    for name in ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev", "traffy", "bma_klong", "qc", "hii_rain", "forecast", "disk"):
+    if role == "forecaster":
+        with db.connect() as c:
+            learned = db.get_state(c, "upstream_learned")
+        first = ("forecast",) if learned is not None else ("upstream_learn", "forecast")
+    else:  # first run order: latest values -> history -> weather
+        first = ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev", "traffy",
+                 "bma_klong", "qc", "hii_rain", "disk")
+    for name in first:
         run_task(name)
-    active = [(n, i) for n, i in TASKS if n != "bma_dds" or settings.thai_egress_proxy]
+    active = [(n, i) for n, i in tasks_for(role) if n != "bma_dds" or settings.thai_egress_proxy]
     next_run = {name: time.time() + interval for name, interval in active}
     while True:
         now = time.time()
@@ -124,6 +149,6 @@ def main() -> None:
                 next_run[name] = time.time() + interval * backoff_factor(failures_of(name), BACKOFF_CAP.get(name, 6))
         time.sleep(15)
 
-
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[sys.argv.index("--role") + 1] if "--role" in sys.argv else "collector")

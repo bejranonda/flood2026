@@ -19,3 +19,11 @@ def test_hii_history_never_asks_hii_for_bma_stations():
     from floodwatch import collectors
     src = inspect.getsource(collectors.hii_history)
     assert "agency IS DISTINCT FROM 'BMA'" in src
+
+
+def test_collectors_never_wait_for_forecasts():
+    collector = {n for n, _ in worker.tasks_for("collector")}
+    forecaster = {n for n, _ in worker.tasks_for("forecaster")}
+    assert "forecast" not in collector and "upstream_learn" not in collector
+    assert forecaster == {"forecast", "upstream_learn"}
+    assert "hii_waterlevel" in collector and "retention" in collector

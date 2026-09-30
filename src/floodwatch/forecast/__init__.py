@@ -312,8 +312,25 @@ def classify_status(level: float | None, bank: float | None, ground: float | Non
     return "normal", pct
 
 
+MODEL_MAX_AGE_H = 20      # the backtest (evaluate) is redone about daily ...
+MODEL_MAX_GROWTH = 1.2    # ... or at once when the history grew by 20 % (a backfill arrived)
+
+
+def ev_from_json(skill: dict) -> dict:
+    """A stored backtest (payload["skill"], horizons as strings in jsonb) back to evaluate()'s int-keyed form."""
+    return {int(h): v for h, v in (skill or {}).items()}
+
+
+def model_is_fresh(row: dict | None, n_rows: int, now: dt.datetime) -> bool:
+    """True when a cached backtest (forecast_model row) may be reused for a gauge with `n_rows` readings."""
+    if not row or row.get("trained_at") is None:
+        return False
+    return (now - row["trained_at"]).total_seconds() < MODEL_MAX_AGE_H * 3600 and n_rows <= row["n_rows"] * MODEL_MAX_GROWTH
+
+
 def forecast_station(code: str, times: list[dt.datetime], values: list[float], bank: float | None,
-                     rain_next24: float | None, exo: dict | None = None) -> dict | None:
+                     rain_next24: float | None, exo: dict | None = None, ev: dict | None = None) -> dict | None:
+    """The 72 h path for one gauge. `ev`: a cached backtest (forecast_model, D-064); None runs evaluate() here."""
     t, y = hourly_grid(times, values)
     if len(y) == 0:
         return None
@@ -323,7 +340,7 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
     issue = dt.datetime.fromtimestamp(t0 * 3600, tz=dt.timezone.utc)
     enough = np.isfinite(y).sum() >= MIN_HOURS
     ex = align_exo(t, exo) if enough else None
-    ev = evaluate(t, y, ex) if enough else {}
+    ev = (ev if ev is not None else evaluate(t, y, ex)) if enough else {}
     eta = fit_tide(t, y) if enough else None
     ybar = trailing_mean(y, 25)
     sl = _slope(ybar, len(y) - 1)
@@ -537,26 +554,37 @@ def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict, in
 
 
 def run_all() -> int:
+    """Forecast every gauge with data in the last 12 h (Bangkok and nationwide, one code path, D-064). The backtest
+    is reused from forecast_model for about a day (model_is_fresh); gauges are grouped by basin so the input cache
+    (upstream series, rain) stays small: it is cleared whenever the basin changes."""
+    import time as _time
+    from psycopg.types.json import Jsonb
+    t_start = _time.monotonic()
     now = dt.datetime.now(dt.timezone.utc)
     with db.connect() as c:
         stations = c.execute(
-            """SELECT s.code, s.bank_msl, s.lat, s.lon, s.in_focus FROM station s
+            """SELECT s.code, s.bank_msl, s.lat, s.lon, s.in_focus, s.basin FROM station s
                WHERE s.code !~ '^TEST' AND EXISTS (SELECT 1 FROM observation o WHERE o.code=s.code
-                     AND o.obs_time > now() - interval '12 hours' AND o.level_msl IS NOT NULL)""").fetchall()
+                     AND o.obs_time > now() - interval '12 hours' AND o.level_msl IS NOT NULL)
+               ORDER BY s.basin NULLS FIRST, s.code""").fetchall()
         rain = {r["point"]: r["mm"] for r in c.execute(
             f"""SELECT w.point, sum(w.precip_mm) AS mm FROM weather_forecast w
                JOIN ({rain_cells.LATEST_ISSUE}) l ON l.point=w.point AND l.t=w.issue_time
                WHERE w.valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY w.point""").fetchall()}
-    n = 0
+        models = {r["code"]: r for r in c.execute("SELECT code, trained_at, n_rows, payload FROM forecast_model").fetchall()}
+        erratic = db.get_state(c, "erratic_gauges") or {}
+    n = retrained = 0
     from floodwatch.config import DATUM_SUSPECT
     cache: dict = {}
-    with db.connect() as c:
-        erratic = db.get_state(c, "erratic_gauges") or {}
+    basin = object()
     for s in stations:
         if s["code"] in DATUM_SUSPECT:  # values not in m MSL (KI-210): never forecast or show them
             continue
         if s["code"] in erratic:  # pumps at the sensor or a faulty sensor (KI-237): the level is not predictable
             continue
+        if s["basin"] != basin:  # upstream gauges share the basin: keep only what the next basin can use
+            basin = s["basin"]
+            cache = {k: v for k, v in cache.items() if k in ("chain", "learned")}
         with db.connect() as c:
             rows = c.execute(
                 """SELECT obs_time, level_msl FROM observation WHERE code=%s AND quality_flag='ok'
@@ -570,14 +598,23 @@ def run_all() -> int:
         rain24 = None
         if s["lat"] is not None and rain:
             rain24 = rain.get(rain_cells.rain_point_for(s["in_focus"], s["lat"], s["lon"]))
+        model = models.get(s["code"])
+        fresh = model_is_fresh(model, len(rows), now)
         try:
             fc = forecast_station(s["code"], [r["obs_time"] for r in rows], [r["level_msl"] for r in rows],
-                                  s["bank_msl"], rain24, exo)
+                                  s["bank_msl"], rain24, exo, ev=ev_from_json(model["payload"]) if fresh else None)
         except Exception:
             log.exception("forecast %s failed", s["code"])
             continue
         if fc:
             db.save_forecast(s["code"], now.replace(second=0, microsecond=0), VERSION, fc)
             n += 1
-    log.info("forecast: %d stations", n)
+            if not fresh:
+                retrained += 1
+                with db.connect() as c:
+                    c.execute("""INSERT INTO forecast_model (code, trained_at, n_rows, payload) VALUES (%s, %s, %s, %s)
+                                 ON CONFLICT (code) DO UPDATE SET trained_at=EXCLUDED.trained_at, n_rows=EXCLUDED.n_rows,
+                                 payload=EXCLUDED.payload""", (s["code"], now, len(rows), Jsonb(fc["skill"])))
+                    c.commit()
+    log.info("forecast: %d stations (%d backtests redone) in %.0f s", n, retrained, _time.monotonic() - t_start)
     return n
