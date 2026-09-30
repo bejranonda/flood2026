@@ -493,6 +493,14 @@ def upstream_of(code: str, chain: dict[str, float], k: int = 2, min_km: float = 
     return ups[:k]
 
 
+def upstream_codes(code: str, chain: dict[str, float], in_focus: bool, learned: dict) -> list[str]:
+    """Upstream gauges for star: the Chao Phraya rule for gauges on the chain; learned gauges (same basin, leading
+    change, forecast.upstream) for gauges outside the focus area; none for focus canals (rain only, as proven)."""
+    if code in chain or in_focus:
+        return upstream_of(code, chain)
+    return [u[0] for u in learned.get(code, [])]
+
+
 def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict, in_focus: bool = True) -> dict | None:
     """Raw inputs for the star model from the database (cached across stations within one run). Rain: the Bangkok
     rain point for focus gauges, the gauge's 0.5° cell elsewhere (D-064)."""
@@ -521,7 +529,9 @@ def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict, in
         cache[("rain", pt)] = {"hind": hind, "live": live}
     if not cache[("rain", pt)]["hind"]:
         return None  # no rain history yet: the star model cannot be trained
-    ups = [level(u) for u in upstream_of(code, chain)]
+    if "learned" not in cache:
+        cache["learned"] = db.get_state(c, "upstream_learned") or {}
+    ups = [level(u) for u in upstream_codes(code, chain, in_focus, cache["learned"])]
     q = level(DAM_CODE, "discharge") if code in chain and chain[code] < DAM_KM else None
     return {"up": [u for u in ups if u[0]], "q": q if q and q[0] else None, "rain": cache[("rain", pt)]}
 
