@@ -154,13 +154,16 @@ const freeboardText = (fb) => {
   const c = Math.round(fb * 100);
   return c === 0 ? "ระดับเท่าตลิ่ง" : c < 0 ? `สูงกว่าตลิ่ง ${-c} ซม.` : `ต่ำกว่าตลิ่ง ${c} ซม.`;
 };
-// Region filter for the list: only 10 of ~111 gauges are in Bangkok, so severity sorting put Ayutthaya first.
-const REGIONS = {
-  all: { th: "ทั้งหมด", test: () => true },
-  bkk: { th: "กทม.", test: (p) => p === "กรุงเทพมหานคร" },
-  metro: { th: "ปริมณฑล", test: (p) => ["นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"].includes(p) },
-  up: { th: "เหนือ กทม.", test: (p) => !["กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"].includes(p) },
-};
+// Region chips (D-064): the API gives each gauge its region (src/floodwatch/regions.py, the six official regions with
+// central split into กทม. / ปริมณฑล / เหนือ กทม.). Every view — counts, list, map — follows the chosen chip.
+const REGION_TH = { bkk: "กทม.", metro: "ปริมณฑล", up: "เหนือ กทม.", north: "ภาคเหนือ", northeast: "อีสาน",
+  east: "ตะวันออก", west: "ตะวันตก", south: "ใต้" };
+const REGIONS = Object.fromEntries([...Object.entries(REGION_TH).map(([k, th]) => [k, { th, test: (s) => s.region === k }]),
+  ["all", { th: "ทั้งประเทศ", test: () => true }]]);
+const inRegion = (s) => REGIONS[region].test(s);
+const AGENCY_TH = { BMA: "สำนักการระบายน้ำ กทม.", RID: "กรมชลประทาน", HII: "สสน.", EGAT: "กฟผ.",
+  FOP: "มูลนิธิอาสาเพื่อนพึ่ง (ภาฯ) ยามยาก สภากาชาดไทย" };
+const agencyTh = (a) => AGENCY_TH[a] || a || "";
 // Default "bkk" (owner, 2026-09-26: "Bangkok as default this week"; revisit 2026-10-03). A tapped choice is remembered.
 const DEFAULT_REGION = "bkk";
 let region = (() => { try { return REGIONS[localStorage.getItem("region")] ? localStorage.getItem("region") : DEFAULT_REGION; } catch { return DEFAULT_REGION; } })();
@@ -206,11 +209,16 @@ async function getJSON(url, opts) {
 }
 
 /* ---------- summary strip ---------- */
+let lastStats = null;
 function renderSummary(st) {
+  lastStats = st;
   const f = st.focus, n = st.network;
+  const mine = stations.filter(inRegion);  // D-064: the counts follow the region chip, like the list and the map
+  const cnt = (k) => mine.filter((s) => s.status === k).length;
+  const tr = (k) => mine.filter((s) => s.trend12 === k).length;
   const chips = ["critical", "warning", "watch", "normal", "unknown"].map((k) =>
     `<button class="chip" data-status="${k}" aria-pressed="${statusFilter === k}" title="แสดงเฉพาะ${esc(STATUS[k].long)}">
-      <span class="dot" style="background:${STATUS[k].color}"></span>${esc(STATUS[k].th)} <b>${f.status[k]}</b></button>`).join("");
+      <span class="dot" style="background:${STATUS[k].color}"></span>${esc(STATUS[k].th)} <b>${cnt(k)}</b></button>`).join("");
   const bar = (x) => `<span class="fresh" aria-hidden="true">
     <span style="width:${(100 * x.h1) / x.total}%;background:#2e9d5b"></span>
     <span style="width:${(100 * (x.h3 - x.h1)) / x.total}%;background:#9ccc65"></span>
@@ -218,9 +226,9 @@ function renderSummary(st) {
   const pct = (a, b) => Math.round((100 * a) / (b || 1));
   const rain = st.rain_bkk_next24_mm_max;
   document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>
-    ${rain != null ? `<p class="sumline">🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: ${rainPill(rain)}</p>` : ""}
+    ${rain != null && ["bkk", "metro"].includes(region) ? `<p class="sumline">🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: ${rainPill(rain)}</p>` : ""}
     <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
-    <p class="sumline">${esc(TREND.rising)} <b>${f.trend12.rising}</b> · ${esc(TREND.falling)} <b>${f.trend12.falling}</b> สถานี (คาดการณ์ 12 ชม.)</p>
+    <p class="sumline">${esc(TREND.rising)} <b>${tr("rising")}</b> · ${esc(TREND.falling)} <b>${tr("falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`} (คาดการณ์ 12 ชม.)</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั้งประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
@@ -257,14 +265,17 @@ function renderRegions() {
   const el = document.getElementById("regions");
   if (!el) return;
   el.innerHTML = Object.entries(REGIONS).map(([k, r]) => {
-    const n = stations.filter((s) => r.test(s.province || "")).length;
-    return `<button type="button" class="rchip" data-region="${k}" aria-pressed="${k === region}">${esc(r.th)} <b>${n}</b></button>`;
+    const n = stations.filter((s) => r.test(s)).length;
+    return n ? `<button type="button" class="rchip" data-region="${k}" aria-pressed="${k === region}">${esc(r.th)} <b>${n}</b></button>` : "";
   }).join("") + `<button type="button" class="rchip fchip" aria-pressed="${forecastOnly}" title="ซ่อนสถานีที่ยังคาดการณ์ไม่ได้ (เช่น สถานีใหม่)">📈 เฉพาะที่คาดการณ์ได้</button>`;
   el.querySelector(".fchip").addEventListener("click", () => { forecastOnly = !forecastOnly; renderList(); });
   el.querySelectorAll(".rchip[data-region]").forEach((b) => b.addEventListener("click", () => {
     region = b.dataset.region;
     try { localStorage.setItem("region", region); } catch { /* private mode */ }
+    if (lastStats) renderSummary(lastStats);
     renderList();
+    renderMap();
+    fitRegion();
   }));
 }
 
@@ -272,7 +283,7 @@ function renderList() {
   const q = norm(document.getElementById("q").value);
   renderRegions();
   const rows = stations
-    .filter((s) => q || REGIONS[region].test(s.province || ""))  // a search looks in every region
+    .filter((s) => q || inRegion(s))  // a search looks in every region
     .filter((s) => !statusFilter || s.status === statusFilter)
     .filter((s) => !forecastOnly || hasForecast(s))
     .filter((s) => !q || norm([s.name_th, s.code, s.amphoe, s.province, s.river].join(" ")).includes(q))
@@ -303,7 +314,7 @@ async function placeSearch(q) {
     box.innerHTML = d.results.length
       ? d.results.map((r, i) => `<button type="button" class="btn placehit" data-i="${i}">📌 ${esc(r.name)} <span class="muted">${esc(r.area)}</span></button>`).join("")
         + "<p class='muted'>© ผู้ร่วมสร้าง OpenStreetMap</p>"
-      : "<p class='muted'>ไม่พบสถานที่นี้ในกรุงเทพฯ และปริมณฑล ลองชื่อซอย ถนน หรือแตะบนแผนที่แทน</p>";
+      : "<p class='muted'>ไม่พบสถานที่นี้ ลองชื่อซอย ถนน อำเภอ หรือแตะบนแผนที่แทน</p>";
     box.querySelectorAll(".placehit").forEach((b) => b.addEventListener("click", () => {
       const r = d.results[+b.dataset.i];
       if (map) map.setView([r.lat, r.lon], 14);
@@ -317,7 +328,8 @@ async function placeSearch(q) {
 /* ---------- map ---------- */
 function renderMap() {
   if (!map) {
-    map = L.map("map", { zoomControl: true }).setView(region === "bkk" ? [13.76, 100.56] : [13.95, 100.55], region === "bkk" ? 11 : 9);
+    map = L.map("map", { zoomControl: true }).setView([13.76, 100.56], 11);
+    setTimeout(fitRegion, 0);
     // Stations on top so they are always tappable; citizen-report cells below and non-interactive (owner
     // feedback: taps hit the Traffy circles first). A tap there opens the point check, which lists the counts.
     map.createPane("reports").style.zIndex = 350;
@@ -337,11 +349,9 @@ function renderMap() {
     const opts = L.control({ position: "topleft" });  // bottom-left sat under the legend and below the fold at 390 px
     opts.onAdd = () => {
       const d = L.DomUtil.create("div", "legend");
-      d.innerHTML = `<label><input type="checkbox" id="all-th"> แสดงสถานีทั่วประเทศ</label>
-        <label><input type="checkbox" id="nodata"> แสดงสถานีที่ยังคาดการณ์ไม่ได้ <span id="hidden-n"></span></label><div id="unplaced" class="muted"></div>`;
+      d.innerHTML = `<label><input type="checkbox" id="nodata"> แสดงสถานีที่ยังคาดการณ์ไม่ได้ <span id="hidden-n"></span></label><div id="unplaced" class="muted"></div>`;
       L.DomEvent.disableClickPropagation(d);
       d.querySelector("#nodata").addEventListener("change", (e) => { showNoData = e.target.checked; renderMap(); });
-      d.querySelector("#all-th").addEventListener("change", (e) => toggleNational(e.target.checked));
       return d;
     };
     opts.addTo(map);
@@ -357,9 +367,9 @@ function renderMap() {
   if (sa) sa.textContent = streetAge();
   // Map default: gauges with a tested forecast and fresh data (owner, 2026-09-26: "separate the non-predictable from
   // the map, with an option to show"). The list and the point check still use every gauge.
-  const onMap = (s) => showNoData || (hasForecast(s) && s.status !== "unknown");
+  const onMap = (s) => inRegion(s) && (showNoData || (hasForecast(s) && s.status !== "unknown"));
   const hn = document.getElementById("hidden-n");
-  if (hn) hn.textContent = `(${stations.filter((s) => s.lat && !onMap(s)).length})`;
+  if (hn) hn.textContent = `(${stations.filter((s) => s.lat && inRegion(s) && !onMap(s)).length})`;
   stations.filter((s) => s.lat && s.lon && onMap(s)).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
     const st = stOf(s);
     const approx = (s.notes || []).includes("approx_location");
@@ -368,24 +378,16 @@ function renderMap() {
       .bindTooltip(`${esc(s.name_th)} — ${esc(st.th)} ${esc(levelText(s))}${notesText(s) ? `<br><small>${esc(notesText(s))}</small>` : ""}`)
       .on("click", () => showDetail(s.code)).addTo(layer);
   });
-  const unplaced = stations.filter((s) => !s.lat).length;
+  const unplaced = stations.filter((s) => !s.lat && inRegion(s)).length;
   document.getElementById("unplaced").textContent = unplaced ? `${unplaced} สถานีไม่มีพิกัด (ดูในรายการ)` : "";
 }
 
-/* ---------- whole HII network (optional layer; small markers) ---------- */
-let national = null;
-async function toggleNational(on) {
-  if (national) { national.remove(); national = null; }
-  if (!on) return;
-  national = L.layerGroup().addTo(map);
-  const d = await getJSON("/api/stations?scope=all");
-  const focus = new Set(stations.map((s) => s.code));
-  d.stations.filter((s) => s.lat && !focus.has(s.code)).forEach((s) => {
-    const st = stOf(s);
-    L.circleMarker([s.lat, s.lon], { pane: "stations", radius: 5, color: "#fff", weight: 1, fillColor: st.color, fillOpacity: 0.8, bubblingMouseEvents: false })
-      .bindTooltip(`${esc(s.name_th)} (${esc(s.province || "")}) — ${esc(st.th)}`).on("click", () => showDetail(s.code)).addTo(national);
-  });
-  map.setView([13.8, 100.9], 6);
+// Map view follows the region chip: Bangkok at street level, any other region fitted to its gauges (D-064).
+function fitRegion() {
+  if (!map) return;
+  if (region === "bkk") { map.setView([13.76, 100.56], 11); return; }
+  const pts = stations.filter((s) => s.lat && s.lon && inRegion(s)).map((s) => [s.lat, s.lon]);
+  if (pts.length) map.fitBounds(pts, { padding: [24, 24], maxZoom: 11 });
 }
 
 /* ---------- Chao Phraya profile (1-D, gauges only; no interpolation between them) ---------- */
@@ -443,19 +445,17 @@ function streetNote(s) {
   if (n < STREET_MIN) return "";
   const calm = s.status === "normal" || (s.status === "watch" && s.status_basis !== "bma_thresholds");
   return `<div class="warnbox"><strong>ถนนรอบสถานีนี้ (1 กม.) มีรายงานน้ำท่วม ${n} เรื่องใน 6 ชม.</strong>${esc(streetAge())} (Traffy Fondue)
-    ${calm ? `<br>น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}ยังต่ำกว่าตลิ่ง แต่ถนนท่วมได้ เพราะฝนตกหนักเกินกว่าท่อระบายน้ำจะรับไหว
-      และ กทม. มักพร่องน้ำในคลองไว้รับฝน <b>สถานีนี้วัดน้ำในคลอง ไม่ได้วัดน้ำบนถนน</b>` : ""}</div>`;
+    ${calm ? `<br>น้ำใน${s.water || "คลอง"}ยังต่ำกว่าตลิ่ง แต่ถนนท่วมได้ เพราะฝนตกหนักเกินกว่าท่อระบายน้ำจะรับไหว
+      ${s.agency === "BMA" ? "และ กทม. มักพร่องน้ำในคลองไว้รับฝน " : ""}<b>สถานีนี้วัดน้ำใน${s.water || "คลอง"} ไม่ได้วัดน้ำบนถนน</b>` : ""}</div>`;
 }
 
 const NEW_DAYS = 7;
 const isNew = (s) => s.history_days != null && s.history_days < NEW_DAYS;
 function newGaugeNote(s, fc) {
   if (!isNew(s) || Object.keys(fc?.skill || {}).length) return "";  // a placeholder forecast exists without any tested skill
-  const since = new Date(s.history_since), ready = new Date(since.getTime() + NEW_DAYS * 864e5);
-  const d = (t) => t.toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" });
-  return `<div class="warnbox"><strong>สถานีใหม่ในระบบ</strong> เริ่มเก็บข้อมูล ${esc(fmtTime(s.history_since))} ·
-    กราฟจะยาวขึ้นทุก 10 นาที · การคาดการณ์จะเริ่มเมื่อมีข้อมูลครบ ${NEW_DAYS} วัน (ราว ${esc(d(ready))})
-    <span class="muted">ข้อมูลเดิมของสถานีอื่นไม่ได้หายไป</span></div>`;
+  // D-064: history is fetched from HII for every gauge; the forecast starts after its backtest, not on a fixed date
+  return `<div class="warnbox"><strong>กำลังดึงข้อมูลย้อนหลังจาก สสน.</strong> เรามีข้อมูลสถานีนี้ตั้งแต่ ${esc(fmtTime(s.history_since))} ·
+    กราฟจะยาวขึ้นเมื่อดึงข้อมูลย้อนหลังครบ 1 ปี · การคาดการณ์จะแสดงเมื่อทดสอบย้อนหลังแล้วแม่นกว่าการใช้ค่าล่าสุด</div>`;
 }
 
 function chartSVG(obs, fc, bank, crit = null) {
@@ -610,10 +610,11 @@ async function showDetail(code) {
     const hid = (s.notes || []).find((n) => n === "erratic" || n === "stuck"), erratic = !!hid;  // pumps at the sensor or a faulty sensor (D-057): the reason leads
     box.innerHTML = `<div class="tools"><button class="btn share" aria-label="แชร์">🔗 แชร์</button><button class="btn close" aria-label="ปิด">✕</button></div>
       <h2 id="sheet-title">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></h2>
-      <div class="muted">${esc(s.river || "")} · ${esc(s.amphoe || "")} ${esc(s.province || "")} · ${esc(s.agency || "")}</div>
+      <div class="muted">${esc(s.river || "")} · ${esc(s.amphoe || "")} ${esc(s.province || "")} · ${esc(agencyTh(s.agency))}</div>
+      ${s.twin ? `<p class="muted twin">อีกหน่วยงานวัดที่จุดเดียวกัน: <a href="#s=${encodeURIComponent(s.twin.code)}">${esc(s.twin.name_th)} (${esc(agencyTh(s.twin.agency))}) ›</a> · ตลิ่งและหมุดอ้างอิงของแต่ละหน่วยงานต่างกัน</p>` : ""}
       <p class="headline" style="color:${st.color}">${erratic ? (hid === "stuck" ? "ไม่แสดงระดับน้ำ (ค่าค้าง)" : "ไม่แสดงระดับน้ำ (ขึ้นลงผิดปกติ)") : s.status_basis === "bma_thresholds"
         ? `${esc(st.long)}${s.over_bma_critical_m != null && s.over_bma_critical_m > 0 && s.status !== "critical" ? ` · ${esc(levelText(s))}` : ""}`
-        : s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.river?.startsWith("แม่น้ำ") ? "แม่น้ำ" : "คลอง"}${freeboardText(s.freeboard_m)}`)
+        : s.status === "normal" && s.freeboard_m != null ? esc(`น้ำใน${s.water || "คลอง"}${freeboardText(s.freeboard_m)}`)
         : `${esc(st.long)}${s.freeboard_m != null ? ` · <span class="nowrap">${esc(freeboardText(s.freeboard_m) + ydayText(s))}</span>` : ""}`}</p>
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
@@ -663,6 +664,11 @@ function pointHTML(d, src, place = "") {
   const depths = Object.entries(ev.user_depth_reports_1km_24h || {}).map(([k, n]) => `${esc(DEPTH[k] || k)} ${Number(n)} ราย`).join(" · ");
 
   const fc = d.forecast || {};
+  const nat = d.mode === "national", W = d.word || "คลอง";  // D-064: outside Bangkok the local channel is a river
+  const head = (k) => nat ? ({ "ล้นตลิ่ง": `น้ำใน${W}ล้นตลิ่ง`, "ใกล้ตลิ่ง/คลองเต็ม": `น้ำใน${W}ใกล้ถึงตลิ่ง`,
+    "เฝ้าระวัง": `น้ำใน${W}เริ่มสูง ควรเฝ้าระวัง`, "ยังรับน้ำได้": `${W}ยังรับน้ำได้`, "ไม่ทราบ": `ยังไม่ทราบระดับน้ำใน${W}`,
+    "ไม่มีสถานีใกล้": "ไม่มีสถานีวัดน้ำใกล้จุดนี้", [`${W}รอบจุดต่างกันมาก`]: `${W}รอบจุดต่างกันมาก`, "สถานีอยู่ไกล": "สถานีวัดน้ำอยู่ไกล" }[k] || k)
+    : (CANAL_HEAD[k] || k);
   const FC_RISK = {  // one icon, on the headline only (issue #3: fewer emojis)
     high: { cls: "risk-high", icon: "⚠️" }, moderate: { cls: "risk-mod", icon: "⚠️" },
     low: { cls: "risk-low", icon: "" }, info: { cls: "risk-info", icon: "" },
@@ -676,12 +682,12 @@ function pointHTML(d, src, place = "") {
   if (!a.category) {
     canal = { color: "#9ca3af", word: "ไม่มีสถานีใกล้", sub: "ไม่มีสถานีวัดน้ำในระยะ 8 กม." };
   } else if ((a.confidence === "very_low" || a.confidence === "none") && a.n_close) {
-    canal = { color: "#9ca3af", word: "คลองรอบจุดต่างกันมาก",
-      sub: `คลองใกล้จุด ${a.n_close} แห่ง (ไม่เกิน 3 กม.) มีตั้งแต่ “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” จึงสรุปรวมไม่ได้ ดูทีละคลองด้านล่าง` };
+    canal = { color: "#9ca3af", word: nat ? `${W}รอบจุดต่างกันมาก` : "คลองรอบจุดต่างกันมาก",
+      sub: `${nat ? "สถานี" : "คลอง"}ใกล้จุด ${a.n_close} แห่ง (ไม่เกิน 3 กม.) มีตั้งแต่ “${esc(STATUS[a.min].th)}” ถึง “${esc(STATUS[a.max].th)}” จึงสรุปรวมไม่ได้ ดูทีละสถานีด้านล่าง` };
   } else if (a.confidence === "very_low" || a.confidence === "none") {
-    canal = { color: "#9ca3af", word: "สถานีอยู่ไกล", sub: `สถานีใกล้สุดห่าง ${a.nearest_km} กม. อาจอยู่คนละพื้นที่ปิดล้อม` };
+    canal = { color: "#9ca3af", word: "สถานีอยู่ไกล", sub: `สถานีใกล้สุดห่าง ${a.nearest_km} กม.${nat ? " อาจอยู่คนละลำน้ำ" : " อาจอยู่คนละพื้นที่ปิดล้อม"}` };
   } else {
-    canal = { color: STATUS[a.category].color, word: STATUS[a.category].th, sub: `สรุปจากคลองใกล้จุด ${a.n_close || a.n} แห่ง` };
+    canal = { color: STATUS[a.category].color, word: STATUS[a.category].th, sub: `สรุปจาก${nat ? "สถานี" : "คลอง"}ใกล้จุด ${a.n_close || a.n} แห่ง` };
   }
   // When will it drop? The station's recovery estimate in dates/hours (never minutes, KI-231)
   // Compact canal block (owner 2026-09-27: "too much text, collapse the not important"): one gauge with its trend rows and
@@ -697,11 +703,11 @@ function pointHTML(d, src, place = "") {
   // 24/48 h rows; a gauge with only a 12 h forecast (short history) shows that row instead of nothing (KI-239)
   const trendBody = (x) => `${trendRows(x, [24, 48]) || trendRows(x, [12])}${changeLines(x)}`;
   const noTrendLine = near && near.station && main !== near
-    ? gBlock("คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ (สถานีเริ่มเก็บข้อมูลไม่นาน)</div>`) : "";
+    ? gBlock(nat ? "สถานีใกล้สุด" : "คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ (ยังไม่ผ่านการทดสอบย้อนหลัง)</div>`) : "";
   const mainBlock = main && main.station
-    ? gBlock(noTrendLine ? "คาดการณ์จากคลองใกล้เคียง" : "คลองใกล้สุด", main, trendBody(main.station)) : "";
-  const detailBits = [canal.sub, main && main.far ? "สถานีที่ใช้อยู่ห่างเกิน 3 กม. อาจอยู่คนละพื้นที่ปิดล้อม ใช้ประกอบเท่านั้น" : "",
-    main && main.station ? `ข้อมูลจาก${main.station.agency === "BMA" ? "สำนักการระบายน้ำ กทม." : main.station.agency === "RID" ? "กรมชลประทาน" : "สสน."}` : "",
+    ? gBlock(noTrendLine ? `คาดการณ์จาก${nat ? "สถานี" : "คลอง"}ใกล้เคียง` : nat ? "สถานีใกล้สุด" : "คลองใกล้สุด", main, trendBody(main.station)) : "";
+  const detailBits = [canal.sub, main && main.far ? `สถานีที่ใช้อยู่ห่างเกิน 3 กม. ${nat ? "อาจอยู่คนละลำน้ำ" : "อาจอยู่คนละพื้นที่ปิดล้อม"} ใช้ประกอบเท่านั้น` : "",
+    main && main.station ? `ข้อมูลจาก${agencyTh(main.station.agency)}${["HII", "BMA"].includes(main.station.agency) ? "" : " (ผ่าน สสน.)"}` : "",
     a.n > 1 ? `มีสถานีอื่นอีก ${a.n - 1} แห่งในระยะ 8 กม. (รายชื่อด้านล่าง)` : ""].filter(Boolean);
   const canalGauges = `<div class="pf-gauges">${noTrendLine}${mainBlock}${detailBits.length ? `<details class="pf-more"><summary>รายละเอียด</summary><div>${detailBits.join("<br>")}</div></details>` : ""}</div>`;
 
@@ -734,12 +740,12 @@ function pointHTML(d, src, place = "") {
       <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
       <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
-        <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(CANAL_HEAD[canal.word] || canal.word)}</b>
+        <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(head(canal.word))}</b>
           ${canalGauges}</div></li>
         <li><span class="pf-dot" style="background:${rainF.color}"></span><div><b class="pf-word">${esc(rain == null ? "ยังไม่มีข้อมูลฝน" : `${rainF.word}ใน 24 ชม. ข้างหน้า`)}</b>
           ${rainF.sub ? `<div class="pf-sub">${rainF.sub}</div>` : ""}</div></li>
         <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b class="pf-word">${esc(nRep > 0 ? `มีแจ้งน้ำท่วมบนถนน ${nRep} เรื่อง` : "ยังไม่มีรายงานน้ำท่วมบนถนน")}</b>
-          <div class="pf-sub">${hasStreetFlood ? "<b>น้ำรอระบายรอบจุดนี้ แม้คลองใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · " : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
+          <div class="pf-sub">${hasStreetFlood ? `<b>น้ำรอระบายรอบจุดนี้ แม้${W}ใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · ` : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
       </ul>
     </section>`;
 
@@ -751,11 +757,11 @@ function pointHTML(d, src, place = "") {
   let stationListHTML = "";
   if (fcStations.length) {
     stationListHTML += `<div class="sec-heading"><span>สถานีที่มีการคาดการณ์</span> <span class="sub">แตะเพื่อดูกราฟ 72 ชม.</span></div>
-      <ul class="list">${fcStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("")}</ul>`;
+      <ul class="list">${fcStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · สถานี${esc(s.water || (s.water_body === "river" ? "แม่น้ำ" : "คลอง"))}</div>`)).join("")}</ul>`;
   }
   if (nearbyStations.length) {
     stationListHTML += `<div class="sec-heading"><span>สถานีใกล้จุดนี้</span> <span class="sub">ระดับน้ำล่าสุด</span></div>
-      <ul class="list">${nearbyStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · ${s.water_body === "river" ? "สถานีแม่น้ำ" : "สถานีคลอง"}</div>`)).join("")}</ul>`;
+      <ul class="list">${nearbyStations.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(s.distance_km)} กม. · สถานี${esc(s.water || (s.water_body === "river" ? "แม่น้ำ" : "คลอง"))}</div>`)).join("")}</ul>`;
   }
   if (!fcStations.length && !nearbyStations.length) {
     stationListHTML = `<p class="muted">ไม่มีสถานีที่ส่งข้อมูลในรัศมี 15 กม.</p>`;
@@ -827,7 +833,7 @@ function setTab(tab) {
 
 async function load() {
   try {
-    const [d, st] = await Promise.all([getJSON("/api/stations?scope=focus"), getJSON("/api/stats").catch(() => null)]);
+    const [d, st] = await Promise.all([getJSON("/api/stations"), getJSON("/api/stats").catch(() => null)]);
     stations = d.stations;
     streetSrc = d.street_source || null;
     const latest = stations.map((s) => s.obs_time).filter(Boolean).sort().pop();

@@ -17,6 +17,9 @@ from floodwatch.config import settings
 
 URL = "https://nominatim.openstreetmap.org/search"
 VIEWBOX = "99.8,14.6,101.0,13.4"  # lon1,lat1,lon2,lat2: Bangkok, suburbs and Ayutthaya
+# Thailand-wide since v0.16 (D-064): the Bangkok box only ranks Bangkok first (bounded=0), it no longer limits results
+SEARCH_PARAMS = {"format": "jsonv2", "limit": 5, "countrycodes": "th", "viewbox": VIEWBOX, "bounded": 0,
+                 "accept-language": "th"}
 MIN_INTERVAL_S = 1.1
 CACHE_MAX, CACHE_TTL_S = 500, 7 * 24 * 3600
 _cache: OrderedDict[str, tuple[float, list[dict]]] = OrderedDict()
@@ -89,8 +92,7 @@ def search(q: str, conn) -> list[dict]:
     qs, results = variants(q), []
     for v in qs:
         _throttle(conn)
-        r = requests.get(URL, params={"q": v, "format": "jsonv2", "limit": 5, "countrycodes": "th", "viewbox": VIEWBOX,
-                                      "bounded": 1, "accept-language": "th"},
+        r = requests.get(URL, params={"q": v, **SEARCH_PARAMS},
                          headers={"User-Agent": settings.user_agent}, timeout=10)
         conn.commit()  # release the advisory lock only after the call, so calls stay ≥ 1.1 s apart
         r.raise_for_status()

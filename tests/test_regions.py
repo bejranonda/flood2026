@@ -58,3 +58,9 @@ def test_station_list_is_nationwide_by_default():
     assert 'Query("all"' in inspect.getsource(api.stations)
     for fn in (api.point_check, api.near):
         assert "_station_rows(True)" in inspect.getsource(fn)
+
+
+def test_place_search_prefers_bangkok_but_finds_thai_places_anywhere():
+    from floodwatch import geocode
+    assert geocode.SEARCH_PARAMS["countrycodes"] == "th" and geocode.SEARCH_PARAMS["bounded"] == 0
+    assert geocode.SEARCH_PARAMS["viewbox"] == geocode.VIEWBOX  # Bangkok ranks first when names repeat
