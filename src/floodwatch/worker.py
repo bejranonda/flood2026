@@ -43,6 +43,11 @@ FORECASTER_TASKS = [
 ]
 
 
+def owns_schema(role: str) -> bool:
+    """Only the collector runs schema.sql: two containers altering tables at start deadlocked with inserts."""
+    return role != "forecaster"
+
+
 def tasks_for(role: str) -> list[tuple[str, int]]:
     return FORECASTER_TASKS if role == "forecaster" else TASKS
 
@@ -123,13 +128,17 @@ def run_task(name: str) -> None:
 
 def main(role: str = "collector") -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-    for attempt in range(30):  # wait for the database container
+    for attempt in range(60):  # wait for the database container (and, for the forecaster, for the schema)
         try:
-            db.init_schema()
+            if owns_schema(role):
+                db.init_schema()
+            else:
+                with db.connect() as c:
+                    c.execute("SELECT 1 FROM forecast_model LIMIT 1")
             break
         except Exception as e:
             log.warning("db not ready (%s), retrying", e)
-            time.sleep(2)
+            time.sleep(5)
     if role == "forecaster":
         with db.connect() as c:
             learned = db.get_state(c, "upstream_learned")

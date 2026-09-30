@@ -27,3 +27,9 @@ def test_collectors_never_wait_for_forecasts():
     assert "forecast" not in collector and "upstream_learn" not in collector
     assert forecaster == {"forecast", "upstream_learn"}
     assert "hii_waterlevel" in collector and "retention" in collector
+
+
+def test_only_the_collector_changes_the_schema():
+    # 2026-09-30 20:25 UTC: both containers ran init_schema at start; the forecaster's ALTER TABLE station deadlocked
+    # with the collector's observation insert. One owner; the forecaster waits for the tables instead.
+    assert worker.owns_schema("collector") and not worker.owns_schema("forecaster")
