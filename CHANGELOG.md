@@ -2,6 +2,37 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.0 — 2026-09-30
+- **Nationwide parity (owner: "the nation-wide should be the same as in Bangkok"; D-064).** Every HII-network gauge in
+  Thailand (733 outside the Bangkok focus area: RID 297, HII 274, พพภ. 89, EGAT 73) now gets what a Bangkok gauge gets:
+  a year of history (`hii_backfill` over the whole network, focus first, 12 gauges per 10 min; `hii_history` refills
+  nationwide gauges in six daily slices), QC, the same forecast ladder and backtest gate, the same sheet and rows.
+  Before, they only had the readings collected since 2026-09-26 and were never forecast, while their sheet promised
+  "การคาดการณ์จะเริ่ม… (ราว 3 ต.ค.)" (KI-249).
+- **`star` inputs outside Bangkok.** Rain from a 0.5° Open-Meteo cell per gauge (177 cells, 50 per request; forecast
+  every 3 h, a year of previous-run rain for 8 new cells per hour) instead of Bangkok's rain; upstream gauges learned
+  per basin (best *leading* 24 h change, lag 1–48 h, r ≥ 0.5, ≤ 250 km, before the backtest window; co-located gauges of
+  another agency are never upstream). Bangkok gauges keep their proven inputs.
+- **Forecaster container.** Forecasts run in their own service (`worker --role forecaster`); the backtest is cached per
+  gauge for ~20 h (`forecast_model`). 965 gauges in 294–409 s; the 10-min collectors never wait.
+- **Bounded storage.** Daily `retention`: HII-network readings > 400 days (re-fetchable; BMA never), rain-forecast issues
+  > 3 days, forecast runs thinned after 2 days and dropped after 14.
+- **UI parity.** Region chips for the whole country (กทม. · ปริมณฑล · เหนือ กทม. · ภาคเหนือ · อีสาน · ตะวันออก ·
+  ตะวันตก · ใต้ · ทั้งประเทศ; default กทม.); status counts, list and map follow the chip; the "แสดงสถานีทั่วประเทศ"
+  checkbox is gone. The water word comes from the agency's river name ("น้ำในแม่น้ำ…" at URTU07, not "น้ำในคลอง…").
+  A gauge of another agency at the same place is linked, never merged (E.29A ↔ URTU07). Thai agency names
+  (FOP = มูลนิธิอาสาเพื่อนพึ่ง (ภาฯ) ยามยาก สภากาชาดไทย). Pins outside Bangkok are judged from the river and stream
+  gauges near them, without Bangkok's polder cautions. Place search finds places anywhere in Thailand.
+- **Fixes found while deploying.** `/api/stations` hung ~13 min (nested memo on a non-reentrant lock, KI-250); a dead
+  HII host (`tiwrm.hii.or.th`, connect timeouts) no longer stalls the collectors: 10 s connect timeout and a 10-min
+  host cooldown (KI-251); two containers running `schema.sql` at start deadlocked (only the collector owns it now,
+  KI-252); `/api/health` ignores flagged and future-stamped rows (KI-247; the 26 rows were flagged with the owner's OK).
+- **Proof.** Bangkok 40-gauge regression unchanged (48 h: mean skill 0.29, 36/40 over the gate; baseline 0.28, 36/40).
+  Nationwide backtest re-run pending the backfill (`scripts/backtest_nationwide.py`). `scripts/ux_consistency.py` now
+  samples every region and checks national pins (C7): 488 sheets, 76 pins, 1,288 rows on the live site, 1 finding
+  (two different gauges with the same status pill in one pin panel; not a regression). The phone map fits the chosen
+  region when its tab is first shown.
+
 ## v0.15.3 — 2026-09-30
 - **Site-level SEO and link previews (owner: "continue all as suggested").** `/robots.txt` (allow the page, keep
   `/api/docs`, `/api/openapi.json` and the DB-heavy `/api/point` out of indexes) and `/sitemap.xml` (one URL: every

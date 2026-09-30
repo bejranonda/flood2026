@@ -257,3 +257,12 @@ UX principles established through visitor testing during the 2026 flood season:
 
 - **Site head and crawlers (v0.15.3, KI-248, verified live 2026-09-30):** `/robots.txt` and `/sitemap.xml` are served by the app (200, `text/plain` / `application/xml`); `og:image` is `/static/og-image.jpg` (1200×630, 100 KB); the header/footer version is filled by the server (`__VERSION__`). `#fragment` views are not separate pages for search engines, so the sitemap lists only the home page. See [APPROACH §21](APPROACH_AND_METHODS.md).
 - **HII can stamp readings in the future (KI-247, 2026-09-30):** one `waterlevel_data` fetch carried 28 gauges at 2026-10-01 16:00 UTC, ~21 h ahead of the fetch; cause unknown ⚠️. Such rows are flagged `future_time` (15-min tolerance, as for BMA).
+
+## 12. The HII network outside Bangkok (checked 2026-09-30, production DB and live calls)
+- **Gauges:** 1,044 stations in the DB, 311 in the focus area; the other 733 are RID 297, HII 274, FOP 89, EGAT 73 (719 reported within 24 h). All have an `hii_id` (a year via `waterlevel_graph`). By region (v0.16 chips): กทม. 210, ปริมณฑล 27, เหนือ กทม. 176, ภาคเหนือ 173, อีสาน 157, ตะวันออก 52, ตะวันตก 71, ใต้ 171; 3 gauges in Myanmar (no region).
+- **Agency names (HII `waterlevel_load`, live 2026-09-30):** RID กรมชลประทาน (ชป.); HII สถาบันสารสนเทศทรัพยากรน้ำ (สสน.); EGAT การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย (กฟผ.); **FOP มูลนิธิอาสาเพื่อนพึ่ง (ภาฯ) ยามยาก สภากาชาดไทย (พพภ.)**.
+- **Same place, two agencies:** E.29A (RID, bank 238.5 m) and URTU07 (EGAT, bank 237.39 m) at บ้านผานกเค้า on the Nam Phong. Each keeps its own bank; the UI links them (≤ 300 m, different agency).
+- **River names:** 128+104+29+6 gauges on a "แม่น้ำ…", 172 on "คลอง…", 82 "น้ำ…", 59 "ห้วย…", 38 "ลำ…", 25 "ลำน้ำ…"; 79 nationwide gauges have no river name.
+- **Rain cells:** 177 distinct 0.5° cells (354 at 0.25°) cover the nationwide gauges.
+- **Scale:** one year of hourly history for 733 gauges ≈ 6.3 M rows ≈ 1.3 GB in `observation` (~212 B per row including indexes).
+

@@ -1,6 +1,6 @@
 # Phase 5 — Nationwide monitoring, then forecasts per flood type
 
-> **Status:** 🔎 validated, **not built** (owner, 2026-09-27: "review and validate first"; work stays on branch `research/nationwide-scope`). **Gate G5:** see the end.
+> **Status:** 🟡 **v0.16.0 (2026-09-30): nationwide parity built (D-064)** — history, QC, forecasts and panels for every HII-network gauge. The national *layers* (dams, FFPI, DWR, GISTDA) below are still validated, not built. **Gate G5:** see the end.
 
 ## Goal
 Give residents in any province, and local officials and volunteers, an honest national view: measured levels against **official** thresholds, reservoir state, the agencies' flash-flood products and satellite-observed flooding, each labelled with its tier and time. Forecasts come later, one flood type at a time, only after a backtest (D-044).
@@ -15,13 +15,20 @@ Give residents in any province, and local officials and volunteers, an honest na
 - [ ] Navy tide predictions (HII FEWS, 28 stations) and RID discharge thresholds (C.2, C.13) in the river station sheets
 ### 5.1 Safety net (D-046)
 - [ ] Nightly local `pg_dump -Fc` (keep 3) + one tested restore into a throwaway container (KI-511; owner question Q29)
+### 5.1b Nationwide parity (v0.16.0, D-064) — done 2026-09-30
+- [x] A year of history for every HII-network gauge (`hii_backfill`, `hii_history` slices); bounded retention (400 days, never BMA)
+- [x] QC and forecasts for every gauge; forecaster container with a daily cached backtest
+- [x] `star` inputs outside Bangkok: 0.5° rain cells, upstream gauges learned per basin
+- [x] Region chips for the country; water word from the river name; twin gauges linked; national pin mode; place search Thailand-wide
+- [ ] Re-run `scripts/backtest_nationwide.py` after the backfill and a year of cell rain (~2026-10-01 21:00 UTC); write the numbers to APPROACH §19.8
+- [ ] Dam-controlled reaches (e.g. E.29/URTU07 above Ubol Ratana): release inputs, like C.13 for the Chao Phraya
 ### 5.2 National collectors behind a flag (lean, D-046)
 - [ ] Freshness filter shared by all national collectors (KI-111)
 - [ ] HII dams daily (large, medium with a fresh date, small-dam telemetry with spillway margin)
 - [ ] HII FEWS: thresholds daily, FFPI every 6 h, tide daily
 - [ ] GISTDA flood extent (7 days) daily, stored per H3 cell with pass dates (KI-510)
 - [ ] DWR EWS hourly via the Thai egress (BE dates, status 9) — only once a reliable Thai egress exists or accepting gaps (A34)
-- [ ] 90-day retention for high-volume series; growth measured and written to ARCHITECTURE §9
+- [x] Retention for high-volume series (v0.16: readings 400 d, rain issues 3 d, forecast runs 14 d); ⚠️ growth to re-measure after the backfill (ARCHITECTURE §8b)
 - [ ] Not built: HII gates (dead feed), EGAT API (empty), GloFAS until the snapping rule is implemented (KI-509)
 ### 5.3 National view (only after D-046's conditions)
 - [ ] Owner has sent the HII/DWR/RID notes; a reliable Thai egress exists

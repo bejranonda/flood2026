@@ -16,6 +16,9 @@ Every adapter goes through the same steps in the same order:
 
 A failing adapter must never crash the scheduler or stop the other adapters.
 
+## Nationwide (v0.16, D-064)
+`hii_backfill` covers every HII-network gauge (focus first, 12 per run); `hii_history` refills nationwide gauges in six rotating slices; `openmeteo_cells` (every 3 h) and `openmeteo_prev_cells` (hourly, a year for 8 new cells) fetch rain for the 0.5° cells of `floodwatch.rain_cells`, 50 cells per request. Old rows are removed by `floodwatch.retention` (never BMA).
+
 ## Planned adapters (after G0 confirms them in [SOURCES.md](../../../docs/SOURCES.md))
 `hii_waterlevel`, `hii_rain`, `hii_graph_backfill`, `openmeteo_forecast`, `openmeteo_ensemble`, `openmeteo_flood`, `rid_reports`, `bma_dds`, `navy_tide_pdf`. The keyed adapters (`tmd`, `gistda`) come only once the keys exist.
 

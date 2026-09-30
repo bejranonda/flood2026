@@ -383,8 +383,11 @@ function renderMap() {
 }
 
 // Map view follows the region chip: Bangkok at street level, any other region fitted to its gauges (D-064).
+let fitPending = false;  // on a phone the map sits in a hidden tab (0×0): fit again when it is shown
 function fitRegion() {
   if (!map) return;
+  fitPending = map.getSize().x === 0;
+  if (fitPending) return;
   if (region === "bkk") { map.setView([13.76, 100.56], 11); return; }
   const pts = stations.filter((s) => s.lat && s.lon && inRegion(s)).map((s) => [s.lat, s.lon]);
   if (pts.length) map.fitBounds(pts, { padding: [24, 24], maxZoom: 11 });
@@ -828,7 +831,7 @@ function setTab(tab) {
   document.getElementById("view-list").hidden = tab === "river";
   document.getElementById("view-river").hidden = tab !== "river";
   if (tab === "river") renderRiver();
-  if (tab === "map" && map) setTimeout(() => map.invalidateSize(), 50);
+  if (tab === "map" && map) setTimeout(() => { map.invalidateSize(); if (fitPending) fitRegion(); }, 50);
 }
 
 async function load() {

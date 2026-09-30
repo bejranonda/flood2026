@@ -15,7 +15,7 @@
 | **GISTDA** | GISTDA key works for the flood-extent service | ✅ **works** (2026-09-27 10:05 UTC): the key was fine; our endpoint path and key placement were outdated (KI-510). Fixed from the docs link you sent | |
 | **GFLOOD** | Google Flood Forecasting API key (`GOOGLE_FLOOD_API_KEY`) | ⬜ open — you chose to apply (2026-09-27) | 2 |
 | **EGRESS** | A reliable Thai egress before any public national view (DWR, RID answer only from Thailand, KI-110) | ⬜ open — needed before national goes public (D-046) | 3 |
-| **Q3+** | Courtesy/permission emails to HII, DWR, RID before national data goes public (drafts below) | ⬜ open — needed before national goes public (D-046) | 3 |
+| **Q3+** | Courtesy/permission emails to HII, DWR, RID (drafts below) | ⬜ open — **more urgent since v0.16.0 (2026-09-30): every HII/RID/EGAT/พพภ. gauge is now public with forecasts (D-064, owner: "go public, send notes in parallel")**; HII first (we fetch a year per gauge, 733 requests once, then ~120 a day) | 2 |
 | Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
 | Q10 | Repository license | ✅ **closed** (MIT License added; D-043) | — |
 | BMA | Courtesy note to the flood69 relay (and BMA) that we show their copy of BMA data, with attribution (D-031, KI-218) | ⬜ optional | 3 |

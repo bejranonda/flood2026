@@ -82,6 +82,10 @@ Update `Last updated` on each file you touch. Docs are written in English; Thai 
 - **A river gauge is never canal evidence** (KI-223, D-059), in the canal factor, the gate or the headline.
 - **New stations must say they are new** (no empty chart without an explanation): the API gives `history_since`/`history_days`, the UI labels gauges with < 7 days of history.
 
+- **Never let one slow host or task hold the collectors (KI-251, D-064).** Connect timeouts are short (10 s) and a host that refused a connection is skipped for 10 min; long work (forecasts, learning) runs in its own container. Only the collector runs `schema.sql` (KI-252).
+- **Cached payloads may nest only through a re-entrant lock (KI-250).** After every deploy, time `/api/stations` at the origin (`curl http://127.0.0.1:3000/api/stations`), not only `/api/health`.
+- **Every table that grows with gauges × time needs a retention** (`retention.py`): readings 400 days (never BMA), rain-forecast issues 3 days, forecast runs thinned after 2 days and dropped after 14.
+
 ## 4. Modelling and scientific rigour
 
 ### 4.1 No leakage
@@ -181,6 +185,8 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 23. **Logs are data too (D-032, KI-512):** access logs must not contain search text or coordinates; `RedactQuery` strips the query string of `/api/geocode`, `/api/point`, `/api/reverse`, `/api/near`. Any new endpoint that takes a place or a position is added to `PRIVATE_QUERY_PATHS`.
 
 ---
+
+- **Nationwide parity (D-064):** one set of panels and rules for every gauge. Words come from data, never from guesses: the water word from the agency's river name (`water_word`), agency names in Thai (`AGENCY_TH`). Bangkok-only cautions (polders, drainage, BMA pumping) are said only where the nearest gauge is a Bangkok-area gauge (`pin_mode`). Never promise a date for a forecast; say what must happen first (history, backtest).
 
 ## 6b. AI usage (D-022, D-030)
 - **The site must work identically without AI.** Only the worker calls AI, in the background, with error isolation and circuit breakers.

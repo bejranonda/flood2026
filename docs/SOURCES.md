@@ -128,6 +128,14 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | Open-Meteo previous runs | `https://previous-runs-api.open-meteo.com/v1/forecast?...&hourly=precipitation_previous_day1,precipitation_previous_day2` | 200, keyless; forecasts issued 1–2 days earlier, a year back | ✅ **collected daily** (`openmeteo_prev` → `rain_hindcast`, one year backfilled 2026-09-27); training data for `star` (D-052) |
 | Nominatim reverse | `https://nominatim.openstreetmap.org/reverse?lat&lon&format=jsonv2&zoom=14&accept-language=th` | 0.15–0.23 s; แขวง/เขต in Bangkok, อำเภอ/จังหวัด elsewhere | ✅ district line (D-051), ≤ 1 req/s shared with search, rounded ~1 km, never logged |
 
+### 2g. Nationwide history and rain cells (probed 2026-09-30 19:55–20:45 UTC, honest UA; D-064)
+| Source | Endpoint | Result |
+|---|---|---|
+| HII year per gauge | `api-v3.thaiwater.net/.../waterlevel_graph?station_type=tele_waterlevel&station_id={hii_id}&start_date=…&end_date=…` | ✅ 200; URTU07 (3519): 8,537 hourly readings 2025-10-01 → 2026-09-30, 730 KB, one request; `min_bank` 237.389, `ground_level` 225.475 |
+| Open-Meteo, several points | `api.open-meteo.com/v1/forecast?latitude=a,b,c&longitude=x,y,z&hourly=precipitation` | ✅ 200; a JSON **list** in coordinate order (a single point answers an object) |
+| Open-Meteo previous runs, several points | `previous-runs-api.open-meteo.com/v1/forecast?latitude=a,b&longitude=x,y&hourly=precipitation_previous_day1,precipitation_previous_day2&start_date=2025-10-01&end_date=2026-09-29` | ✅ 200; list of 2, 8,736 hourly values each. ⚠️ Free-tier weighting of long ranges (a year ≈ 26 calls per location) is from Open-Meteo's terms, not measured; the collector stays at ≤ 8 new cells per hour |
+| HII TIWRM chart host | `tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{code}` | ❌ connect timeout 2026-09-30 20:32–20:44 UTC (api-v3 fine at the same time) — transient outage, KI-251 |
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |

@@ -46,7 +46,9 @@ Research validity (🟢 reliable / 🟠 mixed) is explained in [../research/READ
 ## Checks and assets
 | Path | What |
 |---|---|
-| [../scripts/ux_consistency.py](../scripts/ux_consistency.py) | UI consistency proof: every sheet, a pin grid and 4 viewports (run before a release, D-062) |
+| [../scripts/ux_consistency.py](../scripts/ux_consistency.py) | UI consistency proof: every Bangkok-area sheet plus a sample per region, a pin grid, national pins (C7) and 4 viewports (run before a release, D-062, D-064) |
+| [../scripts/backtest_nationwide.py](../scripts/backtest_nationwide.py) | Backtest report: Bangkok 40-gauge regression and nationwide gauges with/without rain cells and learned upstream (D-064) |
+| [superpowers/specs/](superpowers/specs/) · [superpowers/plans/](superpowers/plans/) | Design specs and implementation plans agreed with the owner (v0.16 nationwide parity) |
 | [../scripts/ux_walk.py](../scripts/ux_walk.py) | Real-user walk on a phone and a desktop (screenshots, timings, console errors) |
 | [../scripts/owner_status.py](../scripts/owner_status.py) | What is still open for the owner |
 | [img/](img/) | README screenshots (WebP; retake with `ux_walk.py` when the UI changes) and `social-preview.png` (GitHub social preview; rebuild with `scripts/make_social_images.py`) |

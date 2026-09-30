@@ -6,8 +6,11 @@ in many possibilities"). One browser session, views compared at the same moment:
   C3 a longer horizon is never surer than a shorter one ("?" then "→ ทรงตัว");
   C4 no "undefined"/"NaN"/"null", no horizontal overflow, no line printed twice (outside the trend rows);
   C5 viewports 360 / 390 / 768 / 1440 px: home, a sheet and a pin panel load without overflow;
-  C6 the pin headline never contradicts the nearest gauge's rows ("ทรงตัว" above "↘ ลดลง").
-Usage: python3 scripts/ux_consistency.py [out.json]   (Python Playwright; Chromium with --no-sandbox as root)"""
+  C6 the pin headline never contradicts the nearest gauge's rows ("ทรงตัว" above "↘ ลดลง");
+  C7 (v0.16, D-064) a pin outside Bangkok never speaks of Bangkok's polders ("พื้นที่ปิดล้อม") and never says "no gauge
+     near" while a gauge within 3 km is listed.
+Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
+~30 min). Usage: python3 scripts/ux_consistency.py [out.json] [per_region=15]   (Python Playwright; Chromium --no-sandbox)"""
 import json, re, sys
 from playwright.sync_api import sync_playwright
 
@@ -79,7 +82,14 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True, locale="th-TH")
     open_home(pg)
     listed = pg.evaluate(LIST_JS)
-    codes = list(listed)
+    import random
+    random.seed(3)
+    per_region = int(sys.argv[2]) if len(sys.argv) > 2 else 15
+    reg = dict(pg.evaluate("() => stations.map(s => [s.code, s.region])"))
+    codes = [c for c in listed if reg.get(c) in ("bkk", "metro", "up")]
+    for r in ("north", "northeast", "east", "west", "south"):
+        pool = [c for c in listed if reg.get(c) == r]
+        codes += random.sample(pool, min(per_region, len(pool)))
     for k, code in enumerate(codes):
         if k and k % 40 == 0:  # refresh the list snapshot often: qc updates every 10 min
             open_home(pg); listed = pg.evaluate(LIST_JS)
@@ -101,6 +111,9 @@ with sync_playwright() as p:
         pg.evaluate("() => closeDetail()")
     pins = [(13.62 + i * 0.04, 100.42 + j * 0.05) for i in range(8) for j in range(8)]
     pins += [(13.7003, 100.4928), (14.40, 100.60), (13.50, 100.30)]
+    national = [(17.49, 101.72), (18.79, 98.98), (7.01, 100.47), (15.24, 104.85), (12.61, 102.10), (14.02, 99.53),
+                (16.82, 100.26), (16.44, 102.83), (8.43, 99.96)]  # Loei, Chiang Mai, Hat Yai, Ubon, Chanthaburi,
+    pins += national                                            # Kanchanaburi, Phitsanulok, Khon Kaen, Nakhon Si Thammarat
     open_home(pg); listed = pg.evaluate(LIST_JS)
     for k, (la, lo) in enumerate(pins):
         if k and k % 15 == 0:
@@ -112,6 +125,13 @@ with sync_playwright() as p:
             note("C4", f"pin {la:.3f},{lo:.3f}", "panel did not load"); continue
         counts["pins"] += 1
         v = pg.evaluate(SHEET_JS, ".pf"); check_text(f"pin {la:.3f},{lo:.3f}", v)
+        if (la, lo) in national:  # C7
+            full = pg.evaluate("() => document.querySelector('#detail').innerText")
+            if "ปิดล้อม" in full:
+                note("C7", f"pin {la:.3f},{lo:.3f}", "a national pin speaks of Bangkok polders")
+            near = pg.evaluate("() => [...document.querySelectorAll('#detail li.item .meta')].map(e => e.textContent).find(t => /ห่าง [0-2]\\.\\d กม\\./.test(t)) || ''")
+            if near and "ไม่มีสถานีวัดน้ำใกล้จุดนี้" in full:
+                note("C7", f"pin {la:.3f},{lo:.3f}", f"'no gauge near' while a gauge is listed ({near.strip()[:40]})")
         head = pg.evaluate("() => [document.querySelector('#detail .pf-title'), document.querySelector('#detail .pf-desc')].map(e => e ? e.textContent : '').join(' ')")
         g = next(iter(pg.evaluate(BLOCKS_JS)), None)  # C6: the headline never contradicts the nearest gauge's rows
         chips = " ".join(r[1] for r in (g or {}).get("rows", []))
@@ -134,7 +154,8 @@ with sync_playwright() as p:
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep
         b = p.chromium.launch(args=["--no-sandbox"])
         pg = b.new_page(viewport={"width": w, "height": h}, is_mobile=w < 700, has_touch=w < 700, locale="th-TH")
-        for path in ("", "#s=BKK021", "#s=WL.SSB.08", "#s=WL.KPM.03", "#s=CPY015", "#p=13.8545,100.5880", "#p=13.5000,100.3000"):
+        for path in ("", "#s=BKK021", "#s=WL.SSB.08", "#s=WL.KPM.03", "#s=CPY015", "#p=13.8545,100.5880", "#p=13.5000,100.3000",
+                     "#s=URTU07", "#s=X.77", "#s=MUN009", "#p=17.4900,101.7200", "#p=7.0100,100.4700"):
             pg.goto(URL + path, wait_until="domcontentloaded"); pg.wait_for_timeout(3500)
             v = pg.evaluate(SHEET_JS, ".pf" if path.startswith("#p") else None) if path else None
             over = pg.evaluate("() => document.scrollingElement.scrollWidth > window.innerWidth + 1")
@@ -143,7 +164,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

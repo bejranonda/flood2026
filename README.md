@@ -1,7 +1,7 @@
-# BKK FloodWatch — Bangkok flood and canal water-level monitor 🌊
+# BKK FloodWatch — Bangkok and Thailand flood and water-level monitor 🌊
 
-**ติดตามระดับน้ำคลองและแม่น้ำเจ้าพระยา กรุงเทพฯ และปริมณฑล แบบเรียลไทม์ พร้อมแนวโน้ม 12–48 ชั่วโมง**
-Real-time water levels of Bangkok's canals (khlong) and the lower Chao Phraya, compared with the bank, with honest 12–48 h trends — in plain Thai, on your phone.
+**ติดตามระดับน้ำคลองในกรุงเทพฯ และแม่น้ำทั่วประเทศ แบบเรียลไทม์ พร้อมแนวโน้ม 12–48 ชั่วโมง**
+Real-time water levels of Bangkok's canals (khlong) in depth and of every HII, RID and EGAT river gauge in Thailand, compared with the bank, with honest 12–48 h trends — in plain Thai, on your phone.
 
 **[▶ Open the app — flood.autobahn.bot](https://flood.autobahn.bot)** · [API docs](https://flood.autobahn.bot/api/docs) · [Changelog](CHANGELOG.md) · [Handoff (for developers)](HANDOFF.md)
 
@@ -29,9 +29,9 @@ Real-time water levels of Bangkok's canals (khlong) and the lower Chao Phraya, c
 | **เมื่อไหร่น้ำจะลด?** When will it drop below the bank? | A date range with its conditions ("หากลดในอัตราเดิมและไม่มีฝนหนัก … ความเชื่อมั่นต่ำ"), never a minute countdown. |
 
 ## Features
-- **Every gauge, one honest story.** About **310 gauges** (≈ 210 in Bangkok): HII, RID and all **199 BMA canal gauges**, every 5–10 minutes. The headline, the rows and the list always say the same thing — checked on every gauge before each release.
+- **Every gauge, one honest story — now nationwide.** About **1,040 gauges** (≈ 210 in Bangkok, 830 across the country): HII, RID, EGAT, the Thai Red Cross volunteer network (พพภ.) and all **199 BMA canal gauges**, every 5–10 minutes. Region chips (กทม. · ปริมณฑล · เหนือ กทม. · ภาคเหนือ · อีสาน · ตะวันออก · ตะวันตก · ใต้ · ทั้งประเทศ) filter the counts, list and map. The headline, the rows and the list always say the same thing — checked before each release.
 - **A few centimetres count.** Each gauge shows what the water did in the last 24 h (or 48 h for slow changes) in plain words (ลดลงเล็กน้อย / ลดลง / ลดลงมาก), and the bank distance today vs yesterday.
-- **Forecasts that earn their place.** Every gauge is backtested for each horizon; a model is used only where it beats "no change". Otherwise the rows follow the measured trend, and the ⓘ says how often such a trend continued in the past (canals ≈ 5–6 in 10, rivers ≈ 9 in 10).
+- **Forecasts that earn their place.** Every gauge is backtested for each horizon with a year of history, rain for its own area and the gauges upstream of it; a model is used only where it beats "no change". Otherwise the rows follow the measured trend, and the ⓘ says how often such a trend continued in the past (canals ≈ 5–6 in 10, rivers ≈ 9 in 10).
 - **Bad data is hidden, not shown as fact.** Single-reading dropouts are removed; gauges next to pumps or with stuck sensors keep their dot and chart, but not a level or a trend.
 - **Built for a phone during a flood.** Thai first, Bangkok first, short panels, place search (ซอย/ถนน/ย่าน), map, Chao Phraya profile, share links, and a one-tap water report from where you are.
 - **Open.** MIT-licensed code and a free, key-less JSON API.
@@ -53,8 +53,8 @@ One server with `docker compose`, published through a Cloudflare Tunnel (no open
 |---|---|---|
 | [HII ThaiWater](https://www.thaiwater.net) (สสน.) | Water levels, banks, discharge, rain gauges; up to a year of hourly history; official forecasts (archived and scored) | ✅ live |
 | BMA canal gauges (สำนักการระบายน้ำ กทม.) | 199 Bangkok gauges every 5 min via the public KlongMap relay; a year of history for 158 from HII | ✅ live |
-| RID (กรมชลประทาน) | Upstream gauges and Chao Phraya Dam release via HII | ✅ live |
-| Open-Meteo | Rain forecast, and rain as it was forecast 1–2 days earlier (for honest backtests) | ✅ live |
+| RID (กรมชลประทาน), EGAT (กฟผ.), พพภ. | River gauges across Thailand and the Chao Phraya Dam release, via HII | ✅ live |
+| Open-Meteo | Rain forecast, and rain as it was forecast 1–2 days earlier (for honest backtests): Bangkok points and a 0.5° cell for every other gauge | ✅ live |
 | Traffy Fondue | Street-flood reports around each gauge (counts only) | 🟡 often overloaded; age shown |
 | OpenStreetMap Nominatim | Place search, on request only (queries are never stored) | ✅ live |
 
@@ -98,7 +98,7 @@ python3 scripts/ux_consistency.py                        # UI consistency proof 
 No data API keys are needed for basic monitoring. Secrets live only in `.env` (git-ignored). Operations, deploys and next steps: [HANDOFF](HANDOFF.md).
 
 ## Project status
-Live since 2026-09-26, built during the 2026 flood; current release in the badge above. Next: an external uptime alert, polder-aware "near me", alerts for a saved place, and a nationwide view (monitoring first). Roadmap and decisions: [PLAN](docs/plan/PLAN.md) · [DECISIONS](docs/plan/DECISIONS.md).
+Live since 2026-09-26, built during the 2026 flood; current release in the badge above. v0.16 (2026-09-30) brought every gauge in Thailand to the same history, forecast gate and panels as Bangkok. Next: an external uptime alert, the nationwide backtest once the year of history is in, dam releases for dam-controlled rivers, polder-aware "near me", and alerts for a saved place. Roadmap and decisions: [PLAN](docs/plan/PLAN.md) · [DECISIONS](docs/plan/DECISIONS.md).
 
 ## Documentation
 | Doc | For |
@@ -115,6 +115,10 @@ Live since 2026-09-26, built during the 2026 flood; current release in the badge
 <details><summary><b>ข้อมูลมาจากไหน? · Where does the data come from?</b></summary>
 
 สถานีวัดน้ำของ สสน. (HII), กรมชลประทาน และสำนักการระบายน้ำ กทม. ฝนคาดการณ์จาก Open-Meteo และรายงานน้ำท่วมจาก Traffy Fondue — official gauges plus open rain and citizen-report feeds; see [Data sources](#data-sources).
+</details>
+<details><summary><b>ใช้นอกกรุงเทพฯ ได้ไหม? · Does it work outside Bangkok?</b></summary>
+
+ได้ ตั้งแต่ v0.16 ทุกสถานีของ สสน. กรมชลประทาน และ กฟผ. ทั่วประเทศ ใช้กฎเดียวกับกรุงเทพฯ แตะ "อีสาน" "ใต้" หรือจุดใดก็ได้บนแผนที่ — yes: since v0.16 every HII/RID/EGAT gauge in Thailand follows the same rules as Bangkok. Pick a region chip or tap any place; outside Bangkok the panel speaks of the rivers near you.
 </details>
 <details><summary><b>บอกได้ไหมว่าบ้านฉันน้ำท่วมกี่เซนติเมตร? · Can it tell the depth at my house?</b></summary>
 

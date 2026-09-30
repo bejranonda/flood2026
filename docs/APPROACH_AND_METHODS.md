@@ -525,7 +525,7 @@ From [methods_survey §11](../research/methods_survey.md). The citations are to 
 - **Tide type:** "Tidal resonance in the Gulf of Thailand", Ocean Science 15, 321 (2019) — the Gulf is diurnal-dominated, with K1 strongest. ✅ checked 2026-09-26.
 - Pawlowicz, Beardsley, Lentz (2002) T_TIDE, and Codiga (2011) UTide — harmonic analysis with nodal corrections.
 
-## 19. National scope: monitor first, forecast later (D-044, 2026-09-27)
+## 19. National scope: monitor first, forecast later (D-044, 2026-09-27; forecast gate per gauge since D-064, §19.8)
 The owner asked how the app could cover all of Thailand. The research ([Research_NATIONWIDE.md](../research/Nationwide/Research_NATIONWIDE.md) 🟢, [Research_Thailand.md](../research/Nationwide/Research_Thailand.md) 🔴) was checked live in [VALIDATION_2026-09-27_nationwide.md](../research/VALIDATION_2026-09-27_nationwide.md). Nothing here is built yet: the owner asked for validation first.
 
 **Decision (D-044):** first a national **monitoring** view (measured levels against *official* thresholds, reservoirs, flash-flood products of the agencies, satellite extent when available); forecasts only per flood type and only where a backtest passes (§14, GUIDELINES §2). Audience: residents in any province, and local officials and volunteers (อบต., อสม., rescue).
@@ -571,6 +571,17 @@ A point query returns the 5 km cell under the point, which may be a side cell: a
 3. **National collectors behind a flag**, lean: dams daily, FEWS thresholds daily, FFPI every 6 h, tide daily, DWR hourly via the Thai egress; 90-day retention for high-volume series; freshness filters on every HII national feed (KI-111).
 4. **National map** only after HII/DWR/RID have been informed (D-046) and a reliable Thai egress exists.
 5. **Forecasts per flood type**, each with its own backtest on verified events. Candidate models by flood type, from the Bangkok experiments of 2026-09-27 (network STAR + rain, SSN, k-NN analogues, GTWR, ST-GNN): [research note §8](../research/2026-09-27_forecast_48h.md#8-keep-for-the-nationwide-phase-owner-2026-09-27-the-other-methods-might-be-useful-outside-bangkok).
+
+### 19.8 Nationwide parity (v0.16.0, D-064, 2026-09-30)
+The owner asked for the same experience everywhere. What changed, and the evidence for each choice:
+- **History:** a year per gauge from HII `waterlevel_graph` (one request each; URTU07 8,537 hourly readings), bounded by a 400-day retention (BMA never deleted). Measured need (40 Bangkok gauges, same 45-day test window): 48 h mean skill 0.20 / 0.20 / 0.20 with 60 / 90 / 180 days of history, **0.28 with 365 days** (36/40 over the gate): a full wet season is what `star` learns from.
+- **Why history alone is not enough:** a year of own history for 12 nationwide gauges gave **0/12** any skill over persistence (no tide inland; trend never wins). Inputs are what matter:
+  - **Rain per gauge:** the gauge's 0.5° Open-Meteo cell (`rain_cells.cell_of`; halves round up), forecast and a year of previous-run rain, exactly like the Bangkok rain points. Focus gauges keep `RAIN_POINTS`. A place (pin) uses a Bangkok rain point within 0.5°, else its cell.
+  - **Upstream gauges learned per basin** (`forecast/upstream.py`): candidates in the same HII basin within 250 km; score = best correlation of the candidate's 24 h change `lag` hours earlier with the gauge's 24 h change, lag 0–48 h, on hours **before the backtest window only**; kept when the best lag is ≥ 1 h (it *leads*) and r ≥ 0.5, top 2. A co-located gauge of another agency peaks at lag 0 and is never "upstream" (24 h changes autocorrelate strongly at lag 1, so "lag ≥ 1 with the best r" alone would pick it). Changes, not levels, so datum offsets cancel (KI-217). Relearned daily.
+  - The backtest decides per gauge and horizon, as in Bangkok (§14, SKILL_GATE 10 %).
+- **Pins outside Bangkok** (`point.pin_mode`): where the nearest gauge is a Bangkok-area gauge, the polder rule holds (a river gauge never judges canals, D-059); elsewhere every waterway gauge is local evidence, the Bangkok-only cautions (polders, uneven Bangkok ground) are not said, and the sentences name the river ("แม่น้ำ"/"ลำน้ำ") instead of "คลอง".
+- **Water word** (`point.water_word`): from the agency's river name — แม่น้ำ/แคว/น้ำ → แม่น้ำ; คลอง/คู → คลอง; ลำ/ห้วย/เหมือง/ร่อง → ลำน้ำ; บึง → บึง; no name: BMA and Bangkok-area gauges "คลอง" (gates), CPY* "แม่น้ำ", elsewhere "ลำน้ำ". Never guessed from the station name.
+- **Results so far:** Bangkok regression unchanged (48 h mean 0.29, 36/40; `scripts/backtest_nationwide.py`, 2026-09-30 21:11 UTC). Nationwide: ⚠️ preliminary — only 20 gauges had ≥ 300 days and no rain cell had history yet, so "with inputs" equalled own methods (48 h: 1/16 over the gate). Re-run after the backfill and the rain history (~24 h).
 
 ## 20. Forecasting 48 h ahead and outside forecasts (D-050, 2026-09-27)
 Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../research/2026-09-27_forecast_48h.md).

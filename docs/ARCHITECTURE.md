@@ -17,7 +17,8 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | **Main domain `flood.autobahn.bot`** ([D-017](plan/DECISIONS.md)) | Proxied CNAME → Cloudflare Tunnel `d62b426d…` → `cloudflared` → `http://app:3000`. ⚠️ The zone shows a bot challenge to non-browser clients ([KI-506](KNOWN_ISSUES.md)) |
 | Alias `flood.bejranonda.com` | Same tunnel, full alias (no redirect until KI-506 is fixed) |
 | Server | The single host `HZ-Agent` (Hetzner DE, 4 vCPU / 7.7 GB / ~13 GB free). **No other environment** ([D-013](plan/DECISIONS.md)). No inbound ports open |
-| Application | **Live MVP**: collectors, raw archive, forecasts, FastAPI + Thai web app, all in `docker compose` (`db`, `worker`, `app`, `cloudflared`, `vpn`) |
+| Application | **Live MVP**: collectors, raw archive, forecasts, FastAPI + Thai web app, all in `docker compose` (`db`, `worker`, **`forecaster`** (v0.16), `app`, `cloudflared`, `vpn`) |
+| Nationwide parity (v0.16.0, [D-064](plan/DECISIONS.md)) | Every HII-network gauge (1,040 shown) gets history, QC, forecast and panels. **`worker`** (collector role) runs the collectors, QC, `retention` (daily) and owns `schema.sql`; **`forecaster`** (`worker --role forecaster`) runs `forecast` (30 min; ~965 gauges in 294–409 s, backtest cached per gauge ~20 h in `forecast_model`) and `upstream_learn` (daily, `collector_state.upstream_learned`). New collectors: `openmeteo_cells` (3 h, 177 cells of 0.5°, 50 per request) and `openmeteo_prev_cells` (hourly, a year for 8 new cells per run, then 4 days daily). `hii_backfill` covers the whole network (12 gauges / 10 min); `hii_history` refills nationwide gauges in six rotating slices. `httpclient`: 10 s connect timeout + 10-min host cooldown (KI-251) |
 | Request path (v0.15.2; v0.15.3 adds robots/sitemap and a server-filled `__VERSION__` in `index.html`) | `STATIONS_SQL` rows and the `/api/stations`, `/api/stats`, `/api/reports` payloads are shared for 60 s (`_station_rows`, `_memo`, single-flight lock; KI-246); Postgres `max_connections` = 40 |
 | Scheduled tasks (`worker.TASKS`, v0.15) | every 10 min: `hii_waterlevel`, `traffy`, `bma_klong`, **`qc`** (dropouts, erratic and stuck gauges, measured 24/48 h trend → `collector_state` `erratic_gauges` / `observed24`; D-057, D-058), `bma_history` (BMA history from HII: backfill, then a daily 3-day refresh 20 gauges per run, D-054, KI-239), `hii_backfill`; 30 min: `hii_rain`, `forecast` (backtest incl. `star`, D-052); 1 h: `openmeteo`, `disk`; 3 h: `hii_fews_forecast` (HII official forecast archive, D-050), `bma_dds` (only with a Thai egress); 6 h: `hii_stations`, `hii_history`; 15 min: `ai_triage`; daily: `openmeteo_prev` (rain as forecast 1–2 days earlier) |
 | Database | Plain PostgreSQL 16; TimescaleDB/PostGIS deferred ([D-013](plan/DECISIONS.md)) |
@@ -27,7 +28,8 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 ### 1.1 Live API (FastAPI, `/api/docs`)
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/health` | Per-source health, data age, **version** |
+| `GET /api/health` | Per-source health, data age (latest `ok` reading ≤ 15 min ahead, KI-247), **version** |
+| `GET /api/stations` | Every gauge by default since v0.16 (`scope=focus` still works); each row carries `region`, `water` (the water word), `in_focus` and `twin` (another agency's gauge ≤ 300 m) |
 | `GET /api/stations?scope=focus\|all`, `GET /api/stations/{code}?days=` | **Every** station, with latest plausible level, status vs bank, trend, recovery, and `notes` explaining any hidden value or approximate/no location (D-024); history + forecast payload + 7-day feedback counts |
 | `GET /api/near?lat=&lon=&n=` | Nearest gauges by distance (⚠️ not polder-aware) |
 | `GET /api/stats` | Compact statistics: status and trend counts, reporting freshness (focus and whole HII network), metadata gaps, Bangkok 24 h rain ([APPROACH §3.4](APPROACH_AND_METHODS.md)) |
@@ -166,6 +168,10 @@ flood2026/
 8. Update [KNOWN_ISSUES.md](KNOWN_ISSUES.md) with any quirks.
 
 ---
+
+## 8b. Storage growth (v0.16.0, D-064; measured 2026-09-30)
+- Before: DB 1.24 GB (`observation` 982 MB / 4.64 M rows, ~212 B per row with indexes; `forecast_run` 196 MB / 52 k rows since 2026-09-26); disk 75 GB, 13 GB free (83 %; the owner has more space).
+- Expected after the nationwide backfill: +~1.3 GB `observation` (733 gauges × ~8,700 hourly rows), then flat: `retention` deletes HII-network readings older than 400 days (never BMA), rain-forecast issues older than 3 days, and thins `forecast_run` (all runs 2 days, one per 6 h to 14 days: ~0.6 GB at 1,000 gauges). ⚠️ To re-measure one day after the backfill ends (`SELECT pg_size_pretty(pg_database_size('floodwatch'))`).
 
 ## 9. Backups and restore
 - **Nightly:** `pg_dump` → R2. **Weekly:** Parquet export of the normalised tables → R2. **Continuous:** raw archive replication → R2.
