@@ -288,3 +288,35 @@ def test_a_high_but_falling_canal_is_not_called_steady():
            "trend12": "steady", "change24": ch, "change12": ch}]
     fc = point.assess(13.741, 100.721, st, 0, {}, 3.0)["forecast"]
     assert "ลดลง" in fc["title"] and "ทรงตัว" not in fc["title"] + fc["desc"]
+
+
+# --- v0.16 (D-064): outside the Bangkok polders the nearest river/stream gauge is the local evidence ---------------
+def _nat(code, lat, lon, status, river="น้ำพอง"):
+    return {**_st(code, lat, lon, status, river=river), "in_focus": False}
+
+
+def test_a_pin_outside_bangkok_is_judged_from_the_river_gauges_near_it():
+    st = [_nat("URTU07", 16.487, 101.263, "normal"), _nat("E.29A", 16.489, 101.264, "normal"),
+          _st("BKK013", 13.75, 100.5, "critical")]
+    out = point.assess(16.48, 101.25, st, 0, {}, None)
+    assert out["mode"] == "national"
+    assert out["area"]["category"] == "normal" and out["area"]["n_close"] == 2  # not "no gauge within 8 km"
+    assert out["nearest_canal"]["code"] == "URTU07"  # the panel leads with the local channel, a river here
+    assert "walls_and_polders" not in out["warnings"] and "terrain_not_flat" not in out["warnings"]  # Bangkok-only
+
+
+def test_a_bangkok_pin_keeps_the_polder_rules():
+    st = [_st("C.4", 13.751, 100.501, "critical", river="แม่น้ำเจ้าพระยา"), _st("K1", 13.755, 100.505, "normal")]
+    out = point.assess(13.752, 100.502, st, 0, {}, None)
+    assert out["mode"] == "bkk" and out["nearest_canal"]["code"] == "K1"  # the river never judges canals (D-059)
+    assert "walls_and_polders" in out["warnings"]
+
+
+def test_a_pin_outside_bangkok_never_speaks_of_canals_it_does_not_have():
+    st = [_nat("URTU07", 16.487, 101.263, "normal"), _nat("E.29A", 16.489, 101.264, "normal")]
+    out = point.assess(16.48, 101.25, st, 0, {}, 5.0)
+    assert out["word"] == "แม่น้ำ" and "คลอง" not in out["forecast"]["title"] + out["forecast"]["desc"]
+    # a sentence that names the channel (level high + heavy rain) names the river, not a canal
+    fc = point.point_forecast({"category": "critical", "confidence": "medium"}, [], [], 60.0, 0, None, "แม่น้ำ")
+    text = fc["title"] + fc["desc"]
+    assert "คลอง" not in text and "แม่น้ำ" in text

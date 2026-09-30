@@ -62,6 +62,22 @@ def water_body(s: dict) -> str:
     return "river" if water_word(s) in ("แม่น้ำ", "ลำน้ำ") else "khlong"
 
 
+def pin_mode(lat: float, lon: float, stations: list[dict]) -> str:
+    """"bkk" where the nearest gauge is a Bangkok-area (focus) gauge: polder walls split river from canals, so a river
+    gauge never judges the canals (D-059). "national" elsewhere (D-064): no polder walls, the nearest river or stream
+    gauge is the local evidence. A station without the flag counts as focus (the app was Bangkok-only before)."""
+    placed = [x for x in stations if x.get("lat") is not None and x.get("lon") is not None]
+    if not placed:
+        return "bkk"
+    nearest = min(placed, key=lambda x: haversine_km(lat, lon, x["lat"], x["lon"]))
+    return "bkk" if nearest.get("in_focus", True) else "national"
+
+
+def local_channel(s: dict, mode: str) -> bool:
+    """Does this gauge speak for the channels around a pin? Canals in Bangkok; every waterway elsewhere."""
+    return mode == "national" or water_body(s) == "khlong"
+
+
 CHECK_KM = 5.0  # a lone close gauge is checked against the gauges out to here (issue #3: never red from one gauge)
 
 
@@ -70,7 +86,7 @@ def _outvoted(s: dict, near: list) -> bool:
     return any(abs(RANK[o["status"]] - RANK[s["status"]]) >= 2 for d, o in near if NEAR_KM < d <= CHECK_KM)
 
 
-def area_index(lat: float, lon: float, stations: list[dict]) -> dict:
+def area_index(lat: float, lon: float, stations: list[dict], mode: str = "bkk") -> dict:
     """Inverse-distance-weighted status rank of fresh gauges within RADIUS_KM, reported as a category.
 
     Interpolates a *normalised state* (status relative to each gauge's own bank), never an absolute level, and
@@ -79,7 +95,7 @@ def area_index(lat: float, lon: float, stations: list[dict]) -> dict:
     for s in stations:
         if s.get("lat") is None or s.get("lon") is None or s.get("stale") or s.get("status") not in RANK:
             continue
-        if water_body(s) == "river":  # the river outside the walls is never canal evidence (KI-223, KI-239)
+        if not local_channel(s, mode):  # in Bangkok the river outside the walls is never canal evidence (KI-223, KI-239)
             continue
         d = haversine_km(lat, lon, s["lat"], s["lon"])
         if d <= RADIUS_KM:
@@ -121,8 +137,12 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
         if d <= LIST_KM:
             listed.append({**s, "distance_km": round(d, 1), "water_body": water_body(s)})
     listed.sort(key=lambda s: s["distance_km"])
-    idx = area_index(lat, lon, stations)
-    warnings = ["no_gauge_at_point", "terrain_not_flat", "walls_and_polders"]
+    mode = pin_mode(lat, lon, stations)
+    for s in listed:
+        s["local"] = local_channel(s, mode)
+    idx = area_index(lat, lon, stations, mode)
+    # Bangkok-only cautions (its polders and uneven ground) are not said elsewhere (D-064)
+    warnings = ["no_gauge_at_point"] + (["terrain_not_flat", "walls_and_polders"] if mode == "bkk" else [])
     if idx["confidence"] in ("very_low", "none"):
         warnings.append("gauges_far_or_disagree")
     if listed and listed[0]["distance_km"] > NEAR_KM:
@@ -137,7 +157,7 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
     # Predictable stations: stations with tested forecast / trend12
     # Same distance band as the area gate (KI-239): NEAR_KM when a canal gauge is that close, else CHECK_KM.
     # Before, the gate judged from ≤ 3 km while the headline trend could come from gauges 3-8 km away (other polders).
-    band = NEAR_KM if any(s["distance_km"] <= NEAR_KM and s["water_body"] == "khlong" for s in candidates) else CHECK_KM
+    band = NEAR_KM if any(s["distance_km"] <= NEAR_KM and s["local"] for s in candidates) else CHECK_KM
     stations_forecast = [s for s in candidates if s["distance_km"] <= band and (
         s.get("trend12") in ("rising", "falling", "steady") or s.get("delta12_median") is not None)][:3]
     fc_codes = {s["code"] for s in stations_forecast}
@@ -149,7 +169,7 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
 
 
     # The canal line the panel leads with (D-054): the nearest fresh canal gauge, never a river gauge (KI-227).
-    nc = next((s for s in candidates if s.get("water_body") == "khlong" and not s.get("stale")
+    nc = next((s for s in candidates if s.get("local") and not s.get("stale")
                and s.get("status") not in (None, "unknown")), None)
     nearest_canal = None if nc is None else {"code": nc["code"], "distance_km": nc["distance_km"],
                                              "far": nc["distance_km"] > NEAR_KM, "station": nc}
@@ -157,15 +177,17 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
     # nearest canal that has one, so the panel always shows a trend when any is available (owner 2026-09-27).
     has_trend = lambda x: bool(x.get("change24") or x.get("change12"))
     nt = None if nc is None or has_trend(nc) else next(
-        (x for x in candidates if x.get("water_body") == "khlong" and has_trend(x) and not x.get("stale")), None)
+        (x for x in candidates if x.get("local") and has_trend(x) and not x.get("stale")), None)
     nearest_trend = None if nt is None else {"code": nt["code"], "distance_km": nt["distance_km"],
                                              "far": nt["distance_km"] > NEAR_KM, "station": nt}
     # The headline trend comes from the gauge the canal factor shows with rows (the nearest canal, or the nearest canal
     # with a forecast), so the headline never contradicts the rows right under it (UX round 12, C6). A majority over
     # several gauges read "ทรงตัว" above the nearest gauge's "↘ ลดลง" at 7 of 67 pins.
     lead = nc if nc is not None and has_trend(nc) else nt
-    fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km, lead)
-    return {"lat": round(lat, 3), "lon": round(lon, 3), "area": idx, "nearest_canal": nearest_canal,
+    # the channel word of the sentences: canals in Bangkok; elsewhere the nearest local gauge's waterway
+    word = "คลอง" if mode == "bkk" else (water_word(nc) if nc is not None else "แม่น้ำ")
+    fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km, lead, word)
+    return {"lat": round(lat, 3), "lon": round(lon, 3), "mode": mode, "word": word, "area": idx, "nearest_canal": nearest_canal,
             "nearest_canal_trend": nearest_trend,
             "forecast": fc_outlook,
             "stations": combined,
@@ -237,17 +259,21 @@ def _rain_phrase(rain_mm: float) -> tuple[str, str]:
 
 
 def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
-                   rain_24h_mm: float | None, reports_1km: int, lead: dict | None = None) -> dict:
+                   rain_24h_mm: float | None, reports_1km: int, lead: dict | None = None, word: str = "คลอง") -> dict:
     """The outlook (below) plus the gauges whose own forecast change the banner may show (D-047). Gauges are listed
     only when the area confidence allows a canal statement at all (D-042); each keeps its name and distance, so the
     change is read as "at that gauge", never as a level at the pin (D-021)."""
     out = _outlook(area, [lead] if lead is not None else stations_forecast, stations_nearby, rain_24h_mm, reports_1km)
+    if word != "คลอง":  # outside Bangkok the local channel is a river or stream: say so (D-064)
+        for k in ("title", "desc"):
+            if out.get(k):
+                out[k] = out[k].replace("คลอง/แม่น้ำ", word).replace("คลอง", word)
     usable = area.get("confidence") in ("low", "medium")
     out["gauges"] = [s["code"] for s in stations_forecast if s.get("change12")] if usable else []
     # When the area gate gives no canal statement, the panel may still show the trend at the nearest *canal* gauge,
     # named with its distance (D-048). Never a river gauge (its tide swing is not canal drainage, KI-223) and never
     # beyond NEAR_KM, where a gauge says little about the pin (D-042 distance analysis).
-    canal = next((s for s in stations_forecast if s.get("water_body") == "khlong" and s.get("change12")
+    canal = next((s for s in stations_forecast if s.get("local", s.get("water_body") == "khlong") and s.get("change12")
                   and s.get("distance_km", 99) <= NEAR_KM), None)
     out["nearest_canal"] = None if out["gauges"] or canal is None else canal["code"]
     return out
@@ -271,9 +297,10 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
     channel_trend = "unknown"
     khlong_trend = None
     if gauge_usable:
-        khlong = [s for s in stations_forecast if s.get("water_body") == "khlong"]
+        local = lambda s: s.get("local", s.get("water_body") == "khlong")  # canals in Bangkok, any waterway elsewhere
+        khlong = [s for s in stations_forecast if local(s)]
         khlong_trend = _majority_trend(khlong)
-        river_trend = _majority_trend([s for s in stations_forecast if s.get("water_body") == "river"])
+        river_trend = _majority_trend([s for s in stations_forecast if not local(s)])
         channel_trend = khlong_trend or (f"river_{river_trend}" if river_trend else "unknown")
         if khlong_trend or river_trend:
             basis.append("gauges")
