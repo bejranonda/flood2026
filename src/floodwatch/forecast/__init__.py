@@ -172,6 +172,8 @@ def star_features(t: np.ndarray, y: np.ndarray, eta, ybar: np.ndarray, h: int, e
     near = c1[i + 1 + min(h, 24)] - c1[i + 1]
     far = (c2[i + 1 + h] - c2[i + 1 + 24]) if h > 24 else np.zeros(n)
     cols.append(near + far)
+    # extra inputs known at hour i (e.g. measured daily rain of complete days, Q43); already aligned to `t`
+    cols += [np.asarray(x, float) for x in ex.get("extra") or []]
     return np.column_stack(cols)
 
 

@@ -231,3 +231,15 @@ def test_cached_backtests_expire_after_a_day_or_when_history_grows():
     assert not forecast.model_is_fresh(row, 1300, now)  # a backfill added history: backtest again
     assert not forecast.model_is_fresh({**row, "trained_at": now - dt.timedelta(hours=21)}, 1000, now)
     assert not forecast.model_is_fresh(None, 1000, now)
+
+
+def test_star_takes_extra_known_at_issue_columns_and_is_unchanged_without_them():
+    # v0.16.5 experiment hook (Q43): measured-rain features enter as extra columns aligned to the hourly grid
+    times, y, exo = _driven(days=40)
+    t, yy = forecast.hourly_grid(times, y)
+    ex = forecast.align_exo(t, exo)
+    base = forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 12, ex)
+    extra = np.arange(len(t), dtype=float)
+    more = forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 12, {**ex, "extra": [extra]})
+    assert more.shape[1] == base.shape[1] + 1 and np.allclose(more[:, -1], extra)
+    assert np.allclose(base, forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 12, {**ex, "extra": []}), equal_nan=True)

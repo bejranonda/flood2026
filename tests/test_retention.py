@@ -64,5 +64,7 @@ def test_forecast_runs_are_thinned_after_two_days_and_dropped_after_fourteen():
 
 
 def test_rain_gauge_readings_are_bounded_too():
-    # 4,651 gauges x 24 readings a day; only the last 3 h are read (panel): two weeks is plenty
-    assert "rain_obs" in retention.RAIN_SQL and retention.RAIN_KEEP_DAYS == 14
+    # 4,651 gauges x 24 readings a day. Hourly rain cannot be fetched again from HII (only the last 24 h is public),
+    # so gauges near a water gauge (model inputs, Q43) keep a year; the others two weeks (panel only reads 3 h)
+    assert "rain_obs" in retention.RAIN_SQL and retention.RAIN_KEEP_DAYS == 14 and retention.RAIN_MODEL_KEEP_DAYS == 400
+    assert "NOT EXISTS (SELECT 1 FROM station" in retention.RAIN_SQL and "%(model_days)s" in retention.RAIN_SQL
