@@ -87,6 +87,12 @@ def learn(series: dict[str, tuple[np.ndarray, np.ndarray]], meta: dict[str, dict
     return out
 
 
+def changed_codes(old: dict, new: dict) -> set[str]:
+    """Gauges whose set of upstream gauges differs (a new r or lag alone is not a change)."""
+    codes = lambda d, k: sorted(u[0] for u in d.get(k, []))
+    return {k for k in set(old) | set(new) if codes(old, k) != codes(new, k)}
+
+
 def run_all() -> int:
     """Daily: learn upstream gauges for every gauge outside the focus area, basin by basin (bounded memory),
     and store them in collector_state 'upstream_learned'."""
@@ -116,7 +122,11 @@ def run_all() -> int:
         meta = {g["code"]: {"basin": basin, "lat": g["lat"], "lon": g["lon"]} for g in gauges}
         learned.update(learn(series, meta, cutoff_h, targets))
     with db.connect() as c:
+        changed = changed_codes(db.get_state(c, "upstream_learned") or {}, learned)
         db.set_state(c, "upstream_learned", learned)
+        if changed:  # their cached backtest (forecast_model) did not see these inputs: judge them again now
+            c.execute("DELETE FROM forecast_model WHERE code = ANY(%s)", (sorted(changed),))
         c.commit()
+    log.info("upstream_learn: %d gauges changed inputs; their backtests will be redone", len(changed))
     log.info("upstream_learn: %d gauges got upstream inputs", len(learned))
     return len(learned)

@@ -5,6 +5,7 @@ Run: python -m floodwatch.worker                     (collectors, QC, retention)
 """
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import time
 
@@ -50,6 +51,12 @@ FIRST_RUN = {
                   "openmeteo_cells", "openmeteo_prev_cells", "openmeteo_fine", "traffy", "bma_klong", "qc", "hii_rain", "disk"),
     "forecaster": ("upstream_learn", "forecast"),  # upstream_learn only when never learned
 }
+
+
+def upstream_due(learned, updated_at, now) -> bool:
+    """Learn upstream gauges at start unless a non-empty result younger than a day exists (restarts reset the daily
+    timer; an empty result means it was learned before the history existed)."""
+    return not learned or updated_at is None or (now - updated_at).total_seconds() >= 24 * 3600
 
 
 def owns_schema(role: str) -> bool:
@@ -151,8 +158,10 @@ def main(role: str = "collector") -> None:
     first = FIRST_RUN[role if role == "forecaster" else "collector"]
     if role == "forecaster":
         with db.connect() as c:
-            if db.get_state(c, "upstream_learned") is not None:
-                first = tuple(n for n in first if n != "upstream_learn")
+            row = c.execute("SELECT value, updated_at FROM collector_state WHERE key='upstream_learned'").fetchone()
+        if not upstream_due(row["value"] if row else None, row["updated_at"] if row else None,
+                            dt.datetime.now(dt.timezone.utc)):
+            first = tuple(n for n in first if n != "upstream_learn")
     for name in first:
         run_task(name)
     active = [(n, i) for n, i in tasks_for(role) if n != "bma_dds" or settings.thai_egress_proxy]

@@ -80,3 +80,10 @@ def test_chain_gauges_and_focus_gauges_keep_the_bangkok_rule():
     assert forecast.upstream_codes("BKK013", chain, True, learned) == []  # focus canal: rain only, as proven
     assert forecast.upstream_codes("URTU07", chain, False, learned) == ["E.29A"]
     assert forecast.upstream_codes("N.54", chain, False, learned) == []
+
+
+def test_gauges_whose_upstream_changed_get_a_fresh_backtest():
+    old = {"A": [["U", 6, 0.8]], "B": [["V", 3, 0.7]]}
+    new = {"A": [["U", 6, 0.81]], "B": [["W", 4, 0.9]], "C": [["Z", 2, 0.6]]}
+    assert upstream.changed_codes(old, new) == {"B", "C"}  # same upstream codes (A) is not a change
+    assert upstream.changed_codes({}, new) == {"A", "B", "C"}

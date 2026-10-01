@@ -10,10 +10,13 @@ in many possibilities"). One browser session, views compared at the same moment:
   C7 (v0.16, D-064) a pin outside Bangkok never speaks of Bangkok's polders ("พื้นที่ปิดล้อม") and never says "no gauge
      near" while a gauge within 3 km is listed;
   C8 (v0.16.1) every region chip is visible without scrolling, and the map shows gauges outside Bangkok (Chiang Mai
-     view) whatever the chosen chip — owner 2026-10-01: "App shows only Bangkok stations".
+     view) whatever the chosen chip — owner 2026-10-01: "App shows only Bangkok stations";
+  C9 (v0.16.3-5) rain and river lines agree with the API and with each other: a measured-rain line carries its reading
+     time; the "ฝนตกหนักในพื้นที่" headline only with a heavy measured line; the panel's forecast mm = /api/point's;
+     a river line only on Bangkok pins and within 3 km; each region's summary rain word = /api/rain by_region.
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
 ~30 min). Usage: python3 scripts/ux_consistency.py [out.json] [per_region=15]   (Python Playwright; Chromium --no-sandbox)"""
-import json, re, sys
+import json, math, re, sys
 from playwright.sync_api import sync_playwright
 
 URL = "https://flood.autobahn.bot/"
@@ -34,6 +37,8 @@ SHEET_JS = """(scope) => { const d = document.querySelector('#detail'); if (!d) 
            dup: [...new Set(lines.filter((s, i) => lines.indexOf(s) !== i))],
            overflow: document.scrollingElement.scrollWidth > window.innerWidth + 1 }; }"""
 num = lambda t: [int(x.replace("−", "-").replace("+", "")) for x in re.findall(r"[−+]?\d+", t.split("ซม")[0])]
+BANDS9 = [(0.1, "ไม่มีฝน"), (10.0, "ฝนเล็กน้อย"), (35.0, "ฝนปานกลาง"), (90.0, "ฝนหนัก"), (1e9, "ฝนหนักมาก")]  # web/app.js RAIN_TMD
+word9 = lambda mm: next(l for i, (mx, l) in enumerate(BANDS9) if (mm < mx if i == 0 else mm <= mx))
 issues, counts = [], {"sheets": 0, "pins": 0, "pin_blocks": 0, "rows": 0}
 
 
@@ -127,6 +132,21 @@ with sync_playwright() as p:
             note("C4", f"pin {la:.3f},{lo:.3f}", "panel did not load"); continue
         counts["pins"] += 1
         v = pg.evaluate(SHEET_JS, ".pf"); check_text(f"pin {la:.3f},{lo:.3f}", v)
+        api = json.loads(pg.evaluate("async ([a, o]) => JSON.stringify(await (await fetch(`/api/point?lat=${a.toFixed(5)}&lon=${o.toFixed(5)}`)).json())", [la, lo]))
+        full9 = pg.evaluate("() => document.querySelector('#detail').innerText")
+        where9 = f"pin {la:.3f},{lo:.3f}"
+        if "วัดได้แล้ว" in full9 and "ข้อมูลถึง" not in full9:
+            note("C9", where9, "measured rain without its reading time")
+        if "ฝนตกหนักในพื้นที่" in head and not re.search(r"วัดได้แล้ว 24 ชม\. ล่าสุด: ฝนหนัก", full9):
+            note("C9", where9, "heavy-rain headline without a heavy measured line")
+        if api.get("rain_next24_mm") is not None and api["rain_next24_mm"] >= 0.1:
+            mm = api["rain_next24_mm"]  # the panel's rainMm(): one decimal below 1 mm or at a TMD band edge; JS rounding
+            r0 = math.floor(mm + 0.5)
+            want = f"{mm:.1f}" if mm < 1 or word9(r0) != word9(mm) else str(r0)
+            if f"ประมาณ {want} มม." not in full9:
+                note("C9", where9, f"panel rain differs from /api/point ({api['rain_next24_mm']} mm)")
+        if "แม่น้ำใกล้จุด" in full9 and (api.get("mode") != "bkk" or not api.get("nearest_river") or api["nearest_river"]["distance_km"] > 3):
+            note("C9", where9, "river line without a Bangkok river gauge within 3 km")
         if (la, lo) in national:  # C7
             full = pg.evaluate("() => document.querySelector('#detail').innerText")
             if "ปิดล้อม" in full:
@@ -152,6 +172,19 @@ with sync_playwright() as p:
                 if card and not same(card, blk2):
                     note("C1", f"pin {la:.3f},{lo:.3f} vs list {blk['code']}", f"{r24(blk2['rows'])} / {blk2['obs'][:1]} vs {r24(card['rows'])} / {card['obs'][:1]}")
         pg.evaluate("() => closeDetail()")
+    # C9: the summary rain line of every region chip = /api/rain by_region (TMD word of the wettest forecast point)
+    open_home(pg)
+    rainreg = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/rain')).json()).by_region)"))
+    bands = [(0.1, "ไม่มีฝน"), (10.0, "ฝนเล็กน้อย"), (35.0, "ฝนปานกลาง"), (90.0, "ฝนหนัก"), (1e9, "ฝนหนักมาก")]
+    word = lambda mm: next(l for i, (mx, l) in enumerate(bands) if (mm < mx if i == 0 else mm <= mx))
+    for reg in ("bkk", "metro", "up", "north", "northeast", "east", "west", "south", "all"):
+        if pg.locator(f'.rchip[data-region="{reg}"]').count() == 0:
+            continue
+        pg.locator(f'.rchip[data-region="{reg}"]').click(); pg.wait_for_timeout(500)
+        line = pg.evaluate("() => [...document.querySelectorAll('#summary .sumline')].map(e => e.innerText).find(t => t.includes('🌧')) || ''")
+        r = rainreg.get(reg) or {}
+        if r.get("forecast_mm24") is not None and word(r["forecast_mm24"]) not in line.split("วัดได้แล้ว")[0]:
+            note("C9", f"summary {reg}", f"rain line '{line[:60]}' vs API {r['forecast_mm24']} mm ({word(r['forecast_mm24'])})")
     b.close()
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep
         b = p.chromium.launch(args=["--no-sandbox"])
@@ -176,7 +209,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

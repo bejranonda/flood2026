@@ -48,3 +48,14 @@ def test_upstream_gauges_are_relearned_daily():
 
 def test_bangkok_fine_rain_is_collected_hourly_and_at_start():
     assert dict(worker.TASKS)["openmeteo_fine"] == 3600 and "openmeteo_fine" in worker.FIRST_RUN["collector"]
+
+
+def test_upstream_is_relearned_at_start_when_empty_or_a_day_old():
+    # 2026-10-01: learned once with 4 days of history ({}); every restart skipped it ({} is "not None") and reset the
+    # daily timer, so nationwide gauges never got their learned upstream inputs
+    import datetime as dt
+    now = dt.datetime(2026, 10, 1, 14, tzinfo=dt.timezone.utc)
+    assert worker.upstream_due(None, None, now)
+    assert worker.upstream_due({}, now - dt.timedelta(hours=1), now)  # empty: learn again
+    assert worker.upstream_due({"X": [["Y", 6, 0.8]]}, now - dt.timedelta(hours=25), now)
+    assert not worker.upstream_due({"X": [["Y", 6, 0.8]]}, now - dt.timedelta(hours=2), now)
