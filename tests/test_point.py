@@ -329,3 +329,40 @@ def test_a_wide_steady_forecast_is_unclear_in_the_headline_as_in_the_row():
     narrow = {"change24": {"dir": "steady", "likely": [-0.03, 0.04], "method": "star"}}
     assert point._station_trend(wide) is None
     assert point._station_trend(narrow) == "steady"
+
+
+# --- v0.16.3: measured rain and the river near a pin (owner 2026-10-01: "There is no rain in panel anymore?") --------
+NOW = __import__("datetime").datetime(2026, 10, 1, 12, 0, tzinfo=__import__("datetime").timezone.utc)
+H = __import__("datetime").timedelta(hours=1)
+
+
+def _rg(code, lat, lon, r1, r24, age_h=1):
+    return {"code": code, "name_th": code, "lat": lat, "lon": lon, "rain_1h": r1, "rain_24h": r24, "obs_time": NOW - age_h * H}
+
+
+def test_measured_rain_comes_from_the_nearest_fresh_gauge_within_10_km():
+    rows = [_rg("FAR", 14.2, 100.5, 9, 99), _rg("OLD", 13.91, 100.50, 9, 99, age_h=5), _rg("NEAR", 13.92, 100.51, 4.8, 60)]
+    m = point.measured_rain(13.913, 100.498, rows, NOW)
+    assert m["code"] == "NEAR" and m["rain_24h"] == 60 and m["band"] == "heavy" and m["distance_km"] < 2
+    assert point.measured_rain(13.913, 100.498, [rows[0], rows[1]], NOW) is None  # far or stale: say nothing
+
+
+def test_heavy_measured_rain_leads_the_headline_even_when_the_forecast_is_light():
+    rain = {"code": "HII001", "name_th": "HII001", "distance_km": 2.1, "rain_1h": 4.8, "rain_24h": 60.0, "band": "heavy"}
+    out = point.assess(13.913, 100.498, [], 0, {}, 7.0, rain)
+    fc = out["forecast"]
+    assert out["rain_measured"] == rain and fc["risk"] in ("moderate", "high")
+    assert "ฝนตกหนัก" in fc["title"] and "60" in fc["desc"]
+
+
+def test_a_river_gauge_near_a_bangkok_pin_is_its_own_line_never_canal_evidence():
+    st = [_st("CPY014", 13.915, 100.497, "warning", river="แม่น้ำเจ้าพระยา"), _st("K1", 13.95, 100.55, "normal")]
+    out = point.assess(13.913, 100.498, st, 0, {}, None)
+    assert out["nearest_river"]["code"] == "CPY014" and out["nearest_river"]["distance_km"] <= 3
+    assert out["area"]["category"] != "warning"  # the river does not judge canals (D-059)
+
+
+def test_a_rain_gauge_name_is_never_reworded():
+    rain = {"code": "ONE022", "name_th": "คลองสามบาท บ้านกุดพิมาน", "distance_km": 3.0, "rain_1h": 2.0, "rain_24h": 50.0, "band": "heavy"}
+    fc = point.point_forecast({"category": None, "confidence": "none"}, [], [], 5.0, 0, None, "แม่น้ำ", rain)
+    assert "คลองสามบาท" in fc["desc"]  # the national word swap must not touch a gauge's own name

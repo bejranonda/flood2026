@@ -427,8 +427,54 @@ def _reports_data(hours: int) -> dict:
             "last_update_age_min": tage}
 
 
+# Bangkok-area rain points by region chip (config.RAIN_POINTS); 0.5° cells get the region of their nearest gauge
+RAIN_POINT_REGION = {"bkk_central": "bkk", "bkk_east": "bkk", "bkk_north": "bkk", "bkk_west": "bkk",
+                     "samut_sakhon_nakhon_pathom": "metro", "nonthaburi_pathum": "metro",
+                     "ayutthaya": "up", "chainat": "up", "nakhon_sawan": "up"}
+
+
+def rain_by_region(points: list[dict], measured: list[dict], cell_region: dict[str, str]) -> dict:
+    """For the summary line of each region chip (owner 2026-10-01: "There is no rain in panel anymore?"): the wettest
+    forecast point/cell (mm in the next 24 h) and the wettest rain gauge (mm in the last 24 h); "all" = the country."""
+    out: dict[str, dict] = {}
+    for p in points:
+        if p.get("mm24") is None:
+            continue
+        for r in {RAIN_POINT_REGION.get(p["point"]) or cell_region.get(p["point"]), "all"} - {None}:
+            o = out.setdefault(r, {"forecast_mm24": None, "measured": None})
+            if o["forecast_mm24"] is None or p["mm24"] > o["forecast_mm24"]:
+                o["forecast_mm24"] = round(p["mm24"], 1)
+    for m in measured:
+        if m.get("rain_24h") is None:
+            continue
+        for r in {regions.region_of(m.get("province")), "all"} - {None}:
+            o = out.setdefault(r, {"forecast_mm24": None, "measured": None})
+            if o["measured"] is None or m["rain_24h"] > o["measured"]["rain_24h"]:
+                o["measured"] = {k: m.get(k) for k in ("code", "name_th", "province", "rain_24h", "rain_1h")}
+    return out
+
+
+RAIN_OBS_SQL = """SELECT DISTINCT ON (code) code, obs_time, rain_1h, rain_24h, lat, lon, name_th, province FROM rain_obs
+                  WHERE obs_time > now() - interval '3 hours' ORDER BY code, obs_time DESC"""
+
+
+def _cell_regions() -> dict[str, str]:
+    def build():
+        placed = [r for r in _station_rows(True) if r.get("lat") is not None and regions.region_of(r.get("province"))]
+        out = {}
+        for r in placed:
+            cid = rain_cells.cell_of(r["lat"], r["lon"])[0]
+            out.setdefault(cid, regions.region_of(r["province"]))
+        return out
+    return _memo(("cell_regions",), build, ttl=3600)
+
+
 @app.get("/api/rain")
 def rain():
+    return _json(_memo(("rain",), _rain_data))  # every visitor's 5-min refresh reads it: shared for 60 s (KI-246)
+
+
+def _rain_data() -> dict:
     with db.connect() as c:
         rows = c.execute(
             f"""SELECT w.point, sum(w.precip_mm) FILTER (WHERE w.valid_time <= now() + interval '24 hours') AS mm24,
@@ -436,8 +482,10 @@ def rain():
                       max(w.issue_time) AS issue
                FROM weather_forecast w JOIN ({rain_cells.LATEST_ISSUE}) l ON l.point=w.point AND l.t=w.issue_time
                WHERE w.valid_time > now() GROUP BY w.point""").fetchall()
-    return _json({"source": "Open-Meteo", "points": [{"point": r["point"], "mm24": r["mm24"], "mm72": r["mm72"],
-                                                      "issue_time": _iso(r["issue"])} for r in rows]})
+        measured = c.execute(RAIN_OBS_SQL).fetchall()
+    pts = [{"point": r["point"], "mm24": r["mm24"], "mm72": r["mm72"], "issue_time": _iso(r["issue"])} for r in rows]
+    return {"source": "Open-Meteo (forecast) · HII rain gauges (measured)", "points": pts,
+            "by_region": rain_by_region(pts, measured, _cell_regions())}
 
 
 def _load_chainage() -> dict:
@@ -612,11 +660,13 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
             """SELECT depth, count(*) AS n FROM user_feedback WHERE depth IS NOT NULL AND lat IS NOT NULL
                AND created_at > now() - interval '24 hours'
                AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s GROUP BY 1""", box).fetchall()}
+        rain_rows = c.execute(RAIN_OBS_SQL).fetchall()
         pt = rain_cells.rain_point_at(lat, lon)  # a Bangkok rain point nearby, else the place's 0.5° cell (D-064)
         rain = c.execute("""SELECT sum(precip_mm) AS mm FROM weather_forecast WHERE point=%s
                             AND issue_time=(SELECT max(issue_time) FROM weather_forecast WHERE point=%s)
                             AND valid_time BETWEEN now() AND now() + interval '24 hours'""", (pt, pt)).fetchone()["mm"]
-    out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1))
+    measured = point.measured_rain(lat, lon, rain_rows, dt.datetime.now(dt.timezone.utc))
+    out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1), measured)
     out["rain_point"] = pt
     return _json(out)
 

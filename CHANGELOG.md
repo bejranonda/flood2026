@@ -2,6 +2,19 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.3 — 2026-10-01
+- **Measured rain, not only the forecast (owner: "There is no rain in panel anymore?", during a downpour; KI-254).**
+  The pin panel showed only Open-Meteo's forecast ("คาดฝนเล็กน้อย") while it was raining hard. It now also shows the
+  rain already measured by the nearest HII rain gauge (≤ 10 km, ≤ 3 h old): last 24 h in TMD words, last hour in mm,
+  gauge name, distance and the time of the reading. Heavy measured rain (≥ 35 mm/24 h) raises the outlook to at least
+  "moderate" with "ฝนตกหนักในพื้นที่ เฝ้าระวังน้ำขังบนถนน". Rain gauges are collected for every province (4,651 on
+  2026-10-01, was ~185 in the focus area) every 15 min; kept 14 days (only the last 3 h are read).
+- **Rain line for every region.** v0.16.0 showed "🌧️ ฝน กทม." for กทม./ปริมณฑล only; now each chip shows its wettest
+  forecast point (next 24 h) and its wettest rain gauge (last 24 h), e.g. ทั่วประเทศ: 87.8 mm at วัดพลวง, จันทบุรี.
+  `/api/rain` adds `by_region` and is shared for 60 s.
+- **The river near a Bangkok pin gets its own line** (≤ 3 km, e.g. the Chao Phraya for riverside Nonthaburi): its
+  distance to the bank and status, labelled as the river outside the walls — never canal evidence (D-059).
+
 ## v0.16.2 — 2026-10-01
 - **The region follows your location once you allow GPS (owner answer to Q40: "Allow GPS"; D-065).** Tapping
   📍 สถานีใกล้ฉัน and allowing location switches the counts, list and map to your region (the region of the nearest

@@ -265,4 +265,6 @@ UX principles established through visitor testing during the 2026 flood season:
 - **River names:** 128+104+29+6 gauges on a "แม่น้ำ…", 172 on "คลอง…", 82 "น้ำ…", 59 "ห้วย…", 38 "ลำ…", 25 "ลำน้ำ…"; 79 nationwide gauges have no river name.
 - **Rain cells:** 177 distinct 0.5° cells (354 at 0.25°) cover the nationwide gauges.
 - **Scale:** one year of hourly history for 733 gauges ≈ 6.3 M rows ≈ 1.3 GB in `observation` (~212 B per row including indexes).
+- **Rain inputs (checked 2026-10-01):** Open-Meteo's grid near Bangkok has a spacing of **0.0703° (~7.8 km N–S)** (five distinct grid latitudes over a 0.30° span; consistent with ECMWF IFS 9 km, ⚠️ the API does not name the model for `best_match`). We sample it at 9 fixed Bangkok-area points (≈ 15–30 km apart) and one point per 0.5° cell (~55 km) elsewhere, hourly values, re-fetched hourly (Bangkok) / every 3 h (cells). Measured rain: HII rain gauges, **4,651 stations** nationwide, hourly readings arriving up to ~1 h late.
+- **Nonthaburi coverage (checked 2026-10-01):** live water gauges BKK007 (คลองอ้อมนนท์, บางใหญ่), CPY014 (Chao Phraya, สะพานนวลฉวี), BKK018 (คลองพระพิมล, ไทรน้อย); rain gauges BKNH (อบต.ราษฎร์นิยม), BKK018, CPY014, and BKK003 (บางกรวย–สวนผัก, on the Bangkok side). HII's `canal_waterlevel` lists 3 Nonthaburi rows, all last reporting in 2019.
 

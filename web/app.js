@@ -209,6 +209,16 @@ async function getJSON(url, opts) {
 }
 
 /* ---------- summary strip ---------- */
+// Rain for the chosen region (owner 2026-10-01: "There is no rain in panel anymore?" — v0.16.0 showed it for กทม.
+// and ปริมณฑล only): the wettest forecast point in the next 24 h and the wettest HII rain gauge in the last 24 h.
+let rainRegions = null;
+function rainSummary(bkkRain) {
+  const r = rainRegions?.[region], where = region === "all" ? "ทั่วประเทศ" : REGIONS[region].th;
+  const fc = r?.forecast_mm24 ?? (region === "bkk" ? bkkRain : null), m = r?.measured;
+  if (fc == null && !m) return "";
+  return `<p class="sumline">🌧️ ฝน${esc(where)}${fc != null ? ` 24 ชม. ข้างหน้า สูงสุด: ${rainPill(fc)}` : ""}${m && m.rain_24h >= 0.1
+    ? `<br>วัดได้แล้ว 24 ชม. สูงสุด: ${rainPill(m.rain_24h)} <span class="muted">(${esc(m.name_th)}${region === "all" ? ` ${esc(m.province || "")}` : ""})</span>` : ""}</p>`;
+}
 let lastStats = null;
 function renderSummary(st) {
   lastStats = st;
@@ -226,7 +236,7 @@ function renderSummary(st) {
   const pct = (a, b) => Math.round((100 * a) / (b || 1));
   const rain = st.rain_bkk_next24_mm_max;
   document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>
-    ${rain != null && ["bkk", "metro"].includes(region) ? `<p class="sumline">🌧️ ฝน กทม. 24 ชม. ข้างหน้า สูงสุด: ${rainPill(rain)}</p>` : ""}
+    ${rainSummary(rain)}
     <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
     <p class="sumline">${esc(TREND.rising)} <b>${tr("rising")}</b> · ${esc(TREND.falling)} <b>${tr("falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`} (คาดการณ์ 12 ชม.)</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
@@ -681,7 +691,7 @@ function pointHTML(d, src, place = "") {
     low: { cls: "risk-low", icon: "" }, info: { cls: "risk-info", icon: "" },
   };
   const fcR = FC_RISK[fc.risk] || FC_RISK.info;
-  const FC_BASIS = { rain: "ฝนคาดการณ์ (Open-Meteo)", reports: "รายงานน้ำท่วมถนน (Traffy Fondue)", gauges: "สถานีวัดน้ำ (สสน. / กทม.)" };
+  const FC_BASIS = { rain: "ฝนคาดการณ์ (Open-Meteo)", rain_measured: "ฝนที่วัดได้ (สถานีวัดฝน สสน.)", reports: "รายงานน้ำท่วมถนน (Traffy Fondue)", gauges: "สถานีวัดน้ำ (สสน. / กทม.)" };
   // Factor 1: canals (D-054). Lead with the nearest canal gauge — its state and 24/48 h change — then fold the rest.
   // The dot follows the confidence gate, now judged from the nearest gauges (≤ 3 within 3 km), not the whole 8 km.
   // Canal summary in plain words (owner 2026-09-27: the old "ใกล้จุด 3 แห่ง … ทั้งรัศมี 8 กม. …" was not understood)
@@ -718,6 +728,10 @@ function pointHTML(d, src, place = "") {
     a.n > 1 ? `มีสถานีอื่นอีก ${a.n - 1} แห่งในระยะ 8 กม. (รายชื่อด้านล่าง)` : ""].filter(Boolean);
   const canalGauges = `<div class="pf-gauges">${noTrendLine}${mainBlock}${detailBits.length ? `<details class="pf-more"><summary>รายละเอียด</summary><div>${detailBits.join("<br>")}</div></details>` : ""}</div>`;
 
+  // The river near a Bangkok pin: its own line, never canal evidence (D-059); riverside streets flood from it (v0.16.3)
+  const nr = d.nearest_river?.station;
+  const riverLine = nr ? `<li><span class="pf-dot" style="background:${stOf(nr).color}"></span><div><b class="pf-word">${esc(`แม่น้ำใกล้จุด: ${nr.freeboard_m != null ? freeboardText(nr.freeboard_m) : stOf(nr).th}`)}</b>
+      <div class="pf-sub">${esc(nr.name_th)} ห่าง ${esc(d.nearest_river.distance_km)} กม. · ${esc(stOf(nr).th)} · มีผลกับบ้านริมแม่น้ำนอกคันกั้นน้ำ ไม่ใช่ระดับน้ำในคลอง</div></div></li>` : "";
   // Factor 2: rain (TMD words and colours). Factor 3: street reports (≥ 3 in 1 km / 6 h = the alert level, STREET_ALERT).
   const rain = d.rain_next24_mm;
   // Issue #5: every factor = "title · word" on one line, details in the same small grey style below
@@ -726,6 +740,12 @@ function pointHTML(d, src, place = "") {
   const rainF = rain == null ? { color: "#9ca3af", word: "ไม่มีข้อมูล", sub: "" }
     : { color: RAIN_COLOR[rainLabel(rain)], word: rainLabel(rain),
         sub: rain >= 0.1 ? `ประมาณ ${esc(rainMm(rain))} มม. (Open-Meteo) ${rainScale(rain)}` : "Open-Meteo" };
+  // Rain that already fell, measured by the nearest HII rain gauge (≤ 10 km, ≤ 3 h old): a fact about now (v0.16.3)
+  const rm = d.rain_measured, rmMm = rm ? Number(rm.rain_24h) : null;
+  const rainNow = rm ? `<div class="pf-sub"><b>วัดได้แล้ว 24 ชม. ล่าสุด: ${esc(rainLabel(rmMm))} ${esc(rainMm(rmMm))} มม.</b>${rm.rain_1h != null && rm.rain_1h >= 0.1 ? ` · 1 ชม. ล่าสุด ${esc(rainMm(Number(rm.rain_1h)))} มม.` : ""}
+    <span class="muted">(สถานีวัดฝน ${esc(rm.name_th)} ห่าง ${esc(rm.distance_km)} กม. · สสน. · ข้อมูลถึง ${esc(fmtTime(rm.obs_time))})</span></div>` : "";
+  const rainColor = rm && RAIN_TMD.findIndex(([, l]) => l === rainLabel(rmMm)) > (rain == null ? -1 : RAIN_TMD.findIndex(([, l]) => l === rainLabel(rain)))
+    ? RAIN_COLOR[rainLabel(rmMm)] : rainF.color;
   const nRep = Number(ev.traffy_flood_reports_1km_6h || 0);
   const streetF = nRep >= 3 ? { color: "#c62828", word: `มีแจ้ง ${nRep} เรื่อง` } : nRep > 0 ? { color: "#b45309", word: `มีแจ้ง ${nRep} เรื่อง` }
     : { color: "#9ca3af", word: "ยังไม่มีรายงาน" };
@@ -748,9 +768,9 @@ function pointHTML(d, src, place = "") {
       <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
         <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(head(canal.word))}</b>
-          ${canalGauges}</div></li>
-        <li><span class="pf-dot" style="background:${rainF.color}"></span><div><b class="pf-word">${esc(rain == null ? "ยังไม่มีข้อมูลฝน" : `${rainF.word}ใน 24 ชม. ข้างหน้า`)}</b>
-          ${rainF.sub ? `<div class="pf-sub">${rainF.sub}</div>` : ""}</div></li>
+          ${canalGauges}</div></li>${riverLine}
+        <li><span class="pf-dot" style="background:${rainColor}"></span><div><b class="pf-word">${esc(rain == null ? (rm ? "ฝน" : "ยังไม่มีข้อมูลฝน") : `คาด${rainF.word}ใน 24 ชม. ข้างหน้า`)}</b>
+          ${rainF.sub ? `<div class="pf-sub">${rainF.sub}</div>` : ""}${rainNow}</div></li>
         <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b class="pf-word">${esc(nRep > 0 ? `มีแจ้งน้ำท่วมบนถนน ${nRep} เรื่อง` : "ยังไม่มีรายงานน้ำท่วมบนถนน")}</b>
           <div class="pf-sub">${hasStreetFlood ? `<b>น้ำรอระบายรอบจุดนี้ แม้${W}ใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · ` : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
       </ul>
@@ -884,7 +904,9 @@ function maybeUpdate(v) {
 
 async function load() {
   try {
-    const [d, st] = await Promise.all([getJSON("/api/stations"), getJSON("/api/stats").catch(() => null)]);
+    const [d, st, rn] = await Promise.all([getJSON("/api/stations"), getJSON("/api/stats").catch(() => null),
+      getJSON("/api/rain").catch(() => null)]);
+    rainRegions = rn?.by_region || null;
     stations = d.stations;
     streetSrc = d.street_source || null;
     const latest = stations.map((s) => s.obs_time).filter(Boolean).sort().pop();

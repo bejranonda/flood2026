@@ -583,6 +583,10 @@ The owner asked for the same experience everywhere. What changed, and the eviden
 - **Water word** (`point.water_word`): from the agency's river name — แม่น้ำ/แคว/น้ำ → แม่น้ำ; คลอง/คู → คลอง; ลำ/ห้วย/เหมือง/ร่อง → ลำน้ำ; บึง → บึง; no name: BMA and Bangkok-area gauges "คลอง" (gates), CPY* "แม่น้ำ", elsewhere "ลำน้ำ". Never guessed from the station name.
 - **Results so far:** Bangkok regression unchanged (48 h mean 0.29, 36/40; `scripts/backtest_nationwide.py`, 2026-09-30 21:11 UTC). Nationwide: ⚠️ preliminary — only 20 gauges had ≥ 300 days and no rain cell had history yet, so "with inputs" equalled own methods (48 h: 1/16 over the gate). Re-run after the backfill and the rain history (~24 h).
 
+### 19.9 Measured rain and the river near a pin (v0.16.3, KI-254)
+- **Measured rain** (`point.measured_rain`): the nearest HII rain gauge within 10 km with a reading ≤ 3 h old; last 24 h in the TMD bands used for the forecast (§ rain words), last hour in mm, with the reading's time. ≥ 35 mm/24 h (TMD "heavy") raises the outlook to at least "moderate" ("ฝนตกหนักในพื้นที่ เฝ้าระวังน้ำขังบนถนน"); 10–35 mm is mentioned in the text. A measurement is a fact about the past 24 h; the forecast line stays forward-looking.
+- **River near a Bangkok pin:** the nearest fresh river gauge within 3 km is its own line (distance to bank, status), never mixed into the canal verdict (D-059).
+
 ## 20. Forecasting 48 h ahead and outside forecasts (D-050, 2026-09-27)
 Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../research/2026-09-27_forecast_48h.md).
 - **What is shown:** 12 h and 24 h change per gauge (§4, `change_summary`); a **48 h line only where the 48 h backtest gives "medium"** (7 of 102 gauges on 2026-09-27, all tidal river/estuary). At high gauges with no forecast fall: "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า". Never "stable for 48 h".

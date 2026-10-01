@@ -128,9 +128,7 @@ def parse_rain(payload: dict) -> list[dict]:
     for r in payload.get("data", []) or []:
         s = r.get("station") or {}
         geo = r.get("geocode") or {}
-        province = _name(geo.get("province_name"), "th")
-        if province not in FOCUS_PROVINCES:
-            continue
+        province = _name(geo.get("province_name"), "th")  # every province since v0.16.3 (D-064 parity)
         t = parse_local(r.get("rainfall_datetime"))
         if t is None:
             continue

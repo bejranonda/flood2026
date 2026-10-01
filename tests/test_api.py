@@ -261,3 +261,14 @@ def test_the_list_is_rebuilt_from_the_same_rows_snapshot_as_the_pin_panel(monkey
     api._rows_cache[True] = (200.0, [])  # the rows were refreshed (what the pin panel now uses)
     api.stations("all")
     assert built == ["all", "all"]  # the list follows at once
+
+
+def test_rain_summary_per_region_takes_the_wettest_point_forecast_and_measured():
+    pts = [{"point": "bkk_central", "mm24": 5.0}, {"point": "bkk_north", "mm24": 7.0}, {"point": "g_19.0_99.0", "mm24": 30.0}]
+    obs = [{"code": "HII001", "name_th": "อาคาร", "province": "กรุงเทพมหานคร", "rain_24h": 60.0, "rain_1h": 0.5},
+           {"code": "X", "name_th": "เชียงใหม่", "province": "เชียงใหม่", "rain_24h": 12.0, "rain_1h": 1.0}]
+    regions_of_cells = {"g_19.0_99.0": "north"}
+    out = api.rain_by_region(pts, obs, regions_of_cells)
+    assert out["bkk"]["forecast_mm24"] == 7.0 and out["bkk"]["measured"]["code"] == "HII001"
+    assert out["north"]["forecast_mm24"] == 30.0 and out["north"]["measured"]["rain_24h"] == 12.0
+    assert out["all"]["forecast_mm24"] == 30.0 and out["all"]["measured"]["rain_24h"] == 60.0

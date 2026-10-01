@@ -187,3 +187,11 @@ def test_waterlevel_load_row_stamped_in_the_future_is_flagged():
                     "tele_station_lat": 13.85, "tele_station_long": 100.58, "min_bank": 2.2, "ground_level": -0.33}}]}}
     _, obs = parsing.parse_waterlevel_load(payload, "sha")
     assert obs[0]["quality_flag"] == "future_time"
+
+
+def test_rain_gauges_are_kept_nationwide():
+    from floodwatch.collectors import parsing
+    row = {"station": {"tele_station_oldcode": "LOE1", "tele_station_lat": 17.49, "tele_station_long": 101.72,
+                       "tele_station_name": {"th": "เลย"}},
+           "geocode": {"province_name": {"th": "เลย"}}, "rainfall_datetime": "2026-10-01 18:00", "rain_1h": "2.5", "rain_24h": "40"}
+    assert [r["code"] for r in parsing.parse_rain({"data": [row]})] == ["LOE1"]  # D-064 parity: not Bangkok-only

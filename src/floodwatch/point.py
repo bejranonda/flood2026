@@ -79,6 +79,30 @@ def local_channel(s: dict, mode: str) -> bool:
 
 
 STEADY_M = 0.05  # the same "ทรงตัว" width as the UI rows (web/app.js STEADY_M, D-060)
+MEASURED_RAIN_KM = 10.0  # a rain gauge farther than this says little about the rain at a point (convective cells)
+MEASURED_RAIN_MAX_AGE_H = 3
+
+
+def measured_rain(lat: float, lon: float, rows: list[dict], now) -> dict | None:
+    """The rain that already fell (HII rain gauges): the nearest gauge with a reading in the last 3 h within 10 km.
+    Owner 2026-10-01: it poured while the panel showed only the forecast ("คาดฝนเล็กน้อย")."""
+    best = None
+    for r in rows:
+        if r.get("lat") is None or r.get("lon") is None or r.get("rain_24h") is None or r.get("obs_time") is None:
+            continue
+        if (now - r["obs_time"]).total_seconds() > MEASURED_RAIN_MAX_AGE_H * 3600:
+            continue
+        d = haversine_km(lat, lon, r["lat"], r["lon"])
+        if d <= MEASURED_RAIN_KM and (best is None or d < best[0]):
+            best = (d, r)
+    if best is None:
+        return None
+    d, r = best
+    return {"code": r["code"], "name_th": r.get("name_th") or r["code"], "distance_km": round(d, 1),
+            "rain_1h": r.get("rain_1h"), "rain_24h": r["rain_24h"], "obs_time": r["obs_time"].isoformat(),
+            "band": (rain_band(r["rain_24h"]) or (None,))[0]}
+
+
 CHECK_KM = 5.0  # a lone close gauge is checked against the gauges out to here (issue #3: never red from one gauge)
 
 
@@ -129,7 +153,7 @@ def area_index(lat: float, lon: float, stations: list[dict], mode: str = "bkk") 
 
 
 def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedback_depths: dict[str, int],
-           rain_next24_mm: float | None) -> dict:
+           rain_next24_mm: float | None, rain_measured: dict | None = None) -> dict:
     listed = []
     for s in stations:
         if s.get("lat") is None or s.get("lon") is None:
@@ -187,8 +211,16 @@ def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedb
     lead = nc if nc is not None and has_trend(nc) else nt
     # the channel word of the sentences: canals in Bangkok; elsewhere the nearest local gauge's waterway
     word = "คลอง" if mode == "bkk" else (water_word(nc) if nc is not None else "แม่น้ำ")
-    fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km, lead, word)
-    return {"lat": round(lat, 3), "lon": round(lon, 3), "mode": mode, "word": word, "area": idx, "nearest_canal": nearest_canal,
+    fc_outlook = point_forecast(idx, stations_forecast, stations_nearby, rain_next24_mm, reports_1km, lead, word,
+                                rain_measured)
+    # In Bangkok the river outside the walls never judges the canals (D-059), but riverside streets flood from it:
+    # the nearest fresh river gauge within 3 km gets its own line (Pak Kret / CPY014, 2026-10-01).
+    nr = None if mode != "bkk" else next(
+        (s for s in candidates if s["water_body"] == "river" and not s.get("stale") and s.get("status") not in (None, "unknown")
+         and s["distance_km"] <= NEAR_KM), None)
+    nearest_river = None if nr is None else {"code": nr["code"], "distance_km": nr["distance_km"], "station": nr}
+    return {"lat": round(lat, 3), "lon": round(lon, 3), "mode": mode, "word": word, "area": idx,
+            "rain_measured": rain_measured, "nearest_river": nearest_river, "nearest_canal": nearest_canal,
             "nearest_canal_trend": nearest_trend,
             "forecast": fc_outlook,
             "stations": combined,
@@ -264,7 +296,8 @@ def _rain_phrase(rain_mm: float) -> tuple[str, str]:
 
 
 def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: list[dict],
-                   rain_24h_mm: float | None, reports_1km: int, lead: dict | None = None, word: str = "คลอง") -> dict:
+                   rain_24h_mm: float | None, reports_1km: int, lead: dict | None = None, word: str = "คลอง",
+                   measured: dict | None = None) -> dict:
     """The outlook (below) plus the gauges whose own forecast change the banner may show (D-047). Gauges are listed
     only when the area confidence allows a canal statement at all (D-042); each keeps its name and distance, so the
     change is read as "at that gauge", never as a level at the pin (D-021)."""
@@ -273,6 +306,18 @@ def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: l
         for k in ("title", "desc"):
             if out.get(k):
                 out[k] = out[k].replace("คลอง/แม่น้ำ", word).replace("คลอง", word)
+    if measured and measured.get("band") in ("moderate", "heavy", "very_heavy"):
+        # rain that already fell is a fact about now; the outlook above only reads the forecast (owner 2026-10-01)
+        mm = f"{measured['rain_24h']:.0f}"
+        where = f"{measured['name_th']} ห่าง {measured['distance_km']} กม."
+        if measured["band"] in ("heavy", "very_heavy"):
+            if out["risk"] in ("info", "low"):
+                out["risk"] = "moderate"
+                out["title"] = "ฝนตกหนักในพื้นที่ เฝ้าระวังน้ำขังบนถนน"
+            out["desc"] = f"ฝนตกหนักแล้ว วัดได้ {mm} มม. ใน 24 ชม. ล่าสุด ({where}) · {out['desc']}"
+        else:
+            out["desc"] = f"ฝนตกแล้ว {mm} มม. ใน 24 ชม. ล่าสุด ({where}) · {out['desc']}"
+        out["basis"] = out.get("basis", []) + ["rain_measured"]
     usable = area.get("confidence") in ("low", "medium")
     out["gauges"] = [s["code"] for s in stations_forecast if s.get("change12")] if usable else []
     # When the area gate gives no canal statement, the panel may still show the trend at the nearest *canal* gauge,

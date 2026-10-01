@@ -19,7 +19,7 @@ TASKS = [
     ("traffy", 600),
     ("bma_klong", 600),  # BMA khlong gauges via the flood69 relay (relay refreshes every 5 min)
     ("qc", 600),  # dropouts and erratic (pump-affected) gauges over the last 24 h (KI-237)
-    ("hii_rain", 1800),
+    ("hii_rain", 900),  # every 15 min, every province (v0.16.3): measured rain in the panel during a downpour
     ("openmeteo", 3600),
     ("hii_stations", 6 * 3600),
     ("hii_history", 6 * 3600),

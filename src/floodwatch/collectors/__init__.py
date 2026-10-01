@@ -58,7 +58,7 @@ def hii_rain() -> dt.datetime | None:
                VALUES (%(code)s,%(obs_time)s,%(rain_1h)s,%(rain_24h)s,%(lat)s,%(lon)s,%(name_th)s,%(province)s)
                ON CONFLICT DO NOTHING""", rows)
         c.commit()
-    log.info("hii_rain: %d focus rain stations", len(rows))
+    log.info("hii_rain: %d rain stations", len(rows))
     return max((r["obs_time"] for r in rows), default=None)
 
 

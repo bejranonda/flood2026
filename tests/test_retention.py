@@ -34,7 +34,7 @@ def test_retention_keeps_bma_and_400_days_and_deletes_in_batches():
     sql, p = obs[0]
     assert "agency IS DISTINCT FROM 'BMA'" in sql  # BMA relay history is not re-fetchable (KI-218)
     assert p["days"] == retention.OBS_KEEP_DAYS == 400 and p["batch"] == retention.BATCH
-    assert out == {"observation": retention.BATCH + 10, "weather_forecast": 0, "forecast_run": 0}
+    assert out == {"observation": retention.BATCH + 10, "weather_forecast": 0, "forecast_run": 0, "rain_obs": 0}
     assert c.commits >= 2  # short transactions: one per batch
 
 
@@ -61,3 +61,8 @@ def test_forecast_runs_are_thinned_after_two_days_and_dropped_after_fourteen():
     sql = retention.FC_SQL
     assert "forecast_run" in sql and "%(keep_all_days)s" in sql and "%(days)s" in sql
     assert retention.FC_KEEP_ALL_DAYS == 2 and retention.FC_KEEP_DAYS == 14
+
+
+def test_rain_gauge_readings_are_bounded_too():
+    # 4,651 gauges x 24 readings a day; only the last 3 h are read (panel): two weeks is plenty
+    assert "rain_obs" in retention.RAIN_SQL and retention.RAIN_KEEP_DAYS == 14
