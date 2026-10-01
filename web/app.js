@@ -54,13 +54,12 @@ const cm = (m) => m == null ? "-" : `${m > 0 ? "+" : ""}${Math.round(m * 100)} �
 const RAIN_TMD = [[0.1, "ไม่มีฝน"], [10.0, "ฝนเล็กน้อย"], [35.0, "ฝนปานกลาง"], [90.0, "ฝนหนัก"], [Infinity, "ฝนหนักมาก"]];
 const rainLabel = (mm) => RAIN_TMD.find(([max], i) => (i === 0 ? mm < max : mm <= max))[1];
 const rainMm = (mm) => (mm < 1 || rainLabel(Math.round(mm)) !== rainLabel(mm)) ? mm.toFixed(1) : String(Math.round(mm));
-const rainText = (mm) => mm < 0.1 ? "ไม่มีฝน" : `${rainLabel(mm)} (ประมาณ ${rainMm(mm)} มม.)`;
 // Colour + a 4-step mini scale say "how much" without a text legend (owner 2026-09-27: the legend line was too much).
 const RAIN_COLOR = { "ไม่มีฝน": "#6b7280", "ฝนเล็กน้อย": "#0e7490", "ฝนปานกลาง": "#2563eb", "ฝนหนัก": "#7c3aed", "ฝนหนักมาก": "#be185d" };
-const rainPill = (mm) => {
+const rainPill = (mm, approx = true) => {  // "ราว" for a forecast only; a measurement is not an estimate
   const label = rainLabel(mm), idx = RAIN_TMD.findIndex(([, l]) => l === label), c = RAIN_COLOR[label];
-  const bars = [1, 2, 3, 4].map((i) => `<i style="background:${i <= idx ? c : "#e5e7eb"}"></i>`).join("");
-  return `<span class="rain"><b style="color:${c}">${esc(label)}</b>${mm >= 0.1 ? ` ประมาณ ${esc(rainMm(mm))} มม.` : ""} <span class="rscale" aria-hidden="true">${bars}</span></span>`;
+  // the panel's words ("ราว N มม."), no 4-square scale: the coloured word already says it (v0.16.8, one vocabulary)
+  return `<span class="rain"><b style="color:${c}">${esc(label)}</b>${mm >= 0.1 ? ` ${approx ? "ราว " : ""}${esc(rainMm(mm))} มม.` : ""}</span>`;
 };
 // Change at a gauge in 12/24 h, five colour steps (D-047): blue = falling, grey = steady, orange/red = rising.
 // Always "at this gauge", with the likely range in words and an honest confidence ("ปานกลาง" at best, never "สูง").
@@ -216,8 +215,10 @@ function rainSummary(bkkRain) {
   const r = rainRegions?.[region], where = region === "all" ? "ทั่วประเทศ" : REGIONS[region].th;
   const fc = r?.forecast_mm24 ?? (region === "bkk" ? bkkRain : null), m = r?.measured;
   if (fc == null && !m) return "";
+  const tip = [fc != null ? "คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดในพื้นที่" : "",
+    m && m.rain_24h >= 0.1 ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : ""].filter(Boolean).join(" · ");
   return `<p class="sumline">🌧️ ฝน${esc(where)}${fc != null ? ` 24 ชม. ข้างหน้า สูงสุด: ${rainPill(fc)}` : ""}${m && m.rain_24h >= 0.1
-    ? `<br>24 ชม. ที่ผ่านมา สูงสุด: ${rainPill(m.rain_24h)} <span class="muted">(${esc(m.name_th)}${region === "all" ? ` ${esc(m.province || "")}` : ""})</span>` : ""}</p>`;
+    ? `<br>24 ชม. ที่ผ่านมา สูงสุด: ${rainPill(m.rain_24h, false)}` : ""}${tip ? ` <button type="button" class="conf-badge conf-low" title="${esc(tip)}" aria-label="ที่มาของข้อมูลฝน">ⓘ</button>` : ""}</p>`;
 }
 let lastStats = null;
 function renderSummary(st) {
@@ -235,7 +236,13 @@ function renderSummary(st) {
     <span style="width:${(100 * (x.h24 - x.h3)) / x.total}%;background:#f4d35e"></span></span>`;
   const pct = (a, b) => Math.round((100 * a) / (b || 1));
   const rain = st.rain_bkk_next24_mm_max;
-  document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>
+  // When a source stops upstream (2026-10-01: all BMA canal readings stuck at 00:10 ICT for hours), the counts above
+  // are old values: say so in one line, the why behind an ⓘ.
+  const staleN = mine.filter((s) => s.stale && s.status !== "unknown").length;
+  const staleLast = mine.filter((s) => s.stale && s.obs_time).map((s) => s.obs_time).sort().pop();
+  const staleLine = staleN >= 5 && staleN * 2 >= mine.length
+    ? `<p class="sumline warn-line">⚠️ ${staleN} สถานีไม่อัปเดตเกิน 3 ชม. (ล่าสุด ${esc(fmtTime(staleLast))}) <button type="button" class="conf-badge conf-low" title="แหล่งข้อมูลหยุดส่งชั่วคราว ตัวเลขเป็นค่าล่าสุดที่ได้รับ ไม่ใช่สถานการณ์ตอนนี้ ระบบจะอัปเดตเองเมื่อข้อมูลกลับมา" aria-label="ทำไมข้อมูลไม่อัปเดต">ⓘ</button></p>` : "";
+  document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>${staleLine}
     ${rainSummary(rain)}
     <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
     <p class="sumline">${esc(TREND.rising)} <b>${tr("rising")}</b> · ${esc(TREND.falling)} <b>${tr("falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`} (คาดการณ์ 12 ชม.)</p>
@@ -302,12 +309,24 @@ function renderList() {
   const keepAll = statusFilter === "unknown" || q;
   const live = keepAll ? rows : rows.filter((s) => s.status !== "unknown");
   const dead = keepAll ? [] : rows.filter((s) => s.status === "unknown");
+  // Nearest first once the location is known (D-065 follow-up): the 3 nearest fresh gauges within 15 km on top, the rest
+  // by severity as before (v0.15 concept); no repeats. Not while searching or filtering by status.
+  let nearTop = "";
+  if (lastPos && !q && !statusFilter) {
+    const km = (s) => Math.hypot((s.lat - lastPos.lat) * 111, (s.lon - lastPos.lon) * 111 * Math.cos(lastPos.lat * Math.PI / 180));
+    const near = live.filter((s) => s.lat != null && s.lon != null && km(s) <= 15).sort((a, b) => km(a) - km(b)).slice(0, 3);
+    if (near.length) {
+      const codes = new Set(near.map((s) => s.code));
+      live.splice(0, live.length, ...live.filter((s) => !codes.has(s.code)));
+      nearTop = `<li class="sec-heading"><span>📍 ใกล้คุณ</span></li>${near.map((s) => itemHTML(s, `<div class="meta">ห่าง ${esc(km(s).toFixed(1))} กม.</div>`)).join("")}<li class="sec-heading"><span>ทั้งหมด${region === "all" ? "ทั่วประเทศ" : `ใน${esc(REGIONS[region].th)}`}</span></li>`;
+    }
+  }
   const ul = document.getElementById("list");
   const raw = document.getElementById("q").value.trim();
   const place = raw.length >= 2 ? `<li class="placeq"><button type="button" class="btn placebtn">🔎 ค้นหาสถานที่ “${esc(raw)}” (ซอย ถนน ย่าน)</button><div class="placeres"></div></li>` : "";
   const tail = dead.length ? `<li class="nodata"><details><summary>สถานีที่ไม่มีข้อมูลล่าสุด ${dead.length} สถานี (ไม่ได้ส่งข้อมูลเกิน 24 ชม.)</summary>
     <ul class="list">${dead.map((s) => itemHTML(s)).join("")}</ul></details></li>` : "";
-  ul.innerHTML = place + (live.map((s) => itemHTML(s)).join("") || (dead.length ? "" : "<li class='muted'>ไม่พบสถานีชื่อนี้ ลองค้นหาเป็นสถานที่ด้านบน</li>")) + tail;
+  ul.innerHTML = place + nearTop + (live.map((s) => itemHTML(s)).join("") || (dead.length ? "" : "<li class='muted'>ไม่พบสถานีชื่อนี้ ลองค้นหาเป็นสถานที่ด้านบน</li>")) + tail;
   ul.querySelector(".placebtn")?.addEventListener("click", () => placeSearch(raw));
   bindItems(ul);
 }
@@ -613,6 +632,21 @@ function closeDetail() {
   if (updatePending) location.reload();  // a new release arrived while the panel was open
 }
 
+// A panel's gauges are fresher than the list (loaded up to 5 min ago, shared 60 s): the list takes them, so list,
+// sheet and pin tell the same story once looked at (C1 findings 2026-10-01). Returns true when something changed.
+function refreshListItems(rows) {
+  let changed = false;
+  for (const s of rows) {
+    if (!s || !s.code) continue;
+    const i = stations.findIndex((x) => x.code === s.code);
+    if (i < 0) continue;
+    const { distance_km, water_body, local, ...row } = s;  // point-panel extras are not station fields
+    const merged = { ...stations[i], ...row };
+    if (JSON.stringify(merged) !== JSON.stringify(stations[i])) { stations[i] = merged; changed = true; }
+  }
+  return changed;
+}
+
 async function showDetail(code) {
   const sheet = document.getElementById("sheet"), box = document.getElementById("detail");
   sheet.hidden = false;
@@ -624,7 +658,7 @@ async function showDetail(code) {
     // The sheet is fresher than the list (loaded up to 5 min ago): the list takes the sheet's row, so both tell the
     // same story after you looked (C1 findings 2026-10-01: a forecast or QC update landed in between).
     const li = stations.findIndex((x) => x.code === s.code);
-    if (li >= 0 && JSON.stringify(stations[li]) !== JSON.stringify({ ...stations[li], ...s })) { stations[li] = { ...stations[li], ...s }; renderList(); }
+    if (refreshListItems([s])) renderList();
     const methods = fc ? [...new Set(Object.values(fc.skill || {}).map((k) => k.method))] : [];
     const skill12 = fc?.skill?.["12"];
     const bma = s.agency === "BMA", unit = bma ? "ม. (หมุด กทม.)" : "ม.รทก.";  // BMA datum unverified vs HII (KI-217)
@@ -730,7 +764,9 @@ function pointHTML(d, src, place = "") {
   const detailBits = [canal.sub, main && main.far ? `สถานีที่ใช้อยู่ห่างเกิน 3 กม. ${nat ? "อาจอยู่คนละลำน้ำ" : "อาจอยู่คนละพื้นที่ปิดล้อม"} ใช้ประกอบเท่านั้น` : "",
     main && main.station ? `ข้อมูลจาก${agencyTh(main.station.agency)}${["HII", "BMA"].includes(main.station.agency) ? "" : " (ผ่าน สสน.)"}` : "",
     a.n > 1 ? `มีสถานีอื่นอีก ${a.n - 1} แห่งในระยะ 8 กม. (รายชื่อด้านล่าง)` : ""].filter(Boolean);
-  const canalGauges = `<div class="pf-gauges">${noTrendLine}${mainBlock}${detailBits.length ? `<details class="pf-more"><summary>รายละเอียด</summary><div>${detailBits.join("<br>")}</div></details>` : ""}</div>`;
+  // the why/where behind an ⓘ like the rain factor's (owner 2026-10-01: "Continue all suggestions" — one way per panel)
+  const canalInfo = detailBits.length ? `<button type="button" class="conf-badge conf-low" title="${esc(detailBits.join(" · "))}" aria-label="ที่มาและรายละเอียดของสถานีวัดน้ำ">ⓘ</button>` : "";
+  const canalGauges = `<div class="pf-gauges">${noTrendLine}${mainBlock}</div>`;
 
   // The river near a Bangkok pin: its own line, never canal evidence (D-059); riverside streets flood from it (v0.16.3)
   const nr = d.nearest_river?.station;
@@ -778,7 +814,7 @@ function pointHTML(d, src, place = "") {
       <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
       <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
-        <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(head(canal.word))}</b>
+        <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(head(canal.word))}</b>${canalInfo}
           ${canalGauges}</div></li>${riverLine}
         <li><span class="pf-dot" style="background:${rainColor}"></span><div><b class="pf-word">${esc(rainHead)}</b>${rainSub ? "" : rainInfo}
           ${rainSub ? `<div class="pf-sub">${esc(rainSub)}${rainInfo}</div>` : ""}</div></li>
@@ -823,6 +859,7 @@ async function checkPoint(lat, lon, src, place = "") {
   }
   try {
     const d = await getJSON(`/api/point?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`);
+    if (refreshListItems([...(d.stations || []), d.nearest_canal?.station, d.nearest_canal_trend?.station, d.nearest_river?.station])) renderList();
     box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div>${pointHTML(d, src, place)}${place ? `<p class="muted">ตำแหน่งจากชื่อสถานที่ (OpenStreetMap) อาจคลาดเคลื่อนได้ แตะบนแผนที่เพื่อเลือกจุดที่ตรงกว่า</p>` : ""}`;
     bindItems(box);
     bindReport(box);
@@ -874,7 +911,9 @@ async function regionFromGrantedGps() {
     if (localStorage.getItem("regionSource") === "user" || !navigator.permissions || !navigator.geolocation) return;
     const st = await navigator.permissions.query({ name: "geolocation" });
     if (st.state !== "granted") return;  // "prompt" or "denied": never ask on load
-    navigator.geolocation.getCurrentPosition((pos) => { applyGpsRegion(pos.coords.latitude, pos.coords.longitude); fitRegion(); },
+    navigator.geolocation.getCurrentPosition((pos) => {
+      lastPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };  // also puts the nearest gauges on top of the list
+      applyGpsRegion(pos.coords.latitude, pos.coords.longitude); renderList(); fitRegion(); },
       () => {}, { enableHighAccuracy: false, timeout: 10000, maximumAge: 30 * 60 * 1000 });
   } catch { /* private mode or no Permissions API */ }
 }
@@ -887,6 +926,7 @@ function locate() {
     lastPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
     out.innerHTML = "";
     applyGpsRegion(lastPos.lat, lastPos.lon);  // counts, list and map follow where the user is (D-065)
+    renderList();  // the nearest gauges on top, also when the region did not change
     if (map) map.setView([lastPos.lat, lastPos.lon], 12);
     checkPoint(lastPos.lat, lastPos.lon, "gps");
   }, () => { out.innerHTML = "<p class='muted'>ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง แตะบนแผนที่เพื่อเลือกจุดแทนได้</p>"; }, { enableHighAccuracy: false, timeout: 10000 });

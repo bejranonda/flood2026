@@ -94,7 +94,7 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 
 ### UPTIME — alert when the site fails (new 2026-09-30, KI-246)
 **Why:** on 2026-09-30 the database was saturated from ~01:00 to 05:44 UTC; visitors saw "โหลดข้อมูลไม่สำเร็จ" and nobody was told. The server cannot alert you by itself (no notification channel is configured).
-**Steps (≈ 5 min, free tier ⚠️ check the provider's current limits):** create a free account at an uptime service (e.g. UptimeRobot or Better Stack) → new HTTP(S) monitor → URL `https://flood.autobahn.bot/api/health` → interval 5 min → alert contact: your e-mail and/or the provider's mobile app / LINE integration → save.
+**Steps (≈ 5 min, free tier ⚠️ check the provider's current limits):** create a free account at an uptime service (e.g. UptimeRobot or Better Stack) → new HTTP(S) monitor → URL `https://flood.autobahn.bot/api/health` → interval 5 min → alert contact: your e-mail and/or the provider's mobile app / LINE integration → save. **Also (v0.16.8):** if the service supports a keyword check, require the text `"stale_sources":[]` in the response — then it also alerts when a data source stops upstream while the site still answers (2026-10-01: all BMA canal readings stuck at 00:10 ICT for hours, KI-257).
 **Verify:** the monitor shows "up"; optionally pause the app for a minute (`docker compose stop app`, then `start`) and check that the alert arrives. Tell us which service you used; nothing secret goes into the repo.
 
 ### SOCIAL — repository preview image and search console (new 2026-09-30, KI-248)

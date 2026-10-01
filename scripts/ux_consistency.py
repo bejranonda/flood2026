@@ -177,6 +177,8 @@ with sync_playwright() as p:
             counts["pin_blocks"] += 1
             check_rows(f"pin {la:.3f},{lo:.3f} {blk['code']}", blk["rows"])
             card = listed.get(blk["code"])
+            if card and not same(card, blk):  # the pin updates its gauges in the list (v0.16.8): re-read the card
+                card = pg.evaluate(LIST_JS).get(blk["code"]) or card
             if card and not same(card, blk):  # re-read both after a refresh: a qc run between two reads is not a UI fault
                 open_home(pg); listed = pg.evaluate(LIST_JS); card = listed.get(blk["code"])
                 pg.evaluate("([a, o]) => checkPoint(a, o, 'pin')", [la, lo]); pg.wait_for_timeout(2000)
@@ -201,7 +203,7 @@ with sync_playwright() as p:
         pg.locator(f'.rchip[data-region="{reg}"]').click(); pg.wait_for_timeout(500)
         line = pg.evaluate("() => [...document.querySelectorAll('#summary .sumline')].map(e => e.innerText).find(t => t.includes('🌧')) || ''")
         r = rainreg.get(reg) or {}
-        if r.get("forecast_mm24") is not None and word(r["forecast_mm24"]) not in line.split("วัดได้แล้ว")[0]:
+        if r.get("forecast_mm24") is not None and word(r["forecast_mm24"]) not in line.split("ที่ผ่านมา")[0]:
             note("C9", f"summary {reg}", f"rain line '{line[:60]}' vs API {r['forecast_mm24']} mm ({word(r['forecast_mm24'])})")
     b.close()
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep

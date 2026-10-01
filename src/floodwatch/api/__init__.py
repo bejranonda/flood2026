@@ -60,6 +60,16 @@ def _iso(t):
     return t.isoformat() if t else None
 
 
+# Live feeds whose newest *reading* (not the fetch) must be recent; beyond this the source stopped upstream although the
+# fetch succeeds (2026-10-01: the BMA relay answered every 10 min with readings stuck at 17:10 UTC for 4.5 h).
+DATA_STALE_AFTER_H = {"bma_klong": 1.0, "hii_waterlevel": 3.0, "hii_rain": 3.0}
+
+
+def stale_sources(rows: list[dict], now: dt.datetime) -> list[str]:
+    return sorted(r["source"] for r in rows if r["source"] in DATA_STALE_AFTER_H and r.get("last_data_time")
+                  and (now - r["last_data_time"]).total_seconds() > DATA_STALE_AFTER_H[r["source"]] * 3600)
+
+
 @app.get("/api/health")
 def health():
     with db.connect() as c:
@@ -67,7 +77,9 @@ def health():
         # flagged and future-stamped readings are not "latest" (KI-247: 28 HII rows stamped ~21 h ahead)
         last = c.execute("""SELECT max(obs_time) AS t FROM observation WHERE quality_flag='ok'
                             AND obs_time <= now() + interval '15 minutes'""").fetchone()["t"]
-    return _json({"version": __version__, "now": dt.datetime.now(dt.timezone.utc).isoformat(), "latest_observation": _iso(last),
+    now = dt.datetime.now(dt.timezone.utc)
+    return _json({"version": __version__, "now": now.isoformat(), "latest_observation": _iso(last),
+                  "stale_sources": stale_sources(rows, now),  # for an uptime monitor: a non-empty list = data stopped
                   "latest_observation_age_min": _age_min(last),
                   "sources": [{k: (_iso(v) if isinstance(v, dt.datetime) else v) for k, v in r.items()} for r in rows]},
                  cache=False)

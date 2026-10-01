@@ -286,3 +286,12 @@ def test_a_measured_trend_row_never_contradicts_a_model_proven_direction():
     down = {"dir": "falling", "level": "fall", "method": "star", "likely": [-0.2, -0.05]}
     tide = api.reconcile_rows({12: down, 24: up}, {12: down, 24: up})
     assert tide == {12: down, 24: up}  # model vs model (tide, rain arriving later) is physics, not a contradiction
+
+
+def test_health_lists_sources_whose_data_stopped_although_the_fetch_succeeds():
+    # 2026-10-01: the BMA relay answered every 10 min but its readings stopped at 17:10 UTC; health said "ok"
+    now = dt.datetime(2026, 10, 1, 21, 30, tzinfo=dt.timezone.utc)
+    rows = [{"source": "bma_klong", "last_data_time": now - dt.timedelta(hours=4, minutes=20)},
+            {"source": "hii_waterlevel", "last_data_time": now - dt.timedelta(minutes=20)},
+            {"source": "traffy", "last_data_time": None}]
+    assert api.stale_sources(rows, now) == ["bma_klong"]

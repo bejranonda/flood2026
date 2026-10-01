@@ -2,6 +2,20 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.8 — 2026-10-01
+- **One way per panel (owner: "Continue all suggestions").** The canal factor's "▸ รายละเอียด" became an ⓘ like the
+  rain factor's; the panel has no folded details left. The summary rain line uses the panel's words ("ราว N มม." for
+  a forecast, no "ราว" for a measurement), no 4-square scale, and its gauge name behind an ⓘ.
+- **Nearest gauges first once your location is known.** "📍 ใกล้คุณ": the 3 nearest fresh gauges within 15 km on top
+  of the list, then "ทั้งหมดใน<region>" by severity as before (e.g. Chiang Mai: สะพานนวรัฐ P.1, P.103, MOU010).
+- **Data that stopped upstream is said, not hidden (KI-257).** 2026-10-01 from 00:10 ICT all BMA canal readings were
+  stuck (the relay kept answering; HII's copy and the direct BMA channel had nothing newer). The summary now says
+  "⚠️ N สถานีไม่อัปเดตเกิน 3 ชม. (ล่าสุด …)" when most gauges of the region are stale, and `/api/health` lists
+  `stale_sources` (newest reading too old although the fetch succeeds) for an uptime monitor.
+- **A pin panel refreshes its gauges in the list, like a sheet does** (pin vs list differed by 1–2 cm at 12 blocks
+  when new readings arrived between the two). Live consistency run: 488 sheets, 76 pins, 1,960 rows → **0 findings on
+  C1–C10**.
+
 ## v0.16.7 — 2026-10-01
 - **Shorter rain factor in the pin panel (owner: "Rainfall info in panel are not optimal, can we shorten?").**
   Four long lines became two (owner: "Or put unnecessary info in i symbol?"): the heavier of forecast and measured
