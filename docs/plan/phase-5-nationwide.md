@@ -20,7 +20,7 @@ Give residents in any province, and local officials and volunteers, an honest na
 - [x] QC and forecasts for every gauge; forecaster container with a daily cached backtest
 - [x] `star` inputs outside Bangkok: 0.5° rain cells, upstream gauges learned per basin
 - [x] Region chips for the country; water word from the river name; twin gauges linked; national pin mode; place search Thailand-wide
-- [ ] Re-run `scripts/backtest_nationwide.py` after the backfill and a year of cell rain (~2026-10-01 21:00 UTC); write the numbers to APPROACH §19.8
+- [x] Re-run `scripts/backtest_nationwide.py` after the backfill (2026-10-01 14:20 UTC): 27/19/19 of 51 over the gate at 12/24/48 h with the new inputs vs 9/8/6 without (APPROACH §19.8)
 - [ ] Dam-controlled reaches (e.g. E.29/URTU07 above Ubol Ratana): release inputs, like C.13 for the Chao Phraya
 ### 5.2 National collectors behind a flag (lean, D-046)
 - [ ] Freshness filter shared by all national collectors (KI-111)

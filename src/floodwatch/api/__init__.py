@@ -202,6 +202,31 @@ def follow_measured(ch: dict | None, obs24: dict | None, sk: dict | None, h: int
             "hit": c.get("hit"), "hit_n": c.get("n")}
 
 
+def _model_direction(ch: dict | None) -> str | None:
+    """The direction a backtested model proved for a row (the keep-condition of follow_measured), else None."""
+    if not ch or ch.get("basis") == "measured_trend" or ch.get("method") in (None, "persistence") or ch.get("level") == "steady":
+        return None
+    lk = ch.get("likely")
+    if ch.get("dir") == "falling" and (not lk or lk[1] < 0):
+        return "falling"
+    if ch.get("dir") == "rising" and (not lk or lk[0] > 0):
+        return "rising"
+    return None
+
+
+def reconcile_rows(raw: dict, followed: dict) -> dict:
+    """A measured-trend row (D-060 heuristic) never contradicts a direction a model proved at another horizon of the
+    same gauge: it falls back to the model's own reading there (2026-10-01: TRD001 read ⬆ / ⬇ / ⬆ at 12/24/48 h;
+    63 of 719 gauges flipped, 43 of them model vs measured). Model vs model stays (tides, rain arriving later)."""
+    proven = {_model_direction(c) for c in followed.values()} - {None}
+    out = {}
+    for h, c in followed.items():
+        flip = c and c.get("basis") == "measured_trend" and c.get("dir") in ("rising", "falling") and \
+            ({"rising", "falling"} - {c["dir"]}) & proven
+        out[h] = raw.get(h) if flip else c
+    return out
+
+
 def _change_fields(r: dict, status: str) -> dict:
     """Rise/fall, how much and how sure at +12 h and +24 h, from the stored forecast (D-047). Nothing for a gauge
     whose data are too old to judge; a peak window only where a tide model makes the path vary (outlook24)."""
@@ -210,11 +235,13 @@ def _change_fields(r: dict, status: str) -> dict:
     o = r.get("outlook24") or {}
     c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
     obs = r.get("observed24")
-    return {"change12": follow_measured(change_summary(r.get("q12"), r["fc_now"], r.get("sk12")), obs, r.get("sk12"), 12),
-            "change24": follow_measured(change_summary(r.get("q24"), r["fc_now"], r.get("sk24")), obs, r.get("sk24"), 24),
-            # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050). `proven` (medium confidence) is kept
-            # for API users only: since D-056 the UI shows a direction whenever a real model beat "no change" and ignores it.
-            "change48": None if not c48 else follow_measured({**c48, "proven": c48["confidence"] == "medium"}, obs, r.get("sk48"), 48),
+    # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050). `proven` (medium confidence) is kept
+    # for API users only: since D-056 the UI shows a direction whenever a real model beat "no change" and ignores it.
+    raw = {12: change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
+           24: change_summary(r.get("q24"), r["fc_now"], r.get("sk24")),
+           48: None if not c48 else {**c48, "proven": c48["confidence"] == "medium"}}
+    rows = reconcile_rows(raw, {h: follow_measured(c, obs, r.get(f"sk{h}"), h) for h, c in raw.items()})
+    return {"change12": rows[12], "change24": rows[24], "change48": rows[48],
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 

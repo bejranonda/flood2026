@@ -13,7 +13,9 @@ in many possibilities"). One browser session, views compared at the same moment:
      view) whatever the chosen chip — owner 2026-10-01: "App shows only Bangkok stations";
   C9 (v0.16.3-5) rain and river lines agree with the API and with each other: a measured-rain line carries its reading
      time; the "ฝนตกหนักในพื้นที่" headline only with a heavy measured line; the panel's forecast mm = /api/point's;
-     a river line only on Bangkok pins and within 3 km; each region's summary rain word = /api/rain by_region.
+     a river line only on Bangkok pins and within 3 km; each region's summary rain word = /api/rain by_region;
+  C10 (v0.16.6) a measured-trend row never points opposite to a direction a model proved at another horizon of the
+     same gauge (TRD001 read ⬆ / ⬇ / ⬆); model vs model may differ (tides, rain arriving later).
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
 ~30 min). Usage: python3 scripts/ux_consistency.py [out.json] [per_region=15]   (Python Playwright; Chromium --no-sandbox)"""
 import json, math, re, sys
@@ -110,6 +112,10 @@ with sync_playwright() as p:
         pg.wait_for_timeout(300)
         v = pg.evaluate(SHEET_JS, None); counts["sheets"] += 1
         check_rows(f"sheet {code}", v["rows"]); check_text(f"sheet {code}", v)
+        if not same(card, v):  # the sheet updates its list item (v0.16.6): re-read the card the user now sees
+            pg.evaluate("() => closeDetail()"); pg.wait_for_timeout(300)
+            card = pg.evaluate(LIST_JS).get(code) or card
+            pg.evaluate("(c) => showDetail(c)", code); pg.wait_for_timeout(1500); v = pg.evaluate(SHEET_JS, None)
         if not same(card, v):  # re-check after a fresh list: a refresh between the two reads is not a UI fault
             open_home(pg); listed = pg.evaluate(LIST_JS); card = listed.get(code) or card
             pg.evaluate("(c) => showDetail(c)", code); pg.wait_for_timeout(1500); v = pg.evaluate(SHEET_JS, None)
@@ -137,7 +143,8 @@ with sync_playwright() as p:
         where9 = f"pin {la:.3f},{lo:.3f}"
         if "วัดได้แล้ว" in full9 and "ข้อมูลถึง" not in full9:
             note("C9", where9, "measured rain without its reading time")
-        if "ฝนตกหนักในพื้นที่" in head and not re.search(r"วัดได้แล้ว 24 ชม\. ล่าสุด: ฝนหนัก", full9):
+        head9 = pg.evaluate("() => [document.querySelector('#detail .pf-title'), document.querySelector('#detail .pf-desc')].map(e => e ? e.textContent : '').join(' ')")
+        if "ฝนตกหนักในพื้นที่" in head9 and not re.search(r"วัดได้แล้ว 24 ชม\. ล่าสุด: ฝนหนัก", full9):
             note("C9", where9, "heavy-rain headline without a heavy measured line")
         if api.get("rain_next24_mm") is not None and api["rain_next24_mm"] >= 0.1:
             mm = api["rain_next24_mm"]  # the panel's rainMm(): one decimal below 1 mm or at a TMD band edge; JS rounding
@@ -145,7 +152,8 @@ with sync_playwright() as p:
             want = f"{mm:.1f}" if mm < 1 or word9(r0) != word9(mm) else str(r0)
             if f"ประมาณ {want} มม." not in full9:
                 note("C9", where9, f"panel rain differs from /api/point ({api['rain_next24_mm']} mm)")
-        if "แม่น้ำใกล้จุด" in full9 and (api.get("mode") != "bkk" or not api.get("nearest_river") or api["nearest_river"]["distance_km"] > 3):
+        river_line = pg.locator("#detail .pf-word", has_text="แม่น้ำใกล้จุด:").count()  # the line, not a sentence
+        if river_line and (api.get("mode") != "bkk" or not api.get("nearest_river") or api["nearest_river"]["distance_km"] > 3):
             note("C9", where9, "river line without a Bangkok river gauge within 3 km")
         if (la, lo) in national:  # C7
             full = pg.evaluate("() => document.querySelector('#detail').innerText")
@@ -172,6 +180,12 @@ with sync_playwright() as p:
                 if card and not same(card, blk2):
                     note("C1", f"pin {la:.3f},{lo:.3f} vs list {blk['code']}", f"{r24(blk2['rows'])} / {blk2['obs'][:1]} vs {r24(card['rows'])} / {card['obs'][:1]}")
         pg.evaluate("() => closeDetail()")
+    # C10: per gauge, a measured-trend row never opposes a model-proven direction (checked on the API rows)
+    rows10 = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/stations')).json()).stations.map(s => [s.code, s.change12, s.change24, s.change48]))"))
+    for code, *chs in rows10:
+        dirs = [(c.get("dir"), c.get("basis") == "measured_trend") for c in chs if c and c.get("dir") in ("rising", "falling")]
+        if {"rising", "falling"} <= {d for d, _ in dirs} and any(m for _, m in dirs):
+            note("C10", f"rows {code}", f"measured trend opposes a model direction: {dirs}")
     # C9: the summary rain line of every region chip = /api/rain by_region (TMD word of the wettest forecast point)
     open_home(pg)
     rainreg = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/rain')).json()).by_region)"))
@@ -209,7 +223,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

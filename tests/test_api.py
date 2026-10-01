@@ -272,3 +272,17 @@ def test_rain_summary_per_region_takes_the_wettest_point_forecast_and_measured()
     assert out["bkk"]["forecast_mm24"] == 7.0 and out["bkk"]["measured"]["code"] == "HII001"
     assert out["north"]["forecast_mm24"] == 30.0 and out["north"]["measured"]["rain_24h"] == 12.0
     assert out["all"]["forecast_mm24"] == 30.0 and out["all"]["measured"]["rain_24h"] == 60.0
+
+
+def test_a_measured_trend_row_never_contradicts_a_model_proven_direction():
+    # 2026-10-01 TRD001: 12 h "⬆ เพิ่มขึ้นมาก" (model), 24 h "⬇ ลดลงมาก" (measured trend), 48 h "⬆" (model)
+    up = {"dir": "rising", "level": "strong_rise", "method": "star", "likely": [0.17, 0.50]}
+    raw24 = {"dir": "steady", "level": "steady", "method": "star", "likely": [-0.30, 0.20]}
+    meas24 = {**raw24, "dir": "falling", "level": "strong_fall", "basis": "measured_trend", "likely": [-0.23, -0.23]}
+    out = api.reconcile_rows({12: up, 24: raw24, 48: up}, {12: up, 24: meas24, 48: up})
+    assert out[24] == raw24 and out[12] == up  # the heuristic yields; the model's own reading stays
+    alone = api.reconcile_rows({24: raw24}, {24: meas24})
+    assert alone[24] == meas24  # no model direction anywhere: the measured trend speaks (D-060)
+    down = {"dir": "falling", "level": "fall", "method": "star", "likely": [-0.2, -0.05]}
+    tide = api.reconcile_rows({12: down, 24: up}, {12: down, 24: up})
+    assert tide == {12: down, 24: up}  # model vs model (tide, rain arriving later) is physics, not a contradiction

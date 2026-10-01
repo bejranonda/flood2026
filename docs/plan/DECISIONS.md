@@ -530,6 +530,7 @@
   3. Forecasts in their own container with a daily cached backtest; collectors never wait.
   4. UI parity: region chips for the country (default กทม., D-033); counts and list follow the chip, the map shows every gauge and the chip moves its view (amended v0.16.1, KI-253); water word from the agency's river name; another agency's gauge at the same place linked, never merged (KI-217); pins outside Bangkok judged from the river/stream gauges near them (the D-059 polder rule applies where the nearest gauge is a Bangkok-area gauge).
 - **Supersedes:** D-044's "forecast later" (the per-gauge backtest gate replaces the per-flood-type gate for showing a line) and D-046 §3's "public only after the agency notes" (the notes stay an open owner action, Q3). D-046's lean-storage principle stands (bounded retention).
+- **Outcome (2026-10-01 14:20 UTC, after the backfill):** with rain cells + learned upstream, 27/19/19 of 51 sampled nationwide gauges beat persistence by > 10 % at 12/24/48 h (own methods alone: 9/8/6); Bangkok unchanged (36/40 at 48 h). APPROACH §19.8.
 - **Not done (open):** dam release scenarios beyond C.13 (e.g. Ubol Ratana below E.29), DWR/FFPI/GISTDA national layers, Traffy outside Bangkok, a status label for rivers other than "ใกล้ตลิ่ง/คลองเต็ม".
 
 ### D-065 — The default region follows the user's location when GPS is allowed (amends D-033)

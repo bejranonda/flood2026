@@ -2,6 +2,23 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.6 — 2026-10-01
+- **Nationwide forecasts now use their learned upstream gauges (fix).** The forecaster had learned upstream gauges
+  once, when nationwide gauges had 4 days of history (none found), and every restart skipped relearning: no gauge
+  ever used them. It now relearns at start when the result is empty or a day old, and drops the cached backtest of
+  every gauge whose inputs changed. 326 nationwide gauges got upstream inputs.
+- **Nationwide backtest after the backfill (owner: "Continue").** 51 gauges sampled across all regions: with area
+  rain + learned upstream 27/19/19 beat "no change" by > 10 % at 12/24/48 h, versus 9/8/6 with their own history
+  only; Bangkok unchanged (36/40 at 48 h). Outside Bangkok about a third of gauges earn a 48 h line; the rest show
+  a range only.
+- **Trend rows no longer flip direction because of the measured-trend fallback (KI-256).** TRD001 read ⬆ / ⬇ / ⬆ at
+  12/24/48 h: the 24 h row followed the measured trend (D-060) against a rise the model proved at 12 and 48 h. Such a
+  row now falls back to the model's own reading; 43 → 0 gauges. Rows of the model that differ by horizon (tides,
+  rain arriving later) are left as they are (19 gauges).
+- **Opening a sheet refreshes its list item.** The list is loaded every 5 min, a sheet fetches fresh data; when a
+  forecast or QC update landed in between, the two differed (C1 at 6 gauges). The list now takes the sheet's row.
+- **UI consistency checks C9 and C10** (rain and river lines agree with the API; one direction story per gauge).
+
 ## v0.16.5 — 2026-10-01
 - **Measured rain as a forecast input: tested, not adopted (Q43; owner: "Consider the factors in modeling and
   validate the results, think carefully").** HII serves no public hourly rain history, only daily totals per gauge

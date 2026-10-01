@@ -621,6 +621,10 @@ async function showDetail(code) {
   try {
     const d = await getJSON(`/api/stations/${encodeURIComponent(code)}?days=5`);
     const s = d.station, st = stOf(s), fc = d.forecast;
+    // The sheet is fresher than the list (loaded up to 5 min ago): the list takes the sheet's row, so both tell the
+    // same story after you looked (C1 findings 2026-10-01: a forecast or QC update landed in between).
+    const li = stations.findIndex((x) => x.code === s.code);
+    if (li >= 0 && JSON.stringify(stations[li]) !== JSON.stringify({ ...stations[li], ...s })) { stations[li] = { ...stations[li], ...s }; renderList(); }
     const methods = fc ? [...new Set(Object.values(fc.skill || {}).map((k) => k.method))] : [];
     const skill12 = fc?.skill?.["12"];
     const bma = s.agency === "BMA", unit = bma ? "ม. (หมุด กทม.)" : "ม.รทก.";  // BMA datum unverified vs HII (KI-217)
