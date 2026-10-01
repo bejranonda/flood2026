@@ -308,15 +308,15 @@ def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: l
                 out[k] = out[k].replace("คลอง/แม่น้ำ", word).replace("คลอง", word)
     if measured and measured.get("band") in ("moderate", "heavy", "very_heavy"):
         # rain that already fell is a fact about now; the outlook above only reads the forecast (owner 2026-10-01)
+        # short, in the rows' words ("24 ชม. ที่ผ่านมา"); the gauge, distance and time are in the rain factor's details
         mm = f"{measured['rain_24h']:.0f}"
-        where = f"{measured['name_th']} ห่าง {measured['distance_km']} กม."
         if measured["band"] in ("heavy", "very_heavy"):
             if out["risk"] in ("info", "low"):
                 out["risk"] = "moderate"
                 out["title"] = "ฝนตกหนักในพื้นที่ เฝ้าระวังน้ำขังบนถนน"
-            out["desc"] = f"ฝนตกหนักแล้ว วัดได้ {mm} มม. ใน 24 ชม. ล่าสุด ({where}) · {out['desc']}"
+            out["desc"] = f"ฝนตกหนักแล้ว {mm} มม. ใน 24 ชม. ที่ผ่านมา · {out['desc']}"
         else:
-            out["desc"] = f"ฝนตกแล้ว {mm} มม. ใน 24 ชม. ล่าสุด ({where}) · {out['desc']}"
+            out["desc"] = f"ฝนตกแล้ว {mm} มม. ใน 24 ชม. ที่ผ่านมา · {out['desc']}"
         out["basis"] = out.get("basis", []) + ["rain_measured"]
     usable = area.get("confidence") in ("low", "medium")
     out["gauges"] = [s["code"] for s in stations_forecast if s.get("change12")] if usable else []

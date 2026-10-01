@@ -2,6 +2,16 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.7 — 2026-10-01
+- **Shorter rain factor in the pin panel (owner: "Rainfall info in panel are not optimal, can we shorten?").**
+  Four long lines became two (owner: "Or put unnecessary info in i symbol?"): the heavier of forecast and measured
+  leads ("คาดฝนเล็กน้อย ราว 6 มม. ใน 24 ชม. ข้างหน้า" / "24 ชม. ที่ผ่านมา: ไม่มีฝน"; after a downpour
+  "ฝนตกแล้ว: ฝนหนัก 88 มม. ใน 24 ชม. ที่ผ่านมา" / the forecast). The last hour shows only when it rained. Sources, gauge,
+  distance, reading time and the forecast grid of that spot (~8 km square, Bangkok point or ~55 km cell) are behind
+  an ⓘ, the same grey ⓘ as the trend rows. Consistency run on the live site: 488 sheets, 76 pins, 2,000 rows →
+  0 findings on C1–C10 (C9 now reads the rain factor and its ⓘ against /api/point). The 4-square scale (a repeat of the word and the dot colour) and "0.0 มม." are gone. The headline and the
+  region rain line use the same words ("ราว …", "24 ชม. ที่ผ่านมา").
+
 ## v0.16.6 — 2026-10-01
 - **Nationwide forecasts now use their learned upstream gauges (fix).** The forecaster had learned upstream gauges
   once, when nationwide gauges had 4 days of history (none found), and every restart skipped relearning: no gauge

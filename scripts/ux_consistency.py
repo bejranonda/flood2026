@@ -141,16 +141,20 @@ with sync_playwright() as p:
         api = json.loads(pg.evaluate("async ([a, o]) => JSON.stringify(await (await fetch(`/api/point?lat=${a.toFixed(5)}&lon=${o.toFixed(5)}`)).json())", [la, lo]))
         full9 = pg.evaluate("() => document.querySelector('#detail').innerText")
         where9 = f"pin {la:.3f},{lo:.3f}"
-        if "วัดได้แล้ว" in full9 and "ข้อมูลถึง" not in full9:
+        rain_box = pg.evaluate("() => { const li = [...document.querySelectorAll('#detail .pf-factors > li')].find(e => e.querySelector('.pf-word') && /ฝน/.test(e.querySelector('.pf-word').textContent)); return li ? li.textContent + ' ' + [...li.querySelectorAll('[title]')].map(b => b.title).join(' ') : ''; }")  # incl. the ⓘ
+        if api.get("rain_measured") and "ข้อมูลถึง" not in rain_box:  # the folded details carry the reading time
             note("C9", where9, "measured rain without its reading time")
+        if api.get("rain_measured") and "24 ชม. ที่ผ่านมา" not in rain_box:
+            note("C9", where9, "measured rain not shown in the rain factor")
         head9 = pg.evaluate("() => [document.querySelector('#detail .pf-title'), document.querySelector('#detail .pf-desc')].map(e => e ? e.textContent : '').join(' ')")
-        if "ฝนตกหนักในพื้นที่" in head9 and not re.search(r"วัดได้แล้ว 24 ชม\. ล่าสุด: ฝนหนัก", full9):
-            note("C9", where9, "heavy-rain headline without a heavy measured line")
+        heavy = (api.get("rain_measured") or {}).get("band") in ("heavy", "very_heavy")
+        if ("ฝนตกหนักในพื้นที่" in head9 and not heavy) or (heavy and "ฝนหนัก" not in rain_box):
+            note("C9", where9, "heavy-rain headline and the rain factor disagree")
         if api.get("rain_next24_mm") is not None and api["rain_next24_mm"] >= 0.1:
             mm = api["rain_next24_mm"]  # the panel's rainMm(): one decimal below 1 mm or at a TMD band edge; JS rounding
             r0 = math.floor(mm + 0.5)
             want = f"{mm:.1f}" if mm < 1 or word9(r0) != word9(mm) else str(r0)
-            if f"ประมาณ {want} มม." not in full9:
+            if f"ราว {want} มม." not in rain_box:
                 note("C9", where9, f"panel rain differs from /api/point ({api['rain_next24_mm']} mm)")
         river_line = pg.locator("#detail .pf-word", has_text="แม่น้ำใกล้จุด:").count()  # the line, not a sentence
         if river_line and (api.get("mode") != "bkk" or not api.get("nearest_river") or api["nearest_river"]["distance_km"] > 3):

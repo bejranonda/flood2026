@@ -365,4 +365,14 @@ def test_a_river_gauge_near_a_bangkok_pin_is_its_own_line_never_canal_evidence()
 def test_a_rain_gauge_name_is_never_reworded():
     rain = {"code": "ONE022", "name_th": "คลองสามบาท บ้านกุดพิมาน", "distance_km": 3.0, "rain_1h": 2.0, "rain_24h": 50.0, "band": "heavy"}
     fc = point.point_forecast({"category": None, "confidence": "none"}, [], [], 5.0, 0, None, "แม่น้ำ", rain)
-    assert "คลองสามบาท" in fc["desc"]  # the national word swap must not touch a gauge's own name
+    # the gauge's name moved to the rain factor's details (owner 2026-10-01: shorten); the measured sentence must
+    # survive the national word swap intact
+    assert "ฝนตกหนักแล้ว 50 มม. ใน 24 ชม. ที่ผ่านมา" in fc["desc"] and "คลองสามบาท" not in fc["desc"]
+
+
+def test_measured_rain_in_the_headline_is_short_and_uses_the_rows_words():
+    # owner 2026-10-01: "Rainfall info in panel are not optimal, can we shorten?" — one vocabulary: "24 ชม. ที่ผ่านมา"
+    rain = {"code": "HII001", "name_th": "อาคารเลขที่ ๙๐๑", "distance_km": 2.1, "rain_1h": 4.8, "rain_24h": 60.0, "band": "heavy"}
+    fc = point.assess(13.913, 100.498, [], 0, {}, 7.0, rain)["forecast"]
+    assert "ฝนตกหนักแล้ว 60 มม. ใน 24 ชม. ที่ผ่านมา" in fc["desc"]
+    assert "อาคาร" not in fc["desc"] and "ห่าง" not in fc["desc"]  # where it was measured: in the factor's details
