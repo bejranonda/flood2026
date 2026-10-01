@@ -9,8 +9,8 @@
 | # | Question | Why it matters | Priority |
 |---|---|---|---|
 | **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
+| Q43 | **Measured rain as a forecast input (v0.16.4 evidence):** heavy downpours were forecast "light" a day ahead at 14/14 gauges. Use the last hours of HII gauge rain in `star` (needs a year of gauge history — keep `rain_obs` longer or fetch HII rain history — and a backtest)? | Canal rises after a downpour the forecast missed | 2 |
 | Q41 | **More gauges for Nonthaburi (user request, 2026-10-01):** ปากเกร็ด, เมืองนนทบุรี, บางกรวย, บางใหญ่, บางบัวทอง have only 3 live HII gauges. Do you know a public source (อบจ./เทศบาลนครนนทบุรี/เทศบาลนครปากเกร็ด, RID canal gauges) or a contact who could share one? | Canal level where the user asked | 1 |
-| Q42 | **Finer rain forecast for Bangkok and its neighbours:** sample Open-Meteo at its own ~8 km grid (~100–150 points, 2–3 batched requests per hour) instead of 9 points? Costs a few thousand Open-Meteo calls a day (free tier 10,000) | A storm over one district is not averaged away | 2 |
 | Q38 | **Dam-controlled reaches (v0.16):** gauges such as E.29/URTU07 (Nam Phong, above Ubol Ratana) move with releases; only C.13 (Chao Phraya Dam) enters the model. Worth asking EGAT/RID for release plans, or should these gauges show measured data and ranges only? | Forecast honesty upstream/downstream of large dams | 2 |
 | Q39 | **Status words for rivers (v0.16):** the status chip "ใกล้ตลิ่ง/คลองเต็ม" names canals, but most nationwide gauges are rivers. Change the label everywhere (e.g. "ใกล้ตลิ่ง") or keep the v0.15 wording (D-063)? | One status vocabulary for the whole country | 3 |
 | Q33 | **Report rate after the popup (issue #2):** baseline 57 reports/24 h (56 with depth) on 2026-09-27. If it drops by more than ~30 % in a week, keep the button but show the depth choice inline? | Reports are our only ground truth at street level | 2 |
@@ -32,6 +32,7 @@
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
+| **Q42** | Finer rain forecast for Bangkok and its neighbours | **Answered 2026-10-01: "Continue as suggested"** → v0.16.4 (111 points at the ~8 km grid) |
 | **Q40** | Default region by location | **Answered 2026-10-01: "Allow GPS"** → D-065 (v0.16.2) |
 | A27 | What should "whole Thailand" mean next? | **Monitor first, forecast later** (2026-09-27) | [D-044](DECISIONS.md) |
 | A28 | Who should the national version serve? | **Residents in any province and local officials / volunteers** (2026-09-27) | [D-044](DECISIONS.md) |

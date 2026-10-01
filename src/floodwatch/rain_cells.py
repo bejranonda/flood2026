@@ -41,8 +41,44 @@ def rain_point_for(in_focus: bool, lat: float | None, lon: float | None) -> str 
     return _nearest_point(lat, lon)[0] if in_focus else cell_of(lat, lon)[0]
 
 
-def rain_point_at(lat: float, lon: float) -> str:
-    """The rain series for a place (point check): a Bangkok point nearby, else the place's cell."""
+# Bangkok and its neighbours at the model's own grid (Q42, v0.16.4): Open-Meteo's grid near Bangkok, measured
+# 2026-10-01, is 0.0703° (lat) x ~0.0826° (lon), ~7.8 x 9 km. One point per grid cell within FINE_KM (12 km) of a gauge in
+# the six Bangkok-region provinces. Used for what people see (pin panel, region rain line); the forecast model keeps
+# RAIN_POINTS, on which its skill was proven.
+FINE_LAT0, FINE_DLAT = 13.3919, 0.0703
+FINE_LON0, FINE_DLON = 100.3306, 0.08265
+FINE_KM = 12.0  # the 3 x 3 grid cells around each gauge (diagonal ~11.9 km), so pins between gauges are covered
+FINE_PROVINCES = ("กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม")
+
+
+def fine_of(lat: float, lon: float) -> tuple[str, float, float]:
+    i = math.floor((lat - FINE_LAT0) / FINE_DLAT + 0.5)
+    j = math.floor((lon - FINE_LON0) / FINE_DLON + 0.5)
+    flat, flon = round(FINE_LAT0 + i * FINE_DLAT, 4), round(FINE_LON0 + j * FINE_DLON, 4)
+    return f"f_{flat:.4f}_{flon:.4f}", flat, flon
+
+
+def fine_points(stations) -> dict[str, tuple[float, float]]:
+    """Fine grid points within FINE_KM of any gauge in the Bangkok region: {point id: (lat, lon)}."""
+    out = {}
+    for s in stations:
+        if s.get("province") not in FINE_PROVINCES or s.get("lat") is None or s.get("lon") is None:
+            continue
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                pid, flat, flon = fine_of(s["lat"] + di * FINE_DLAT, s["lon"] + dj * FINE_DLON)
+                if math.hypot((flat - s["lat"]) * 111.0, (flon - s["lon"]) * 111.0 * math.cos(math.radians(s["lat"]))) <= FINE_KM:
+                    out[pid] = (flat, flon)
+    return out
+
+
+def rain_point_at(lat: float, lon: float, fine: set[str] | None = None) -> str:
+    """The rain series for a place (point check): its fine grid point when that has data (Bangkok region), else a
+    Bangkok point nearby, else the place's 0.5° cell."""
+    if fine:
+        pid = fine_of(lat, lon)[0]
+        if pid in fine:
+            return pid
     k, d = _nearest_point(lat, lon)
     return k if d <= NEAR_POINT_DEG else cell_of(lat, lon)[0]
 

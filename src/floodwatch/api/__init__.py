@@ -458,15 +458,30 @@ RAIN_OBS_SQL = """SELECT DISTINCT ON (code) code, obs_time, rain_1h, rain_24h, l
                   WHERE obs_time > now() - interval '3 hours' ORDER BY code, obs_time DESC"""
 
 
+def point_regions(rows: list[dict]) -> dict[str, str]:
+    """Region of each 0.5° cell and each fine (~8 km) point, from the gauges they serve."""
+    out = {}
+    for r in rows:
+        reg = regions.region_of(r.get("province"))
+        if r.get("lat") is None or not reg:
+            continue
+        out.setdefault(rain_cells.cell_of(r["lat"], r["lon"])[0], reg)
+        for pid in rain_cells.fine_points([r]):
+            out.setdefault(pid, reg)
+    return out
+
+
 def _cell_regions() -> dict[str, str]:
+    return _memo(("cell_regions",), lambda: point_regions(_station_rows(True)), ttl=3600)
+
+
+def _fine_ids() -> set[str]:
+    """Fine points that have a forecast (the pin panel falls back to the Bangkok points without one)."""
     def build():
-        placed = [r for r in _station_rows(True) if r.get("lat") is not None and regions.region_of(r.get("province"))]
-        out = {}
-        for r in placed:
-            cid = rain_cells.cell_of(r["lat"], r["lon"])[0]
-            out.setdefault(cid, regions.region_of(r["province"]))
-        return out
-    return _memo(("cell_regions",), build, ttl=3600)
+        with db.connect() as c:
+            return {r["point"] for r in c.execute(
+                "SELECT DISTINCT point FROM weather_forecast WHERE left(point, 2) = 'f_' AND issue_time > now() - interval '3 hours'").fetchall()}
+    return _memo(("fine_ids",), build, ttl=600)
 
 
 @app.get("/api/rain")
@@ -661,7 +676,7 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
                AND created_at > now() - interval '24 hours'
                AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s GROUP BY 1""", box).fetchall()}
         rain_rows = c.execute(RAIN_OBS_SQL).fetchall()
-        pt = rain_cells.rain_point_at(lat, lon)  # a Bangkok rain point nearby, else the place's 0.5° cell (D-064)
+        pt = rain_cells.rain_point_at(lat, lon, _fine_ids())  # ~8 km point (Bangkok region), Bangkok point, or 0.5° cell
         rain = c.execute("""SELECT sum(precip_mm) AS mm FROM weather_forecast WHERE point=%s
                             AND issue_time=(SELECT max(issue_time) FROM weather_forecast WHERE point=%s)
                             AND valid_time BETWEEN now() AND now() + interval '24 hours'""", (pt, pt)).fetchone()["mm"]

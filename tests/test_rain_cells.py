@@ -55,3 +55,32 @@ def test_cell_requests_join_coordinates_in_batches():
     ids, url = reqs[1]
     lats = [cells[i][0] for i in ids]  # the answer list follows the coordinate order: ids and coordinates aligned
     assert "latitude=" + "%2C".join(f"{x:.1f}" for x in lats) + "&" in url and "hourly=precipitation" in url
+
+
+# --- v0.16.4 (Q42): Bangkok and its neighbours at the model's own ~8 km grid, for what people see -----------------
+def test_fine_points_snap_to_the_model_grid():
+    pid, lat, lon = rain_cells.fine_of(13.7563, 100.5018)
+    assert pid == "f_13.7434_100.4959" and (lat, lon) == (13.7434, 100.4959)  # grid measured 2026-10-01
+    assert rain_cells.fine_of(13.7563 + 0.02, 100.5018)[0] == pid  # within half a step (0.035°): same cell
+
+
+def test_fine_points_cover_the_bangkok_region_gauges_only():
+    st = [{"province": "กรุงเทพมหานคร", "lat": 13.75, "lon": 100.50}, {"province": "นนทบุรี", "lat": 13.91, "lon": 100.50},
+          {"province": "เลย", "lat": 17.49, "lon": 101.72}]
+    pts = rain_cells.fine_points(st)
+    assert all(13.5 < la < 14.1 and 100.3 < lo < 100.7 for la, lo in pts.values())  # nothing near Loei
+    assert rain_cells.fine_of(13.91, 100.50)[0] in pts and 6 <= len(pts) <= 40   # the 3 x 3 cells around each gauge
+
+
+def test_a_place_in_bangkok_prefers_its_fine_point():
+    fine = {"f_13.7434_100.4959"}
+    assert rain_cells.rain_point_at(13.7563, 100.5018, fine) == "f_13.7434_100.4959"
+    assert rain_cells.rain_point_at(13.7563, 100.5018) == "bkk_central"  # no fine data yet: as before
+    assert rain_cells.rain_point_at(16.49, 101.26, fine) == "g_16.5_101.5"
+
+
+def test_pins_and_region_lines_read_the_fine_points():
+    from floodwatch import api
+    assert "_fine_ids()" in inspect.getsource(api.point_check)
+    regions_ = api.point_regions([{"province": "นนทบุรี", "lat": 13.91, "lon": 100.50, "code": "X"}])
+    assert regions_[rain_cells.fine_of(13.91, 100.50)[0]] == "metro" and regions_[rain_cells.cell_of(13.91, 100.50)[0]] == "metro"

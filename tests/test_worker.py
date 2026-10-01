@@ -44,3 +44,7 @@ def test_rain_cells_are_fetched_at_start_not_three_hours_later():
 def test_upstream_gauges_are_relearned_daily():
     # the first learn after a deploy sees only days of nationwide history; a weekly cycle left star without inputs
     assert dict(worker.FORECASTER_TASKS)["upstream_learn"] <= 24 * 3600
+
+
+def test_bangkok_fine_rain_is_collected_hourly_and_at_start():
+    assert dict(worker.TASKS)["openmeteo_fine"] == 3600 and "openmeteo_fine" in worker.FIRST_RUN["collector"]

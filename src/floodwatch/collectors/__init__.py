@@ -419,13 +419,14 @@ def openmeteo_prev() -> dt.datetime | None:
     return newest
 
 
-def cell_requests(cells: dict[str, tuple[float, float]], base: str, params: dict) -> list[tuple[list[str], str]]:
+def cell_requests(cells: dict[str, tuple[float, float]], base: str, params: dict,
+                  digits: int = 1) -> list[tuple[list[str], str]]:
     """One Open-Meteo request per batch of cells (comma-separated coordinates; the answer is a list in this order)."""
     from floodwatch import rain_cells
     out = []
     for ids in rain_cells.batches(sorted(cells)):
-        q = {"latitude": ",".join(f"{cells[i][0]:.1f}" for i in ids),
-             "longitude": ",".join(f"{cells[i][1]:.1f}" for i in ids), **params}
+        q = {"latitude": ",".join(f"{cells[i][0]:.{digits}f}" for i in ids),
+             "longitude": ",".join(f"{cells[i][1]:.{digits}f}" for i in ids), **params}
         out.append((ids, f"{base}?{urllib.parse.urlencode(q)}"))
     return out
 
@@ -456,6 +457,31 @@ def openmeteo_cells() -> dt.datetime | None:
         n += len(rows)
         time.sleep(1.0)
     log.info("openmeteo_cells: %d hourly values (issue %s)", n, issue)
+    return issue
+
+
+def openmeteo_fine() -> dt.datetime | None:
+    """Rain forecast for Bangkok and its neighbours at Open-Meteo's own ~8 km grid (Q42, v0.16.4): ~111 points,
+    50 per request, hourly, next 48 h. Shown to people (pin panel, region line); the forecast model keeps RAIN_POINTS."""
+    from floodwatch import rain_cells
+    with db.connect() as c:
+        pts = rain_cells.fine_points(c.execute(
+            "SELECT province, lat, lon FROM station WHERE lat IS NOT NULL AND code !~ '^TEST'").fetchall())
+    issue = dt.datetime.now(dt.timezone.utc).replace(minute=0, second=0, microsecond=0)
+    n = 0
+    for ids, url in cell_requests(pts, "https://api.open-meteo.com/v1/forecast",
+                                  {"hourly": "precipitation", "forecast_days": 2, "timezone": "UTC"}, digits=4):
+        payload, _ = _get_json("openmeteo_fine", url)
+        rows = [r for cid, p in rain_cells.split_payload(payload, ids) for r in parsing.parse_openmeteo(cid, p, issue)]
+        with db.connect() as c, c.cursor() as cur:
+            cur.executemany(
+                """INSERT INTO weather_forecast (point, issue_time, valid_time, model, precip_mm)
+                   VALUES (%(point)s,%(issue_time)s,%(valid_time)s,%(model)s,%(precip_mm)s) ON CONFLICT DO NOTHING""",
+                rows)
+            c.commit()
+        n += len(rows)
+        time.sleep(1.0)
+    log.info("openmeteo_fine: %d hourly values for %d points (issue %s)", n, len(pts), issue)
     return issue
 
 
@@ -546,4 +572,5 @@ def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
                   "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
-                  "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells}[source])
+                  "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells,
+                  "openmeteo_fine": openmeteo_fine}[source])

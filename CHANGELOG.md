@@ -2,6 +2,17 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.4 — 2026-10-01
+- **Rain forecast for Bangkok and its neighbours at the model's own ~8 km grid (Q42, owner: "Continue as
+  suggested").** Open-Meteo's grid here, measured 2026-10-01, is 0.0703° × ~0.0826° (~7.8 × 9 km). 111 grid points
+  (the 3 × 3 cells around every gauge in the six Bangkok-region provinces), 50 per request, hourly, next 48 h. A pin
+  in the region reads its own cell (e.g. ปากเกร็ด 5.7 mm, สีลม 2.1 mm in the next 24 h); the region line takes the
+  wettest cell. First run: 111 points ranged 0.6–7.7 mm where the 5 old Bangkok points ranged 1.6–5.1 mm. The forecast
+  *model* keeps its 9 proven rain points (changing them needs a new backtest). Open-Meteo use ≈ 4,500 calls a day.
+- **Evidence that measured rain matters (owner: "Are the HII rain gauges useful?").** 2026-10-01 13:00 UTC: 4,461 of
+  4,778 HII rain gauges reported within 3 h; of 14 gauges with ≥ 35 mm in 24 h, all 14 had been forecast < 10 mm a
+  day ahead at our sampling point (e.g. 87.8 vs 3.4 mm at วัดพลวง จันทบุรี; 60.0 vs 0.9 mm at HII001 Bangkok).
+
 ## v0.16.3 — 2026-10-01
 - **Measured rain, not only the forecast (owner: "There is no rain in panel anymore?", during a downpour; KI-254).**
   The pin panel showed only Open-Meteo's forecast ("คาดฝนเล็กน้อย") while it was raining hard. It now also shows the
