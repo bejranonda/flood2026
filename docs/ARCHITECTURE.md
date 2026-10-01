@@ -171,6 +171,7 @@ flood2026/
 
 ## 8b. Storage growth (v0.16.0, D-064; measured 2026-09-30)
 - Before: DB 1.24 GB (`observation` 982 MB / 4.64 M rows, ~212 B per row with indexes; `forecast_run` 196 MB / 52 k rows since 2026-09-26); disk 75 GB, 13 GB free (83 %; the owner has more space).
+- `rain_obs` (v0.16.5): hourly rain kept 400 days for the 2,260 gauges within ~10 km of a water gauge (not re-fetchable from HII), 14 days for the other ~2,200; ~211 B per row (name and position repeated on every row) → ~4.6 GB a year. Optimisation if needed: a `rain_gauge` table for the metadata (~half the size).
 - Expected after the nationwide backfill: +~1.3 GB `observation` (733 gauges × ~8,700 hourly rows), then flat: `retention` deletes HII-network readings older than 400 days (never BMA), rain-forecast issues older than 3 days, and thins `forecast_run` (all runs 2 days, one per 6 h to 14 days: ~0.6 GB at 1,000 gauges). ⚠️ To re-measure one day after the backfill ends (`SELECT pg_size_pretty(pg_database_size('floodwatch'))`).
 
 ## 9. Backups and restore

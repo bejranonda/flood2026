@@ -2,6 +2,18 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.5 — 2026-10-01
+- **Measured rain as a forecast input: tested, not adopted (Q43; owner: "Consider the factors in modeling and
+  validate the results, think carefully").** HII serves no public hourly rain history, only daily totals per gauge
+  (`provinces/rain3d_graph`, ≤ 31 days per request, labelled by the day the window ends, ~7× HII's own hourly sums).
+  With a leakage-safe timing rule and a day-shuffled placebo, the production backtest on 28 Bangkok and 21 nationwide
+  gauges showed no gain: Bangkok same as placebo; nationwide −0.5 to −1.2 % median RMSE at 12–48 h on 12 of 21 gauges
+  (not significant); slightly worse in the hours after ≥ 35 mm days. Details:
+  [research/2026-10-01_measured_rain.md](research/2026-10-01_measured_rain.md).
+- **Hourly rain is kept for a re-test.** HII cannot give hourly rain again, so `rain_obs` now keeps 400 days for the
+  2,260 rain gauges within ~10 km of a water gauge (others 14 days; ~4.6 GB a year at 211 B per row). The `star`
+  model accepts extra known-at-issue inputs (`ex["extra"]`, inert unless supplied). Re-test ~mid-December 2026.
+
 ## v0.16.4 — 2026-10-01
 - **Rain forecast for Bangkok and its neighbours at the model's own ~8 km grid (Q42, owner: "Continue as
   suggested").** Open-Meteo's grid here, measured 2026-10-01, is 0.0703° × ~0.0826° (~7.8 × 9 km). 111 grid points

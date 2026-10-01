@@ -136,6 +136,12 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | Open-Meteo previous runs, several points | `previous-runs-api.open-meteo.com/v1/forecast?latitude=a,b&longitude=x,y&hourly=precipitation_previous_day1,precipitation_previous_day2&start_date=2025-10-01&end_date=2026-09-29` | ✅ 200; list of 2, 8,736 hourly values each. ⚠️ Free-tier weighting of long ranges (a year ≈ 26 calls per location) is from Open-Meteo's terms, not measured; the collector stays at ≤ 8 new cells per hour |
 | HII TIWRM chart host | `tiwrm.hii.or.th/thaiwater_l5/public/getGraphFirst/{code}` | ❌ connect timeout 2026-09-30 20:32–20:44 UTC (api-v3 fine at the same time) — transient outage, KI-251 |
 
+### 2h. HII rain history (probed 2026-10-01 13:15–13:30 UTC, honest UA; Q43)
+| Source | Endpoint | Result |
+|---|---|---|
+| HII web app endpoint list | `www.thaiwater.net/dist/js/app.chunk.js` (90 `thaiwater30/...` paths) | No public **hourly** rain history; rain endpoints: `public/rain_24h`, `rain_today`, `rain_yesterday`, `rain_monthly`, `rain_yearly`, `provinces/rain{3,5,7,15}d_graph` |
+| HII daily rain per gauge | `api-v3.thaiwater.net/api/v1/thaiwater30/provinces/rain3d_graph?station_id={rain_24h station.id}&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` | ✅ 200, `data: [{rainfall_datetime: "YYYY-MM-DD", rainfall_value}]`, ≤ ~31 days per request (else `RespCode 422 "limit date range"`), back to ≥ 2024-10. Label = day the 24 h window ends; values ~7× our hourly sums (median) ⚠️ unexplained ([research](../research/2026-10-01_measured_rain.md)) |
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |

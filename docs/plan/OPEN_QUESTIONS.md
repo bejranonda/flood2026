@@ -9,7 +9,6 @@
 | # | Question | Why it matters | Priority |
 |---|---|---|---|
 | **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
-| Q43 | **Measured rain as a forecast input (v0.16.4 evidence):** heavy downpours were forecast "light" a day ahead at 14/14 gauges. Use the last hours of HII gauge rain in `star` (needs a year of gauge history — keep `rain_obs` longer or fetch HII rain history — and a backtest)? | Canal rises after a downpour the forecast missed | 2 |
 | Q41 | **More gauges for Nonthaburi (user request, 2026-10-01):** ปากเกร็ด, เมืองนนทบุรี, บางกรวย, บางใหญ่, บางบัวทอง have only 3 live HII gauges. Do you know a public source (อบจ./เทศบาลนครนนทบุรี/เทศบาลนครปากเกร็ด, RID canal gauges) or a contact who could share one? | Canal level where the user asked | 1 |
 | Q38 | **Dam-controlled reaches (v0.16):** gauges such as E.29/URTU07 (Nam Phong, above Ubol Ratana) move with releases; only C.13 (Chao Phraya Dam) enters the model. Worth asking EGAT/RID for release plans, or should these gauges show measured data and ranges only? | Forecast honesty upstream/downstream of large dams | 2 |
 | Q39 | **Status words for rivers (v0.16):** the status chip "ใกล้ตลิ่ง/คลองเต็ม" names canals, but most nationwide gauges are rivers. Change the label everywhere (e.g. "ใกล้ตลิ่ง") or keep the v0.15 wording (D-063)? | One status vocabulary for the whole country | 3 |
@@ -32,6 +31,7 @@
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
+| **Q43** | Measured rain as a forecast input | **Answered 2026-10-01 ("Continue … validate"):** daily HII totals tested, no gain → not adopted; hourly archive kept 400 days near water gauges; re-test ~mid-December 2026 ([research](../../research/2026-10-01_measured_rain.md)) |
 | **Q42** | Finer rain forecast for Bangkok and its neighbours | **Answered 2026-10-01: "Continue as suggested"** → v0.16.4 (111 points at the ~8 km grid) |
 | **Q40** | Default region by location | **Answered 2026-10-01: "Allow GPS"** → D-065 (v0.16.2) |
 | A27 | What should "whole Thailand" mean next? | **Monitor first, forecast later** (2026-09-27) | [D-044](DECISIONS.md) |
