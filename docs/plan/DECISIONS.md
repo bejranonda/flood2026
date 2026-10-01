@@ -531,3 +531,9 @@
   4. UI parity: region chips for the country (default กทม., D-033); counts and list follow the chip, the map shows every gauge and the chip moves its view (amended v0.16.1, KI-253); water word from the agency's river name; another agency's gauge at the same place linked, never merged (KI-217); pins outside Bangkok judged from the river/stream gauges near them (the D-059 polder rule applies where the nearest gauge is a Bangkok-area gauge).
 - **Supersedes:** D-044's "forecast later" (the per-gauge backtest gate replaces the per-flood-type gate for showing a line) and D-046 §3's "public only after the agency notes" (the notes stay an open owner action, Q3). D-046's lean-storage principle stands (bounded retention).
 - **Not done (open):** dam release scenarios beyond C.13 (e.g. Ubol Ratana below E.29), DWR/FFPI/GISTDA national layers, Traffy outside Bangkok, a status label for rivers other than "ใกล้ตลิ่ง/คลองเต็ม".
+
+### D-065 — The default region follows the user's location when GPS is allowed (amends D-033)
+- **Date:** 2026-10-01 · **Status:** accepted (owner answer to Q40: "Allow GPS")
+- **Decision:** กทม. stays the default for anyone who has not allowed location. Once the user allows GPS (📍 สถานีใกล้ฉัน), the region chip becomes the region of the nearest gauge within 60 km, and is remembered. With permission already granted, later visits apply it silently. A chip tapped by hand wins until the next 📍 tap.
+- **Rulings (Claude, owner may override):** no location prompt on page load (browsers discourage it and a refused prompt usually sticks); the region comes from the nearest gauge, not a province lookup (no reverse geocoding call, works offline from the loaded list).
+

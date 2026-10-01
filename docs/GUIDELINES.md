@@ -188,6 +188,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 
 - **A release must reach open tabs (KI-253).** The page is `no-cache`; the app reloads itself once per new version (`maybeUpdate`), never while a panel is open. Bump `?v=` on static files as before.
 - **The headline uses the rows' words (D-060, C6).** Server-side wording ("ทรงตัว") follows the same ±5 cm rule as the UI rows (`point.STEADY_M` = `app.js STEADY_M`).
+- **Location (D-065):** never ask for GPS on page load; only the 📍 button asks. A choice the user made by hand (region chip) beats an automatic one.
 - **A filter never hides places the user can pan to (KI-253).** The map shows every gauge; region chips filter the list and counts and move the map. Every chip must be visible at 390 px without scrolling.
 - **Nationwide parity (D-064):** one set of panels and rules for every gauge. Words come from data, never from guesses: the water word from the agency's river name (`water_word`), agency names in Thai (`AGENCY_TH`). Bangkok-only cautions (polders, drainage, BMA pumping) are said only where the nearest gauge is a Bangkok-area gauge (`pin_mode`). Never promise a date for a forecast; say what must happen first (history, backtest).
 

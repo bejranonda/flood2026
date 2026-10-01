@@ -2,6 +2,14 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.2 — 2026-10-01
+- **The region follows your location once you allow GPS (owner answer to Q40: "Allow GPS"; D-065).** Tapping
+  📍 สถานีใกล้ฉัน and allowing location switches the counts, list and map to your region (the region of the nearest
+  gauge within 60 km), next to the point panel as before. On later visits with permission already granted, the
+  region is set from your location silently. The app never asks for location when the page opens (only the 📍 button
+  asks), and a region chip you tapped by hand wins until your next 📍 tap. Verified in a browser with emulated
+  locations: Chiang Mai → ภาคเหนือ, Hat Yai → ใต้, no permission → กทม. without a prompt, hand-picked กทม. kept.
+
 ## v0.16.1 — 2026-10-01
 - **Every region is visible, and the map shows every gauge (owner: "App shows only Bangkok stations"; KI-253).**
   Validated on the live site: on a 390 px phone only 3 of 9 region chips were on screen (ภาคเหนือ … ใต้ scrolled out

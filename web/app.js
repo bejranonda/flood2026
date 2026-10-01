@@ -271,7 +271,7 @@ function renderRegions() {
   el.querySelector(".fchip").addEventListener("click", () => { forecastOnly = !forecastOnly; renderList(); });
   el.querySelectorAll(".rchip[data-region]").forEach((b) => b.addEventListener("click", () => {
     region = b.dataset.region;
-    try { localStorage.setItem("region", region); } catch { /* private mode */ }
+    try { localStorage.setItem("region", region); localStorage.setItem("regionSource", "user"); } catch { /* private mode */ }
     if (lastStats) renderSummary(lastStats);
     renderList();
     fitRegion();
@@ -816,6 +816,38 @@ async function fillArea(lat, lon) {
 }
 
 /* ---------- near me ---------- */
+// The region follows the user's location once they allow GPS (owner 2026-10-01, Q40 → D-065): the region of the
+// nearest gauge within 60 km. Never a prompt on page load (browsers discourage it; a refused prompt sticks): only the
+// 📍 button asks. With permission already granted, a later visit uses it silently unless a chip was tapped by hand.
+const GPS_REGION_KM = 60;
+function regionOfPlace(lat, lon) {
+  let best = null, bd = Infinity;
+  for (const s of stations) {
+    if (!s.region || s.lat == null || s.lon == null) continue;
+    const d = Math.hypot((s.lat - lat) * 111, (s.lon - lon) * 111 * Math.cos(lat * Math.PI / 180));
+    if (d < bd) { bd = d; best = s.region; }
+  }
+  return bd <= GPS_REGION_KM ? best : null;
+}
+function applyGpsRegion(lat, lon) {
+  const r = regionOfPlace(lat, lon);
+  if (!r) return;
+  try { localStorage.setItem("region", r); localStorage.setItem("regionSource", "gps"); } catch { /* private mode */ }
+  if (r === region) return;
+  region = r;
+  if (lastStats) renderSummary(lastStats);
+  renderList();
+}
+async function regionFromGrantedGps() {
+  try {
+    if (localStorage.getItem("regionSource") === "user" || !navigator.permissions || !navigator.geolocation) return;
+    const st = await navigator.permissions.query({ name: "geolocation" });
+    if (st.state !== "granted") return;  // "prompt" or "denied": never ask on load
+    navigator.geolocation.getCurrentPosition((pos) => { applyGpsRegion(pos.coords.latitude, pos.coords.longitude); fitRegion(); },
+      () => {}, { enableHighAccuracy: false, timeout: 10000, maximumAge: 30 * 60 * 1000 });
+  } catch { /* private mode or no Permissions API */ }
+}
+
 function locate() {
   const out = document.getElementById("near");
   if (!navigator.geolocation) { out.innerHTML = "<p class='muted'>อุปกรณ์ไม่รองรับการระบุตำแหน่ง แตะบนแผนที่เพื่อเลือกจุดแทนได้</p>"; return; }
@@ -823,6 +855,7 @@ function locate() {
   navigator.geolocation.getCurrentPosition((pos) => {
     lastPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
     out.innerHTML = "";
+    applyGpsRegion(lastPos.lat, lastPos.lon);  // counts, list and map follow where the user is (D-065)
     if (map) map.setView([lastPos.lat, lastPos.lon], 12);
     checkPoint(lastPos.lat, lastPos.lon, "gps");
   }, () => { out.innerHTML = "<p class='muted'>ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง แตะบนแผนที่เพื่อเลือกจุดแทนได้</p>"; }, { enableHighAccuracy: false, timeout: 10000 });
@@ -887,7 +920,7 @@ const setTopH = () => document.documentElement.style.setProperty("--top-h", `${d
 window.addEventListener("resize", setTopH);
 setTopH();
 setTab("list");
-load().then(openFromHash);
+load().then(() => { openFromHash(); regionFromGrantedGps(); });
 setInterval(load, 5 * 60 * 1000);
 
 // Issue #4: the grip promised a drag that did nothing. Pull down from the top of the sheet (only when it is scrolled to

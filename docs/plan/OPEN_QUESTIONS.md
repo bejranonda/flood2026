@@ -11,7 +11,6 @@
 | **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
 | Q38 | **Dam-controlled reaches (v0.16):** gauges such as E.29/URTU07 (Nam Phong, above Ubol Ratana) move with releases; only C.13 (Chao Phraya Dam) enters the model. Worth asking EGAT/RID for release plans, or should these gauges show measured data and ranges only? | Forecast honesty upstream/downstream of large dams | 2 |
 | Q39 | **Status words for rivers (v0.16):** the status chip "ใกล้ตลิ่ง/คลองเต็ม" names canals, but most nationwide gauges are rivers. Change the label everywhere (e.g. "ใกล้ตลิ่ง") or keep the v0.15 wording (D-063)? | One status vocabulary for the whole country | 3 |
-| Q40 | **Default region by location (v0.16):** keep กทม. as the default chip for everyone (D-033), or open the user's own region when they allow GPS? | First screen for users outside Bangkok | 3 |
 | Q33 | **Report rate after the popup (issue #2):** baseline 57 reports/24 h (56 with depth) on 2026-09-27. If it drops by more than ~30 % in a week, keep the button but show the depth choice inline? | Reports are our only ground truth at street level | 2 |
 | Q30 | **Flood season priority for the national view:** which region first after Bangkok? (South Gulf floods mainly Oct–Jan per the research ⚠️; Northeast/Mekong now) | Order of D-046 collectors and thresholds | 2 |
 | Q31 | **Officials/volunteers:** what do they need that residents don't (a table view, an export, LINE alerts, a login)? Anyone to ask? | Scope of the "officials" audience (A28) | 2 |
@@ -31,6 +30,7 @@
 ## Answered
 | # | Question | Answer (date) | Decision |
 |---|---|---|---|
+| **Q40** | Default region by location | **Answered 2026-10-01: "Allow GPS"** → D-065 (v0.16.2) |
 | A27 | What should "whole Thailand" mean next? | **Monitor first, forecast later** (2026-09-27) | [D-044](DECISIONS.md) |
 | A28 | Who should the national version serve? | **Residents in any province and local officials / volunteers** (2026-09-27) | [D-044](DECISIONS.md) |
 | A29 | Bangkok improvements found by the probes vs national work? | **Bangkok before national** (2026-09-27) | [D-045](DECISIONS.md) |
