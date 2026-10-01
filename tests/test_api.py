@@ -295,3 +295,11 @@ def test_health_lists_sources_whose_data_stopped_although_the_fetch_succeeds():
             {"source": "hii_waterlevel", "last_data_time": now - dt.timedelta(minutes=20)},
             {"source": "traffy", "last_data_time": None}]
     assert api.stale_sources(rows, now) == ["bma_klong"]
+
+
+def test_each_gauge_names_its_upstream_gauges_with_the_learned_travel_time():
+    # owner 2026-10-02 (basin data, item 1): "water from upstream is coming" — from learned links, never a forecast
+    learned = {"NAN012": [["N.27A", 5, 0.81], ["N.5A", 9, 0.6]]}
+    m = api.upstream_map(learned, {"C.2": 200.0, "C.13": 275.3, "C.7A": 150.0})
+    assert m["NAN012"] == [{"code": "N.27A", "lag_h": 5}, {"code": "N.5A", "lag_h": 9}]
+    assert m["C.7A"] == [{"code": "C.2", "lag_h": None}]  # Chao Phraya chain: upstream known, travel time not learned

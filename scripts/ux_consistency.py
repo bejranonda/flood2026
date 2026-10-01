@@ -189,7 +189,18 @@ with sync_playwright() as p:
     # C10: per gauge, a measured-trend row never opposes a model-proven direction (checked on the API rows)
     rows10 = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/stations')).json()).stations.map(s => [s.code, s.change12, s.change24, s.change48]))"))
     for code, *chs in rows10:
-        dirs = [(c.get("dir"), c.get("basis") == "measured_trend") for c in chs if c and c.get("dir") in ("rising", "falling")]
+        # a model row counts only where the UI shows its direction (web/app.js directional(): not persistence, not
+        # steady, the likely range agrees); otherwise the UI says "?" or "ทรงตัว" there (MOU494 false positive 2026-10-02)
+        def ui_dir(c):
+            if not c or c.get("dir") not in ("rising", "falling"):
+                return None
+            if c.get("basis") == "measured_trend":
+                return c["dir"]
+            lk = c.get("likely")
+            ok = c.get("method") not in (None, "persistence") and c.get("level") != "steady" and (
+                not lk or (lk[1] < 0 if c["dir"] == "falling" else lk[0] > 0))
+            return c["dir"] if ok else None
+        dirs = [(ui_dir(c), c.get("basis") == "measured_trend") for c in chs if ui_dir(c)]
         if {"rising", "falling"} <= {d for d, _ in dirs} and any(m for _, m in dirs):
             note("C10", f"rows {code}", f"measured trend opposes a model direction: {dirs}")
     # C9: the summary rain line of every region chip = /api/rain by_region (TMD word of the wettest forecast point)

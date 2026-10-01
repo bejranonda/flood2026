@@ -485,6 +485,24 @@ def openmeteo_fine() -> dt.datetime | None:
     return issue
 
 
+def hii_geo() -> dt.datetime | None:
+    """HII's public basin (22) and main-river (93) map files (owner 2026-10-02: basin data): weekly; assigns every gauge
+    its basin22, main river and river system (basins.assign); fills a missing HII basin name, never overwrites one."""
+    from floodwatch import basins
+    b, _ = _get_json("hii_geo_basins", "https://www.thaiwater.net/json/boundary/basin.json")
+    r, _ = _get_json("hii_geo_rivers", "https://www.thaiwater.net/json/river/river_main.json")
+    with db.connect() as c:
+        st = c.execute("SELECT code, lat, lon, basin FROM station WHERE code !~ '^TEST'").fetchall()
+        rows = basins.assign(st, b.get("features") or [], r.get("features") or [])
+        with c.cursor() as cur:
+            cur.executemany("""UPDATE station SET basin22=%(basin22)s, river_main=%(river_main)s, river_system=%(river_system)s,
+                               basin=COALESCE(basin, %(basin)s) WHERE code=%(code)s""", rows)
+        db.set_state(c, "geo_rivers", r)  # river lines for the upstream rule and later views
+        c.commit()
+    log.info("hii_geo: %d gauges; %d with a main river", len(rows), sum(1 for x in rows if x["river_main"]))
+    return None
+
+
 CELL_BACKFILL_PER_RUN = 8  # a year per cell weighs ~26 Open-Meteo calls: 8 cells/h stays well inside the free quota
 
 
@@ -573,4 +591,4 @@ def run(source: str) -> None:
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
                   "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
                   "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells,
-                  "openmeteo_fine": openmeteo_fine}[source])
+                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo}[source])

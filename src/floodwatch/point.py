@@ -387,12 +387,16 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
                 "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นใน 24 ชม.",
                 "desc": f"สถานีคาดการณ์รอบจุดมีแนวโน้มสูงขึ้น{extra} โปรดติดตามสถานการณ์ใกล้ชิด"}
     if gauge_usable and cat in ("warning", "watch"):
-        falling = khlong_trend == "falling"  # the headline says what the rows under it say (UX round 12, C6)
+        # the headline says what the rows under it say (UX round 12, C6): "ทรงตัว" only for a steady trend; an unclear
+        # trend is said as unclear and a rising one as rising (2026-10-02: "ยังทรงตัว" above "? ไม่แน่ชัด / ↗ เพิ่มขึ้น")
+        kt = khlong_trend
         extra = f" {rain_sentence}" if band == "moderate" else (
-            " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำมีแนวโน้มค่อยๆ ลดลง" if falling else " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำจะค่อยๆ ทรงตัว")
-        return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
-                "title": "ระดับน้ำคลองค่อนข้างสูง แต่มีแนวโน้มลดลง" if falling else "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว",
-                "desc": f"คลองยังระบายน้ำได้ต่อเนื่อง{extra}"}
+            " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำมีแนวโน้มค่อยๆ ลดลง" if kt == "falling"
+            else " หากไม่มีฝนตกหนักเพิ่ม ระดับน้ำจะค่อยๆ ทรงตัว" if kt == "steady" else "")
+        title = {"falling": "ระดับน้ำคลองค่อนข้างสูง แต่มีแนวโน้มลดลง", "steady": "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว",
+                 "rising": "ระดับน้ำคลองค่อนข้างสูง และมีแนวโน้มสูงขึ้น"}.get(kt, "ระดับน้ำคลองค่อนข้างสูง ยังไม่เห็นทิศทางชัดเจน")
+        desc = "โปรดติดตามสถานการณ์ใกล้ชิด" if kt == "rising" else f"คลองยังระบายน้ำได้ต่อเนื่อง{extra}"
+        return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis, "title": title, "desc": desc}
     if gauge_usable and khlong_trend == "rising":
         return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
                 "title": "ระดับน้ำคลองมีแนวโน้มสูงขึ้นเล็กน้อย",

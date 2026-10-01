@@ -258,6 +258,32 @@ def _change_fields(r: dict, status: str) -> dict:
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 
 
+def upstream_map(learned: dict, chain: dict) -> dict[str, list[dict]]:
+    """{gauge: [{code, lag_h}]}: learned upstream gauges (same basin and river system, leading change; forecast.upstream)
+    and, on the Chao Phraya chain, the gauges up the river (travel time not learned there)."""
+    from floodwatch.forecast import upstream_of
+    out = {k: [{"code": u[0], "lag_h": int(u[1])} for u in v] for k, v in (learned or {}).items()}
+    for code in chain:
+        if code not in out:
+            ups = upstream_of(code, chain)
+            if ups:
+                out[code] = [{"code": u, "lag_h": None} for u in ups]
+    return out
+
+
+def _upstream() -> dict[str, list[dict]]:
+    def build():
+        from floodwatch.forecast import _chainage
+        try:
+            with db.connect() as c:
+                learned = db.get_state(c, "upstream_learned") or {}
+        except Exception:  # never let this optional line break the station list
+            logging.getLogger(__name__).exception("upstream map unavailable")
+            learned = {}
+        return upstream_map(learned, _chainage())
+    return _memo(("upstream_map",), build, ttl=600)
+
+
 def _station_row(r: dict) -> dict:
     """One station for the UI. Misleading values are filtered, never the station: `notes` says what and why."""
     r = dict(r)
@@ -292,6 +318,7 @@ def _station_row(r: dict) -> dict:
     return {
         "code": r["code"], "name_th": r["name_th"] or r["code"], "name_en": r["name_en"], "lat": r["lat"],
         "region": regions.region_of(r["province"]), "water": point.water_word(r), "in_focus": r.get("in_focus"),
+        "upstream": _upstream().get(r["code"]),
         "lon": r["lon"], "bank_msl": r["bank_msl"], "agency": r["agency"], "province": r["province"],
         "amphoe": r["amphoe"], "river": r["river"], "level_msl": r["level_msl"], "discharge": r["discharge"],
         "obs_time": _iso(r["obs_time"]), "age_min": age, "stale": age is None or age > STALE_MIN,

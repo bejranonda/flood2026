@@ -126,6 +126,18 @@ const obsLine = (s) => {
   const cm = ["steady", "mixed"].includes(o.level) ? (o.level === "steady" ? " (เปลี่ยนไม่ถึง 2 ซม.)" : "") : ` ${Math.abs(o.change_cm)} ซม.`;
   return `<div class="pf-obs obs-${obsDir(o)}">${o.hours || 24} ชม. ที่ผ่านมา: <b>${esc(OBS[o.level])}</b>${esc(cm)}</div>`;
 };
+// Water from upstream (owner 2026-10-02, basin data): the first upstream gauge, its measured 24 h change in the list's
+// own words (obsLine), and how long its changes usually take to arrive here (learned lag). One line; why behind an ⓘ.
+const upstreamLine = (s) => {
+  const u = (s.upstream || [])[0], us = u && stations.find((x) => x.code === u.code);
+  if (!us || us.stale) return "";
+  const o = obsLine(us).replace(/^<div class="pf-obs[^"]*">/, "").replace(/<\/div>$/, "");
+  if (!o) return "";
+  const tip = `${us.name_th} (${us.code}) อยู่ต้นน้ำของสถานีนี้ในลุ่มน้ำและระบบแม่น้ำเดียวกัน`
+    + (u.lag_h ? ` · จากข้อมูลย้อนหลัง 1 ปี ระดับน้ำที่นั่นมักเปลี่ยนก่อนที่นี่ราว ${u.lag_h} ชม.` : " · ตามลำน้ำเจ้าพระยา")
+    + " · เป็นข้อมูลที่วัดได้ ไม่ใช่การพยากรณ์";
+  return `<div class="pf-obs pf-up">ต้นน้ำ: ${esc(us.name_th)} · ${o}${u.lag_h ? ` · มักถึงที่นี่ในราว ${esc(u.lag_h)} ชม.` : ""} <button type="button" class="conf-badge conf-low" title="${esc(tip)}" aria-label="ต้นน้ำของสถานีนี้">ⓘ</button></div>`;
+};
 // When will it drop? The station's recovery estimate in dates/hours (never minutes, KI-231); shared by panel and sheet
 const dropText = (s) => {
   const r = s.recovery || {};
@@ -674,7 +686,7 @@ async function showDetail(code) {
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
-        ${changeLines(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
+        ${changeLines(s)}${upstreamLine(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
       ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic" && n !== "stuck") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
@@ -756,7 +768,7 @@ function pointHTML(d, src, place = "") {
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
   // 24/48 h rows; a gauge with only a 12 h forecast (short history) shows that row instead of nothing (KI-239)
-  const trendBody = (x) => `${trendRows(x, [24, 48]) || trendRows(x, [12])}${changeLines(x)}`;
+  const trendBody = (x) => `${trendRows(x, [24, 48]) || trendRows(x, [12])}${changeLines(x)}${upstreamLine(x)}`;
   const noTrendLine = near && near.station && main !== near
     ? gBlock(nat ? "สถานีใกล้สุด" : "คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ (ยังไม่ผ่านการทดสอบย้อนหลัง)</div>`) : "";
   const mainBlock = main && main.station

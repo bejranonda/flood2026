@@ -59,3 +59,7 @@ def test_upstream_is_relearned_at_start_when_empty_or_a_day_old():
     assert worker.upstream_due({}, now - dt.timedelta(hours=1), now)  # empty: learn again
     assert worker.upstream_due({"X": [["Y", 6, 0.8]]}, now - dt.timedelta(hours=25), now)
     assert not worker.upstream_due({"X": [["Y", 6, 0.8]]}, now - dt.timedelta(hours=2), now)
+
+
+def test_basin_and_river_maps_are_refreshed_weekly_and_at_start():
+    assert dict(worker.TASKS)["hii_geo"] == 7 * 24 * 3600 and "hii_geo" in worker.FIRST_RUN["collector"]

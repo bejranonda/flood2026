@@ -76,6 +76,8 @@ def learn(series: dict[str, tuple[np.ndarray, np.ndarray]], meta: dict[str, dict
             n = meta.get(cand) or {}
             if cand == code or n.get("basin") != m["basin"] or n.get("lat") is None or _km(m, n) > MAX_KM:
                 continue
+            if m.get("system") is not None and n.get("system") is not None and m["system"] != n["system"]:
+                continue  # both on main rivers that never meet (basins.river_systems): not upstream
             lo = int(max(t0[0], t1[0])) if len(t0) and len(t1) else cutoff_h
             if cutoff_h - lo < MIN_PAIRS:
                 continue
@@ -100,8 +102,10 @@ def run_all() -> int:
     from floodwatch.forecast import EVAL_HOURS, LOOKBACK_DAYS, hourly_grid
     cutoff_h = int(dt.datetime.now(dt.timezone.utc).timestamp() // 3600) - EVAL_HOURS
     with db.connect() as c:
-        rows = c.execute("""SELECT code, basin, lat, lon, in_focus FROM station WHERE code !~ '^TEST'
-                            AND agency IS DISTINCT FROM 'BMA' AND basin IS NOT NULL AND lat IS NOT NULL""").fetchall()
+        # the 22-basin polygons (one scheme for every gauge, hii_geo) and the river system of gauges on main rivers
+        rows = c.execute("""SELECT code, COALESCE(basin22, basin) AS basin, lat, lon, in_focus, river_system FROM station
+                            WHERE code !~ '^TEST' AND agency IS DISTINCT FROM 'BMA' AND COALESCE(basin22, basin) IS NOT NULL
+                            AND lat IS NOT NULL""").fetchall()
     by_basin: dict[str, list[dict]] = {}
     for r in rows:
         by_basin.setdefault(r["basin"], []).append(r)
@@ -119,7 +123,7 @@ def run_all() -> int:
                 t, y = hourly_grid([o["obs_time"] for o in obs], [o["level_msl"] for o in obs])
                 if len(t):
                     series[g["code"]] = (t, y)
-        meta = {g["code"]: {"basin": basin, "lat": g["lat"], "lon": g["lon"]} for g in gauges}
+        meta = {g["code"]: {"basin": basin, "lat": g["lat"], "lon": g["lon"], "system": g["river_system"]} for g in gauges}
         learned.update(learn(series, meta, cutoff_h, targets))
     with db.connect() as c:
         changed = changed_codes(db.get_state(c, "upstream_learned") or {}, learned)

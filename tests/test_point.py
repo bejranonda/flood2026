@@ -376,3 +376,15 @@ def test_measured_rain_in_the_headline_is_short_and_uses_the_rows_words():
     fc = point.assess(13.913, 100.498, [], 0, {}, 7.0, rain)["forecast"]
     assert "ฝนตกหนักแล้ว 60 มม. ใน 24 ชม. ที่ผ่านมา" in fc["desc"]
     assert "อาคาร" not in fc["desc"] and "ห่าง" not in fc["desc"]  # where it was measured: in the factor's details
+
+
+def test_a_high_canal_headline_never_says_steady_when_the_trend_is_unclear_or_rising():
+    # 2026-10-02 C6 x3: "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว" above rows "? ไม่แน่ชัด / ↗ เพิ่มขึ้น"
+    area = {"category": "warning", "confidence": "medium"}
+    unclear = {"code": "K", "water_body": "khlong", "change24": {"dir": "steady", "likely": [-0.2, 0.1], "method": "star"}}
+    rising = {"code": "K", "water_body": "khlong", "change24": {"dir": "rising", "likely": [0.05, 0.2], "method": "star"}}
+    steady = {"code": "K", "water_body": "khlong", "change24": {"dir": "steady", "likely": [-0.02, 0.03], "method": "star"}}
+    t = lambda s: (lambda o: o["title"] + " " + o["desc"])(point.point_forecast(area, [s], [], None, 0, s))
+    assert "ทรงตัว" not in t(unclear) and "ชัดเจน" in t(unclear)
+    assert "ทรงตัว" not in t(rising) and "สูงขึ้น" in t(rising)
+    assert "ทรงตัว" in t(steady)

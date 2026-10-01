@@ -87,3 +87,13 @@ def test_gauges_whose_upstream_changed_get_a_fresh_backtest():
     new = {"A": [["U", 6, 0.81]], "B": [["W", 4, 0.9]], "C": [["Z", 2, 0.6]]}
     assert upstream.changed_codes(old, new) == {"B", "C"}  # same upstream codes (A) is not a change
     assert upstream.changed_codes({}, new) == {"A", "B", "C"}
+
+
+def test_candidates_from_another_river_system_are_never_upstream():
+    # owner 2026-10-02 (basin data, item 4): Kolok and Sai Buri reach the sea apart; experiment: links changed 1/39
+    ser = _series()
+    meta = {k: {**v, "system": 1} for k, v in META.items()}
+    meta["UP"] = {**meta["UP"], "system": 2}  # leads the target perfectly, but on another river system
+    assert "T" not in upstream.learn(ser, meta, cutoff_h=int(ser["T"][0][CUT]))
+    meta["UP"] = {**meta["UP"], "system": None}  # a small stream (no main river): the basin rule alone applies
+    assert [p[0] for p in upstream.learn(ser, meta, cutoff_h=int(ser["T"][0][CUT]))["T"]] == ["UP"]

@@ -2,6 +2,22 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.17.0 — 2026-10-02
+- **Basin and river maps put to work (owner: "ข้อมูลลุ่มน้ำ watershed map, basin map เอาใช้ประโยชน์อะไรได้ไหม"; D-066).**
+  HII's public `basin.json` (22 basins) and `river_main.json` (93 rivers) give every gauge its basin, its main river
+  and its river system (weekly `hii_geo`; 215 gauges without a basin name got one).
+- **"Water from upstream" line.** Station sheets and pin panels show the first upstream gauge's measured change and the
+  learned travel time: "ต้นน้ำ: ท้ายเขื่อนนเรศวร · 48 ชม. ที่ผ่านมา: ลดลงมาก 58 ซม. · มักถึงที่นี่ในราว 5 ชม. ⓘ".
+- **Upstream links stay within one river system** (no cross-river links such as โก-ลก ← สายบุรี). Tested on 39 gauges:
+  neutral (1 link set changed). Basin-mean rain and an upstream-cells rain proxy were tested too: no significant gain,
+  not adopted; rain from the wrong basin (placebo) clearly hurt. HydroBASINS sub-basins would allow a proper test,
+  but their host challenges our server (owner download: OWNER_ACTIONS HYDROBASINS).
+  [research/2026-10-02_basins.md](research/2026-10-02_basins.md)
+- **High-canal headline follows the rows (C6).** "ระดับน้ำคลองค่อนข้างสูง แต่แนวโน้มยังทรงตัว" was said for every trend
+  that was not falling; now steady → "ยังทรงตัว", rising → "และมีแนวโน้มสูงขึ้น", unclear → "ยังไม่เห็นทิศทางชัดเจน".
+  Checker C10 now judges model directions the way the UI shows them. Live run: 488 sheets, 76 pins, 1,972 rows →
+  0 findings on C1–C10.
+
 ## v0.16.8 — 2026-10-01
 - **One way per panel (owner: "Continue all suggestions").** The canal factor's "▸ รายละเอียด" became an ⓘ like the
   rain factor's; the panel has no folded details left. The summary rain line uses the panel's words ("ราว N มม." for

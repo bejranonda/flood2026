@@ -142,6 +142,14 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | HII web app endpoint list | `www.thaiwater.net/dist/js/app.chunk.js` (90 `thaiwater30/...` paths) | No public **hourly** rain history; rain endpoints: `public/rain_24h`, `rain_today`, `rain_yesterday`, `rain_monthly`, `rain_yearly`, `provinces/rain{3,5,7,15}d_graph` |
 | HII daily rain per gauge | `api-v3.thaiwater.net/api/v1/thaiwater30/provinces/rain3d_graph?station_id={rain_24h station.id}&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` | ✅ 200, `data: [{rainfall_datetime: "YYYY-MM-DD", rainfall_value}]`, ≤ ~31 days per request (else `RespCode 422 "limit date range"`), back to ≥ 2024-10. Label = day the 24 h window ends; values ~7× our hourly sums (median) ⚠️ unexplained ([research](../research/2026-10-01_measured_rain.md)) |
 
+### 2i. Basin and river maps (probed 2026-10-02 22:20–22:45 UTC, honest UA; D-066)
+| Source | Endpoint | Result |
+|---|---|---|
+| HII basin polygons | `www.thaiwater.net/json/boundary/basin.json` | ✅ 200, 22 features (`BASIN_CODE`, `BASIN_T`), 17 Polygon + 5 MultiPolygon, 119 KB |
+| HII main rivers | `www.thaiwater.net/json/river/river_main.json` | ✅ 200, 93 MultiLineString (`STR_NAMT`), 432 KB |
+| HII other boundaries | `json/boundary/{amphoe,tambon,thailand,region_tmd,bkk_amphoe,floodplain}.json` | ✅ 200 (931 amphoe, 7,791 tambon, 77 provinces, 6 TMD regions, 50 Bangkok districts, 10 retention areas) — not used yet |
+| HydroBASINS / HydroRIVERS | `data.hydrosheds.org/file/hydrobasins/standard/hybas_as_lev01-12_v1c.zip` | ❌ 403 Cloudflare challenge ("Just a moment…") from the server — not bypassed; licence (product page): free for scientific, educational and commercial use, attribution Lehner & Grill (2013). Owner download: OWNER_ACTIONS HYDROBASINS |
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |

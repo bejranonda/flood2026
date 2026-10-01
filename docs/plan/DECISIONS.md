@@ -538,3 +538,9 @@
 - **Decision:** กทม. stays the default for anyone who has not allowed location. Once the user allows GPS (📍 สถานีใกล้ฉัน), the region chip becomes the region of the nearest gauge within 60 km, and is remembered. With permission already granted, later visits apply it silently. A chip tapped by hand wins until the next 📍 tap.
 - **Rulings (Claude, owner may override):** no location prompt on page load (browsers discourage it and a refused prompt usually sticks); the region comes from the nearest gauge, not a province lookup (no reverse geocoding call, works offline from the loaded list).
 
+### D-066 — Basin and river maps: upstream links within one river system; "water from upstream" line
+- **Date:** 2026-10-02 · **Status:** accepted (owner: "ข้อมูลลุ่มน้ำ … เอาใช้ประโยชน์อะไรได้ไหม" → chose items 1+2, 3, 4)
+- **Evidence:** [research/2026-10-02_basins.md](../../research/2026-10-02_basins.md) — HII's public `basin.json` (22) and `river_main.json` (93 rivers, 40 systems); backtest on 39 gauges: river-system rule neutral (links changed at 1/39), basin-mean rain no gain, upstream-cells rain small and not significant, placebo clearly worse.
+- **Decision:** (1) every gauge gets its 22-basin polygon, main river and river system (weekly `hii_geo`), filling missing basin names; (2) learned upstream gauges must share the basin polygon and, when both are on main rivers, the river system; (3) station sheet and pin panel show the first upstream gauge's measured 24 h change and the learned travel time ("มักถึงที่นี่ในราว N ชม.") with an ⓘ — a measurement, never a forecast. Not adopted: basin-mean rain; upstream-cells rain until HydroBASINS sub-catchments can be tested (owner download, behind a bot challenge).
+- **Not for:** Bangkok polders (drainage follows canals, gates and pumps, not basin maps) and never to paint flooded areas (D-019).
+
