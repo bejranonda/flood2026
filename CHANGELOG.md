@@ -18,6 +18,8 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
 - **Opening a sheet refreshes its list item.** The list is loaded every 5 min, a sheet fetches fresh data; when a
   forecast or QC update landed in between, the two differed (C1 at 6 gauges). The list now takes the sheet's row.
 - **UI consistency checks C9 and C10** (rain and river lines agree with the API; one direction story per gauge).
+  Final live run (2026-10-01 ~16:00 UTC): 488 sheets, 76 pins (9 national), 1,998 rows, 4 viewports → **0 findings
+  on C1–C10**.
 
 ## v0.16.5 — 2026-10-01
 - **Measured rain as a forecast input: tested, not adopted (Q43; owner: "Consider the factors in modeling and
