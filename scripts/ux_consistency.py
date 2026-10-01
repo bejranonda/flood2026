@@ -8,7 +8,9 @@ in many possibilities"). One browser session, views compared at the same moment:
   C5 viewports 360 / 390 / 768 / 1440 px: home, a sheet and a pin panel load without overflow;
   C6 the pin headline never contradicts the nearest gauge's rows ("ทรงตัว" above "↘ ลดลง");
   C7 (v0.16, D-064) a pin outside Bangkok never speaks of Bangkok's polders ("พื้นที่ปิดล้อม") and never says "no gauge
-     near" while a gauge within 3 km is listed.
+     near" while a gauge within 3 km is listed;
+  C8 (v0.16.1) every region chip is visible without scrolling, and the map shows gauges outside Bangkok (Chiang Mai
+     view) whatever the chosen chip — owner 2026-10-01: "App shows only Bangkok stations".
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
 ~30 min). Usage: python3 scripts/ux_consistency.py [out.json] [per_region=15]   (Python Playwright; Chromium --no-sandbox)"""
 import json, re, sys
@@ -154,6 +156,16 @@ with sync_playwright() as p:
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep
         b = p.chromium.launch(args=["--no-sandbox"])
         pg = b.new_page(viewport={"width": w, "height": h}, is_mobile=w < 700, has_touch=w < 700, locale="th-TH")
+        pg.goto(URL, wait_until="domcontentloaded"); pg.wait_for_selector(".rchip", timeout=30000); pg.wait_for_timeout(2500)
+        hidden = pg.evaluate("() => [...document.querySelectorAll('.rchip[data-region]')].filter(b => { const r = b.getBoundingClientRect(); return r.right > window.innerWidth || r.left < 0; }).map(b => b.innerText)")
+        if hidden:
+            note("C8", f"{w}px home", f"region chips off-screen: {hidden}")
+        if pg.locator(".tabs [data-tab=map]").is_visible():  # phones and tablets: the map sits behind its tab
+            pg.locator(".tabs [data-tab=map]").click(); pg.wait_for_timeout(1200)
+        pg.evaluate("() => { map.setView([18.79, 98.98], 9); }"); pg.wait_for_timeout(1200)
+        n_cm = pg.evaluate("() => { let n = 0; layer.eachLayer(l => { if (l.getLatLng && map.getBounds().contains(l.getLatLng())) n++; }); return n; }")
+        if not n_cm:
+            note("C8", f"{w}px map", "no gauge on the map around Chiang Mai with the default chip")
         for path in ("", "#s=BKK021", "#s=WL.SSB.08", "#s=WL.KPM.03", "#s=CPY015", "#p=13.8545,100.5880", "#p=13.5000,100.3000",
                      "#s=URTU07", "#s=X.77", "#s=MUN009", "#p=17.4900,101.7200", "#p=7.0100,100.4700"):
             pg.goto(URL + path, wait_until="domcontentloaded"); pg.wait_for_timeout(3500)
@@ -164,7 +176,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

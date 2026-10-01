@@ -2,6 +2,23 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.16.1 — 2026-10-01
+- **Every region is visible, and the map shows every gauge (owner: "App shows only Bangkok stations"; KI-253).**
+  Validated on the live site: on a 390 px phone only 3 of 9 region chips were on screen (ภาคเหนือ … ใต้ scrolled out
+  of sight with no cue), and the map was filtered by the chip, so with the default กทม. a user who panned to Chiang Mai
+  saw 0 gauges (phone and desktop). Now the chips wrap onto extra lines (all 9 visible at 390 px) and the map always
+  shows every gauge in Thailand (796 with a tested forecast on 2026-10-01 05:00 UTC; canvas renderer for phones);
+  the chip filters the counts and the list and moves the map view. `scripts/ux_consistency.py` C8 checks both.
+- **A release reaches phones at once.** The owner's phone still ran v0.16.0 code after the fix: the page was cached
+  5 min (`max-age=300`) and an open tab never reloads its code. The page is now `Cache-Control: no-cache`, and the app
+  reloads itself once when `/api/stats` reports a newer version (never while a panel is open — then on close; never
+  twice for one version). Verified in a browser with a faked newer version.
+- **Headline and rows agree on "steady" (C6).** The pin headline said "ยังทรงตัว" where the gauge's row said
+  "? ไม่แน่ชัด" (24 h "steady" with a likely −18…+2 cm; the rows say ทรงตัว only within ±5 cm, D-060). The headline
+  now uses the same ±5 cm rule.
+- **List and pin from the same snapshot (C1).** The list payload had its own 60 s cache on top of the 60 s rows cache
+  (up to 2 min apart: 119 vs 118 cm at CHN001); it is now rebuilt whenever the rows refresh.
+
 ## v0.16.0 — 2026-09-30
 - **Nationwide parity (owner: "the nation-wide should be the same as in Bangkok"; D-064).** Every HII-network gauge in
   Thailand (733 outside the Bangkok focus area: RID 297, HII 274, พพภ. 89, EGAT 73) now gets what a Bangkok gauge gets:

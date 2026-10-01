@@ -274,7 +274,6 @@ function renderRegions() {
     try { localStorage.setItem("region", region); } catch { /* private mode */ }
     if (lastStats) renderSummary(lastStats);
     renderList();
-    renderMap();
     fitRegion();
   }));
 }
@@ -328,7 +327,8 @@ async function placeSearch(q) {
 /* ---------- map ---------- */
 function renderMap() {
   if (!map) {
-    map = L.map("map", { zoomControl: true }).setView([13.76, 100.56], 11);
+    // canvas: ~1,000 gauge markers stay fast on phones (v0.16.1: the map shows every gauge in Thailand)
+    map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([13.76, 100.56], 11);
     setTimeout(fitRegion, 0);
     // Stations on top so they are always tappable; citizen-report cells below and non-interactive (owner
     // feedback: taps hit the Traffy circles first). A tap there opens the point check, which lists the counts.
@@ -367,9 +367,11 @@ function renderMap() {
   if (sa) sa.textContent = streetAge();
   // Map default: gauges with a tested forecast and fresh data (owner, 2026-09-26: "separate the non-predictable from
   // the map, with an option to show"). The list and the point check still use every gauge.
-  const onMap = (s) => inRegion(s) && (showNoData || (hasForecast(s) && s.status !== "unknown"));
+  // The map shows every gauge in Thailand; the region chip only moves the view (v0.16.1: filtering the map by the chip
+  // hid every gauge outside Bangkok, even after panning to Chiang Mai).
+  const onMap = (s) => showNoData || (hasForecast(s) && s.status !== "unknown");
   const hn = document.getElementById("hidden-n");
-  if (hn) hn.textContent = `(${stations.filter((s) => s.lat && inRegion(s) && !onMap(s)).length})`;
+  if (hn) hn.textContent = `(${stations.filter((s) => s.lat && !onMap(s)).length})`;
   stations.filter((s) => s.lat && s.lon && onMap(s)).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
     const st = stOf(s);
     const approx = (s.notes || []).includes("approx_location");
@@ -382,7 +384,8 @@ function renderMap() {
   document.getElementById("unplaced").textContent = unplaced ? `${unplaced} สถานีไม่มีพิกัด (ดูในรายการ)` : "";
 }
 
-// Map view follows the region chip: Bangkok at street level, any other region fitted to its gauges (D-064).
+// Map view follows the region chip: Bangkok at street level, any other region fitted to its gauges (D-064). The
+// markers do not follow it: every gauge stays on the map.
 let fitPending = false;  // on a phone the map sits in a hidden tab (0×0): fit again when it is shown
 function fitRegion() {
   if (!map) return;
@@ -597,6 +600,7 @@ function bindFeedback(form) {
 function closeDetail() {
   document.getElementById("sheet").hidden = true;
   if (location.hash) history.replaceState(null, "", location.pathname);
+  if (updatePending) location.reload();  // a new release arrived while the panel was open
 }
 
 async function showDetail(code) {
@@ -834,6 +838,17 @@ function setTab(tab) {
   if (tab === "map" && map) setTimeout(() => { map.invalidateSize(); if (fitPending) fitRegion(); }, 50);
 }
 
+// A release must reach phones whose tab stays open for days (owner 2026-10-01: still v0.16.0 code after the fix).
+// The server fills the version into the page; /api/stats tells the running one. Reload once per new version, never
+// while a panel is open (then on close), and never twice for the same version (a stale cache cannot loop).
+const PAGE_VERSION = (document.querySelector(".ver")?.textContent || "").trim();
+let updatePending = false;
+function maybeUpdate(v) {
+  if (!v || !PAGE_VERSION.startsWith("v") || `v${v}` === PAGE_VERSION) return;
+  try { if (sessionStorage.getItem("reloadedFor") === v) return; sessionStorage.setItem("reloadedFor", v); } catch { return; }
+  if (document.getElementById("sheet").hidden) location.reload(); else updatePending = true;
+}
+
 async function load() {
   try {
     const [d, st] = await Promise.all([getJSON("/api/stations"), getJSON("/api/stats").catch(() => null)]);
@@ -842,6 +857,7 @@ async function load() {
     const latest = stations.map((s) => s.obs_time).filter(Boolean).sort().pop();
     document.getElementById("updated").textContent = `ข้อมูลล่าสุด ${fmtTime(latest)} · ${stations.length} สถานี`;
     if (st) {
+      maybeUpdate(st.version);
       renderSummary(st);
       document.querySelectorAll(".ver").forEach((e) => { e.textContent = `v${st.version}`; });
     }

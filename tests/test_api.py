@@ -241,3 +241,23 @@ def test_a_memoised_payload_may_use_another_memoised_value(monkeypatch):
                          daemon=True)
     t.start(); t.join(2)
     assert done == [2]
+
+
+def test_home_page_is_revalidated_so_a_release_reaches_phones_at_once():
+    # 2026-10-01: the owner's phone still ran v0.16.0 code after the v0.16.1 fix (page cached 5 min + an open tab)
+    assert api.index(_req("flood.autobahn.bot")).headers["cache-control"] == "no-cache"
+
+
+def test_the_list_is_rebuilt_from_the_same_rows_snapshot_as_the_pin_panel(monkeypatch):
+    # 2026-10-01 C1: the list payload had its own 60 s memo on top of the 60 s rows cache, so a list could be up to
+    # 2 min older than a pin panel built from fresh rows (119 vs 118 cm at CHN001).
+    built = []
+    monkeypatch.setattr(api, "_stations_data", lambda scope: built.append(scope) or {"n": len(built)})
+    monkeypatch.setattr(api, "_station_rows", lambda all_: [])
+    monkeypatch.setattr(api, "_memo_cache", {})
+    monkeypatch.setattr(api, "_rows_cache", {True: (100.0, [])})
+    api.stations("all"); api.stations("all")
+    assert built == ["all"]  # same snapshot: built once
+    api._rows_cache[True] = (200.0, [])  # the rows were refreshed (what the pin panel now uses)
+    api.stations("all")
+    assert built == ["all", "all"]  # the list follows at once

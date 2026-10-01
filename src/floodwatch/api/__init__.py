@@ -340,7 +340,19 @@ def _twins() -> dict[str, dict]:
 
 @app.get("/api/stations")
 def stations(scope: str = Query("all", pattern="^(focus|all)$")):
-    return _json(_memo(("stations", scope), lambda: _stations_data(scope)))
+    # Rebuilt whenever the shared rows refresh, so the list and a pin panel come from the same snapshot (a separate
+    # 60 s memo on top of the 60 s rows cache let them differ by up to 2 min: C1 findings 2026-10-01).
+    all_ = scope == "all"
+    _station_rows(all_)
+    stamp = (_rows_cache.get(all_) or (0.0,))[0]
+    hit = _memo_cache.get(("stations", scope))
+    if not hit or hit[2] != stamp:
+        with _memo_lock:
+            hit = _memo_cache.get(("stations", scope))
+            if not hit or hit[2] != stamp:
+                hit = (time.monotonic(), _stations_data(scope), stamp)
+                _memo_cache[("stations", scope)] = hit
+    return _json(hit[1])
 
 
 def _stations_data(scope: str) -> dict:
@@ -689,7 +701,7 @@ async def legacy_redirect(request: Request, call_next):
 @app.get("/")
 def index(request: Request):
     html = page_for_host((WEB_DIR / "index.html").read_text(), _host(request)).replace("__VERSION__", f"v{__version__}")
-    return HTMLResponse(html, headers={"Cache-Control": "public, max-age=300"})
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})  # revalidate: a release reaches open phones at once (KI-253)
 
 
 ROBOTS_TXT = """User-agent: *

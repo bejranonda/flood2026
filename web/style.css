@@ -111,9 +111,12 @@ a { color: var(--accent); }
   background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.15);
   padding: 10px 14px; font-size: 13px; line-height: 1.5; color: var(--ink); white-space: normal; z-index: 2000; }
 .more-popup p { margin: 6px 0; }
-.regions { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 8px; scrollbar-width: none; }
+/* v0.16.1: every region visible without scrolling (owner 2026-10-01: "app shows only Bangkok stations"; on a 390 px
+   phone 6 of 9 chips sat off-screen to the right) */
+.regions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
 .rchip { flex: none; }
 .rchip { font: inherit; font-size: 14px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 18px; background: #fff; cursor: pointer; }
+@media (max-width: 480px) { .regions { gap: 5px; } .rchip { font-size: 13px; min-height: 34px; padding: 0 10px; } }
 .rchip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .mobile-only { display: none; }
 

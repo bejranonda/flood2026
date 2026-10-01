@@ -320,3 +320,12 @@ def test_a_pin_outside_bangkok_never_speaks_of_canals_it_does_not_have():
     fc = point.point_forecast({"category": "critical", "confidence": "medium"}, [], [], 60.0, 0, None, "แม่น้ำ")
     text = fc["title"] + fc["desc"]
     assert "คลอง" not in text and "แม่น้ำ" in text
+
+
+def test_a_wide_steady_forecast_is_unclear_in_the_headline_as_in_the_row():
+    # 2026-10-01 C6 at WL.BBR.01: change24 "steady" with likely −18..+2 cm; the row says "? ไม่แน่ชัด" (±5 cm rule, D-060)
+    # but the headline said "ยังทรงตัว"
+    wide = {"change24": {"dir": "steady", "likely": [-0.18, 0.02], "method": "star"}, "trend12": "rising"}
+    narrow = {"change24": {"dir": "steady", "likely": [-0.03, 0.04], "method": "star"}}
+    assert point._station_trend(wide) is None
+    assert point._station_trend(narrow) == "steady"

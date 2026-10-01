@@ -78,6 +78,7 @@ def local_channel(s: dict, mode: str) -> bool:
     return mode == "national" or water_body(s) == "khlong"
 
 
+STEADY_M = 0.05  # the same "ทรงตัว" width as the UI rows (web/app.js STEADY_M, D-060)
 CHECK_KM = 5.0  # a lone close gauge is checked against the gauges out to here (issue #3: never red from one gauge)
 
 
@@ -202,8 +203,12 @@ def _station_trend(s: dict) -> str | None:
     """One gauge's own 24 h direction — the same one its trend row shows (D-060: the measured trend where no model sees a
     direction; a model direction only when its whole likely range agrees), so the headline never contradicts the rows."""
     ch = s.get("change24") or s.get("change12")  # the panel shows 24/48 h rows: the headline speaks for 24 h
-    if ch and ch.get("dir") in ("rising", "falling", "steady"):
-        if ch.get("basis") == "measured_trend" or ch["dir"] == "steady":
+    if ch and ch.get("dir") == "steady":
+        # the row says "ทรงตัว" only when the likely range stays within ±5 cm (D-060); wider it says "? ไม่แน่ชัด"
+        lk = ch.get("likely")
+        return "steady" if lk is not None and not ch.get("wide") and max(abs(lk[0]), abs(lk[1])) <= STEADY_M else None
+    if ch and ch.get("dir") in ("rising", "falling"):
+        if ch.get("basis") == "measured_trend":
             return ch["dir"]
         lk = ch.get("likely")
         agrees = lk is not None and (lk[1] < 0 if ch["dir"] == "falling" else lk[0] > 0)

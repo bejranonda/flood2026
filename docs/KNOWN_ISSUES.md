@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-253 | v0.16.0 looked Bangkok-only: on a phone 6 of 9 region chips were off-screen, and the map hid every gauge outside the chosen region (0 gauges around Chiang Mai with the default กทม.) | UX | 🟢 fixed v0.16.1 |
 | KI-252 | Two containers ran `schema.sql` at start; an `ALTER TABLE station` deadlocked with an observation insert | Infrastructure | 🟢 fixed v0.16.0 (only the collector owns the schema) |
 | KI-251 | A dead HII host (`tiwrm.hii.or.th` connect timeouts, 2026-09-30 20:32 UTC) cost ~6 min per request and stalled the collector loop | Infrastructure | 🟢 fixed v0.16.0 (10 s connect timeout, 10-min host cooldown) |
 | KI-250 | `/api/stations` hung for every visitor ~13 min after the v0.16 deploy (nested memo on a non-reentrant lock) | API | 🟢 fixed v0.16.0 (RLock + test) |
@@ -624,4 +625,7 @@ Found 2026-09-30 (owner: "Why we have only short history for many nation-wide st
 
 ### KI-252 — Schema deadlock between two containers at start · 🟢 fixed v0.16.0
 2026-09-30 20:25 UTC: the collector and the new forecaster both ran `db.init_schema()` at start; the forecaster's `ALTER TABLE station ADD COLUMN IF NOT EXISTS` (AccessExclusiveLock on `station`) deadlocked with the collector's observation insert (FK to `station`). Postgres aborted one; no data was lost. Fix: only the collector role runs `schema.sql`; the forecaster waits until `forecast_model` exists (`worker.owns_schema`).
+
+### KI-253 — v0.16.0 looked Bangkok-only · 🟢 fixed v0.16.1
+Owner 2026-10-01 04:49 UTC: "App shows only Bangkok stations". Measured on the live site (Playwright, 390 × 844 phone and 1440 × 900 desktop): region chips visible without scrolling 3/9 on the phone (9/9 desktop); markers on the map around Chiang Mai with the default chip: 0 on both. Cause: my v0.16.0 design made the map follow the region chip (spec §3.5), and the chip row scrolled horizontally with no cue. The data was complete (e.g. อีสาน 128 gauges with forecasts). Fix: the map shows every gauge in Thailand, the chip only moves the view (`preferCanvas` for ~1,000 markers); chips wrap. After: 10/10 chips visible at 390 px; 45 (phone) / 54 (desktop) gauges around Chiang Mai. Lesson (GUIDELINES §6): a filter must never hide places the user can pan to; validate a new scope with "can a user outside Bangkok find their area in one tap?". Second cause seen on the owner's phone (screenshot 05:03 UTC: v0.16.0 with the Bangkok-only hidden count "(66)" after the fix was live): the page was cached 5 min and an open tab never reloads its code. Fix: `Cache-Control: no-cache` on `/` and a once-per-version self-reload driven by `/api/stats` (deferred while a panel is open).
 
