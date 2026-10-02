@@ -212,8 +212,8 @@ def summary_text(stats: dict) -> str:
     parts = [f"จาก {f['total']} สถานีที่ติดตาม ล้นตลิ่ง {s['critical']} · ใกล้ตลิ่งหรือคลองเต็ม {s['warning']} · เฝ้าระวัง {s['watch']}"
              f" · ยังรับน้ำได้ {s['normal']} · ไม่ทราบ {s['unknown']} สถานี"]
     t = f["trend12"]
-    parts.append(f"ใน 12 ชม. ข้างหน้ามีแนวโน้มเพิ่มขึ้น {t['rising']} สถานี ลดลง {t['falling']} สถานี")
+    parts.append(f"ในอีก 12 ชม. มีแนวโน้มเพิ่มขึ้น {t['rising']} สถานี ลดลง {t['falling']} สถานี")
     rain = stats.get("rain_bkk_next24_mm_max")
     if rain is not None:
-        parts.append(f"คาดฝนในกรุงเทพฯ 24 ชม. ข้างหน้า สูงสุดราว {round(rain)} มม. (Open-Meteo)")
+        parts.append(f"คาดฝนในกรุงเทพฯ ในอีก 24 ชม. สูงสุดราว {round(rain)} มม. (Open-Meteo)")
     return " · ".join(parts)

@@ -61,6 +61,19 @@ const rainPill = (mm, approx = true) => {  // "ราว" for a forecast only; a
   // the panel's words ("ราว N มม."), no 4-square scale: the coloured word already says it (v0.16.8, one vocabulary)
   return `<span class="rain"><b style="color:${c}">${esc(label)}</b>${mm >= 0.1 ? ` ${approx ? "ราว " : ""}${esc(rainMm(mm))} มม.` : ""}</span>`;
 };
+// One rain block for the pin panel and the summary strip (owner 2026-10-02: the rain factor read as one long sentence,
+// "Compare to the water level info, it is easier"). Same layout as the water rows: the forecast is a trend-row grid
+// (horizon · coloured chip · "ราว N มม." · ⓘ), then what fell in the water's past-line style ("24 ชม. ที่ผ่านมา: …").
+const infoBtn = (tip, label) => `<button type="button" class="conf-badge conf-low" title="${esc(tip)}" aria-label="${esc(label)}">ⓘ</button>`;
+function rainRows(fcMm, fcTip, mm24, mm1h) {
+  const fl = fcMm == null ? null : rainLabel(fcMm);
+  const row = fl ? `<div class="tr-rows rain-rows"><span class="tr-h">อีก 24 ชม.</span><span class="chg" style="background:${RAIN_COLOR[fl]}">${esc(fl)}</span>`
+    + `<span class="tr-r">${fcMm >= 0.1 ? `ราว ${esc(rainMm(fcMm))} มม.` : ""}</span>${fcTip ? infoBtn(fcTip, "ที่มาของฝนคาดการณ์") : "<span></span>"}</div>` : "";
+  const ml = mm24 == null ? null : rainLabel(mm24);
+  const past = ml ? `<div class="pf-obs">24 ชม. ที่ผ่านมา: <b style="color:${RAIN_COLOR[ml]}">${esc(ml)}</b>${mm24 >= 0.1 ? ` ${esc(rainMm(mm24))} มม.` : ""}</div>` : "";
+  const hour = mm1h != null && mm1h >= 0.1 ? `<div class="pf-obs">ชั่วโมงล่าสุด: ${esc(rainMm(mm1h))} มม.</div>` : "";
+  return row + past + hour;
+}
 // Change at a gauge in 12/24 h, five colour steps (D-047): blue = falling, grey = steady, orange/red = rising.
 // Always "at this gauge", with the likely range in words and an honest confidence ("ปานกลาง" at best, never "สูง").
 const CHANGE = {
@@ -101,7 +114,7 @@ function trendRow(ch, hours, unsure = false) {
     ? `ถ้าเป็นไปตามแนวโน้มที่วัดได้ (ชะลอลงตามเวลา) ไม่ใช่แบบจำลอง${ch.hit != null ? ` · ในอดีตเป็นแบบนี้ต่อ ${Math.round(ch.hit * 10)} ใน 10 ครั้ง` : ""}`
     : dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}` : steady ? STEADY_TIP : UNPROVEN_TIP;
   const cls = dirn && ch.basis !== "measured_trend" ? `conf-${esc(ch.confidence)}` : "conf-low";
-  const html = `<span class="tr-h">ใน ${hours} ชม.</span>${chip}<span class="tr-r">${esc(rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
+  const html = `<span class="tr-h">อีก ${hours} ชม.</span>${chip}<span class="tr-r">${esc(rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
   return { html, unsure: unsure || (!dirn && !steady) };
 }
 function trendRows(s, hours) {
@@ -205,7 +218,7 @@ const observedText = (s) => {
   return Math.abs(c) <= 2 ? `➖ ทรงตัวใน ${h}ที่ผ่านมา` : c > 0 ? `↗️ สูงขึ้น ${c} ซม. ใน ${h}ที่ผ่านมา` : `↘️ ลดลง ${-c} ซม. ใน ${h}ที่ผ่านมา`;
 };
 const trendLine = (s) => hasForecast(s)
-  ? `${TREND[s.trend12]}${s.delta12_median != null && s.trend12 !== "steady" ? ` ${cm(s.delta12_median)} ใน 12 ชม.` : ""}`
+  ? `${TREND[s.trend12]}${s.delta12_median != null && s.trend12 !== "steady" ? ` ${cm(s.delta12_median)} ในอีก 12 ชม.` : ""}`
   : observedText(s) || (isNew(s) ? `🆕 สถานีใหม่ เริ่มเก็บข้อมูล ${new Date(s.history_since).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" })}` : TREND.unknown);
 const STREET_MIN = 3;       // street-flood reports within 1 km worth showing on a gauge
 const streetAge = () => streetSrc?.last_update_age_min != null && streetSrc.last_update_age_min > 60
@@ -228,9 +241,10 @@ function rainSummary(bkkRain) {
   const fc = r?.forecast_mm24 ?? (region === "bkk" ? bkkRain : null), m = r?.measured;
   if (fc == null && !m) return "";
   const tip = [fc != null ? "คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดในพื้นที่" : "",
-    m && m.rain_24h >= 0.1 ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : ""].filter(Boolean).join(" · ");
-  return `<p class="sumline">🌧️ ฝน${esc(where)}${fc != null ? ` 24 ชม. ข้างหน้า สูงสุด: ${rainPill(fc)}` : ""}${m && m.rain_24h >= 0.1
-    ? `<br>24 ชม. ที่ผ่านมา สูงสุด: ${rainPill(m.rain_24h, false)}` : ""}${tip ? ` <button type="button" class="conf-badge conf-low" title="${esc(tip)}" aria-label="ที่มาของข้อมูลฝน">ⓘ</button>` : ""}</p>`;
+    m ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : ""].filter(Boolean).join(" · ");
+  // the panel's rain rows (rainRows), headed by where the maximum is taken
+  return `<div class="sumrain"><p class="sumline">🌧️ ฝนสูงสุดใน${esc(where)} ${infoBtn(tip, "ที่มาของข้อมูลฝน")}</p>
+    ${rainRows(fc, null, m ? Number(m.rain_24h) : null, null)}</div>`;
 }
 let lastStats = null;
 function renderSummary(st) {
@@ -257,7 +271,7 @@ function renderSummary(st) {
   document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>${staleLine}
     ${rainSummary(rain)}
     <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
-    <p class="sumline">${esc(TREND.rising)} <b>${tr("rising")}</b> · ${esc(TREND.falling)} <b>${tr("falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`} (คาดการณ์ 12 ชม.)</p>
+    <p class="sumline">${esc(TREND.rising)} <b>${tr("rising")}</b> · ${esc(TREND.falling)} <b>${tr("falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`} (คาดการณ์อีก 12 ชม.)</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั้งประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
@@ -552,9 +566,9 @@ function outlookRows(fc, s) {
   const out = [];
   if (o.varies && o.peak_h >= 3 && fc.issue_time) {  // peak 1-2 h out = "highest now, falling after"
     const tp = Date.parse(fc.issue_time) + o.peak_h * 3600e3;
-    out.push(`สูงสุดใน 24 ชม. ราว ${esc(fmtHour(tp - 3600e3))}–${esc(fmtHour(tp + 3600e3))} น.`);
+    out.push(`สูงสุดในอีก 24 ชม. ราว ${esc(fmtHour(tp - 3600e3))}–${esc(fmtHour(tp + 3600e3))} น.`);
   }
-  if (o.bank_chance && s.status !== "critical") out.push(`โอกาสถึงตลิ่งใน 24 ชม.: ${esc(CHANCE[o.bank_chance] || o.bank_chance)}`);
+  if (o.bank_chance && s.status !== "critical") out.push(`โอกาสถึงตลิ่งในอีก 24 ชม.: ${esc(CHANCE[o.bank_chance] || o.bank_chance)}`);
   return out.length ? `<div class="muted">${out.join(" · ")}</div>` : "";
 }
 
@@ -764,13 +778,15 @@ function pointHTML(d, src, place = "") {
   // One block per gauge, same structure for both (owner 2026-09-27: one name was bold, the other not, and the labels ran
   // into long lines): label on its own line → bold name · distance · status pill → that gauge's rows or "no forecast".
   const gBlock = (label, c, body) => `<div class="pf-gauge" data-code="${esc(c.station.code)}"><div class="pf-glabel">${label}</div>
-    <div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span><span class="muted">${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span>${stOf(c.station).th.includes(canal.word) ? "" : pill(c.station)}</div>${body}</div>`;
+    <div class="pf-gline"><span class="pf-gname">${esc(c.station.name_th)}</span><span class="muted">ห่าง ${esc(c.distance_km)} กม.${c.far ? " (ไกล)" : ""}</span>${stOf(c.station).th.includes(canal.word) ? "" : pill(c.station)}</div>${body}</div>`;
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
   // 24/48 h rows; a gauge with only a 12 h forecast (short history) shows that row instead of nothing (KI-239)
   const trendBody = (x) => `${trendRows(x, [24, 48]) || trendRows(x, [12])}${changeLines(x)}${upstreamLine(x)}`;
   const noTrendLine = near && near.station && main !== near
-    ? gBlock(nat ? "สถานีใกล้สุด" : "คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ (ยังไม่ผ่านการทดสอบย้อนหลัง)</div>`) : "";
+    // what we know about it (its measured 24 h change, the rows' words) instead of jargon; the why behind an ⓘ
+    // (owner 2026-10-02: "ห่าง 1.5 กม." + the block "can be improved")
+    ? gBlock(nat ? "สถานีใกล้สุด" : "คลองใกล้สุด", near, `<div class="muted">ยังไม่มีคาดการณ์ ${infoBtn(`สถานีนี้ยังไม่ผ่านการทดสอบย้อนหลัง จึงยังไม่คาดการณ์ ดูคาดการณ์จาก${nat ? "สถานี" : "คลอง"}ใกล้เคียงด้านล่าง`, "ทำไมยังไม่มีคาดการณ์")}</div>${obsLine(near.station)}`) : "";
   const mainBlock = main && main.station
     ? gBlock(noTrendLine ? `คาดการณ์จาก${nat ? "สถานี" : "คลอง"}ใกล้เคียง` : nat ? "สถานีใกล้สุด" : "คลองใกล้สุด", main, trendBody(main.station)) : "";
   const detailBits = [canal.sub, main && main.far ? `สถานีที่ใช้อยู่ห่างเกิน 3 กม. ${nat ? "อาจอยู่คนละลำน้ำ" : "อาจอยู่คนละพื้นที่ปิดล้อม"} ใช้ประกอบเท่านั้น` : "",
@@ -786,23 +802,17 @@ function pointHTML(d, src, place = "") {
       <div class="pf-sub">${esc(nr.name_th)} ห่าง ${esc(d.nearest_river.distance_km)} กม. · ${esc(stOf(nr).th)} · มีผลกับบ้านริมแม่น้ำนอกคันกั้นน้ำ ไม่ใช่ระดับน้ำในคลอง</div></div></li>` : "";
   // Factor 2: rain (TMD words and colours). Factor 3: street reports (≥ 3 in 1 km / 6 h = the alert level, STREET_ALERT).
   const rain = d.rain_next24_mm;
-  // Issue #5: every factor = "title · word" on one line, details in the same small grey style below
-  // Rain factor: one bold line, one short line, the rest behind รายละเอียด (owner 2026-10-01: "Rainfall info in panel
-  // are not optimal, can we shorten?"). The heavier of forecast and measured leads; words as in the rows
-  // ("ราว …", "24 ชม. ที่ผ่านมา"); the dot takes the heavier colour.
+  // Rain factor in the water factor's layout (owner 2026-10-02: "Text for rainfall info are one in a long sentence …
+  // Compare to the water level info, it is easier"): a short bold state, then rainRows — the forecast row with its own ⓘ
+  // and what fell in the past-line style; where it was measured is behind the ⓘ next to the state.
   const rm = d.rain_measured, rmMm = rm ? Number(rm.rain_24h) : null;
   const rk = (mm) => RAIN_TMD.findIndex(([, l]) => l === rainLabel(mm));
-  const fcText = rain == null ? null : rain < 0.1 ? "ไม่คาดว่าจะมีฝนใน 24 ชม. ข้างหน้า" : `คาด${rainLabel(rain)} ราว ${rainMm(rain)} มม. ใน 24 ชม. ข้างหน้า`;
-  const lastHour = rm && rm.rain_1h != null && Number(rm.rain_1h) >= 0.1 ? ` (ชั่วโมงล่าสุด ${rainMm(Number(rm.rain_1h))} มม.)` : "";
-  const mText = !rm ? null : rmMm < 0.1 ? "24 ชม. ที่ผ่านมา: ไม่มีฝน" : `24 ชม. ที่ผ่านมา: ${rainLabel(rmMm)} ${rainMm(rmMm)} มม.${lastHour}`;
-  const measuredLeads = rm && rmMm >= 0.1 && (rain == null || rk(rmMm) > rk(rain));
-  const rainHead = measuredLeads ? `ฝนตกแล้ว: ${rainLabel(rmMm)} ${rainMm(rmMm)} มม. ใน 24 ชม. ที่ผ่านมา` : fcText || mText || "ยังไม่มีข้อมูลฝน";
-  const rainSub = measuredLeads ? `${fcText || ""}${lastHour ? `${fcText ? " · " : ""}ชั่วโมงล่าสุด ${rainMm(Number(rm.rain_1h))} มม.` : ""}` : fcText ? mText : null;
+  const rainHead = rm && rmMm >= 0.1 ? "ฝนตกแล้ว" : rain != null && rain >= 0.1 ? "คาดว่าจะมีฝน"
+    : rain != null || rm ? "ไม่มีฝน" : "ยังไม่มีข้อมูลฝน";
   const grid = String(d.rain_point || "").startsWith("f_") ? "ช่องคำนวณราว 8 กม." : String(d.rain_point || "").startsWith("g_") ? "ช่องคำนวณราว 55 กม." : "จุดคำนวณย่านนี้";
-  // where the numbers come from: behind an ⓘ like the trend rows' (owner 2026-10-01: "Or put unnecessary info in i symbol?")
-  const rainMore = [rain != null ? `คาดการณ์: Open-Meteo (${grid})` : "",
-    rm ? `วัดจริง: สถานีวัดฝน ${rm.name_th} (สสน.) ห่าง ${rm.distance_km} กม. · ข้อมูลถึง ${fmtTime(rm.obs_time)}` : ""].filter(Boolean).join(" · ");
-  const rainInfo = rainMore ? `<button type="button" class="conf-badge conf-low" title="${esc(rainMore)}" aria-label="ที่มาของข้อมูลฝน">ⓘ</button>` : "";
+  const fcTip = rain != null ? `ฝนคาดการณ์จาก Open-Meteo (${grid}) ฝนจริงอาจต่างจากที่คาด โดยเฉพาะฝนฟ้าคะนอง` : "";
+  const rainInfo = rm ? infoBtn(`วัดจริง: สถานีวัดฝน ${rm.name_th} (สสน.) ห่าง ${rm.distance_km} กม. · ข้อมูลถึง ${fmtTime(rm.obs_time)}`, "ที่มาของฝนที่วัดได้") : "";
+  const rainBody = rainRows(rain, fcTip, rmMm, rm && rm.rain_1h != null ? Number(rm.rain_1h) : null);
   const rainColor = rm && rain != null && rk(rmMm) > rk(rain) ? RAIN_COLOR[rainLabel(rmMm)]
     : rain != null ? RAIN_COLOR[rainLabel(rain)] : rm ? RAIN_COLOR[rainLabel(rmMm)] : "#9ca3af";
   const nRep = Number(ev.traffy_flood_reports_1km_6h || 0);
@@ -828,8 +838,8 @@ function pointHTML(d, src, place = "") {
       <ul class="pf-factors">
         <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(head(canal.word))}</b>${canalInfo}
           ${canalGauges}</div></li>${riverLine}
-        <li><span class="pf-dot" style="background:${rainColor}"></span><div><b class="pf-word">${esc(rainHead)}</b>${rainSub ? "" : rainInfo}
-          ${rainSub ? `<div class="pf-sub">${esc(rainSub)}${rainInfo}</div>` : ""}</div></li>
+        <li><span class="pf-dot" style="background:${rainColor}"></span><div><b class="pf-word">${esc(rainHead)}</b>${rainInfo}
+          ${rainBody}</div></li>
         <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b class="pf-word">${esc(nRep > 0 ? `มีแจ้งน้ำท่วมบนถนน ${nRep} เรื่อง` : "ยังไม่มีรายงานน้ำท่วมบนถนน")}</b>
           <div class="pf-sub">${hasStreetFlood ? `<b>น้ำรอระบายรอบจุดนี้ แม้${W}ใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · ` : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
       </ul>

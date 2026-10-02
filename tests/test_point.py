@@ -352,7 +352,7 @@ def test_heavy_measured_rain_leads_the_headline_even_when_the_forecast_is_light(
     out = point.assess(13.913, 100.498, [], 0, {}, 7.0, rain)
     fc = out["forecast"]
     assert out["rain_measured"] == rain and fc["risk"] in ("moderate", "high")
-    assert "ฝนตกหนัก" in fc["title"] and "60" in fc["desc"]
+    assert "ฝนตกหนัก" in fc["title"] and "60" not in fc["desc"]  # the amount is in the rain rows (owner 2026-10-02)
 
 
 def test_a_river_gauge_near_a_bangkok_pin_is_its_own_line_never_canal_evidence():
@@ -365,17 +365,40 @@ def test_a_river_gauge_near_a_bangkok_pin_is_its_own_line_never_canal_evidence()
 def test_a_rain_gauge_name_is_never_reworded():
     rain = {"code": "ONE022", "name_th": "คลองสามบาท บ้านกุดพิมาน", "distance_km": 3.0, "rain_1h": 2.0, "rain_24h": 50.0, "band": "heavy"}
     fc = point.point_forecast({"category": None, "confidence": "none"}, [], [], 5.0, 0, None, "แม่น้ำ", rain)
-    # the gauge's name moved to the rain factor's details (owner 2026-10-01: shorten); the measured sentence must
+    # the gauge's name moved to the rain factor's details (owner 2026-10-01: shorten); the measured words must
     # survive the national word swap intact
-    assert "ฝนตกหนักแล้ว 50 มม. ใน 24 ชม. ที่ผ่านมา" in fc["desc"] and "คลองสามบาท" not in fc["desc"]
+    assert "ฝนตกหนัก" in fc["title"] and "คลองสามบาท" not in fc["title"] + fc["desc"]
 
 
 def test_measured_rain_in_the_headline_is_short_and_uses_the_rows_words():
     # owner 2026-10-01: "Rainfall info in panel are not optimal, can we shorten?" — one vocabulary: "24 ชม. ที่ผ่านมา"
     rain = {"code": "HII001", "name_th": "อาคารเลขที่ ๙๐๑", "distance_km": 2.1, "rain_1h": 4.8, "rain_24h": 60.0, "band": "heavy"}
     fc = point.assess(13.913, 100.498, [], 0, {}, 7.0, rain)["forecast"]
-    assert "ฝนตกหนักแล้ว 60 มม. ใน 24 ชม. ที่ผ่านมา" in fc["desc"]
+    assert "ฝนตกหนัก" in fc["title"]
     assert "อาคาร" not in fc["desc"] and "ห่าง" not in fc["desc"]  # where it was measured: in the factor's details
+
+
+_FALLING = [{"code": "K1", "lat": 13.87, "lon": 100.71, "status": "normal", "stale": False, "river": "คลองหกวา",
+             "trend12": "falling", "delta12_median": -0.12}]
+
+
+def test_the_headline_never_repeats_the_rain_rows_amounts():
+    # owner 2026-10-02 (screenshot): "ฝนตกแล้ว 11 มม. ใน 24 ชม. ที่ผ่านมา · ระดับน้ำ…ลดลงต่อเนื่อง คาดฝนเล็กน้อย" was one
+    # long sentence; the rain rows below carry the amounts (D-055), the headline one short clause
+    rain = {"code": "HII001", "name_th": "x", "distance_km": 2.1, "rain_1h": 0.2, "rain_24h": 11.0, "band": "moderate"}
+    fc = point.assess(13.87, 100.71, _FALLING, 0, {}, 8.0, rain)["forecast"]
+    assert "มม." not in fc["desc"] and "11" not in fc["desc"] and " · " not in fc["desc"]
+    heavy = {**rain, "rain_24h": 60.0, "band": "heavy"}
+    fc = point.assess(13.87, 100.71, _FALLING, 0, {}, 8.0, heavy)["forecast"]
+    assert "มม." not in fc["desc"] and "60" not in fc["desc"]
+    assert "ฝนตกหนัก" in fc["title"] + fc["desc"]  # heavy rain that fell is still said, in words
+
+
+def test_light_rain_is_left_to_the_rain_factor_moderate_rain_stays_as_a_warning():
+    light = point.assess(13.87, 100.71, _FALLING, 0, {}, 8.0)["forecast"]
+    assert light["desc"] == "ระดับน้ำในคลองใกล้จุดนี้มีแนวโน้มลดลงต่อเนื่อง"
+    moderate = point.assess(13.87, 100.71, _FALLING, 0, {}, 20.0)["forecast"]
+    assert "แต่คาดฝนปานกลาง" in moderate["desc"] and "น้ำขัง" in moderate["desc"]
 
 
 def test_a_high_canal_headline_never_says_steady_when_the_trend_is_unclear_or_rising():

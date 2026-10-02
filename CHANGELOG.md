@@ -2,6 +2,29 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.17.3 — 2026-10-02
+- **"ห่าง 1.5 กม." like the station list (owner: "Distance > ห่าง 1.5 กม.").** The canal factor's gauge lines said a bare
+  "1.5 กม.".
+- **A canal without a forecast shows what was measured, not jargon.** "ยังไม่มีคาดการณ์ (ยังไม่ผ่านการทดสอบย้อนหลัง)" →
+  "ยังไม่มีคาดการณ์ ⓘ" (the why in the ⓘ) + its measured line ("48 ชม. ที่ผ่านมา: ลดลง 11 ซม."), the same words as the
+  gauge with a forecast below it. Guarded by `tests/test_wording.py`.
+
+## v0.17.2 — 2026-10-02
+- **"อีก 24 ชม." instead of "ใน 24 ชม." for every forecast (owner: '"ใน 24 ชม.", "ใน 48 ชม." are not clear. I cannot
+  understand that it is about the future'; KI-259).** One rule across the app: row labels "อีก 12/24/48 ชม."
+  (water rows in list, panel and sheet; the rain row; the summary), sentences "ในอีก N ชม." (headlines, peak time,
+  bank chance, the AI summary), the past "N ชม. ที่ผ่านมา". `tests/test_wording.py` fails on any bare future "ใน N ชม.".
+
+## v0.17.1 — 2026-10-02
+- **Rain in the water rows' layout (owner: "Text for rainfall info are one in a long sentence … Compare to the water
+  level info, it is easier"; KI-258).** One helper for the pin panel and the summary strip: a short bold state
+  ("ฝนตกแล้ว" / "คาดว่าจะมีฝน" / "ไม่มีฝน", where it was measured behind its ⓘ), the forecast as a row like the water's
+  "ใน 24 ชม. [ฝนเล็กน้อย] ราว 8 มม. ⓘ", then "24 ชม. ที่ผ่านมา: ฝนปานกลาง 11 มม." and "ชั่วโมงล่าสุด: 0.2 มม.".
+  The summary reads "🌧️ ฝนสูงสุดใน<region> ⓘ" over the same rows.
+- **The headline is one short clause and never repeats the rain rows' amounts (D-055).** Light rain is left to the rows;
+  moderate rain stays as a warning ("…ลดลงต่อเนื่อง แต่คาดฝนปานกลาง อาจมีน้ำขังบนถนนช่วงฝนตก"); heavy rain that fell is
+  said in words. New checker rule C11 (rows in panel and summary, no "มม." in the headline).
+
 ## v0.17.0 — 2026-10-02
 - **Basin and river maps put to work (owner: "ข้อมูลลุ่มน้ำ watershed map, basin map เอาใช้ประโยชน์อะไรได้ไหม"; D-066).**
   HII's public `basin.json` (22 basins) and `river_main.json` (93 rivers) give every gauge its basin, its main river

@@ -288,7 +288,7 @@ def _rain_phrase(rain_mm: float) -> tuple[str, str]:
     """(band key, sentence) for a forecast 24h rainfall total. Never invoked when rain is unknown."""
     key, label = rain_band(rain_mm)
     if key == "none":
-        return key, "ไม่คาดว่าจะมีฝนใน 24 ชม. ข้างหน้า"
+        return key, "ไม่คาดว่าจะมีฝนในอีก 24 ชม."
     # No amount here: the panel's rain factor shows it (owner 2026-09-27); this sentence keeps the word + warning.
     tail = {"light": "", "moderate": " อาจมีน้ำขังบนถนนช่วงฝนตก", "heavy": " จุดที่ระบายช้าเสี่ยงน้ำขังบนถนน",
             "very_heavy": " เสี่ยงน้ำขังบนถนนหลายจุด"}[key]
@@ -307,16 +307,15 @@ def point_forecast(area: dict, stations_forecast: list[dict], stations_nearby: l
             if out.get(k):
                 out[k] = out[k].replace("คลอง/แม่น้ำ", word).replace("คลอง", word)
     if measured and measured.get("band") in ("moderate", "heavy", "very_heavy"):
-        # rain that already fell is a fact about now; the outlook above only reads the forecast (owner 2026-10-01)
-        # short, in the rows' words ("24 ชม. ที่ผ่านมา"); the gauge, distance and time are in the rain factor's details
-        mm = f"{measured['rain_24h']:.0f}"
+        # rain that already fell is a fact about now; the outlook above only reads the forecast (owner 2026-10-01).
+        # Heavy rain is said in words; the amounts live in the rain rows below, never twice (owner 2026-10-02:
+        # "ฝนตกแล้ว 11 มม. … · ระดับน้ำ… คาดฝนเล็กน้อย" read as one long sentence; D-055)
         if measured["band"] in ("heavy", "very_heavy"):
             if out["risk"] in ("info", "low"):
                 out["risk"] = "moderate"
                 out["title"] = "ฝนตกหนักในพื้นที่ เฝ้าระวังน้ำขังบนถนน"
-            out["desc"] = f"ฝนตกหนักแล้ว {mm} มม. ใน 24 ชม. ที่ผ่านมา · {out['desc']}"
-        else:
-            out["desc"] = f"ฝนตกแล้ว {mm} มม. ใน 24 ชม. ที่ผ่านมา · {out['desc']}"
+            elif "ฝนตกหนัก" not in out["title"]:
+                out["desc"] = f"ฝนตกหนักแล้วในพื้นที่ {out['desc']}"
         out["basis"] = out.get("basis", []) + ["rain_measured"]
     usable = area.get("confidence") in ("low", "medium")
     out["gauges"] = [s["code"] for s in stations_forecast if s.get("change12")] if usable else []
@@ -384,7 +383,7 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
     if gauge_usable and khlong_trend == "rising" and cat in ("warning", "watch"):
         extra = f" {rain_sentence}" if band == "moderate" else ""
         return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
-                "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นใน 24 ชม.",
+                "title": "ระดับน้ำคลองมีแนวโน้มเพิ่มสูงขึ้นในอีก 24 ชม.",
                 "desc": f"สถานีคาดการณ์รอบจุดมีแนวโน้มสูงขึ้น{extra} โปรดติดตามสถานการณ์ใกล้ชิด"}
     if gauge_usable and cat in ("warning", "watch"):
         # the headline says what the rows under it say (UX round 12, C6): "ทรงตัว" only for a steady trend; an unclear
@@ -400,16 +399,17 @@ def _outlook(area: dict, stations_forecast: list[dict], stations_nearby: list[di
     if gauge_usable and khlong_trend == "rising":
         return {"risk": "moderate", "channel_trend": channel_trend, "basis": basis,
                 "title": "ระดับน้ำคลองมีแนวโน้มสูงขึ้นเล็กน้อย",
-                "desc": "ระดับน้ำใน 24 ชม. มีแนวโน้มเพิ่มขึ้น แต่ยังอยู่ในเกณฑ์ที่คลองรับน้ำได้"}
+                "desc": "ระดับน้ำในอีก 24 ชม. มีแนวโน้มเพิ่มขึ้น แต่ยังอยู่ในเกณฑ์ที่คลองรับน้ำได้"}
 
-    # 3. Low risk: only said when a nearby gauge is actually close enough to say it
+    # 3. Low risk: only said when a nearby gauge is actually close enough to say it. Light rain is left to the rain
+    # rows (owner 2026-10-02: one short clause); moderate rain stays because its warning changes what to do.
     if gauge_usable and khlong_trend == "falling":
-        extra = f" {rain_sentence}" if band else ""
+        extra = f" แต่{rain_sentence}" if band == "moderate" else ""
         return {"risk": "low", "channel_trend": channel_trend, "basis": basis,
                 "title": "ระดับน้ำคลองมีแนวโน้มลดลง",
                 "desc": f"ระดับน้ำในคลองใกล้จุดนี้มีแนวโน้มลดลงต่อเนื่อง{extra}"}
     if gauge_usable:
-        extra = f" {rain_sentence}" if band else ""
+        extra = f" {rain_sentence}" if band == "moderate" else ""
         return {"risk": "low", "channel_trend": channel_trend, "basis": basis,
                 "title": "สถานีใกล้เคียงยังไม่มีสัญญาณน้ำเพิ่มผิดปกติ",
                 # "ทรงตัว" only when the rows say steady; with no trend at all, only the rain condition (C6)

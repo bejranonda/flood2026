@@ -16,6 +16,8 @@ in many possibilities"). One browser session, views compared at the same moment:
      a river line only on Bangkok pins and within 3 km; each region's summary rain word = /api/rain by_region;
   C10 (v0.16.6) a measured-trend row never points opposite to a direction a model proved at another horizon of the
      same gauge (TRD001 read ⬆ / ⬇ / ⬆); model vs model may differ (tides, rain arriving later).
+  C11 (v0.17.1) rain uses the water rows' layout in the panel and the summary (forecast = a chip row), and the panel
+     headline never repeats a rain amount (owner 2026-10-02: "rainfall info … one long sentence").
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
 ~30 min). Usage: python3 scripts/ux_consistency.py [out.json] [per_region=15]   (Python Playwright; Chromium --no-sandbox)"""
 import json, math, re, sys
@@ -73,7 +75,7 @@ def check_text(where, v):
 
 
 def r24(rows):
-    return next((r[1:] for r in rows if r[0].startswith("ใน 24")), None)
+    return next((r[1:] for r in rows if r[0].startswith("อีก 24")), None)
 
 
 def same(a, b):
@@ -150,6 +152,11 @@ with sync_playwright() as p:
         heavy = (api.get("rain_measured") or {}).get("band") in ("heavy", "very_heavy")
         if ("ฝนตกหนักในพื้นที่" in head9 and not heavy) or (heavy and "ฝนหนัก" not in rain_box):
             note("C9", where9, "heavy-rain headline and the rain factor disagree")
+        # C11: rain in the water rows' layout; the headline never repeats the rows' amounts (owner 2026-10-02)
+        if api.get("rain_next24_mm") is not None and not pg.evaluate("() => !!document.querySelector('#detail .pf-factors .rain-rows .chg')"):
+            note("C11", where9, "rain forecast not shown as a row")
+        if "มม." in (pg.evaluate("() => document.querySelector('#detail .pf-desc')?.innerText || ''") or ""):
+            note("C11", where9, "the headline repeats a rain amount")
         if api.get("rain_next24_mm") is not None and api["rain_next24_mm"] >= 0.1:
             mm = api["rain_next24_mm"]  # the panel's rainMm(): one decimal below 1 mm or at a TMD band edge; JS rounding
             r0 = math.floor(mm + 0.5)
@@ -212,10 +219,13 @@ with sync_playwright() as p:
         if pg.locator(f'.rchip[data-region="{reg}"]').count() == 0:
             continue
         pg.locator(f'.rchip[data-region="{reg}"]').click(); pg.wait_for_timeout(500)
-        line = pg.evaluate("() => [...document.querySelectorAll('#summary .sumline')].map(e => e.innerText).find(t => t.includes('🌧')) || ''")
+        line = pg.evaluate("() => document.querySelector('#summary .sumrain')?.innerText || ''")
         r = rainreg.get(reg) or {}
         if r.get("forecast_mm24") is not None and word(r["forecast_mm24"]) not in line.split("ที่ผ่านมา")[0]:
             note("C9", f"summary {reg}", f"rain line '{line[:60]}' vs API {r['forecast_mm24']} mm ({word(r['forecast_mm24'])})")
+        # C11: the summary's rain uses the panel's rows (one layout for rain and water, owner 2026-10-02)
+        if r.get("forecast_mm24") is not None and pg.locator("#summary .sumrain .rain-rows").count() != 1:
+            note("C11", f"summary {reg}", "summary rain is not in the rows layout")
     b.close()
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep
         b = p.chromium.launch(args=["--no-sandbox"])
@@ -240,7 +250,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])
