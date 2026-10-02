@@ -56,7 +56,7 @@ def test_two_agencies_at_the_same_place_are_linked_never_merged():
 def test_station_list_is_nationwide_by_default():
     import inspect
     assert 'Query("all"' in inspect.getsource(api.stations)
-    for fn in (api.point_check, api.near):
+    for fn in (api._point_out, api.near):
         assert "_station_rows(True)" in inspect.getsource(fn)
 
 

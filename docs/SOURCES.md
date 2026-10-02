@@ -152,6 +152,12 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | HydroBASINS v1c Asia, lake format (owner download 2026-10-02) | `data/basins/raw/hybas_lake_as_lev01-12_v1c.zip` (413 MB, not in git) | ✅ levels 1–12; level 8: 33,354 sub-basins (median 405 km²), `HYBAS_ID, NEXT_DOWN, NEXT_SINK, MAIN_BAS, DIST_SINK, DIST_MAIN, SUB_AREA, UP_AREA, PFAF_ID, SIDE, LAKE, ENDO, COAST, ORDER, SORT`. Lake format: lake-split sub-basins have L/R sides sharing `UP_AREA` (R drains into L, tech doc §2.3). Catchment rain tested: no gain ([research](../research/2026-10-02_catchment_rain.md)) |
 | ONWR legal 22 main basins (owner download 2026-10-02) | DWR page `division.dwr.go.th/rdhd/index.php/th/services/12/2024-04-17-02-39-05/160-shapefiles` → Google Drive; stored `data/basins/raw/Shp_Basin_ONWR-*.zip` | ✅ `MainBasin_ONWR_Law_WGS84` (สทนช., 7 Jul 2021): 28 records (22 + island parts), UTM 47N, CP874, `MB_CODE, MBASIN_T, MBASIN_E, AREA_SQKM, Basin_T`; **no sub-basins; no licence stated ⚠️ (not redistributed)**. Same 22 basins as HII's `basin.json`: 98.5 % of gauges identical ([research](../research/2026-10-02_onwr_basins.md)) |
 
+### 2j. AI provider for resident answers (probed 2026-10-02 11:15–13:30 UTC from the app container; D-068)
+| Source | Endpoint | Result |
+|---|---|---|
+| GLM chat (Zhipu AI) | `open.bigmodel.cn/api/paas/v4/chat/completions`, model `glm-5.3-flash` (key in `.env`) | ✅ Thai answers. Always reasons: `thinking: {type: disabled}` → error 1210 ("该模型始终思考，不支持关闭思考；请使用 low、high 或 max"); `reasoning_effort: "low"` → 1.1 s, no `reasoning_content`; default → 8–10 s with ~850–1,400 reasoning chars. ~570 calls in three validation runs: median 3.1–4.5 s; the final run (198) median 3.1 s, p90 4.4 s, none > 8 s |
+| GLM `glm-4-flash` | same endpoint | ❌ error 1211 "模型不存在" (model does not exist) — the D-030 default name is outdated |
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |

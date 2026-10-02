@@ -42,3 +42,18 @@ def test_summary_is_deterministic_template():
                        "trend12": {"rising": 26, "falling": 0}}, "rain_bkk_next24_mm_max": 53.8}
     t = ai.summary_text(stats)
     assert "ล้นตลิ่ง 14" in t and "ใกล้ตลิ่งหรือคลองเต็ม 19" in t and "54 มม." in t and t == ai.summary_text(stats)
+
+
+def test_glm_asks_for_low_reasoning_so_answers_come_in_seconds():
+    # glm-5.3-flash always thinks (API 1210: thinking cannot be disabled); default effort took 9-10 s per call and
+    # truncated answers at 500 tokens; reasoning_effort "low" answered in ~1-4 s (probe 2026-10-02)
+    p = ai._glm_payload("glm-5.3-flash", [{"role": "user", "content": "x"}], 60)
+    assert p["reasoning_effort"] == "low" and p["model"] == "glm-5.3-flash" and p["max_tokens"] >= 60
+
+
+def test_glm_never_passes_reasoning_off_as_the_answer():
+    # a cut-off answer has empty content and only reasoning_content ("The user wants me to ...")
+    cut = {"choices": [{"message": {"content": "", "reasoning_content": "The user wants me to explain..."}}]}
+    assert ai._glm_text(cut) is None
+    assert ai._glm_text({"choices": [{"message": {"content": " ระดับน้ำลดลง "}}]}) == "ระดับน้ำลดลง"
+    assert ai._glm_text({"error": {"code": "1211"}}) is None

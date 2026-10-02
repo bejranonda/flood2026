@@ -116,7 +116,24 @@ def available() -> bool:
     return True
 
 
-def run(messages: list[dict], max_tokens: int = 60) -> str | None:
+def _glm_payload(model: str, messages: list[dict], max_tokens: int) -> dict:
+    """glm-5.3-flash always reasons (API 1210: it cannot be switched off); "low" effort answers in ~1-4 s instead of
+    9-10 s and leaves the token budget to the answer (probe 2026-10-02)."""
+    return {"model": model, "messages": messages, "max_tokens": max(max_tokens, 500), "temperature": 0.1,
+            "reasoning_effort": "low"}
+
+
+def _glm_text(d: dict) -> str | None:
+    """The answer only. A cut-off answer has empty content and only `reasoning_content` ("The user wants me to …"):
+    that is not an answer and is never returned as one."""
+    try:
+        text = (d["choices"][0]["message"].get("content") or "").strip()
+    except (KeyError, IndexError, TypeError, AttributeError):
+        return None
+    return text or None
+
+
+def run(messages: list[dict], max_tokens: int = 60, timeout: float = 25) -> str | None:
     """One AI triage call (GLM or Cloudflare Workers AI) with error handling. Returns None on any problem; never raises."""
     cred = _credentials()
     if cred is None or not available():
@@ -124,25 +141,18 @@ def run(messages: list[dict], max_tokens: int = 60) -> str | None:
     ok, text, neurons, err = False, None, 0.0, ""
     try:
         if cred["provider"] == "glm":
-            glm_tokens = max(max_tokens, 500)
             r = requests.post(
                 cred["endpoint"],
                 headers={"Authorization": f"Bearer {cred['api_key']}", "Content-Type": "application/json"},
-                timeout=25,
-                json={
-                    "model": cred["model"],
-                    "messages": messages,
-                    "max_tokens": glm_tokens,
-                    "temperature": 0.1,
-                },
+                timeout=timeout,
+                json=_glm_payload(cred["model"], messages, max_tokens),
             )
             d = r.json()
-            if r.ok and "choices" in d and d["choices"]:
-                choice = d["choices"][0]["message"]
-                text = choice.get("content") or choice.get("reasoning_content")
+            text = _glm_text(d) if r.ok else None
+            if text is not None:
                 ok = True
             else:
-                err = (json.dumps(d.get("error")) if "error" in d else r.text)[:200]
+                err = (json.dumps(d.get("error")) if "error" in d else "no answer (empty content)")[:200]
         else:
             acct, tok, model = cred["account_id"], cred["token"], cred["model"]
             r = requests.post(

@@ -18,6 +18,8 @@ in many possibilities"). One browser session, views compared at the same moment:
      same gauge (TRD001 read ⬆ / ⬇ / ⬆); model vs model may differ (tides, rain arriving later).
   C11 (v0.17.1) rain uses the water rows' layout in the panel and the summary (forecast = a chip row), and the panel
      headline never repeats a rain amount (owner 2026-10-02: "rainfall info … one long sentence").
+  C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
+     opens a story with no verdict word (ปลอดภัย, ไม่ท่วม, ได้ครับ, ไปได้, ปกติ) and no rain amount.
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
 ~30 min). Usage: python3 scripts/ux_consistency.py [out.json] [per_region=15]   (Python Playwright; Chromium --no-sandbox)"""
 import json, math, re, sys
@@ -71,6 +73,8 @@ def check_text(where, v):
     if v["overflow"]:
         note("C4", where, "horizontal overflow")
     for d in v["dup"]:
+        if re.match(r"^\d+ ชม\. ที่ผ่านมา:", d):  # the measured line under two different gauges (v0.17.3), not a repeat
+            continue
         note("C4", where, f"line printed twice: {d[:70]}")
 
 
@@ -163,6 +167,26 @@ with sync_playwright() as p:
             want = f"{mm:.1f}" if mm < 1 or word9(r0) != word9(mm) else str(r0)
             if f"ราว {want} มม." not in rain_box:
                 note("C9", where9, f"panel rain differs from /api/point ({api['rain_next24_mm']} mm)")
+        # C12 (D-068): the plain line never calls a far or missing gauge "here"; on the first pins the one AI button opens
+        # a story (AI or rule) with no verdict word and no rain amount (each tap may call GLM)
+        desc12 = pg.evaluate("() => document.querySelector('#detail .pf-desc')?.innerText || ''") or ""
+        lead12 = api.get("nearest_canal_trend") or api.get("nearest_canal")
+        far12 = not lead12 or lead12.get("far") or (api.get("area") or {}).get("confidence") not in ("low", "medium")
+        here12 = r"แถวนี้\S{0,12}(ใกล้\S{0,4}เต็ม|ยังรับน้ำ|ล้นตลิ่ง|เริ่มสูง|ต่ำกว่าตลิ่ง|ค่อนข้างสูง)"
+        if far12 and re.search(here12, desc12):
+            note("C12", where9, f"plain line calls a far gauge 'here': {desc12[:60]}")
+        if counts["pins"] <= 10:
+            pg.locator("#detail .ai-btn").click()
+            try:
+                pg.wait_for_selector("#detail .story .story-text:not(.shimmer)", timeout=15000)
+                story12 = pg.evaluate("() => document.querySelector('#detail .story .story-text').innerText")
+                bad = [w for w in ("ปลอดภัย", "ไม่ท่วม", "ได้ครับ", "ไปได้", "ปกติ", "มม.") if w in story12]
+                if bad:
+                    note("C12", where9, f"story says {bad}")
+                if far12 and "ไกล" not in story12 and re.search(here12, story12):
+                    note("C12", where9, f"story calls a far gauge 'here': {story12[:60]}")
+            except Exception:
+                note("C12", where9, "AI button opened no story")
         river_line = pg.locator("#detail .pf-word", has_text="แม่น้ำใกล้จุด:").count()  # the line, not a sentence
         if river_line and (api.get("mode") != "bkk" or not api.get("nearest_river") or api["nearest_river"]["distance_km"] > 3):
             note("C9", where9, "river line without a Bangkok river gauge within 3 km")
@@ -250,7 +274,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

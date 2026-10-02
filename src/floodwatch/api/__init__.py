@@ -19,12 +19,12 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
-from floodwatch import __version__, ai, db, geocode, point
+from floodwatch import __version__, ai, db, explain, geocode, point
 from floodwatch.config import DATUM_SUSPECT
 from floodwatch import rain_cells, regions
 from floodwatch.forecast import change_summary, classify_status
 
-PRIVATE_QUERY_PATHS = ("/api/geocode", "/api/point", "/api/reverse", "/api/near")
+PRIVATE_QUERY_PATHS = ("/api/geocode", "/api/point", "/api/reverse", "/api/near", "/api/explain")
 
 
 class RedactQuery(logging.Filter):
@@ -732,6 +732,26 @@ def feedback_summary(days: int = Query(7, ge=1, le=90)):
 def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge=97, le=106)):
     """What can be said about a place with no gauge: gauges around it, an area category (not a water level),
     nearby citizen evidence and warnings (APPROACH §2.10, D-021)."""
+    return _json(_point_out(lat, lon))
+
+
+@app.get("/api/explain")
+def explain_point(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge=97, le=106), q: str = Query(...),
+                  part: str = Query("lines")):
+    """A resident question about a pin (D-068). part=lines: the rule story (a few easy sentences) and the rule lines with
+    the numbers, from the same data as /api/point, at once. part=gist: GLM's warm retelling of the story, only if
+    explain.check passes (else null). The pin never goes to GLM."""
+    if q not in explain.QUESTIONS or part not in ("lines", "gist"):
+        raise HTTPException(status_code=400, detail="unknown question")
+    out = _point_out(lat, lon)
+    lines, story = explain.answer(q, out), explain.narrative(q, out)
+    if part == "gist":
+        return _json({"q": q, "gist": explain.gist(q, lines, story)})
+    return _json({"q": q, "question": explain.QUESTIONS[q], "story": story, "lines": lines,
+                  "ai": os.environ.get("AI_EXPLAIN", "1") == "1" and ai.available()})
+
+
+def _point_out(lat: float, lon: float) -> dict:
     with db.connect() as c:
         rows = [_station_row(r) for r in _station_rows(True)]
         box = {"lat0": lat - 0.01, "lat1": lat + 0.01, "lon0": lon - 0.01, "lon1": lon + 0.01}
@@ -749,7 +769,8 @@ def point_check(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., ge
     measured = point.measured_rain(lat, lon, rain_rows, dt.datetime.now(dt.timezone.utc))
     out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1), measured)
     out["rain_point"] = pt
-    return _json(out)
+    out["forecast"]["plain"] = explain.plain(out)  # the panel's everyday-words line (D-068), by template
+    return out
 
 
 GEOCODE_PER_HOUR = 30
@@ -840,6 +861,7 @@ Allow: /
 Disallow: /api/docs
 Disallow: /api/openapi.json
 Disallow: /api/point
+Disallow: /api/explain
 Sitemap: https://{host}/sitemap.xml
 """
 SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>

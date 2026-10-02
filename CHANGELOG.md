@@ -2,6 +2,35 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.18.8 — 2026-10-02 (v0.18.0–v0.18.7 were live steps of the same work)
+- **"? ไม่แน่ชัด" now says what is possible (owner: "we can't say just no trend in everytime, user expected to hear
+  what can be possible even in the far station" → chose "possible change + bank risk").** The plain line, the story and
+  the numbers give the size of the likely change and whether the wider (9 in 10) range could reach the bank from
+  today's margin — Ko Kret: "น้ำน่าจะเปลี่ยนไม่มาก อาจลดลงราว 5 ซม. หรือเพิ่มขึ้นราว 10 ซม. แต่ถ้าน้ำขึ้นมาก อาจถึงตลิ่งได้"; a
+  gauge 161 cm below its bank: "ถ้าเป็นแบบที่ผ่านมา น้ำยังไม่น่าจะถึงตลิ่ง". No direction is claimed where the backtest
+  did not prove one (D-060); the numbers gain a "🏞️ ตลิ่ง" line. A close gauge among disagreeing ones is no longer
+  called "ไกล" ("สถานีวัดน้ำรอบ ๆ ให้ผลต่างกัน …"); the checker now also rejects "ไม่ถึงตลิ่ง"-style certainty.
+
+- **AI on request, one button (owner: "AI assistant generated only when requested, single point for that is enough?" →
+  one "ask AI" button "to reduce unnecessary AI generated"; D-068, amends D-022).** Every pin panel shows a plain line
+  under the headline (by template, no AI) and one button, "✨ ให้ AI สรุปให้ฟังง่าย ๆ". Nothing calls GLM until it is
+  tapped. The card it opens tells the story the way a weather app's AI card does (owner: "they try to explain
+  easily"): "แถวบ้านคุณไม่มีสถานีวัดน้ำใกล้ ๆ สถานีที่ใกล้ที่สุดอยู่ไกลราว 6 กม. ที่นั่นตอนนี้น้ำต่ำกว่าตลิ่งราว 31 ซม. …
+  ส่วนวันข้างหน้ายังบอกไม่ได้ว่าจะขึ้นหรือลง คาดว่ามีฝนเล็กน้อย ช่วยสังเกตน้ำในคลองใกล้บ้านประกอบด้วยนะ". The numbers
+  are folded under "ดูตัวเลข".
+- **Rules write the story; GLM may only retell it.** A retelling is shown only if a checker finds no new number, no
+  direction or strength the rules don't say, no past change told as the future, no verdict ("ได้ครับ", "ไม่ท่วม",
+  "ปลอดภัย", "ปกติ"…), no dropped "cannot tell" and no far gauge called "แถวนี้"; otherwise the rule story is shown.
+  GLM never sees the pin. `AI_EXPLAIN=0` switches it off; the site works without it.
+- **Validated like a resident would read it** (`scripts/ai_explain_validate.py`, [research](research/2026-10-02_ai_explain.md)):
+  198 answers at 33 places per run; whole-answer rewording passed 43 %, the final story retelling 91 % (median 4.0 s,
+  none > 8 s). Reading the passing answers found a past rise retold as a future one (now rejected) and wording slips
+  of my own (fixed). v0.18.0 called a gauge 6 km away "คลองแถวนี้" (KI-261, fixed).
+- **GLM calls fixed (KI-260):** glm-5.3-flash always reasons; `reasoning_effort: "low"` cuts a call from 9–10 s to
+  ~1–5 s, and a cut-off answer's reasoning text is never returned as the answer.
+- Checker: C12 (plain line and story never call a far gauge "here"; the AI button opens a story with no verdict
+  word); C4 no longer counts the same measured line under two different gauges as a repeat.
+
 ## v0.17.3 — 2026-10-02
 - **"ห่าง 1.5 กม." like the station list (owner: "Distance > ห่าง 1.5 กม.").** The canal factor's gauge lines said a bare
   "1.5 กม.".

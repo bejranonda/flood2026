@@ -81,6 +81,6 @@ def test_a_place_in_bangkok_prefers_its_fine_point():
 
 def test_pins_and_region_lines_read_the_fine_points():
     from floodwatch import api
-    assert "_fine_ids()" in inspect.getsource(api.point_check)
+    assert "_fine_ids()" in inspect.getsource(api._point_out)
     regions_ = api.point_regions([{"province": "นนทบุรี", "lat": 13.91, "lon": 100.50, "code": "X"}])
     assert regions_[rain_cells.fine_of(13.91, 100.50)[0]] == "metro" and regions_[rain_cells.cell_of(13.91, 100.50)[0]] == "metro"

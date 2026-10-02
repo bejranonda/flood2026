@@ -191,6 +191,7 @@ Depth at a location is always shown as a **probability category**, never an exac
 | Flood extent | Copernicus GFM (free account) | GISTDA 🔑 (key configured in .env) | – |
 | Citizen reports | Traffy public ✅ | Agreement with BMA/NECTEC | – |
 | Feedback note triage | Deterministic keyword rules ✅ | GLM (`glm-5.3-flash` 🔑 in .env) / Workers AI | Instant hotline triggers (1669/1784/191) |
+| Plain-language answers (D-068) | Rule lines (`explain.answer`) ✅ | GLM one-sentence retelling, checked (`explain.check`) | No AI sentence; the lines stand alone |
 | Storage & backup | Local VPS disk (`data/raw_archive` + Postgres) ✅ | Nightly local snapshots | R2 disabled by owner choice (D-029) |
 
 ---
@@ -275,3 +276,5 @@ UX principles established through visitor testing during the 2026 flood season:
 - **Where rain falls matters, but the own 0.5° cell is enough (2026-10-02):** rain from a wrong catchment (placebo) costs ~30 gauges their 48 h line; rain over the true HydroBASINS catchment adds nothing over the own cell (296 gauges), because learned upstream gauges already carry the catchment's rain once it reaches the river.
 - **Nested basins don't give usable cross-basin upstream links today:** allowed only from feeder basins (Ping/Wang/Yom/Nan/Sakae Krang/Pasak → Chao Phraya, Chi → Mun → Mekong), no gauge pair qualifies (r ≥ 0.5, lag 1–48 h, ≤ 250 km); allowed freely, links go the wrong way (Mun ← Mekong backwater) and forecasts get worse.
 
+
+- **GLM for residents (2026-10-02, D-068):** glm-5.3-flash always reasons (API 1210; effort "low"/"high"/"max" only); default 9–10 s per call, `reasoning_effort: "low"` 1–5 s (median 2.7–3.5 s); glm-4-flash is gone (1211). Left free, it gives yes/no verdicts ("ได้ครับ"), calls unknown canals "ปกติ", invents causes and claims about the app, and retells a past change as a future one; asked to retell a rule-written story it is faithful most of the time (91 % of 198 pass a strict checker; one sentence from rule lines 86 %). Common Thai politeness ("ไม่ได้ค่ะ", "รับน้ำได้ค่ะ") must not be mistaken for a verdict.

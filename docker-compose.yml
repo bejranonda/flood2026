@@ -64,7 +64,14 @@ services:
     build: .
     restart: unless-stopped
     command: ["uvicorn", "floodwatch.api:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2", "--proxy-headers"]
-    environment: *appenv
+    environment:
+      <<: *appenv
+      # D-068 (amends D-022): the app may ask GLM to reword a rule answer when a resident taps a question; the
+      # rewording is shown only if explain.check passes. Never the pin or a place name. AI_EXPLAIN=0 switches it off.
+      AI_EXPLAIN: ${AI_EXPLAIN:-1}
+      AI_PROVIDER: glm
+      GLM_API_KEY: ${GLM_API_KEY:-}
+      GLM_MODEL: ${GLM_MODEL:-glm-5.3-flash}
     ports:
       - "127.0.0.1:3000:3000"   # local only; public traffic comes through the tunnel
     depends_on:

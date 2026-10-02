@@ -728,6 +728,40 @@ async function share(s) {
   } catch (_) { /* user cancelled */ }
 }
 
+// AI on request only (D-068; owner 2026-10-02: one "ask AI" button "to reduce unnecessary AI generated"). The panel
+// shows the rule-written plain line; one tap opens a story card: GLM's retelling when it passes the server's check,
+// else the rule story, with the numbers folded under "ดูตัวเลข". Nothing calls GLM until the button is tapped.
+const askHTML = () => `<button type="button" class="ai-btn" aria-expanded="false">✨ ให้ AI สรุปให้ฟังง่าย ๆ</button>
+  <div class="story" hidden><div class="story-h">✨ สรุปง่าย ๆ</div><div class="story-body" aria-live="polite"></div></div>`;
+async function fillStory(body, url, isOpen) {
+  try {
+    const r = await getJSON(url);
+    let text = r.story, by = "สรุปจากข้อมูลในแอป (AI ตอบไม่ได้ตอนนี้)";
+    if (r.ai) {  // never wait longer than 7 s for GLM
+      const g = await Promise.race([getJSON(`${url}&part=gist`).catch(() => null), new Promise((ok) => setTimeout(() => ok(null), 7000))]);
+      if (g && g.gist) { text = g.gist; by = "✨ AI เล่าจากข้อมูลในแอป · ตัวเลขอยู่ใน “ดูตัวเลข”"; }
+    }
+    if (!isOpen() || !body.isConnected) return;
+    body.innerHTML = `<p class="story-text">${esc(text)}</p><details class="story-more"><summary>ดูตัวเลข</summary>
+      <div class="ask-lines">${r.lines.map((l) => `<p>${esc(l)}</p>`).join("")}</div></details><p class="ask-by">${by}</p>`;
+  } catch (_) {
+    if (isOpen() && body.isConnected) body.innerHTML = `<p class="muted">ตอนนี้สรุปไม่ได้ ลองแตะอีกครั้ง</p>`;
+  }
+}
+function bindAsk(box, lat, lon) {
+  const btn = box.querySelector(".ai-btn"), card = box.querySelector(".story");
+  if (!btn || !card) return;
+  const body = card.querySelector(".story-body"), open = () => btn.getAttribute("aria-expanded") === "true";
+  btn.addEventListener("click", () => {
+    const now = !open();
+    btn.setAttribute("aria-expanded", String(now));
+    card.hidden = !now;
+    if (!now) return;  // a second tap closes it
+    body.innerHTML = `<p class="story-text shimmer">กำลังสรุปให้…</p>`;
+    fillStory(body, `/api/explain?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&q=simple`, open);
+  });
+}
+
 /* ---------- point check: a place with no gauge (D-021) ---------- */
 const WARN = {
   no_gauge_at_point: "นี่<b>ไม่ใช่ระดับน้ำที่จุดนี้</b> สถานีวัดน้ำในคลองหรือแม่น้ำ ไม่ได้วัดบนถนนหรือในบ้าน",
@@ -833,7 +867,8 @@ function pointHTML(d, src, place = "") {
         <button type="button" class="pf-info-btn" aria-expanded="false" aria-controls="pf-info" aria-label="ที่มาและข้อจำกัดของข้อมูล">ⓘ</button></div>
       <div id="pf-info" class="pf-info" hidden>${infoBody}</div>
       ${fc.title ? `<h3 id="pf-title" class="pf-title">${fcR.icon ? `${fcR.icon} ` : ""}${esc(fc.title)}</h3>
-      <p class="pf-desc">${esc(fc.desc)}</p>` : ""}
+      <p class="pf-desc">${esc(fc.plain || fc.desc)}</p>` : ""}
+      ${askHTML()}
       <div class="pf-h pf-factors-h">ปัจจัยที่ใช้คาดการณ์</div>
       <ul class="pf-factors">
         <li><span class="pf-dot" style="background:${canal.color}"></span><div><b class="pf-word">${esc(head(canal.word))}</b>${canalInfo}
@@ -885,6 +920,7 @@ async function checkPoint(lat, lon, src, place = "") {
     box.innerHTML = `<div class="tools"><button class="btn close" aria-label="ปิด">✕</button></div>${pointHTML(d, src, place)}${place ? `<p class="muted">ตำแหน่งจากชื่อสถานที่ (OpenStreetMap) อาจคลาดเคลื่อนได้ แตะบนแผนที่เพื่อเลือกจุดที่ตรงกว่า</p>` : ""}`;
     bindItems(box);
     bindReport(box);
+    bindAsk(box, lat, lon);
     const info = box.querySelector(".pf-info-btn"), infoBox = box.querySelector("#pf-info");
     if (info && infoBox) info.addEventListener("click", () => { infoBox.hidden = !infoBox.hidden; info.setAttribute("aria-expanded", String(!infoBox.hidden)); });
     if ((src === "pin" || src === "gps") && !place) fillArea(lat, lon);

@@ -303,3 +303,20 @@ def test_each_gauge_names_its_upstream_gauges_with_the_learned_travel_time():
     m = api.upstream_map(learned, {"C.2": 200.0, "C.13": 275.3, "C.7A": 150.0})
     assert m["NAN012"] == [{"code": "N.27A", "lag_h": 5}, {"code": "N.5A", "lag_h": 9}]
     assert m["C.7A"] == [{"code": "C.2", "lag_h": None}]  # Chao Phraya chain: upstream known, travel time not learned
+
+
+def test_explain_queries_are_private_like_the_point_check():
+    # /api/explain carries the pin (D-032): its query string never reaches the access log, robots stay out
+    import logging
+    rec = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d',
+                            ("1.2.3.4", "GET", "/api/explain?lat=13.75&lon=100.66&q=home", "1.1", 200), None)
+    api.RedactQuery().filter(rec)
+    assert "13.75" not in rec.args[2] and rec.args[2].startswith("/api/explain")
+    assert "Disallow: /api/explain" in api.robots(_req("flood.autobahn.bot")).body.decode()
+
+
+def test_explain_rejects_unknown_questions():
+    import pytest
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException):
+        api.explain_point(13.75, 100.66, "weather")

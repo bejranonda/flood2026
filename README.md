@@ -26,12 +26,14 @@ Real-time water levels of Bangkok's canals (khlong) in depth and of every HII, R
 | You ask | The app shows |
 |---|---|
 | **น้ำแถวบ้านจะขึ้นหรือลง?** Is the water near me going up or down? | Tap any place (or "สถานีใกล้ฉัน"): the nearest canal gauge, its status against the bank, what it did in the last 24 h ("ลดลง 20 ซม.") and its 24/48 h trend ("↘ ลดลง ราว −12 ซม."), rain in the next 24 h and street-flood reports around you. |
+| **ไม่เข้าใจตัวเลข** I don't get the numbers | Every pin has a plain line under its headline, and one button "✨ ให้ AI สรุปให้ฟังง่าย ๆ": a few easy sentences (which gauge, how far, how full, up or down, rain, what to do), with the numbers folded under "ดูตัวเลข". The rules write the story; the AI may only retell it after a strict check. |
 | **เมื่อไหร่น้ำจะลด?** When will it drop below the bank? | A date range with its conditions ("หากลดในอัตราเดิมและไม่มีฝนหนัก … ความเชื่อมั่นต่ำ"), never a minute countdown. |
 
 ## Features
 - **Every gauge, one honest story — now nationwide.** About **1,040 gauges** (≈ 210 in Bangkok, 830 across the country): HII, RID, EGAT, the Thai Red Cross volunteer network (พพภ.) and all **199 BMA canal gauges**, every 5–10 minutes. Region chips (กทม. · ปริมณฑล · เหนือ กทม. · ภาคเหนือ · อีสาน · ตะวันออก · ตะวันตก · ใต้ · ทั้งประเทศ) filter the counts, list and map. The headline, the rows and the list always say the same thing — checked before each release.
 - **A few centimetres count.** Each gauge shows what the water did in the last 24 h (or 48 h for slow changes) in plain words (ลดลงเล็กน้อย / ลดลง / ลดลงมาก), and the bank distance today vs yesterday.
 - **Forecasts that earn their place.** Every gauge is backtested for each horizon with a year of history, rain for its own area and the gauges upstream of it; a model is used only where it beats "no change". Otherwise the rows follow the measured trend, and the ⓘ says how often such a trend continued in the past (canals ≈ 5–6 in 10, rivers ≈ 9 in 10).
+- **Plain words, with an AI helper that cannot mislead.** Each pin has a plain-language line, and AI runs only when you ask: one button retells the panel as a short story. Rules write the story; the AI (GLM) retelling is shown only when a checker finds nothing new, nothing stronger and no yes/no verdict. The AI never sees your location.
 - **Bad data is hidden, not shown as fact.** Single-reading dropouts are removed; gauges next to pumps or with stuck sensors keep their dot and chart, but not a level or a trend.
 - **Built for a phone during a flood.** Thai first, Bangkok first, short panels, place search (ซอย/ถนน/ย่าน), map, Chao Phraya profile, share links, and a one-tap water report from where you are.
 - **Open.** MIT-licensed code and a free, key-less JSON API.
