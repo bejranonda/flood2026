@@ -21,6 +21,7 @@
 | Found on the way | GISTDA echoes our key in `links` (KI-262); my first GloFAS run hit Open-Meteo's per-minute limit (KI-264; production unaffected, all collectors OK at 20:47 and 21:14 UTC); compose's GISTDA fallback path was outdated (fixed) | KNOWN_ISSUES |
 | "The point is next to station บางปะหัน LBI001, but showed no near station!!" | Owner right: polder rules applied in every focus province; now only กทม./ปริมณฑล. Live: "ระดับน้ำในแม่น้ำล้นตลิ่ง/วิกฤต" from LBI001 (0.1 km) | KI-263, D-070, `point.py` |
 | "Review the topbar … too much space again!! … specifically for Bangkok, for what?" | My v0.17.1 rows layout made it 3–4 lines; it followed the region chip far below. Chose "Only when heavy": one line, only for heavy rain (≥ 35.1 mm) | KI-265, D-070, `app.js` |
+| Final live check (v0.18.9, 21:05–21:28 UTC) | **488 sheets, 76 pins, 2,012 rows → 0 findings on C1–C12** (C9/C11 now check "rain line only when heavy, one line"); 229 tests pass; all Open-Meteo collectors OK after the research runs | `scripts/ux_consistency.py` |
 
 ## 3c. Session 2026-10-02 11:10–16:45 UTC: AI help for ordinary residents (v0.18.0–v0.18.8, D-068)
 | Owner request | Result | Where |
