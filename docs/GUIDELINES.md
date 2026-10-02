@@ -126,6 +126,9 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
 - **Licensing:** Open-Meteo and FABDEM are non-commercial; a paid plan is needed if the app is monetised ([KI-106](KNOWN_ISSUES.md)).
 - **Attribution** on every screen. Relayed data names both the owner and the relay (BMA via flood69, D-031).
 - **Never mix levels across agencies** (KI-217): a BMA level and an HII level at the same place can differ by 0.3–0.6 m. Compare each gauge only with its own bank; combine agencies only as status ranks. Never use BMA `warning`/`critical` as a bank (KI-215).
+- **Shared free allowances (KI-264):** research calls to Open-Meteo share the server's free non-commercial allowance with production rain. Size them (a year only for the cell you need), pause ≥ 10 s between requests, stay ≲ 1,000 weighted calls a day, and check `source_health` for `openmeteo*` after a heavy run.
+- **Keys echoed by sources (KI-262):** some APIs return the caller's key inside response URLs (GISTDA `links`). Strip such fields before storing, logging or printing a response.
+- **Experimental data with restrictive terms (D-069):** WeatherNext real-time rain is never shown or served by our API; past data (≥ 1 h old, CC BY 4.0) may be used for backtests in the worker only. Read a dataset's terms before the first call, and record what may and may not be published.
 - **What users type is private:** place-search queries are never logged, stored or sent anywhere except the geocoder (D-032). The same goes for error messages that might contain them.
 
 ---

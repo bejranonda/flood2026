@@ -188,7 +188,7 @@ Depth at a location is always shown as a **probability category**, never an exac
 | Bang Sai, Memorial Bridge | RID pages 🟡 | RID telemetry service | Routing from C.35 + S.26 |
 | Tide | Navy tables 🔴 (URL moved) | – | **Own harmonic fit on HII tidal stations** ✅ feasible |
 | Elevation | DEM files (probabilistic) | GISTDA/BMA survey data | User-entered floor height |
-| Flood extent | Copernicus GFM (free account) | GISTDA 🔑 (key configured in .env) | – |
+| Flood extent | Copernicus GFM (keyless STAC; research only, D-069) | GISTDA 🔑 (key configured in .env) | – |
 | Citizen reports | Traffy public ✅ | Agreement with BMA/NECTEC | – |
 | Feedback note triage | Deterministic keyword rules ✅ | GLM (`glm-5.3-flash` 🔑 in .env) / Workers AI | Instant hotline triggers (1669/1784/191) |
 | Plain-language answers (D-068) | Rule lines (`explain.answer`) ✅ | GLM one-sentence retelling, checked (`explain.check`) | No AI sentence; the lines stand alone |
@@ -278,3 +278,7 @@ UX principles established through visitor testing during the 2026 flood season:
 
 
 - **GLM for residents (2026-10-02, D-068):** glm-5.3-flash always reasons (API 1210; effort "low"/"high"/"max" only); default 9–10 s per call, `reasoning_effort: "low"` 1–5 s (median 2.7–3.5 s); glm-4-flash is gone (1211). Left free, it gives yes/no verdicts ("ได้ครับ"), calls unknown canals "ปกติ", invents causes and claims about the app, and retells a past change as a future one; asked to retell a rule-written story it is faithful most of the time (91 % of 198 pass a strict checker; one sentence from rule lines 86 %). Common Thai politeness ("ไม่ได้ค่ะ", "รับน้ำได้ค่ะ") must not be mistaken for a verdict.
+- **Satellite radar and Bangkok (2026-10-02, D-069):** Sentinel-1 cannot see flooding among buildings: GFM's exclusion mask hid 71 % of land within 10 km of central Bangkok, 65 % at Pak Kret/Ko Kret, 61 % in Nonthaburi city, but only 23–29 % of rice land in Ayutthaya/Pathum Thani. In September 2026 the region was imaged on 6 days in 30 (S1C, S1D), published ~7 h after the pass. GISTDA adds Radarsat-2 and COSMO-SkyMed and agrees with GFM on 89 % of its cells where GFM could see.
+- **GloFAS on the lower Chao Phraya (2026-10-02):** GloFAS v4 daily discharge vs RID measured: r = 0.57 at C.2, 0.60 at C.13, ≤ 0.33 at C.3/C.7A/C.35–C.37/S.26; even its true future change adds nothing to a 3–7 day level forecast. Dams and diversions dominate; a global model does not know them.
+- **WeatherNext 3 (Google DeepMind, docs read 2026-10-02):** hourly initialisations (15-day runs at 00/06/12/18 UTC, 48 h otherwise), 1-hour steps, 64 members, 0.05° station / 0.1° grid output; rain in metres per hour (`total_precipitation_1hr`, plus IMERG- and radar-calibrated variants). Data ≥ 1 h old is CC BY 4.0; real-time data falls under Google's experimental terms (no public display of the values; restricted countries Japan, South Korea, Indonesia).
+

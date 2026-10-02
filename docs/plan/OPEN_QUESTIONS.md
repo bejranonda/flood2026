@@ -9,6 +9,8 @@
 | # | Question | Why it matters | Priority |
 |---|---|---|---|
 | **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
+| **Q44** | **WeatherNext after its backtest (D-069):** if its rain beats Open-Meteo in our 48 h model, may the public forecast use it? That needs Google's notice "experimental … not intended, validated, or approved for real world use" on the site and handling of the Japan/South Korea/Indonesia clause (or a written permission from weathernext@google.com). | Decides whether a backtest win can ever reach users | after WNEXT ✅ + backtest |
+| **Q45** | **A satellite line outside Bangkok (D-069)?** "ดาวเทียมเห็นน้ำท่วมห่าง ~N ม. เมื่อ X วันก่อน (GISTDA)" in pin panels where the radar can see (rice belt, river provinces); silent in the city. You chose research only for now. | Useful observed fact upstream; misleading in Bangkok | 3 |
 | Q41 | **More gauges for Nonthaburi (user request, 2026-10-01):** ปากเกร็ด, เมืองนนทบุรี, บางกรวย, บางใหญ่, บางบัวทอง have only 3 live HII gauges. Do you know a public source (อบจ./เทศบาลนครนนทบุรี/เทศบาลนครปากเกร็ด, RID canal gauges) or a contact who could share one? | Canal level where the user asked | 1 |
 | Q38 | **Dam-controlled reaches (v0.16):** gauges such as E.29/URTU07 (Nam Phong, above Ubol Ratana) move with releases; only C.13 (Chao Phraya Dam) enters the model. Worth asking EGAT/RID for release plans, or should these gauges show measured data and ranges only? | Forecast honesty upstream/downstream of large dams | 2 |
 | Q39 | **Status words for rivers (v0.16):** the status chip "ใกล้ตลิ่ง/คลองเต็ม" names canals, but most nationwide gauges are rivers. Change the label everywhere (e.g. "ใกล้ตลิ่ง") or keep the v0.15 wording (D-063)? | One status vocabulary for the whole country | 3 |
@@ -24,7 +26,7 @@
 | Q11 | **Budget/retention** for R2 and the raw archive | Sizing | — |
 | Q12 | **Who is on call** during a flood? | Alert routing | — |
 | Q3 | Permission mails to **HII / BMA / Traffy**, and **DWR / RID** before national data goes public (drafts in OWNER_ACTIONS, D-046) | Public redistribution; national launch | 3 |
-| Q4 | **TMD / GISTDA / Copernicus GFM / NASA** keys? | Optional P2 sources | — |
+| Q4 | **TMD / GISTDA / Copernicus GFM / NASA** keys? | Optional P2 sources. **2026-10-02:** GISTDA ✅, GFM account ✅ (maps keyless), EWDS ✅; TMD and NASA not needed so far | — |
 | Q6 | Will the app ever be **commercial**? | Open-Meteo and FABDEM are non-commercial ([KI-106](../KNOWN_ISSUES.md)) | — |
 | Q9 | **Frontend framework** preference? | The plain-JS app is enough so far | — |
 

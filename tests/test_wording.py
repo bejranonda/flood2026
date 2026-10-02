@@ -45,3 +45,13 @@ def test_a_distance_reads_hang_n_km_like_the_list():
 def test_no_jargon_for_a_gauge_without_a_forecast():
     # "(ยังไม่ผ่านการทดสอบย้อนหลัง)" goes behind an ⓘ; the line itself shows what was measured
     assert "ยังไม่มีคาดการณ์ (ยังไม่ผ่านการทดสอบย้อนหลัง)" not in CODE
+
+
+def test_summary_rain_shows_only_heavy_rain_in_one_line():
+    # owner 2026-10-02 (screenshot of the top strip): "it used too much space again!! and it showed specifically for
+    # Bangkok, for what?" -> chose "Only when heavy": no rain in the strip unless the region expects or measured heavy
+    # rain (TMD: heavy from 35.1 mm, the same bands as point.py), then one line, never the 3-row panel layout.
+    m = re.search(r"const SUMMARY_RAIN_MIN_MM = ([\d.]+);", APP)
+    assert m and float(m.group(1)) > point.RAIN_MODERATE_MAX_MM
+    body = APP[APP.index("function rainSummary("):APP.index("let lastStats")]
+    assert "rainRows(" not in body and "SUMMARY_RAIN_MIN_MM" in body

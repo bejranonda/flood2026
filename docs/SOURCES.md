@@ -37,7 +37,7 @@
 | **P2** | BMA DDS (สำนักการระบายน้ำ) | Khlong and river levels, rain gauges, 3 h nowcast, radar, flow and pump stations | Web / Relay / HII mirror | none | 🟢 **199 stations live via flood69 relay** (`bma_klong`); **30-day 10-min history via HII TIWRM** (`BKK*` series); direct `weather.bangkok.go.th` times out via VPN (subnet drop, KI-505) | Bangkok khlongs (live relay + HII telemetry mirror, D-031, D-053) |
 | **P2** | Traffy Fondue public API | Citizen flood reports with coordinates, text, photos, state | JSON (undocumented) | none | ✅ live | Validation and "reported nearby" layer (privacy rules, KI-107) |
 | **P2** | GISTDA API Gateway | Daily satellite flood extent, 2011–2023 recurrence | REST | 🔑 registered in `.env` | ✅ key configured | Flood extent layer, validation |
-| **P2** | Copernicus GFM | Sentinel-1 flood masks | REST | free account | ✅ live (Swagger) | Fallback for GISTDA |
+| **P2** | Copernicus GFM | Sentinel-1 flood masks | STAC (keyless) / REST (account) | none for the maps | ✅ live (§2k) | Research only (D-069); blind in Bangkok |
 | **P3** | DEMs (FABDEM, Copernicus GLO-30, GEDTM30); Open-Meteo elevation | Ground elevation | COG / JSON | none | ✅ live (Open-Meteo) | **Probabilistic** depth only (KI-202) |
 | **P3** | DWR EWS, DWR/ONWR PDFs, CCTV | Tributary telemetry, historical tables | Web/PDF | none | ✅ `ews.dwr.go.th` times out from Germany; **200 through the Thai egress**: 2,275 stations incl. soil moisture (§2d, 2026-09-27) | Backfill C-stations |
 | **P3** | Google Flood Hub, NASA GPM IMERG | Forecast cross-check; satellite rain | Web / files | application / Earthdata | ⚠️ | Cross-check, upstream rain |
@@ -157,6 +157,16 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 |---|---|---|
 | GLM chat (Zhipu AI) | `open.bigmodel.cn/api/paas/v4/chat/completions`, model `glm-5.3-flash` (key in `.env`) | ✅ Thai answers. Always reasons: `thinking: {type: disabled}` → error 1210 ("该模型始终思考，不支持关闭思考；请使用 low、high 或 max"); `reasoning_effort: "low"` → 1.1 s, no `reasoning_content`; default → 8–10 s with ~850–1,400 reasoning chars. ~570 calls in three validation runs: median 3.1–4.5 s; the final run (198) median 3.1 s, p90 4.4 s, none > 8 s |
 | GLM `glm-4-flash` | same endpoint | ❌ error 1211 "模型不存在" (model does not exist) — the D-030 default name is outdated |
+
+### 2k. Satellite flood maps, GloFAS, WeatherNext, EWDS (probed 2026-10-02 19:50–21:10 UTC, honest UA; D-069)
+| Source | Call | Result | Verdict |
+|---|---|---|---|
+| Copernicus GFM, keyless | `GET https://stac.eodc.eu/api/v1/collections/GFM/items?bbox=99.9,13.4,100.95,15.9&datetime=…&limit=100` (+ `next` links) | ✅ 200, no auth: 178 items in 30 days; assets are COGs at `data.eodc.eu/collections/GFM_LAYERS/…` (200, no auth): `ensemble_flood_extent`, `ensemble_likelihood`, `exclusion_mask` (missing on some items: 27 of 178 had 13 assets instead of 14), `reference_water_mask`, `advisory_flags`, 3 algorithm layers; 20 m, Equi7 `AS020M` tiles; values 0/1, 255 = no data. ⚠️ item bbox ≠ imaged strip (only 42 of 178 had data over the region) | ✅ research; CC BY 4.0 |
+| Copernicus GFM, account | Swagger `https://api.gfm.eodc.eu/v2/swagger.json` (v24.01); `POST /v2/auth/login {"email","password"}` | 200 + token with the owner's login (owner_status GFM ✅); 400 with a wrong login; product endpoints 401 without | ✅ works; not needed (same products) |
+| GISTDA flood, 30 days in the region | `GET …/features/flood/30days?bbox=99.9,13.4,100.95,15.9&limit=1000&offset=…`, header `API-Key` | ✅ 200, 56,899 H3 cells, 1,440 km²; ⚠️ `links` echo the caller's key (KI-262) | ✅ research |
+| GloFAS (Open-Meteo) | `GET https://flood-api.open-meteo.com/v1/flood?latitude=…&longitude=…&daily=river_discharge&start_date=2025-09-25&end_date=…` | ✅ 200; `consolidated_v4` empty for this period; `seamless_v4` = `forecast_v4` for past days (no forecasts as issued). C.2 point → 1.1 m³/s (side cell, KI-509). 49 points × 1 year in one request → **429** (KI-264) | ❌ no gain ([research](../research/2026-10-02_glofas_outlook.md)) |
+| EWDS (CEMS GloFAS archive) | `GET https://ewds.climate.copernicus.eu/api/catalogue/v1/collections/cems-glofas-forecast` | ✅ 200, forecasts 2019-11-05 → 2026-10-01; reforecast 1999–2023. Token check `POST /api/profiles/v1/account/verification/pat` with `PRIVATE-TOKEN`: 401 without/with a dummy, **200 with the owner's token** | ✅ works; not needed (GloFAS upper bound failed) |
+| WeatherNext 3 (Google DeepMind) | Docs: `developers.google.com/weathernext/guides/{access-forecast,models,bigquery}`; terms `storage.googleapis.com/weathernext-public/terms-of-use.pdf` (modified 2026-09-03) | Hourly init (15 d at 00/06/12/18 UTC, 48 h otherwise), 1 h steps, 64 members, 0.05° station / 0.1° grid; rain `total_precipitation_1hr` (m), also `imerg_tp_1hr`, `experimental_tp_1hr`; BigQuery `weathernext_3_0_0_0p1deg` / `_0p05deg` via an Analytics Hub listing (stats `_mean`, `_p10…_p90`). Owner's service-account key: token ✅, project has **no dataset yet** (404) → subscribe step open | ⏳ research only (D-069) |
 
 ## 3. Refuted endpoints — do **not** use
 

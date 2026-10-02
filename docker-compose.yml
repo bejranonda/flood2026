@@ -9,7 +9,7 @@ x-appenv: &appenv
   MIN_FREE_DISK_GB: ${MIN_FREE_DISK_GB:-2}
   REDIRECT_LEGACY_HOST: ${REDIRECT_LEGACY_HOST:-0}   # 1 = 301 flood.bejranonda.com pages -> flood.autobahn.bot; /api/* stays (D-034)
   GISTDA_API_KEY: ${GISTDA_API_KEY:-}
-  GISTDA_API_ENDPOINT: ${GISTDA_API_ENDPOINT:-https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day}
+  GISTDA_API_ENDPOINT: ${GISTDA_API_ENDPOINT:-https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/7days}  # KI-510
 
 services:
   db:
@@ -44,8 +44,17 @@ services:
       CF_AI_TOKEN: ${CF_AI_TOKEN:-${CLOUDFLARE_API_TOKEN:-}}
       AI_MODEL: ${AI_MODEL:-@cf/aisingapore/gemma-sea-lion-v4-27b-it}
       AI_DAILY_NEURON_BUDGET: ${AI_DAILY_NEURON_BUDGET:-3000}
+      # Research sources (2026-10-02), worker only, never the web app: GFM account, WeatherNext via BigQuery (D-069:
+      # its real-time rain is never shown or served), EWDS archived GloFAS forecasts. All optional.
+      GFM_EMAIL: ${GFM_EMAIL:-}
+      GFM_PASSWORD: ${GFM_PASSWORD:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      WEATHERNEXT_PROJECT: ${WEATHERNEXT_PROJECT:-}
+      WEATHERNEXT_DATASET: ${WEATHERNEXT_DATASET:-}
+      EWDS_API_KEY: ${EWDS_API_KEY:-}
     volumes:
       - ./data/raw_archive:/data/raw_archive
+      - ./certs:/certs:ro
     depends_on:
       db: { condition: service_healthy }
     mem_limit: 1g

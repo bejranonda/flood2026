@@ -55,6 +55,56 @@ def cf_ok(path: str, token: str) -> tuple[bool, str]:
         return False, f"HTTP {status}"
 
 
+def _post_status(url: str, data: bytes, headers: dict, timeout: int = 30) -> tuple[int | str, str]:
+    req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, **headers}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, r.read(200_000).decode("utf-8", "replace")
+    except urllib.error.HTTPError as ex:
+        return ex.code, ""
+    except Exception as ex:  # DNS, timeout, TLS
+        return type(ex).__name__, ""
+
+
+def new_source_checks(e: dict[str, str]) -> list[tuple[str, str, str, str]]:
+    """GFM account, WeatherNext via BigQuery, EWDS token (added 2026-10-02, D-069). One real request each; no value printed."""
+    rows = []
+    mail, pw = e.get("GFM_EMAIL", ""), e.get("GFM_PASSWORD", "")
+    title = "GFM account logs in (GFM_EMAIL / GFM_PASSWORD; the maps themselves need no account)"
+    if mail and pw:
+        st, body = _post_status("https://api.gfm.eodc.eu/v2/auth/login", json.dumps({"email": mail, "password": pw}).encode(),
+                                {"Content-Type": "application/json"})
+        rows.append(("GFM", title, "done" if st == 200 else "open", f"HTTP {st}" + (" token received" if st == 200 and "token" in body else "")))
+    else:
+        rows.append(("GFM", title, "open", "GFM_EMAIL / GFM_PASSWORD empty in .env"))
+
+    title = "WeatherNext readable in BigQuery (service-account key + linked dataset)"
+    kp, proj, ds = e.get("GOOGLE_APPLICATION_CREDENTIALS", ""), e.get("WEATHERNEXT_PROJECT", ""), e.get("WEATHERNEXT_DATASET", "")
+    if kp and proj and ds:
+        local = ROOT / "certs" / pathlib.Path(kp).name if kp.startswith("/certs/") else pathlib.Path(kp)
+        try:
+            sys.path.insert(0, str(ROOT / "src"))
+            from floodwatch import gcp  # stdlib + openssl only
+            tok = gcp.access_token(str(local))
+            st, body = http(f"{gcp.BQ}/projects/{proj}/datasets/{ds}/tables?maxResults=50", tok)
+            names = [t["tableReference"]["tableId"] for t in json.loads(body).get("tables", [])] if st == 200 else []
+            wn = [n for n in names if n.startswith("weathernext")]
+            rows.append(("WNEXT", title, "done" if wn else "open", f"HTTP {st}, {len(wn)} WeatherNext table(s)"))
+        except Exception as ex:
+            rows.append(("WNEXT", title, "open", f"{type(ex).__name__} (key file at {local.name}?)"))
+    else:
+        rows.append(("WNEXT", title, "open", "GOOGLE_APPLICATION_CREDENTIALS / WEATHERNEXT_PROJECT / WEATHERNEXT_DATASET empty"))
+
+    title = "EWDS token works (archived GloFAS forecasts for the outlook backtest)"
+    ek = e.get("EWDS_API_KEY", "")
+    if ek:
+        st, _ = _post_status("https://ewds.climate.copernicus.eu/api/profiles/v1/account/verification/pat", b"", {"PRIVATE-TOKEN": ek})
+        rows.append(("EWDS", title, "done" if st == 200 else "open", f"HTTP {st}"))
+    else:
+        rows.append(("EWDS", title, "open", "EWDS_API_KEY empty in .env"))
+    return rows
+
+
 def main() -> None:
     e = env()
     tok, acct = e.get("CLOUDFLARE_API_TOKEN", ""), e.get("CLOUDFLARE_ACCOUNT_ID", "")
@@ -148,6 +198,8 @@ def main() -> None:
     else:
         rows.append(("GFLOOD", "Google Flood Forecasting API key works (GOOGLE_FLOOD_API_KEY)", "open",
                      "not applied/configured yet (pilot application, OWNER_ACTIONS)"))
+
+    rows += new_source_checks(e)
 
     has_license = (ROOT / "LICENSE").exists()
     rows.append(("Q10", "Repository license (open source, MIT)", "done" if has_license else "open",

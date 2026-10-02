@@ -59,6 +59,7 @@ One server with `docker compose`, published through a Cloudflare Tunnel (no open
 | Open-Meteo | Rain forecast, and rain as it was forecast 1–2 days earlier (for honest backtests): Bangkok points and a 0.5° cell for every other gauge | ✅ live |
 | Traffy Fondue | Street-flood reports around each gauge (counts only) | 🟡 often overloaded; age shown |
 | OpenStreetMap Nominatim | Place search, on request only (queries are never stored) | ✅ live |
+| GISTDA, Copernicus GFM (satellite flood maps), GloFAS, Google WeatherNext | Tested 2026-10-02: satellites are blind among Bangkok's buildings, GloFAS adds nothing to a 3–7 day outlook here, WeatherNext's rain may not be shown publicly (backtest only) | 🔬 research only ([D-069](docs/plan/DECISIONS.md)) |
 
 Full registry, including endpoints that were tested and refuted: [SOURCES](docs/SOURCES.md).
 

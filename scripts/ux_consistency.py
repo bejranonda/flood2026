@@ -245,11 +245,16 @@ with sync_playwright() as p:
         pg.locator(f'.rchip[data-region="{reg}"]').click(); pg.wait_for_timeout(500)
         line = pg.evaluate("() => document.querySelector('#summary .sumrain')?.innerText || ''")
         r = rainreg.get(reg) or {}
-        if r.get("forecast_mm24") is not None and word(r["forecast_mm24"]) not in line.split("ที่ผ่านมา")[0]:
-            note("C9", f"summary {reg}", f"rain line '{line[:60]}' vs API {r['forecast_mm24']} mm ({word(r['forecast_mm24'])})")
-        # C11: the summary's rain uses the panel's rows (one layout for rain and water, owner 2026-10-02)
-        if r.get("forecast_mm24") is not None and pg.locator("#summary .sumrain .rain-rows").count() != 1:
-            note("C11", f"summary {reg}", "summary rain is not in the rows layout")
+        fc, mm = r.get("forecast_mm24"), (r.get("measured") or {}).get("rain_24h")
+        heavy = (fc is not None and fc >= 35.1) or (mm is not None and float(mm) >= 35.1)
+        # C9 (v0.18.9, owner "Only when heavy"): a rain line exactly when the region expects or measured heavy rain
+        if heavy != bool(line):
+            note("C9", f"summary {reg}", f"rain line {'missing' if heavy else 'shown'}: '{line[:60]}' (API fc {fc} mm, measured {mm} mm)")
+        if heavy and fc is not None and fc >= 35.1 and word(fc) not in line.split("ที่ผ่านมา")[0]:
+            note("C9", f"summary {reg}", f"rain line '{line[:60]}' vs API {fc} mm ({word(fc)})")
+        # C11: the strip's rain is one line, never the panel's row grid (owner 2026-10-02: "too much space again")
+        if pg.locator("#summary .rain-rows, #summary .tr-rows").count():
+            note("C11", f"summary {reg}", "summary rain uses the multi-row layout")
     b.close()
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep
         b = p.chromium.launch(args=["--no-sandbox"])

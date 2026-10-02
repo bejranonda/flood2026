@@ -411,3 +411,22 @@ def test_a_high_canal_headline_never_says_steady_when_the_trend_is_unclear_or_ri
     assert "ทรงตัว" not in t(unclear) and "ชัดเจน" in t(unclear)
     assert "ทรงตัว" not in t(rising) and "สูงขึ้น" in t(rising)
     assert "ทรงตัว" in t(steady)
+
+
+# --- v0.18.9: the polder rules are Bangkok's and its five neighbours', not the whole focus area (owner 2026-10-02:
+# pin 14.4268,100.5553 sits 0.1 km from LBI001 บางปะหัน, over its bank, yet the headline said "no gauge close enough")
+def test_a_river_gauge_upstream_of_bangkok_is_the_local_evidence():
+    lbi = {**_st("LBI001", 14.42731, 100.55605, "critical", river="แม่น้ำลพบุรี"), "in_focus": True, "region": "up"}
+    far_canal = {**_st("C.37", 14.363, 100.485, "critical", river="คลองบางบาล"), "in_focus": True, "region": "up"}
+    out = point.assess(14.4268, 100.5553, [lbi, far_canal], 0, {}, 7.0)
+    assert out["mode"] == "national"
+    assert out["nearest_canal"]["code"] == "LBI001" and not out["nearest_canal"]["far"]
+    assert out["area"]["n_close"] == 1 and out["area"]["category"] == "critical"
+    assert "ไม่มีสถานีวัดน้ำใกล้พอ" not in out["forecast"]["title"]
+    assert "walls_and_polders" not in out["warnings"]
+
+
+def test_a_metro_river_gauge_still_never_judges_the_canals():
+    cpy = {**_st("CPY014", 13.947, 100.535, "critical", river="แม่น้ำเจ้าพระยา"), "in_focus": True, "region": "metro"}
+    out = point.assess(13.948, 100.536, [cpy], 0, {}, None)
+    assert out["mode"] == "bkk" and out["nearest_canal"] is None and out["nearest_river"]["code"] == "CPY014"

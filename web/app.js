@@ -235,16 +235,21 @@ async function getJSON(url, opts) {
 /* ---------- summary strip ---------- */
 // Rain for the chosen region (owner 2026-10-01: "There is no rain in panel anymore?" — v0.16.0 showed it for กทม.
 // and ปริมณฑล only): the wettest forecast point in the next 24 h and the wettest HII rain gauge in the last 24 h.
+// v0.18.9 (owner 2026-10-02: "it used too much space again!! … specifically for Bangkok, for what?" → "Only when
+// heavy"): nothing unless the region expects or measured heavy rain (TMD heavy from 35.1 mm, point.py bands), then ONE
+// line; everyday rain is told where it is about a place (pin panel, station sheet).
 let rainRegions = null;
+const SUMMARY_RAIN_MIN_MM = 35.1;
 function rainSummary(bkkRain) {
   const r = rainRegions?.[region], where = region === "all" ? "ทั่วประเทศ" : REGIONS[region].th;
   const fc = r?.forecast_mm24 ?? (region === "bkk" ? bkkRain : null), m = r?.measured;
-  if (fc == null && !m) return "";
-  const tip = [fc != null ? "คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดในพื้นที่" : "",
-    m ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : ""].filter(Boolean).join(" · ");
-  // the panel's rain rows (rainRows), headed by where the maximum is taken
-  return `<div class="sumrain"><p class="sumline">🌧️ ฝนสูงสุดใน${esc(where)} ${infoBtn(tip, "ที่มาของข้อมูลฝน")}</p>
-    ${rainRows(fc, null, m ? Number(m.rain_24h) : null, null)}</div>`;
+  const mm24 = m ? Number(m.rain_24h) : null;
+  const fcHeavy = fc != null && fc >= SUMMARY_RAIN_MIN_MM, mHeavy = mm24 != null && mm24 >= SUMMARY_RAIN_MIN_MM;
+  if (!fcHeavy && !mHeavy) return "";
+  const tip = [fcHeavy ? "คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดในพื้นที่" : "",
+    mHeavy ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : ""].filter(Boolean).join(" · ");
+  const parts = [fcHeavy ? `อีก 24 ชม. ${rainPill(fc)}` : "", mHeavy ? `24 ชม. ที่ผ่านมา ${rainPill(mm24, false)}` : ""];
+  return `<p class="sumline sumrain">🌧️ ${esc(where)}: ${parts.filter(Boolean).join(" · ")} ${infoBtn(tip, "ที่มาของข้อมูลฝน")}</p>`;
 }
 let lastStats = null;
 function renderSummary(st) {

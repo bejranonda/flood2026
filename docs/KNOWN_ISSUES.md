@@ -1,6 +1,6 @@
 # KNOWN_ISSUES.md — Limitations, pitfalls and workarounds
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-30
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-02
 > **Audience:** developers, operators, AI agents
 > **Status values:** 🔴 Open · 🟡 Workaround defined · 🟢 Resolved · ℹ️ Inherent (permanent constraint; design around it)
 > Evidence for items marked "probe" is in [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md).
@@ -40,6 +40,10 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-265 | Top strip: the region's rain took 3–4 lines (v0.17.1 rows layout) and read as "Bangkok only" (it followed the region chip far below) | UI | 🟢 fixed v0.18.9 (shown only for heavy rain, one line) |
+| KI-264 | A research run (49 points × 1 year) hit Open-Meteo's per-minute limit (HTTP 429); the free allowance is shared with production rain | Infrastructure | 🟡 (research runs paced and sized; production unaffected) |
+| KI-263 | Pins upstream of Bangkok (focus provinces Ayutthaya–Nakhon Sawan) used the polder rules: a pin 0.1 km from LBI001 (over bank) said "no gauge close enough" | UX / Product | 🟢 fixed v0.18.9 (polder rules only in กทม.+ปริมณฑล) |
+| KI-262 | GISTDA echoes the caller's API key inside every response's `links` URLs | Security | 🟡 (strip `links` before storing or logging; no collector stores them yet) |
 | KI-261 | v0.18.0 plain line called a gauge 6 km away "คลองแถวนี้" ("น้ำใกล้เต็มตลิ่ง") under the headline "ไม่มีสถานีวัดน้ำใกล้พอ ยังสรุประดับคลองไม่ได้"; the AI reworded the mistake | UX / AI | 🟢 fixed v0.18.1 (far gauge named with its distance; check C12) |
 | KI-260 | ai.run returned GLM's *reasoning* as the answer when the content was cut off; glm-5.3-flash took 9–10 s per call | AI | 🟢 fixed v0.18.0 (`reasoning_effort: "low"`, content only) |
 | KI-259 | "ใน 24 ชม." / "ใน 48 ชม." on forecast rows was not read as the future | UX | 🟢 fixed v0.17.2 ("อีก N ชม."; tests/test_wording.py) |
@@ -513,6 +517,7 @@ The file builds its ingestion on `api2.thaiwater.net` (no DNS; refuted since 202
 ### KI-509 — A GloFAS point query can land on a side cell · 🟡
 On 2026-09-27 the Open-Meteo Flood API at Nong Khai (17.88, 102.74) returned **1–3 m³/s**; the cell at 17.925, 102.725, about 5 km away, returned **≈ 9,000 m³/s** — the Mekong. At Hat Yai a point gave 0.1–1.3 m³/s. A virtual gauge taken at the user's pin can therefore be off by three orders of magnitude.
 - **Rule (APPROACH §19.5):** snap each virtual gauge once to the highest-discharge cell within ~5 km of the reach, store it, compare only with that cell's own climatology, and show categories only.
+- **2026-10-02 (lower Chao Phraya, [research](../research/2026-10-02_glofas_outlook.md)):** C.2 (Nakhon Sawan) answered 1.1 m³/s at its own point. "Largest flow within ±0.1°" over-snaps: it lands on the window corner, below a confluence (C.35 at 3.4× measured); prefer the cell closest to measured flow where a discharge gauge exists, else the nearest cell with ≥ half the largest flow.
 
 ### KI-510 — GISTDA answered 404, while the status script said ✅ · 🟢 fixed 2026-09-27
 `GET …/api/2.0/resources/gi-service/v1.0/disasters/flood-extent-1day?…&api_key=…` returned **404 `{"detail":"Service not found"}`**. `scripts/owner_status.py` had reported ✅ because it only checked that `GISTDA_API_KEY` existed.
@@ -660,3 +665,16 @@ Found 2026-10-02 in the AI-assistance probe: glm-5.3-flash always reasons (API c
 
 ### KI-261 — The plain line called a far gauge "แถวนี้" · 🟢 fixed v0.18.1
 Owner, 2026-10-02 (Ko Kret pin, screenshot): headline "ไม่มีสถานีวัดน้ำใกล้พอ ยังสรุประดับคลองไม่ได้", plain line "คลองแถวนี้น้ำใกล้เต็มตลิ่ง แต่ยังบอกไม่ได้ว่าน้ำจะขึ้นหรือลง", and the AI summary "น้ำในคลองแถวนี้ตอนนี้ใกล้จะเต็มตลิ่งแล้ว". My template used the status of the only gauge (6 km away, flagged far) as the state of "คลองแถวนี้"; the AI faithfully reworded it. Owner also: the summary said little although the panel has many numbers. Fix: "แถวนี้" only when the panel's gauges are close and agree; otherwise "สถานีที่ใกล้ที่สุดอยู่ห่าง 6 กม. น้ำที่นั่นต่ำกว่าตลิ่ง 33 ซม. และยังบอกไม่ได้ว่าน้ำจะขึ้นหรือลง"; answers became rule lines that tell the story with the numbers (D-068). Guards: `tests/test_explain.py::test_a_far_gauge_is_never_described_as_here`, checker rule "far gauge called 'here'", UI check C12.
+
+### KI-262 — GISTDA echoes the caller's API key in its responses · 🟡
+Found 2026-10-02 (satellite research): every `features/flood/*` response carries `links` (`self`, `alternate`, `next`) whose URLs contain `api_key=<our key>`, although the key was sent in the `API-Key` header (checked by comparison, without printing). Anything that stores, logs or forwards a raw GISTDA response would leak the key. **Rule:** drop `links` on arrival (the research script does; `owner_status.py` already masks the key). No collector stores GISTDA responses yet; a future one must strip `links` before the raw archive. The key was shown once in a private terminal session on the server (not in any file or commit); rotating it at GISTDA is optional.
+
+### KI-263 — Pins upstream of Bangkok used the polder rules · 🟢 fixed v0.18.9
+Owner, 2026-10-02 (pin 14.4268, 100.5553, screenshot): "The point is next to station บางปะหัน LBI001, but showed no near station!!" The pin mode (D-059/D-064) was "bkk" whenever the nearest gauge was a focus gauge, and the focus area reaches Nakhon Sawan. In that mode a river gauge never judges the "canals", so LBI001 — 0.1 km away, 63 cm over its bank, forecast to rise — became a side line ("ไม่ใช่ระดับน้ำในคลอง") under "ไม่มีสถานีวัดน้ำใกล้พอ", and the plain line spoke of a canal gauge 7.9 km away. **Fix:** the polder rules apply where the nearest gauge is in กทม. or ปริมณฑล (`point.POLDER_REGIONS`); elsewhere, including Ayutthaya to Nakhon Sawan, the nearest river or stream gauge is the local evidence. Live after the fix: "ระดับน้ำในแม่น้ำล้นตลิ่ง/วิกฤต", "แม่น้ำแถวนี้ล้นตลิ่งแล้ว …". Tests: `test_a_river_gauge_upstream_of_bangkok_is_the_local_evidence`, `test_a_metro_river_gauge_still_never_judges_the_canals`.
+
+### KI-264 — A research run hit Open-Meteo's rate limit; the allowance is shared · 🟡
+2026-10-02 ~20:17 UTC: the first GloFAS snapping run asked for 49 points × 1 year per request; Open-Meteo weights a request by locations × two-week chunks (~1,300 calls each) and answered HTTP 429 after 6 gauges. It was the per-minute limit (both APIs answered again within minutes) and the production rain collectors succeeded at 20:47 UTC, but the free non-commercial allowance (KI-106) is shared by everything on this server. **Rule:** research runs fetch a year only for the one cell they need, pause ≥ 10 s between requests, and stay ≲ 1,000 weighted calls per day.
+
+### KI-265 — The top strip's rain took too much space and read as "Bangkok only" · 🟢 fixed v0.18.9
+Owner, 2026-10-02 (screenshot): "Review the topbar of UI, it used too much space again!! and it showed specifically for Bangkok, for what?" v0.17.1 had given the strip the pin panel's rain rows (title + row + past line = 3–4 lines). The block followed the region chip in the list (default กทม.), far below the strip, so it read as Bangkok-only. Owner chose **"Only when heavy"**: no rain line unless the chosen region expects or measured heavy rain (TMD ≥ 35.1 mm), then one line ("🌧️ <region>: อีก 24 ชม. ฝนหนัก ราว 48 มม. · …"). Everyday rain stays where it is about a place (pin panel, station sheet). Live check C9/C11 follow the new rule.
+

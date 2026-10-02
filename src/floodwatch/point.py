@@ -62,14 +62,21 @@ def water_body(s: dict) -> str:
     return "river" if water_word(s) in ("แม่น้ำ", "ลำน้ำ") else "khlong"
 
 
+POLDER_REGIONS = ("bkk", "metro")  # Bangkok + its five neighbours: the polder system with canal gauges (regions.py)
+
+
 def pin_mode(lat: float, lon: float, stations: list[dict]) -> str:
-    """"bkk" where the nearest gauge is a Bangkok-area (focus) gauge: polder walls split river from canals, so a river
-    gauge never judges the canals (D-059). "national" elsewhere (D-064): no polder walls, the nearest river or stream
-    gauge is the local evidence. A station without the flag counts as focus (the app was Bangkok-only before)."""
+    """"bkk" where the nearest gauge is in Bangkok or its five neighbours: polder walls split river from canals, so a
+    river gauge never judges the canals (D-059). "national" elsewhere (D-064), including the focus provinces upstream
+    (Ayutthaya to Nakhon Sawan, region "up"): the nearest river or stream gauge is the local evidence (owner
+    2026-10-02: a pin 0.1 km from LBI001 บางปะหัน said "no gauge close enough"). Without a region the focus flag
+    decides, and a station without either counts as Bangkok (the app was Bangkok-only before)."""
     placed = [x for x in stations if x.get("lat") is not None and x.get("lon") is not None]
     if not placed:
         return "bkk"
     nearest = min(placed, key=lambda x: haversine_km(lat, lon, x["lat"], x["lon"]))
+    if nearest.get("region"):
+        return "bkk" if nearest["region"] in POLDER_REGIONS else "national"
     return "bkk" if nearest.get("in_focus", True) else "national"
 
 

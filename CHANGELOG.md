@@ -2,6 +2,24 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.18.9 — 2026-10-02
+- **Pins upstream of Bangkok use the river next to them (owner: "The point is next to station บางปะหัน LBI001, but
+  showed no near station!!"; KI-263, D-070).** The Bangkok polder rules (a river gauge never judges the canals) were
+  applied in every focus province up to Nakhon Sawan. Now they apply only where the nearest gauge is in กทม. or
+  ปริมณฑล; at Bang Pahan the panel now says "ระดับน้ำในแม่น้ำล้นตลิ่ง/วิกฤต" from LBI001, 0.1 km away.
+- **The top strip shows rain only when it is heavy (owner: "it used too much space again!! … specifically for Bangkok,
+  for what?" → chose "Only when heavy"; KI-265).** No rain line unless the chosen region expects or measured heavy
+  rain (TMD ≥ 35.1 mm), then one line. Everyday rain stays in the pin panel and station sheets.
+- **New sources researched (D-069), research only, nothing new on the site:** Copernicus GFM satellite flood maps
+  (keyless; blind on 61–71 % of Bangkok's land, 6 passes in 30 days; agrees with GISTDA on 89 % of cells); GloFAS
+  for a 3–7 day outlook (no gain at any of 12 main-river gauges, even with perfect future discharge — stopped);
+  Google WeatherNext 3 (terms read: its real-time rain is never shown or served; backtest script ready, waiting
+  for the BigQuery subscription). [research](research/2026-10-02_satellite_flood.md),
+  [GloFAS](research/2026-10-02_glofas_outlook.md).
+- **Plumbing:** `.env` keys for GFM, WeatherNext (service account in `certs/`), EWDS; worker-only; `owner_status.py`
+  checks each (GFM ✅, EWDS ✅, WNEXT waiting for the listing). `floodwatch.gcp`: Google service-account login with
+  the standard library + openssl. GISTDA echoes our key in `links` (KI-262) — stripped in research code.
+
 ## v0.18.8 — 2026-10-02 (v0.18.0–v0.18.7 were live steps of the same work)
 - **"? ไม่แน่ชัด" now says what is possible (owner: "we can't say just no trend in everytime, user expected to hear
   what can be possible even in the far station" → chose "possible change + bank risk").** The plain line, the story and

@@ -15,6 +15,9 @@
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
 | **GISTDA** | GISTDA key works for the flood-extent service | ✅ **works** (2026-09-27 10:05 UTC): the key was fine; our endpoint path and key placement were outdated (KI-510). Fixed from the docs link you sent | |
 | **GFLOOD** | Google Flood Forecasting API key (`GOOGLE_FLOOD_API_KEY`) | ⬜ open — you chose to apply (2026-09-27) | 2 |
+| **WNEXT** | WeatherNext 3: Cloud project + BigQuery listing + read-only service-account key (research only, D-069) | ⬜ **one step left** (2026-10-02 21:00 UTC): key and `.env` work (token ✅; path fixed to `/certs/…`), but the project has no dataset → **subscribe to the WeatherNext 3 listing** (step 2 below, linked dataset `weathernext_3`) | 1 |
+| **GFM** | GFM portal login in `.env` (optional: the maps are keyless) | ✅ **works** (2026-10-02 20:45 UTC, HTTP 200 + token) | |
+| **EWDS** | EWDS token for archived GloFAS forecasts | ✅ **works** (HTTP 200), but **not needed now**: GloFAS failed its upper-bound test (D-069) | |
 | **EGRESS** | A reliable Thai egress before any public national view (DWR, RID answer only from Thailand, KI-110) | ⬜ open — needed before national goes public (D-046) | 3 |
 | **Q3+** | Courtesy/permission emails to HII, DWR, RID (drafts below) | ⬜ open — **more urgent since v0.16.0 (2026-09-30): every HII/RID/EGAT/พพภ. gauge is now public with forecasts (D-064, owner: "go public, send notes in parallel")**; HII first (we fetch a year per gauge, 733 requests once, then ~120 a day) | 2 |
 | Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
@@ -51,6 +54,22 @@
 ### Priority 2 · Google Flood Forecasting API (Flood Hub) — you chose to apply
 **Why:** Google's AI river forecasts and flood status cover Thai rivers, including places without HII gauges; they are a benchmark and a virtual-gauge source (research §6.1). **Evidence (2026-09-27):** the API answers **403** without a key.
 **Steps:** 1. Apply for access via the Flood Forecasting API page linked from `sites.research.google/floods` (Google reviews pilot requests; describe a volunteer, non-commercial Thai flood-information site). 2. When accepted: Google Cloud Console → a project → enable the Flood Forecasting API → **Credentials → API key**, restricted to that API. 3. Put it in `.env` as `GOOGLE_FLOOD_API_KEY=`. **Verify:** the GFLOOD row in `owner_status.py` turns ✅ (one tiny request, key never printed). Nothing uses it until a decision on how to show it.
+
+### WNEXT — Google WeatherNext 3 through BigQuery (accepted 2026-10-02; research only, D-069)
+**Why:** DeepMind's hourly AI rain forecasts (64 members, 5–10 km) might beat our Open-Meteo rain in the 48 h model. **Terms (read 2026-10-02, PDF of 3 Sep 2026):** data ≥ 1 h old is CC BY 4.0 (fine for a backtest); now/future rain may **not** be shown or served, even recoloured or cropped; a forecast built on it must carry Google's "experimental … not approved for real world use" notice, and the terms exclude Japan, South Korea and Indonesia. So: backtest first, nothing public (D-069).
+**Steps (about 15 min, no billing needed — the BigQuery sandbox gives 1 TB of queries per month):**
+1. Sign in at **console.cloud.google.com** with the e-mail Google accepted → **Create project** (e.g. `floodwatch-research`). The same project can later hold the Flood Hub key (GFLOOD).
+2. **BigQuery → Analytics Hub** (or *Sharing*) → search **WeatherNext 3** → **Subscribe** → pick the project; note the **linked dataset** name it creates.
+3. **IAM & Admin → Service accounts → Create**, e.g. `floodwatch-reader`; roles **BigQuery Job User** and **BigQuery Data Viewer**. Then **Keys → Add key → JSON** (downloads one file).
+4. Copy the file to the server as `/root/flood2026/certs/weathernext-reader.json` (`certs/` is git-ignored; `chmod 600`). Never paste it in chat.
+5. In `.env`: `GOOGLE_APPLICATION_CREDENTIALS=/certs/weathernext-reader.json`, `WEATHERNEXT_PROJECT=<project id>`, `WEATHERNEXT_DATASET=<linked dataset>`.
+**Status 2026-10-02 21:00 UTC:** steps 1, 3, 4, 5 done (the `.env` path was `flood2026/certs/…`, relative to `/root`; the agent changed it to the container path `/certs/…`). Token ✅; listing the dataset → **404, the project has no datasets**: step 2 (Subscribe) is still to do, naming the linked dataset `weathernext_3`. **Verify:** `python3 scripts/owner_status.py` → **WNEXT ✅** (lists the WeatherNext tables, prints nothing secret). Then the agent runs `research/2026-10-02_weathernext_rain.py schema` and `run`. ⚠️ Not yet seen: whether a service account of your project may read the listing (Google allow-listed your e-mail). If WNEXT stays ⬜ with HTTP 403, add the service-account e-mail via the WeatherNext request form or tell the agent.
+
+### GFM — Copernicus Global Flood Monitoring account (2026-10-02; optional)
+**Why:** the satellite flood maps are readable **without** an account (keyless STAC, verified 2026-10-02); the account adds the `api.gfm.eodc.eu/v2` API (areas of interest, product lists, e-mail alerts). **Steps:** put your portal login in `.env` as `GFM_EMAIL=` and `GFM_PASSWORD=` (you registered with e-mail + password). **Verify:** `owner_status.py` → **GFM ✅** (HTTP 200, token received).
+
+### EWDS — archived GloFAS forecasts for the 3–7 day outlook backtest (2026-10-02; optional)
+**Why:** Open-Meteo serves GloFAS reanalysis and today's forecast, not forecasts as issued; an honest outlook backtest needs the archive (`cems-glofas-forecast`, 2019-11 → yesterday, checked 2026-10-02). **Steps:** 1. Register at **ewds.climate.copernicus.eu** (ECMWF account). 2. Open the dataset *River discharge and related forecasted data by the Global Flood Awareness System* → **Download** tab → accept the **CEMS-FLOODS** licence. 3. Profile → copy the **API token** → `.env` `EWDS_API_KEY=`. **Verify:** `owner_status.py` → **EWDS ✅** (HTTP 200). Only worth it if the upper-bound test says GloFAS can help ([research](../research/2026-10-02_glofas_outlook.md)).
 
 ### Before national goes public · EGRESS and agency notes (D-046)
 **Thai egress:** DWR EWS (2,275 village stations) and RID Telerid (921) time out from Germany and answer only via the public VPN Gate relay, which is flaky and untrusted (KI-505). For a public service you need something stable: a small Thai VPS or a proxy on a machine in Thailand you control, used only for public pages (D-014). Tell the agent the proxy URL key name in `.env` (e.g. `THAI_EGRESS_PROXY`).

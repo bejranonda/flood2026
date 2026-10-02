@@ -360,8 +360,6 @@ a { color: var(--accent); }
 .nowrap { white-space: nowrap; }
 .warn-line { color: #92400e; }
 /* v0.17.1: rain in the water rows' layout (rainRows), in the panel and under the summary's rain caption */
-.sumrain .sumline { margin-bottom: 0; }
-.sumrain .tr-rows, .sumrain .pf-obs { margin-left: 22px; }
 /* v0.18.x: the AI story card (D-068) */
 .ask-lines p { font-size: 14.5px; line-height: 1.55; color: #1f2937; margin: 0 0 3px; }
 .ask-gist { font-size: 14px; line-height: 1.55; margin-top: 6px !important; padding-top: 6px; border-top: 1px dashed #ddd6fe; }
