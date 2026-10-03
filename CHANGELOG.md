@@ -16,6 +16,16 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
   - **The graph draws both, labelled (owner's choice):** the model's line and bands as before, plus the measured trend
     as an orange dashed line with points at exactly the rows' +12/+24/+48 h values; the legend and each row's ⓘ name it.
   - Live check **C15**: every trend-based row has its orange point with the same cm, and no point without a row.
+- **River tab: every gauge of a picked province (owner: "You can show in river tab, even this province has only one
+  station … is it the expectation from visitors?").** ชลบุรี showed "ทุกสาย (0)" and a pointer elsewhere; 13 provinces
+  showed nothing and 426 of 840 non-BMA gauges never appeared in the tab (< 3 gauges per waterway). Now a section
+  "〰️ ลำน้ำอื่นใน<จังหวัด>" lists them below the river views, grouped by waterway ("ไม่ระบุชื่อลำน้ำ" for 111 without a
+  name), with the same bar, value and 24 h row; the picker counts them. River views keep the 3-gauge rule (1–2 gauges
+  have no upstream/downstream). BMA canals stay in รายการ (D-074).
+- **Thin provinces say so (owner: "Yes, one line").** With a province of ≤ 2 gauges picked, the shared where-row adds
+  "จังหวัดนี้มีสถานีวัดระดับน้ำเพียง N แห่ง ⓘ". Checked first: we already carry all 808 gauges of HII's national feed
+  (0 missing, 77 provinces); ภูเก็ต, ชลบุรี, หนองคาย and บึงกาฬ have one gauge there too — a gap of the network, not of
+  the app. Other networks were tested (DWR EWS, RID Telerid, HII's BMA canal feed): see KNOWLEDGE and KNOWN_ISSUES.
 - **Behind the scenes for the next release (D-077):** forecast runs store the 48 h bank-chance band; station rows carry
   `bank_chance24/48`; the forecaster computes daily track records (`risk_record`: may reach bank 6 in 10 / 1 in 10,
   upstream 6 in 10, fast rise 7 in 10). Nothing new is shown yet.

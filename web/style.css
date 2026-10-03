@@ -394,3 +394,8 @@ a { color: var(--accent); }
 .ai-btn { font: inherit; font-size: 14px; font-weight: 600; margin: 4px 0 8px; padding: 7px 14px; border-radius: 999px;
   border: 1px solid #c4b5fd; background: #faf5ff; color: #5b21b6; cursor: pointer; min-height: 36px; }
 .ai-btn[aria-expanded="true"] { background: #6d28d9; border-color: #6d28d9; color: #fff; }
+
+/* v0.20.7: thin-province line; other waterways of a province in the river tab */
+.thin { margin: 4px 2px 0; font-size: 13px; }
+.rv-oth { margin-top: 14px; }
+.rv-oth-h { font-weight: 600; font-size: 14px; margin: 10px 2px 2px; color: #374151; }

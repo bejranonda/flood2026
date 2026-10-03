@@ -325,8 +325,12 @@ function whereRow() {
   const provs = [...pc.keys()].sort((a, b) => a.localeCompare(b, "th"));
   return `<div class="where">
     <select class="pick-region" aria-label="ภาค">${regs.map((k) => `<option value="${esc(k)}"${k === region ? " selected" : ""}>${esc(REGIONS[k].th)} (${inReg(k).length})</option>`).join("")}</select>
-    <select class="pick-prov" aria-label="จังหวัด"><option value="">ทุกจังหวัด (${inReg(region).length})</option>${provs.map((p) => `<option value="${esc(p)}"${p === prov ? " selected" : ""}>${esc(p)} (${pc.get(p)})</option>`).join("")}</select></div>`;
+    <select class="pick-prov" aria-label="จังหวัด"><option value="">ทุกจังหวัด (${inReg(region).length})</option>${provs.map((p) => `<option value="${esc(p)}"${p === prov ? " selected" : ""}>${esc(p)} (${pc.get(p)})</option>`).join("")}</select></div>${
+    // 1-2 gauges is a gap of the national network (HII's feed has no more, 2026-10-03), said once, not hidden
+    prov && (pc.get(prov) || 0) <= THIN_MAX ? `<p class="thin muted">จังหวัดนี้มีสถานีวัดระดับน้ำเพียง ${pc.get(prov) || 0} แห่ง ${infoBtn(THIN_TIP, "ทำไมมีสถานีน้อย")}</p>` : ""}`;
 }
+const THIN_MAX = 2;
+const THIN_TIP = "หน่วยงานรัฐ (สสน. กรมชลประทาน กฟผ.) มีสถานีวัดระดับน้ำในจังหวัดนี้น้อย แอปแสดงครบทุกสถานีที่เปิดเผยแล้ว · แตะจุดบนแผนที่เพื่อดูฝนคาดการณ์และสิ่งที่ดาวเทียมเห็นรอบจุดนั้น";
 document.addEventListener("change", (e) => {
   if (e.target.matches(".pick-region")) setRegion(e.target.value);
   else if (e.target.matches(".pick-prov")) setProv(e.target.value);
@@ -554,25 +558,24 @@ async function renderRiver() {
     if (!riverPicked || !shown.some((r) => r.river === river)) river = "";
     const d = river ? await getJSON(`/api/profile?river=${encodeURIComponent(river)}`) : { stations: [] };
     const byBank = riverList.find((r) => r.river === river)?.has_km === false;
+    const nOther = prov ? new Set(stations.filter((s) => s.province === prov && s.agency !== "BMA" && !hasRiverView(s)).map((s) => s.river || "")).size : 0;
     const tip = !river ? "ทุกสายในภาคที่เลือก: นับสถานีที่ล้นตลิ่ง ใกล้ตลิ่ง และที่คาดว่าจะเพิ่มขึ้นหรือลดลงในอีก 24 ชม. (เฉพาะสถานีที่ทดสอบย้อนหลังผ่าน) · แตะชื่อแม่น้ำเพื่อดูทั้งสาย"
       : `ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง) · แถบ = ความลึกน้ำเทียบตลิ่ง · เรียงจากต้นน้ำ (บน) ไปปลายน้ำ (ล่าง) ${byBank
       ? "ตามความสูงของตลิ่ง (สายนี้ไม่มีแนวลำน้ำในแผนที่ของ สสน.)" : "ตามแนวลำน้ำในแผนที่ของ สสน."} · "อีก 24 ชม." แสดงเฉพาะสถานีที่ทดสอบย้อนหลังผ่าน · ค่าระหว่างสถานีไม่ได้ประมาณ · สถานีของ กทม. ดูได้ในรายการและแผนที่`;
     const pick = `${whereRow()}<div class="rv-pick">
-      <select id="rv-river" aria-label="แม่น้ำ"><option value=""${river ? "" : " selected"}>ทุกสาย (${shown.length})</option>${shown.map((r) => `<option value="${esc(r.river)}"${r.river === river ? " selected" : ""}>${esc(r.river)} (${r.n})</option>`).join("")}</select>
+      <select id="rv-river" aria-label="แม่น้ำ"><option value=""${river ? "" : " selected"}>ทุกสาย (${shown.length + nOther})</option>${shown.map((r) => `<option value="${esc(r.river)}"${r.river === river ? " selected" : ""}>${esc(r.river)} (${r.n})</option>`).join("")}</select>
       ${infoBtn(tip, "วิธีอ่านมุมมองแม่น้ำ")}</div>`;
     // upstream at the top: the water flows down the screen (owner 2026-10-03); the API lists upstream first
-    const rows = d.stations.map((s) => {
-      const st = stOf(s), old = s.stale || s.status === "unknown";
-      const pct = old || s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
-      const val = old ? `<span class="pval muted">ไม่อัปเดต</span>`
-        : `<span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span>`;
-      return `<div class="prow${prov && s.province === prov ? " here" : ""}${s.code === rvFocus ? " focus" : ""}" data-code="${esc(s.code)}" role="button" tabindex="0">
-        <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}</small></span>
-        <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${old ? "#d1d5db" : st.color}"></span></span>
-        ${val}${old ? "" : `<div class="pfc">${trendRows(s, [24])}</div>`}</div>`;
-    }).join("");
+    const rows = d.stations.map(prowHTML).join("");
+    // a picked province also lists its gauges outside a full river view (< 3 gauges per waterway), grouped by waterway
+    // (owner 2026-10-03, ชลบุรี "ทุกสาย (0)": 13 provinces showed nothing). Not ordered: 1-2 gauges have no up/down.
+    const others = !river && prov ? stations.filter((s) => s.province === prov && s.agency !== "BMA" && !hasRiverView(s)) : [];
+    const groups = new Map();
+    others.forEach((s) => { const k = s.river || "ไม่ระบุชื่อลำน้ำ"; groups.set(k, [...(groups.get(k) || []), s]); });
+    const otherHTML = groups.size ? `<div class="rv-oth"><div class="pf-h">〰️ ลำน้ำอื่นใน${esc(prov)} ${infoBtn("ลำน้ำที่มีสถานีวัดน้อยกว่า 3 แห่ง จึงเรียงจากต้นน้ำไปปลายน้ำไม่ได้ · แสดงทุกสถานีของจังหวัดนี้ เรียงตามชื่อลำน้ำ", "ลำน้ำอื่น")}</div>
+      ${[...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], "th")).map(([k, v]) => `<div class="rv-oth-h">${esc(k)}</div>${v.map(prowHTML).join("")}`).join("")}</div>` : "";
     box.innerHTML = river ? `${pick}<div class="rv-end">↑ ต้นน้ำ</div>${rows}<div class="rv-end">↓ ปลายน้ำ</div>`
-      : `${pick}${shown.length ? riverOverview(shown) : `<p class="muted">ไม่มีแม่น้ำที่มีสถานีวัด 3 แห่งขึ้นไปใน${esc(prov || REGIONS[region].th)} · ดูสถานีในแท็บรายการ</p>`}`;
+      : `${pick}${shown.length ? riverOverview(shown) : groups.size ? "" : `<p class="muted">ไม่มีสถานีวัดระดับน้ำของ สสน. กรมชลประทาน หรือ กฟผ. ใน${esc(prov || REGIONS[region].th)} · ดูสถานีของ กทม. ในแท็บรายการ</p>`}${otherHTML}`;
     box.querySelectorAll(".rv-sum").forEach((el) => {
       const open = () => { river = el.dataset.river; riverPicked = true; rvFocus = null; renderRiver().then(scrollRiver); };
       el.addEventListener("click", open);
@@ -586,6 +589,16 @@ async function renderRiver() {
   } catch (e) {
     box.innerHTML = `<p>โหลดข้อมูลไม่สำเร็จ (${esc(e.message)})</p>`;
   }
+}
+function prowHTML(s) {
+  const st = stOf(s), old = s.stale || s.status === "unknown";
+  const pct = old || s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
+  const val = old ? `<span class="pval muted">ไม่อัปเดต</span>`
+    : `<span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span>`;
+  return `<div class="prow${prov && s.province === prov ? " here" : ""}${s.code === rvFocus ? " focus" : ""}" data-code="${esc(s.code)}" role="button" tabindex="0">
+    <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}</small></span>
+    <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${old ? "#d1d5db" : st.color}"></span></span>
+    ${val}${old ? "" : `<div class="pfc">${trendRows(s, [24])}</div>`}</div>`;
 }
 // after a river tag or with a province: show the station (or the province's first gauge), not the top of the river
 function scrollRiver() {

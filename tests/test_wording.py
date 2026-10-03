@@ -120,3 +120,17 @@ def test_the_chart_draws_the_measured_trend_the_rows_print():
     assert "chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl, trendPts(s))" in APP
     legend = APP.split('class="legend-body">')[1][:400]
     assert "ตามแนวโน้มที่วัดได้" in legend and "แบบจำลอง" in legend
+
+
+def test_river_tab_shows_every_gauge_of_a_picked_province():
+    # owner 2026-10-03 (ชลบุรี, 1 gauge: "ทุกสาย (0)" and a pointer elsewhere): 13 provinces showed nothing. Gauges
+    # outside a full river view (< 3 gauges per waterway) are listed below it, grouped by waterway, one line each.
+    river = APP.split("async function renderRiver()")[1].split("function scrollRiver()")[0]
+    assert "ลำน้ำอื่นใน" in river and "prowHTML(" in river and "ไม่ระบุชื่อลำน้ำ" in river
+    assert "function prowHTML(s)" in APP
+
+
+def test_a_thin_province_says_so_in_the_shared_where_row():
+    # owner chose "Yes, one line": 1-2 gauges in a province is a gap of the national network, not of the app
+    where = APP.split("function whereRow()")[1].split("document.addEventListener")[0]
+    assert "สถานีวัดระดับน้ำเพียง" in where and "THIN_MAX" in where
