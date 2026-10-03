@@ -185,6 +185,44 @@ def satellite_seen(lat: float, lon: float, cells: list[dict]) -> dict | None:
             "source": "GISTDA"}
 
 
+SAT_NEAR_KM = 5.0
+SAT_NEAR_MIN_RAI = 100  # below this the station sheet says nothing (spec 2026-10-03 §4)
+
+
+def sat_summary(cells: list[dict], gauges: list[dict], km: float = SAT_NEAR_KM) -> dict:
+    """Satellite-flooded rai per gauge (within `km`, only >= SAT_NEAR_MIN_RAI) and per province, computed once per
+    GISTDA download (D-078). A 0.1° bucket index keeps 72k cells x 1k gauges to seconds."""
+    grid: dict = {}
+    prov: dict = {}
+    dates = []
+    for c in cells:
+        grid.setdefault((round(c["lat"] * 10), round(c["lon"] * 10)), []).append(c)
+        if c.get("province"):
+            prov[c["province"]] = prov.get(c["province"], 0.0) + (c.get("area_m2") or 0)
+        dates += [d for d in (c.get("img_from"), c.get("img_to")) if d is not None]
+    near = {}
+    for g in gauges:
+        if g.get("lat") is None or g.get("lon") is None:
+            continue
+        bi, bj = round(g["lat"] * 10), round(g["lon"] * 10)
+        a = sum(c.get("area_m2") or 0 for i in (-1, 0, 1) for j in (-1, 0, 1) for c in grid.get((bi + i, bj + j), [])
+                if haversine_km(g["lat"], g["lon"], c["lat"], c["lon"]) <= km)
+        if a / RAI_M2 >= SAT_NEAR_MIN_RAI:
+            near[g["code"]] = int(round(a / RAI_M2))
+    return {"near": near, "province": {p: int(round(a / RAI_M2)) for p, a in prov.items()},
+            "img_from": min(dates).isoformat() if dates else None, "img_to": max(dates).isoformat() if dates else None}
+
+
+def sat_grid(cells: list[dict], g: float) -> list[list]:
+    """Observed cells merged into g-degree squares [centre lat, centre lon, rai]: drawn as squares, never as an
+    interpolated water surface (D-019)."""
+    acc: dict = {}
+    for c in cells:
+        k = (int(c["lat"] // g), int(c["lon"] // g))
+        acc[k] = acc.get(k, 0.0) + (c.get("area_m2") or 0)
+    return [[round((i + 0.5) * g, 4), round((j + 0.5) * g, 4), int(round(a / RAI_M2))] for (i, j), a in acc.items()]
+
+
 def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedback_depths: dict[str, int],
            rain_next24_mm: float | None, rain_measured: dict | None = None) -> dict:
     listed = []

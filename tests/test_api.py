@@ -316,3 +316,8 @@ def test_station_row_carries_the_24_and_48_h_bank_chances():
     r = api._station_row(row)
     assert r["bank_chance24"] == "25-50%" and r["bank_chance48"] == ">50%"
     assert api._station_row({**row, "obs_time": now - dt.timedelta(days=3)})["bank_chance24"] is None  # unknown: none
+
+
+def test_sat_grid_size_coarsens_when_zoomed_out():
+    from floodwatch.api import sat_grid_size
+    assert sat_grid_size(6) == 0.02 and sat_grid_size(9) == 0.005 and sat_grid_size(12) == 0.002

@@ -684,7 +684,23 @@ def gistda_flood(pause_s: float = 2.0) -> dt.datetime | None:
         c.commit()
     if go:
         log.info("gistda_flood: %d flooded cells (layer %s, %s cells)", len(rows), probe["stamp"], probe["matched"])
+    with db.connect() as c:
+        if go or db.get_state(c, "sat_summary") is None:
+            sat_summary_refresh(c)
     return st.get("fetched")
+
+
+def sat_summary_refresh(c) -> dict:
+    """Satellite rai per gauge and per province from the current sat_flood (the sheet line and the จับตา group, D-078)."""
+    from floodwatch import point
+    cells = c.execute("SELECT lat, lon, area_m2, province, img_from, img_to FROM sat_flood").fetchall()
+    gauges = c.execute("SELECT code, lat, lon FROM station WHERE lat IS NOT NULL").fetchall()
+    summ = point.sat_summary(cells, gauges)
+    db.set_state(c, "sat_summary", summ)
+    c.commit()
+    log.info("sat_summary: %d gauges with >= %d rai within %.0f km, %d provinces", len(summ["near"]),
+             point.SAT_NEAR_MIN_RAI, point.SAT_NEAR_KM, len(summ["province"]))
+    return summ
 
 
 def run(source: str) -> None:

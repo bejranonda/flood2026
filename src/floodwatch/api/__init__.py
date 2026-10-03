@@ -380,6 +380,9 @@ def _stations_data(scope: str) -> dict:
     tw = _twins()
     items = [{**_station_row(r), "twin": tw.get(r["code"])} for r in rows]  # all stations; bad values filtered per station
     street_counts(items, reps)
+    near = _sat_summary().get("near") or {}
+    for s in items:  # rai the satellite saw flooded within 5 km (D-078; seen only, never "not flooded")
+        s["sat_near_rai"] = near.get(s["code"])
     return {"generated": dt.datetime.now(dt.timezone.utc).isoformat(), "stations": items,
             "street_source": {"name": "Traffy Fondue", "hours": STREET_HOURS, "km": STREET_KM,
                               "last_update_age_min": tage}}
@@ -401,6 +404,7 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
     srow = {**_station_row(rows[0]), "twin": _twins().get(code)}
     street_counts([srow], reps)
     srow["street_source_age_min"] = tage
+    srow["sat_near_rai"] = (_sat_summary().get("near") or {}).get(code)  # same as the list row (D-078)
     if code in DATUM_SUSPECT:  # KI-210: the station is shown, its non-MSL values are not
         obs, fc = [], None
     elif {"erratic", "stuck"} & set(srow["notes"]):  # KI-237/241: the measured chart shows why; a forecast would mislead
@@ -501,6 +505,34 @@ def _fine_ids() -> set[str]:
             return {r["point"] for r in c.execute(
                 "SELECT DISTINCT point FROM weather_forecast WHERE left(point, 2) = 'f_' AND issue_time > now() - interval '3 hours'").fetchall()}
     return _memo(("fine_ids",), build, ttl=600)
+
+
+def sat_grid_size(z: int) -> float:
+    """Grid of the satellite layer by map zoom: ~2 km squares on a country view, ~200 m in a town."""
+    return 0.02 if z < 9 else 0.005 if z < 11 else 0.002
+
+
+def _sat_summary() -> dict:
+    def build():
+        with db.connect() as c:
+            return db.get_state(c, "sat_summary") or {}
+    return _memo(("sat_summary",), build, ttl=600)
+
+
+@app.get("/api/satellite")
+def satellite(bbox: str = Query(..., pattern=r"^-?[\d.]+,-?[\d.]+,-?[\d.]+,-?[\d.]+$"), z: int = Query(8, ge=3, le=19)):
+    """Satellite-flooded cells (GISTDA 7-day layer) in a box, merged into squares for the map toggle (D-078)."""
+    w, s_, e, n = map(float, bbox.split(","))
+    g = sat_grid_size(z)
+    with db.connect() as c:
+        cells = c.execute("SELECT lat, lon, area_m2 FROM sat_flood WHERE lat BETWEEN %s AND %s AND lon BETWEEN %s AND %s",
+                          (s_, n, w, e)).fetchall()
+    out = point.sat_grid(cells, g)
+    while len(out) > 5000:  # a country view: coarser squares until a phone can draw them
+        g *= 2
+        out = point.sat_grid(cells, g)
+    sm = _sat_summary()
+    return _json({"g": g, "cells": out, "img_from": sm.get("img_from"), "img_to": sm.get("img_to"), "source": "GISTDA"})
 
 
 @app.get("/api/dwr")

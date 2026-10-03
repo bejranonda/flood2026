@@ -454,3 +454,22 @@ def test_satellite_seen_is_none_when_nothing_was_seen_within_1_km():
 def test_satellite_seen_at_the_pin_says_zero_distance():
     s = point.satellite_seen(14.4268, 100.5553, [_cell(14.4269, 100.5554)])
     assert s["nearest_m"] == 0
+
+
+# --- v0.21.0 (D-078): satellite per gauge and province, and as a merged map grid -------------------------------------
+def test_sat_summary_near_gauges_and_per_province():
+    import datetime as dt
+    d0, d1 = dt.date(2026, 9, 28), dt.date(2026, 10, 2)
+    cells = [{"lat": 15.70, "lon": 100.10, "area_m2": 160000.0, "province": "นครสวรรค์", "img_from": d0, "img_to": d1}] * 2 \
+        + [{"lat": 16.50, "lon": 100.30, "area_m2": 1600.0, "province": "พิจิตร", "img_from": d0, "img_to": d1}]
+    gauges = [{"code": "N", "lat": 15.72, "lon": 100.10}, {"code": "P", "lat": 16.50, "lon": 100.30}, {"code": "F", "lat": 14.0, "lon": 100.0}]
+    out = point.sat_summary(cells, gauges)
+    assert out["near"] == {"N": 200}  # P sees 1 rai: below 100, not listed; F nothing
+    assert out["province"] == {"นครสวรรค์": 200, "พิจิตร": 1}
+    assert (out["img_from"], out["img_to"]) == ("2026-09-28", "2026-10-02")
+
+
+def test_sat_grid_merges_cells_into_squares():
+    cells = [{"lat": 15.701, "lon": 100.101, "area_m2": 1600.0}, {"lat": 15.709, "lon": 100.109, "area_m2": 3200.0},
+             {"lat": 15.75, "lon": 100.15, "area_m2": 1600.0}]
+    assert sorted(point.sat_grid(cells, 0.02)) == [[15.71, 100.11, 3], [15.75, 100.15, 1]]
