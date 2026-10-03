@@ -96,6 +96,7 @@ SELECT s.code, s.in_focus, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.gro
        f.payload->'path'->47->'q' AS q48,
        f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'skill'->'48' AS sk48,
        f.payload->'outlook24' AS outlook24,
+       f.payload->'outlook48' AS outlook48,
        p.prev_time, p.prev_level,
        (SELECT value->s.code FROM collector_state WHERE key='erratic_gauges') AS erratic,
        (SELECT value->s.code FROM collector_state WHERE key='observed24') AS observed24
@@ -328,6 +329,9 @@ def _station_row(r: dict) -> dict:
         "freeboard_m": None if (r["level_msl"] is None or r["bank_msl"] is None) else round(r["bank_msl"] - r["level_msl"], 2),
         "trend12": r["trend12"], "delta12_median": r["delta12"], "recovery": r["recovery"],
         **_change_fields(r, status),
+        # chance bands of reaching the bank (forecast.bank_chance): the จับตา tab lists the upper two (D-077)
+        "bank_chance24": None if status == "unknown" else (r.get("outlook24") or {}).get("bank_chance"),
+        "bank_chance48": None if status == "unknown" else (r.get("outlook48") or {}).get("bank_chance"),
         "forecast_time": _iso(r["forecast_time"]), "notes": notes,
         "coord_precision_km": r.get("coord_precision_km"),
         # When our record of this gauge begins. New gauges (e.g. BMA since 2026-09-26) have no chart or forecast yet;

@@ -390,6 +390,7 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
             "delta12_median": None if med12 is None else round(med12 - y0, 3), "path": path,
             "skill": {str(h): v for h, v in ev.items()}, "history_hours": int(np.isfinite(y).sum()),
             "tide_fitted": eta is not None, "outlook24": outlook24(path, bank),
+            "outlook48": {"bank_chance": bank_chance(path, bank, 48)},
             "recovery": recovery(y, ybar, y0, bank, path, rain_next24)}
 
 
@@ -408,10 +409,20 @@ def outlook24(path: list[dict], bank: float | None) -> dict | None:
     out = {"peak_h": int(peak["h"]), "peak_q": [float(v) for v in peak["q"]],
            "varies": bool(tidal and max(meds) - min(meds) > 0.05)}
     if bank is not None:
-        top = lambda k: max(p["q"][k] for p in qs)
-        out["bank_chance"] = (">50%" if top(2) >= bank else "25-50%" if top(3) >= bank
-                              else "5-25%" if top(4) >= bank else "<5%")
+        out["bank_chance"] = bank_chance(path, bank, 24)
     return out
+
+
+def bank_chance(path: list[dict], bank: float | None, hours: int) -> str | None:
+    """Coarse chance that the level reaches the bank within `hours` (max over horizons of the 50/75/95 % quantiles).
+    It ranks gauges well but is ~3x too high in the middle bands (25-50 % came true 12 % of the time, 2026-10-03,
+    research/2026-10-03_verify_bank.py), so the UI shows the measured track record (risks.compute_records), never
+    this band as a percent (D-077)."""
+    qs = [p for p in path[:hours] if p.get("q")]
+    if bank is None or not qs:
+        return None
+    top = lambda k: max(p["q"][k] for p in qs)
+    return ">50%" if top(2) >= bank else "25-50%" if top(3) >= bank else "5-25%" if top(4) >= bank else "<5%"
 
 
 WIDE_LIKELY_M = 0.75       # a likely (50 %) range wider than this says nothing useful to a resident; hide the numbers

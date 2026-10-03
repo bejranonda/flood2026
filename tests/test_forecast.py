@@ -243,3 +243,12 @@ def test_star_takes_extra_known_at_issue_columns_and_is_unchanged_without_them()
     more = forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 12, {**ex, "extra": [extra]})
     assert more.shape[1] == base.shape[1] + 1 and np.allclose(more[:, -1], extra)
     assert np.allclose(base, forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 12, {**ex, "extra": []}), equal_nan=True)
+
+
+# --- v0.21.0 (D-077): the จับตา tab needs the bank chance over 24 h and 48 h --------------------------------------
+def test_bank_chance_bands_over_a_window():
+    from floodwatch.forecast import bank_chance
+    path = [{"h": h, "q": [1.0, 1.1, 1.2, 1.3, 1.4 + (0.5 if h == 40 else 0)], "method": "star"} for h in range(1, 49)]
+    assert bank_chance(path, 1.25, 24) == "25-50%"
+    assert bank_chance(path, 1.85, 24) == "<5%" and bank_chance(path, 1.85, 48) == "5-25%"
+    assert bank_chance(path, 1.15, 48) == ">50%" and bank_chance(path, None, 24) is None

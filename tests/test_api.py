@@ -320,3 +320,16 @@ def test_explain_rejects_unknown_questions():
     from fastapi import HTTPException
     with pytest.raises(HTTPException):
         api.explain_point(13.75, 100.66, "weather")
+
+
+def test_station_row_carries_the_24_and_48_h_bank_chances():
+    # v0.21.0 (D-077): the จับตา tab lists gauges that may reach the bank, from the stored forecast's bands
+    now = dt.datetime.now(dt.timezone.utc)
+    row = {"code": "X1", "name_th": "x", "name_en": None, "lat": 15.0, "lon": 100.0, "bank_msl": 2.0, "ground_msl": None,
+           "agency": "RID", "province": "ชัยนาท", "amphoe": None, "river": None, "level_msl": 1.0, "discharge": None,
+           "situation_level": None, "obs_time": now, "trend12": None, "delta12": None, "recovery": None,
+           "forecast_time": None, "coord_source": None, "coord_precision_km": None,
+           "outlook24": {"bank_chance": "25-50%"}, "outlook48": {"bank_chance": ">50%"}}
+    r = api._station_row(row)
+    assert r["bank_chance24"] == "25-50%" and r["bank_chance48"] == ">50%"
+    assert api._station_row({**row, "obs_time": now - dt.timedelta(days=3)})["bank_chance24"] is None  # unknown: none
