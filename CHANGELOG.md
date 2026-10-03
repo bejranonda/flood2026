@@ -2,6 +2,20 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.20.1 — 2026-10-03
+- **แม่น้ำ tab for people all over Thailand (owner, screenshot: "visitors can be people around Thailand — They might
+  not found their river there … search their position by ภาค … add tag แม่น้ำ to each station … Is necessary to show
+  ระยะห่างจากปลายน้ำ?" → chose all four, "one line: Province & river", upstream at the top; D-074, KI-267).**
+  - Rivers with ≥ 3 gauges (was 8): ~62 waterways instead of 15. Natural waterways only — Bangkok-region canals are
+    pumped and gated (no upstream), but outside the polders a "คลอง" is often a river (คลองอู่ตะเภา, คลองจันทบุรี) and
+    is kept. Without an HII river line, gauges are ordered by bank height (said in "อ่านกราฟนี้").
+  - One line of two pickers, "จังหวัด ▾ · แม่น้ำ ▾", instead of three rows of chips; picking a province shows its
+    rivers and marks its gauges.
+  - Upstream at the top: the water flows down the screen ("↑ ต้นน้ำ … ↓ ปลายน้ำ").
+  - No "ราว N กม. จากปลายน้ำ" in the rows (one line shorter each).
+  - A river tag on every gauge that has a view: "· 〰️ แม่น้ำน่าน" in the list, "〰️ ดูแม่น้ำน่านทั้งสาย ›" in the
+    station sheet — it opens the river at that gauge.
+
 ## v0.20.0 — 2026-10-03
 - **"〰️ แม่น้ำ" replaces the เจ้าพระยา tab, with forecasts (owner: "Should we adapt tab เจ้าพระยา? because we extended
   to nationwide already. Will users expect to see forecasting additionally under this tab too?" → chose "แม่น้ำ tab +

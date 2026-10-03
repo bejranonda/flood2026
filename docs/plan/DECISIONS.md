@@ -572,6 +572,12 @@
   - New `.env` keys (empty in git): `GFM_EMAIL`, `GFM_PASSWORD`, `GOOGLE_APPLICATION_CREDENTIALS`, `WEATHERNEXT_PROJECT`, `WEATHERNEXT_DATASET`, `EWDS_API_KEY` — worker only, never the web app; `owner_status.py` checks each with one request and prints no value.
 - **Revisit:** satellite UI if users outside Bangkok ask what the fields look like; WeatherNext after its backtest (owner step WNEXT: subscribe to the listing).
 
+### D-074 — River views for every natural waterway with ≥ 3 gauges; pickers, upstream on top, river tags (amends D-072)
+- **Date:** 2026-10-03 · **Status:** accepted (owner's four points, all agreed by me except "tag instead" → tag *and* view; owner: "Yes all four, but one line : Province & river", "Upstream at the top")
+- **Evidence (2026-10-03):** 826 non-BMA gauges with coordinates; waterways with ≥ 8 gauges held 240 (29 %); ≥ 3 gauges on natural waterways: 49 named rivers (367 gauges, 30 with an HII line) plus natural "คลอง" outside กทม./ปริมณฑล. 218 waterways have a single gauge (no chain to show).
+- **Decision:** `rivers.MIN_GAUGES = 3`; `rivers.has_view`: natural waterway names (point.water_body), or a "คลอง" whose gauges are mostly outside กทม./ปริมณฑล; no HII line → order by bank height (`up`), no km. UI: two native pickers on one line (province filters rivers; province gauges marked), upstream first, no km text, river tag on list rows and sheets that opens the river at that gauge. The region chip still picks the default river when no province is chosen.
+- **My view recorded:** a tag alone would lose the only place the flood wave along a river is visible (2026-10-03: rising Chai Nat → Ayutthaya, falling at Nakhon Sawan), so the tag leads into the view rather than replacing it.
+
 ### D-073 — The name stays "BKK FloodWatch"; every description says nationwide
 - **Date:** 2026-10-03 · **Status:** accepted (owner: "Think about rebrand from BKK flood watch to nationwide, please suggest and validate" → I recommended ริมตลิ่ง · Rim Taling; owner: "But it sounds not international?" → "Keep old name, and adapt the description everywhere for nationwide, please suggest and validate")
 - **Validated names (2026-10-03, web search):** taken or confusable — เช็คน้ำ (GISTDA's app), checknam.com, Water Watch (CIPAT), ThaiWater (HII, official), Tuammai/ท่วมไหม, NamWatch (a Bangkok volunteer flood map with HII + Traffy), "Flood Watch Thailand" (GitHub project), "Taling" (Korean learning startup); free — ริมตลิ่ง. Freeboard: a technical term and a dashboard tool.

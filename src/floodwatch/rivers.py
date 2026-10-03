@@ -125,26 +125,43 @@ def chainage(feature: dict, gauges: list[dict]) -> dict:
             best = (score, start, dist)
     score, start, dist = best
     return {"mouth": list(nodes[start]), "agree": round(score, 3),
-            "stations": {c: {"km": round(dist[k], 1), "off_km": round(off, 2)} for c, (k, off, _) in near.items() if k in dist}}
+            "stations": {c: {"km": round(dist[k], 1), "up": round(dist[k], 1), "off_km": round(off, 2)}
+                         for c, (k, off, _) in near.items() if k in dist}}
 
 
 def order(stations: list[dict], km: dict[str, dict]) -> list[dict]:
     """The profile's stations with a river km, upstream first (as /api/profile always returned them)."""
-    return sorted((s for s in stations if s["code"] in km), key=lambda s: -km[s["code"]]["km"])
+    up = lambda v: v["up"] if v.get("up") is not None else (v.get("km") or 0.0)  # km-only entries (stored before v0.20.1)
+    return sorted((s for s in stations if s["code"] in km), key=lambda s: -up(km[s["code"]]))
 
 
-MIN_GAUGES = 8  # a river gets a profile with this many gauges with a bank (2026-10-03: 15 rivers)
+MIN_GAUGES = 3  # a chain needs three gauges (2026-10-03: 8 left out three quarters of the gauges; 3 gives ~62 waterways)
+POLDER_REGIONS = ("bkk", "metro")  # canals here are pumped and gated: no upstream/downstream (point.POLDER_REGIONS, D-070)
+
+
+def has_view(river: str, gauges: list[dict]) -> bool:
+    """A natural waterway gets a river view; Bangkok-region canals do not. Outside the polders "คลอง" often names a
+    natural river (คลองอู่ตะเภา, คลองจันทบุรี), so a canal is excluded only when most of its gauges are in กทม./ปริมณฑล."""
+    from floodwatch import point, regions
+    if point.water_body({"river": river, "code": gauges[0].get("code", "")}) == "river":
+        return True
+    regs = [regions.region_of(g.get("province")) for g in gauges]
+    if not any(regs):  # where it is unknown it may be a polder canal: no view (คลองหกวา, 2026-10-03)
+        return False
+    return sum(r in POLDER_REGIONS for r in regs) * 2 < len(gauges)
 
 
 def profile(rows: list[dict], river: str, km: dict[str, dict]) -> list[dict]:
-    """The "แม่น้ำ" tab for one river: its gauges with a river km, upstream first, each with `chainage_km`. BMA gauges
-    never join an HII/RID river chain (levels differ 0.3-0.6 m, KI-217); they stay in the list and the map."""
+    """The "แม่น้ำ" tab for one river: its gauges upstream first, each with `chainage_km` (None without an HII line).
+    BMA gauges never join an HII/RID river chain (levels differ 0.3-0.6 m, KI-217); they stay in the list and the map."""
     mine = [r for r in rows if r.get("river") == river and r.get("agency") != "BMA"]
-    return [{**s, "chainage_km": km[s["code"]]["km"]} for s in order(mine, km)]
+    return [{**s, "chainage_km": km[s["code"]].get("km")} for s in order(mine, km)]
 
 
 def river_km(features: list[dict], stations: list[dict], min_gauges: int = MIN_GAUGES) -> dict:
-    """{river: chainage(...)} for every named river with >= min_gauges non-BMA gauges with a bank (weekly, hii_geo)."""
+    """{river: {"mouth", "agree", "stations": {code: {"km", "up"}}}} for every waterway with a view (has_view) and >=
+    min_gauges non-BMA gauges with a bank (weekly, hii_geo). With an HII line: km along it (chainage). Without one: the
+    order of the banks (they rise upstream on 73-100 % of gauge pairs where both are known, 2026-10-03), no km."""
     lines: dict[str, list] = {}
     for f in features:
         g = f.get("geometry") or {}
@@ -154,5 +171,13 @@ def river_km(features: list[dict], stations: list[dict], min_gauges: int = MIN_G
     for s in stations:
         if s.get("river") and s.get("agency") != "BMA" and s.get("bank_msl") is not None:
             by.setdefault(s["river"], []).append(s)
-    return {r: chainage({"geometry": {"type": "MultiLineString", "coordinates": lines[r]}}, gs)
-            for r, gs in by.items() if len(gs) >= min_gauges and lines.get(r)}
+    out = {}
+    for r, gs in by.items():
+        if len(gs) < min_gauges or not has_view(r, gs):
+            continue
+        if lines.get(r):
+            out[r] = chainage({"geometry": {"type": "MultiLineString", "coordinates": lines[r]}}, gs)
+        else:
+            out[r] = {"mouth": None, "agree": None,
+                      "stations": {g["code"]: {"km": None, "up": float(g["bank_msl"])} for g in gs}}
+    return out

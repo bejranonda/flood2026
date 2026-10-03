@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-267 | แม่น้ำ tab: 15 rivers only (29 % of gauges), three rows of chips on a phone, river km jargon in every row, no way from a station to its river | UX | 🟢 fixed v0.20.1 (D-074) |
 | KI-266 | River profile mixed a BMA gauge into the HII/RID Chao Phraya chain and placed it by latitude between the Bang Yo gates | Data quality / UI | 🟢 fixed v0.20.0 (BMA out; km for every river) |
 | KI-265 | Top strip: the region's rain took 3–4 lines (v0.17.1 rows layout) and read as "Bangkok only" (it followed the region chip far below) | UI | 🟢 fixed v0.18.9 (shown only for heavy rain, one line) |
 | KI-264 | A research run (49 points × 1 year) hit Open-Meteo's per-minute limit (HTTP 429); the free allowance is shared with production rain | Infrastructure | 🟡 (research runs paced and sized; production unaffected) |
@@ -681,4 +682,7 @@ Owner, 2026-10-02 (screenshot): "Review the topbar of UI, it used too much space
 
 ### KI-266 — The river profile mixed agencies and mis-ordered a gauge · 🟢 fixed v0.20.0
 Found 2026-10-03 validating the เจ้าพระยา tab for the owner (screenshot): ส.ปากคลองตลาด (WL.PKG.01) is a BMA gauge (levels differ from HII's by 0.3–0.6 m, KI-217); it had no river km, so `/api/profile` fell back to latitude × 100 and the tab showed it between ปตร. คลองลัดบางยอ 2 (22 km) and 1 (35 km), with a grey bar of −103 cm. **Fix:** `rivers.profile` keeps BMA gauges out of HII/RID river chains (they stay in the list and on the map) and orders every gauge by its river km. Live check C14.
+
+### KI-267 — The แม่น้ำ tab was hard to use outside the big rivers · 🟢 fixed v0.20.1
+Owner, 2026-10-03 (screenshot of v0.20.0): "visitors can be people around Thailand — They might not found their river there (not all are there); They might search their position by ภาค …; you might add tag แม่น้ำ to each station instead; Is necessary to show: ระยะห่างจากปลายน้ำ". All valid: my v0.20.0 showed 15 rivers (≥ 8 gauges, 29 % of gauges) as 15 chips in three rows before any data (the same "too much space" mistake as KI-265), printed "ราว N กม. จากปลายน้ำ" (jargon carried over from the Chao Phraya tab) and offered no way from a gauge to its river. Fixed by D-074; live check C14 now walks every river in the picker and taps a river tag. Found while validating the fix: the weekly job's query lacked `province`, so the polder-canal rule let คลองหกวา (Pathum Thani) through; the query now includes it, and a คลอง whose province is unknown gets no view (test `test_a_khlong_whose_provinces_are_unknown_gets_no_river_view`). Live after the fix: 62 waterways, about 414 gauges, 65 provinces.
 

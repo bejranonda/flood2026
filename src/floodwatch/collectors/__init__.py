@@ -500,7 +500,7 @@ def hii_geo() -> dt.datetime | None:
         db.set_state(c, "geo_rivers", r)  # river lines for the upstream rule and later views
         # river km of every gauge on rivers with >= 8 gauges, for the "แม่น้ำ" tab (2026-10-03; Ping ~6 s, all ~10 s)
         from floodwatch import rivers
-        gauges = c.execute("""SELECT code, lat, lon, bank_msl, river, agency FROM station
+        gauges = c.execute("""SELECT code, lat, lon, bank_msl, river, agency, province FROM station
                               WHERE lat IS NOT NULL AND code !~ '^TEST'""").fetchall()
         db.set_state(c, "river_km", rivers.river_km(r.get("features") or [], gauges))
         c.commit()

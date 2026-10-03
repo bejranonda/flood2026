@@ -242,30 +242,39 @@ with sync_playwright() as p:
         dirs = [(ui_dir(c), c.get("basis") == "measured_trend") for c in chs if ui_dir(c)]
         if {"rising", "falling"} <= {d for d, _ in dirs} and any(m for _, m in dirs):
             note("C10", f"rows {code}", f"measured trend opposes a model direction: {dirs}")
-    # C14 (v0.20.0, D-072): the "แม่น้ำ" tab — every river loads, downstream first, no BMA gauge in an HII/RID chain
-    # (KI-217), a 24 h row for every fresh gauge with a forecast, stale gauges say "ไม่อัปเดต"
+    # C14 (v0.20.0 D-072, v0.20.1 D-074): the "แม่น้ำ" tab — every river in the picker loads, upstream first as the API
+    # orders it, no BMA gauge in an HII/RID chain (KI-217), a 24 h row for every fresh gauge with a forecast, stale
+    # gauges say "ไม่อัปเดต", no river km in the rows; a station's river tag opens its river
     open_home(pg)
-    pg.locator('.tabs [data-tab=river]').click(); pg.wait_for_selector("#view-river .rchip[data-river]", timeout=30000)
-    for rv in pg.evaluate("() => [...document.querySelectorAll('#view-river .rchip[data-river]')].map(b => b.dataset.river)"):
-        pg.locator(f'#view-river .rchip[data-river="{rv}"]').click(); pg.wait_for_timeout(900)
+    pg.locator('.tabs [data-tab=river]').click(); pg.wait_for_selector("#view-river #rv-river", timeout=30000)
+    for rv in pg.evaluate("() => [...document.querySelectorAll('#rv-river option')].map(o => o.value)"):
+        pg.select_option("#rv-river", rv); pg.wait_for_timeout(700)
         prof = json.loads(pg.evaluate("async (r) => JSON.stringify(await (await fetch('/api/profile?river=' + encodeURIComponent(r))).json())", rv))
         byc = {x["code"]: x for x in prof["stations"]}
         shown = pg.evaluate("() => [...document.querySelectorAll('#view-river .prow')].map(r => ({code: r.dataset.code, text: r.innerText, fc: !!r.querySelector('.pfc .chg')}))")
         counts["river_rows"] = counts.get("river_rows", 0) + len(shown)
+        counts["rivers"] = counts.get("rivers", 0) + 1
         if not shown:
             note("C14", rv, "no rows"); continue
-        kms = [byc[x["code"]]["chainage_km"] for x in shown if x["code"] in byc]
-        if kms != sorted(kms):
-            note("C14", rv, "rows not ordered from the downstream end")
+        if [x["code"] for x in shown] != [x["code"] for x in prof["stations"]]:
+            note("C14", rv, "rows not in the API's upstream-first order")
         for x in shown:
             st = byc.get(x["code"]) or {}
             if st.get("agency") == "BMA":
-                note("C14", f"{rv} {x['code']}", "BMA gauge in a river profile")
+                note("C14", f"{rv} {x['code']}", "BMA gauge in a river view")
             old = st.get("stale") or st.get("status") == "unknown"
             if old and "ไม่อัปเดต" not in x["text"]:
                 note("C14", f"{rv} {x['code']}", "stale gauge shows a value")
             if not old and st.get("change24") and not x["fc"]:
-                note("C14", f"{rv} {x['code']}", "forecast missing in the profile row")
+                note("C14", f"{rv} {x['code']}", "forecast missing in the river row")
+            if "จากปลายน้ำ" in x["text"]:
+                note("C14", f"{rv} {x['code']}", "river km still in the row")
+    for code in [x["code"] for x in prof["stations"]][:2] if prof.get("stations") else []:
+        rv = prof["river"]
+        pg.goto(f"{URL}#s={code}", wait_until="domcontentloaded"); pg.wait_for_selector("#detail .rv-tag", timeout=30000)
+        pg.locator("#detail .rv-tag").click(); pg.wait_for_selector("#view-river .prow", timeout=30000); pg.wait_for_timeout(800)
+        if pg.evaluate("() => document.querySelector('#rv-river')?.value") != rv or not pg.locator(f'#view-river .prow.focus[data-code="{code}"]').count():
+            note("C14", f"tag {code}", "river tag did not open its river at the station")
     # C9: the summary rain line of every region chip = /api/rain by_region (TMD word of the wettest forecast point)
     open_home(pg)
     rainreg = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/rain')).json()).by_region)"))

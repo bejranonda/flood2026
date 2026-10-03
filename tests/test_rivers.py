@@ -37,10 +37,10 @@ def test_pieces_of_a_river_are_joined_and_far_gauges_are_left_out():
     assert "FAR" not in out["stations"]
 
 
-def test_order_keeps_gauges_without_km_out_of_the_profile():
+def test_order_keeps_gauges_without_a_place_out_of_the_profile():
     st = [{"code": "A", "river": "แม่น้ำX"}, {"code": "B", "river": "แม่น้ำX"}, {"code": "Z", "river": "แม่น้ำX"}]
-    km = {"A": {"km": 10.0}, "B": {"km": 50.0}}
-    assert [s["code"] for s in rivers.order(st, km)] == ["B", "A"]  # upstream first, as the profile API always was
+    km = {"A": {"km": 10.0, "up": 10.0}, "B": {"km": 50.0, "up": 50.0}}
+    assert [s["code"] for s in rivers.order(st, km)] == ["B", "A"]  # upstream first (owner 2026-10-03: upstream at the top)
 
 
 def test_pieces_with_a_gap_of_a_few_km_are_still_joined():
@@ -56,6 +56,35 @@ def test_profile_keeps_one_river_without_bma_gauges_and_carries_their_km():
     # and, without a river km, was placed by latitude between the Bang Yo gates
     rows = [{"code": "C.12", "river": "แม่น้ำเจ้าพระยา", "agency": "RID"}, {"code": "WL.PKG.01", "river": "แม่น้ำเจ้าพระยา", "agency": "BMA"},
             {"code": "CPY015", "river": "แม่น้ำเจ้าพระยา", "agency": "HII"}, {"code": "P.1", "river": "แม่น้ำปิง", "agency": "RID"}]
-    km = {"C.12": {"km": 57.4}, "CPY015": {"km": 42.0}, "WL.PKG.01": {"km": 45.0}}
+    km = {"C.12": {"km": 57.4, "up": 57.4}, "CPY015": {"km": 42.0, "up": 42.0}, "WL.PKG.01": {"km": 45.0, "up": 45.0}}
     out = rivers.profile(rows, "แม่น้ำเจ้าพระยา", km)
     assert [s["code"] for s in out] == ["C.12", "CPY015"] and out[0]["chainage_km"] == 57.4
+
+
+
+# --- v0.20.1 (owner 2026-10-03: "They might not found their river there (not all are there)") ------------------------
+def _g(code, lat, bank, river, province="น่าน", agency="RID"):
+    return {"code": code, "lat": lat, "lon": 100.0, "bank_msl": bank, "river": river, "province": province, "agency": agency}
+
+
+def test_rivers_with_three_gauges_get_a_view_and_without_a_line_are_ordered_by_bank():
+    st = [_g("A", 18.0, 300.0, "น้ำแม่ลาว"), _g("B", 18.5, 420.0, "น้ำแม่ลาว"), _g("C", 18.2, 350.0, "น้ำแม่ลาว"),
+          _g("X", 18.0, 10.0, "น้ำสองสาย"), _g("Y", 18.1, 12.0, "น้ำสองสาย")]  # two gauges: no river view
+    out = rivers.river_km([], st)
+    assert set(out) == {"น้ำแม่ลาว"} and out["น้ำแม่ลาว"]["mouth"] is None
+    km = out["น้ำแม่ลาว"]["stations"]
+    assert [c for c, _ in sorted(km.items(), key=lambda x: -x[1]["up"])] == ["B", "C", "A"] and km["A"]["km"] is None
+
+
+def test_polder_canals_get_no_river_view_but_natural_khlongs_do():
+    # Bangkok-region canals are pumped and gated (no upstream); in the south "คลอง" names natural rivers (Hat Yai)
+    polder = [_g(f"K{i}", 13.9, 1.0 + i, "คลองหกวา", province="ปทุมธานี") for i in range(3)]
+    south = [_g(f"U{i}", 6.9 + i / 10, 5.0 + 3 * i, "คลองอู่ตะเภา", province="สงขลา") for i in range(3)]
+    out = rivers.river_km([], polder + south)
+    assert "คลองอู่ตะเภา" in out and "คลองหกวา" not in out
+
+
+def test_a_khlong_whose_provinces_are_unknown_gets_no_river_view():
+    # 2026-10-03 live: the collector's query lacked `province`, so คลองหกวา (Pathum Thani polder) got a view
+    unknown = [{**_g(f"K{i}", 13.9, 1.0 + i, "คลองหกวา"), "province": None} for i in range(3)]
+    assert rivers.river_km([], unknown) == {}

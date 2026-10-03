@@ -63,3 +63,13 @@ def test_the_satellite_factor_says_only_what_was_seen():
     body = APP[APP.index("const satDates"):APP.index("const panel")]
     assert "d.satellite" in body and "ดาวเทียมเห็นน้ำท่วม" in body and "ไม่ท่วม" not in body
     assert "ไม่เห็นไม่ได้แปลว่าไม่มีน้ำท่วม" in body and "GISTDA" in body
+
+
+def test_river_view_is_one_line_of_pickers_without_river_km_and_stations_carry_a_river_tag():
+    # owner 2026-10-03 (screenshot of the แม่น้ำ tab): chips took three rows; "Is necessary to show: ระยะห่างจากปลายน้ำ?";
+    # "add tag แม่น้ำ to each station" → one line "Province & river", no km, tag on list rows and sheets; upstream on top
+    body = APP[APP.index("async function renderRiver"):APP.index("function scrollRiver")]
+    assert 'id="rv-prov"' in body and 'id="rv-river"' in body and "rchip" not in body
+    assert "จากปลายน้ำ" not in body and "chainage_km" not in body
+    assert "↑ ต้นน้ำ" in body and body.index("↑ ต้นน้ำ") < body.index("↓ ปลายน้ำ")
+    assert "${riverTag(s)}" in APP and "hasRiverView(s) ?" in APP

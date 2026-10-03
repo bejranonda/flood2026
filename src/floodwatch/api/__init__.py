@@ -641,14 +641,15 @@ def _river_km() -> dict:
             row = c.execute("SELECT value FROM collector_state WHERE key='river_km'").fetchone()
         v = (row or {}).get("value") or {}
         if "แม่น้ำเจ้าพระยา" not in v and CHAINAGE:
-            v = {**v, "แม่น้ำเจ้าพระยา": {"stations": {k: {"km": x["chainage_km"]} for k, x in CHAINAGE.items()}}}
+            v = {**v, "แม่น้ำเจ้าพระยา": {"stations": {k: {"km": x["chainage_km"], "up": x["chainage_km"]} for k, x in CHAINAGE.items()}}}
         _RIVER_KM.update(t=time.time(), v=v)
     return _RIVER_KM["v"]
 
 
 @app.get("/api/rivers")
 def rivers_list():
-    """Rivers with a profile (>= 8 gauges with a bank, D-072): name, gauges on it, the region most of them are in."""
+    """Rivers with a view (>= 3 gauges with a bank on a natural waterway, D-072/D-074): name, gauges, the region most of
+    them are in, the provinces they are in (the tab's province picker), whether km along an HII line exists."""
     kms = _river_km()
     rows = _station_rows(True)
     out = []
@@ -656,8 +657,9 @@ def rivers_list():
         codes = set(d.get("stations") or {})
         regs = Counter(regions.region_of(r.get("province")) for r in rows if r["code"] in codes)
         regs.pop(None, None)
+        provs = sorted({r["province"] for r in rows if r["code"] in codes and r.get("province")})
         out.append({"river": name, "n": len(codes), "region": regs.most_common(1)[0][0] if regs else None,
-                    "agree": d.get("agree")})
+                    "provinces": provs, "has_km": d.get("mouth") is not None, "agree": d.get("agree")})
     out.sort(key=lambda x: (x["river"] != "แม่น้ำเจ้าพระยา", -x["n"]))
     return _json({"rivers": out}, cache=True)
 
