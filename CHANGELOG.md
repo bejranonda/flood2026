@@ -8,7 +8,8 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
   (23,650 → 30,700 → 88,200 cells while we watched), with a new Sentinel-1 pass of 2 Oct, while our 20-hour rule kept the
   morning copy (images 27–29 Sep) until ~02:30 UTC. Now a 1-cell probe every hour reads the rebuild stamp and count;
   the ~300 MB download runs only for a new stamp whose count stood still for an hour (never a half-built layer), and a
-  copy older than 36 h is refreshed anyway.
+  copy older than 36 h is refreshed anyway. Confirmed the same evening: GISTDA rebuilt again at 17:24–17:27 UTC; the
+  probes waited, then the steady layer came in at 17:49 UTC — 72,008 cells, images 28 Sep – 2 Oct (was 27–29 Sep).
 
 ## v0.20.4 — 2026-10-03
 - **One "where" row for both tabs: ภาค ▾ · จังหวัด ▾ (owner: "Suggest, if the users like to see stations in their

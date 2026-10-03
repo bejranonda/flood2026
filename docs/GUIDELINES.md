@@ -126,6 +126,7 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
 - **Licensing:** Open-Meteo and FABDEM are non-commercial; a paid plan is needed if the app is monetised ([KI-106](KNOWN_ISSUES.md)).
 - **Attribution** on every screen. Relayed data names both the owner and the relay (BMA via flood69, D-031).
 - **Never mix levels across agencies** (KI-217): a BMA level and an HII level at the same place can differ by 0.3–0.6 m. Compare each gauge only with its own bank; combine agencies only as status ranks. Never use BMA `warning`/`critical` as a bank (KI-215).
+- **Never assume a source's schedule (KI-268):** a layer "rebuilt daily" was rebuilt at different hours, several times a day, cell by cell. Probe a cheap stamp/count and download a finished new version; never on a fixed timer alone.
 - **Shared free allowances (KI-264):** research calls to Open-Meteo share the server's free non-commercial allowance with production rain. Size them (a year only for the cell you need), pause ≥ 10 s between requests, stay ≲ 1,000 weighted calls a day, and check `source_health` for `openmeteo*` after a heavy run.
 - **Keys echoed by sources (KI-262):** some APIs return the caller's key inside response URLs (GISTDA `links`). Strip such fields before storing, logging or printing a response.
 - **Experimental data with restrictive terms (D-069):** WeatherNext real-time rain is never shown or served by our API; past data (≥ 1 h old, CC BY 4.0) may be used for backtests in the worker only. Read a dataset's terms before the first call, and record what may and may not be published.
@@ -199,6 +200,13 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **One direction story per gauge (KI-256).** A heuristic row (measured trend) never contradicts a direction the backtested model proved at another horizon; differing model horizons are allowed (tides, rain arriving later).
 - **A filter never hides places the user can pan to (KI-253).** The map shows every gauge; region chips filter the list and counts and move the map. Every chip must be visible at 390 px without scrolling.
 - **Nationwide parity (D-064):** one set of panels and rules for every gauge. Words come from data, never from guesses: the water word from the agency's river name (`water_word`), agency names in Thai (`AGENCY_TH`). Bangkok-only cautions (polders, drainage, BMA pumping) are said only where the nearest gauge is a Bangkok-area gauge (`pin_mode`). Never promise a date for a forecast; say what must happen first (history, backtest).
+
+### 6a. Lessons from the 2026-10-02/03 UI rounds (KI-265, KI-267, D-074–D-076)
+- **A list that can grow is a native picker on one line, not chips** (15 river chips filled three phone rows; region chips four). Counts go inside the options ("ภาคเหนือ (173)").
+- **Copying a layout for "consistency" is not consistency.** Reuse words and rules; fit the layout to the space (the 3-row rain block in the top strip, KI-265).
+- **Use the names people use** (ภาคกลาง, กทม. และปริมณฑล — not "เหนือ กทม."), and no technical numbers residents do not use (river km).
+- **One "where" for the whole app:** region and province are one shared state across tabs; changing it anywhere changes it everywhere.
+- **When a consistency check disagrees with the app, read both:** C14 flagged 14 rivers because the check missed "⬆"; the investigation still found a real gap (strong rises hidden in the overview).
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
