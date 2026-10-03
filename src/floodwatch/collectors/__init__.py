@@ -630,8 +630,17 @@ def gistda_decide(state: dict, probe: dict, now: dt.datetime) -> tuple[bool, dic
     steady = state.get("seen") == probe
     fetched = state.get("fetched")
     old = fetched is None or (now - fetched).total_seconds() >= GISTDA_MAX_AGE_H * 3600
-    go = steady and (probe.get("stamp") != state.get("have") or old)
+    # an empty layer is a rebuild in progress, never a finished one (19:44 UTC: 0 features for over an hour replaced
+    # our 72,008 cells with nothing, KI-269)
+    filled = bool(probe.get("stamp")) and (probe.get("matched") or 0) > 0
+    go = steady and filled and (probe.get("stamp") != state.get("have") or old)
     return go, {**state, "seen": probe}
+
+
+def gistda_complete(n_rows: int, matched: int) -> bool:
+    """A download replaces our copy only when it holds (nearly) every cell the layer announced: the layer can change
+    while we page through it (rebuilt cell by cell, KI-268), and an empty or half page set must never win (KI-269)."""
+    return n_rows > 0 and matched > 0 and n_rows >= 0.95 * matched
 
 
 def _gistda_get(query: str) -> dict:
@@ -671,7 +680,11 @@ def gistda_flood(pause_s: float = 2.0) -> dt.datetime | None:
                 break
             off += GISTDA_PAGE
             time.sleep(pause_s)
-        st.update(have=probe["stamp"], fetched=now)
+        if gistda_complete(len(rows), probe["matched"]):
+            st.update(have=probe["stamp"], fetched=now)
+        else:  # the next hourly probe tries again; our copy stays
+            log.warning("gistda_flood: download incomplete (%d of %d cells): our copy is kept", len(rows), probe["matched"])
+            go = False
     with db.connect() as c, c.cursor() as cur:
         if go:
             cur.execute("DELETE FROM sat_flood")

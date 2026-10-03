@@ -99,3 +99,16 @@ def test_risk_record_runs_daily_in_the_forecaster_after_the_forecast():
 def test_dwr_posts_are_archived_every_30_min_in_the_forecaster():
     # one 3 MB request through the Thai egress takes ~45 s: never in the 10-min collector loop
     assert dict(worker.FORECASTER_TASKS)["dwr_ews"] == 1800 and "dwr_ews" in worker.FIRST_RUN["forecaster"]
+
+
+def test_an_empty_or_incomplete_gistda_layer_never_replaces_our_copy():
+    # 2026-10-03 19:44 UTC: GISTDA emptied its layer before a rebuild (0 features, no stamp) for over an hour; the
+    # "steady for an hour" rule read that as a finished layer and replaced our 72,008 cells with nothing.
+    import datetime as dt
+    from floodwatch import collectors as C
+    now = dt.datetime(2026, 10, 3, 19, 44, tzinfo=dt.timezone.utc)
+    st = {"have": "2026-10-03T17", "fetched": now - dt.timedelta(hours=40), "seen": {"stamp": None, "matched": 0}}
+    go, _ = C.gistda_decide(st, {"stamp": None, "matched": 0}, now)
+    assert go is False  # empty, even when steady and our copy is old
+    assert C.gistda_complete(72008, 72008) and C.gistda_complete(71000, 72008)
+    assert not C.gistda_complete(0, 0) and not C.gistda_complete(30700, 72008)
