@@ -25,7 +25,7 @@ def test_collectors_never_wait_for_forecasts():
     collector = {n for n, _ in worker.tasks_for("collector")}
     forecaster = {n for n, _ in worker.tasks_for("forecaster")}
     assert "forecast" not in collector and "upstream_learn" not in collector
-    assert forecaster == {"forecast", "upstream_learn", "gistda_flood"}  # long jobs live here (gistda_flood: D-071)
+    assert forecaster == {"forecast", "upstream_learn", "gistda_flood", "risk_record"}  # long jobs live here (gistda_flood: D-071)
     assert "hii_waterlevel" in collector and "retention" in collector
 
 
@@ -87,3 +87,10 @@ def test_satellite_cells_are_downloaded_when_gistda_finished_a_new_layer():
     stale = {**same, "fetched": now - dt.timedelta(hours=37)}
     assert C.gistda_decide(stale, {"stamp": "2026-10-03T15", "matched": 41200}, now)[0]       # safety net
     assert C.gistda_decide({"have": None, "fetched": None, "seen": None}, probe, now)[0] is False  # first sight waits too
+
+
+def test_risk_record_runs_daily_in_the_forecaster_after_the_forecast():
+    # v0.21.0 (D-077): the จับตา tab's "6 ใน 10" records come from the forecast archive, recomputed daily
+    assert dict(worker.FORECASTER_TASKS)["risk_record"] == 24 * 3600
+    f = worker.FIRST_RUN["forecaster"]
+    assert f.index("risk_record") > f.index("forecast")

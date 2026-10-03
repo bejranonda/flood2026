@@ -46,6 +46,7 @@ FORECASTER_TASKS = [
     # satellite-flooded cells (GISTDA 7-day layer, D-071): checked hourly, downloaded <= every 20 h; ~7 min per download,
     # so it lives here, never in the collector loop
     ("gistda_flood", 3600),
+    ("risk_record", 24 * 3600),  # track records of the จับตา groups ("6 ใน 10") from the forecast archive (D-077)
 ]
 
 
@@ -53,7 +54,7 @@ FORECASTER_TASKS = [
 FIRST_RUN = {
     "collector": ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev",
                   "openmeteo_cells", "openmeteo_prev_cells", "openmeteo_fine", "hii_geo", "traffy", "bma_klong", "qc", "hii_rain", "disk"),
-    "forecaster": ("upstream_learn", "forecast", "gistda_flood"),  # upstream_learn only when never learned
+    "forecaster": ("upstream_learn", "forecast", "risk_record", "gistda_flood"),  # upstream_learn only when never learned
 }
 
 
@@ -118,6 +119,15 @@ def run_task(name: str) -> None:
         except Exception as e:
             log.exception("upstream_learn failed")
             db.record_health("upstream_learn", False, error=str(e))
+    elif name == "risk_record":
+        try:
+            from floodwatch import risks
+            with db.connect() as c:
+                risks.compute_records(c)
+            db.record_health("risk_record", True)
+        except Exception as e:
+            log.exception("risk_record failed")
+            db.record_health("risk_record", False, error=str(e))
     elif name == "qc":
         try:
             qc.run_all()

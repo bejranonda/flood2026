@@ -68,3 +68,41 @@ def test_area_groups_rain_and_satellite_sorted_by_amount():
 def test_nothing_to_report_gives_no_groups():
     out = risks.build([g("A")], {}, None, None)
     assert out["groups"] == [] and out["records"] == {} and out["sat_dates"] is None
+
+
+# --- track records (risk_record): counts out of ten from our own forecasts and readings ------------------------------
+T0 = dt.datetime(2026, 9, 26, tzinfo=dt.timezone.utc)
+H = dt.timedelta(hours=1)
+
+
+def test_bank_record_counts_runs_below_bank_that_reached_it():
+    path = [{"h": h, "q": [0.0, 0.0, 2.0, 2.0, 2.0]} for h in range(1, 49)]  # median over the bank: ">50%"
+    runs = [{"code": "A", "issue_time": T0, "path": path, "now": 1.0}, {"code": "B", "issue_time": T0, "path": path, "now": 1.0},
+            {"code": "C", "issue_time": T0, "path": path, "now": 2.5}]         # C already over the bank: not counted
+    obs = {"A": [(T0 + k * H, 1.0 + (1.0 if k == 10 else 0)) for k in range(1, 25)],
+           "B": [(T0 + k * H, 1.0) for k in range(1, 25)], "C": [(T0 + k * H, 2.5) for k in range(1, 25)]}
+    assert risks.bank_record(runs, obs, {"A": 1.5, "B": 1.5, "C": 1.5}, 24) == {">50%": {"n": 2, "hit": 0.5}}
+
+
+def test_rise_record_checks_the_reading_24_h_later():
+    path = [{"h": 24, "q": [0, 0, 1.3, 0, 0]}]
+    runs = [{"code": "A", "issue_time": T0, "path": path, "now": 1.0}, {"code": "B", "issue_time": T0, "path": path, "now": 1.0},
+            {"code": "C", "issue_time": T0, "path": [{"h": 24, "q": [0, 0, 1.1, 0, 0]}], "now": 1.0}]  # +10 cm: no signal
+    obs = {"A": [(T0 + 24 * H, 1.15)], "B": [(T0 + 24 * H, 1.02)], "C": [(T0 + 24 * H, 1.5)]}
+    assert risks.rise_record(runs, obs) == {"n": 2, "hit": 0.5}
+
+
+def test_upstream_record_uses_the_fitted_24_h_change_like_the_live_rule():
+    up = np.concatenate([np.full(30, 1.0), np.linspace(1.0, 1.5, 25), np.full(40, 1.5)])  # +50 cm over 24 h
+    rises = np.concatenate([np.full(64, 2.0), np.full(31, 2.3)])                           # +30 cm ~10 h after the ramp
+    flat = np.full(95, 2.0)
+    a = risks.upstream_record([("D", "U", 12)], {"U": up, "D": rises}, step=1)
+    b = risks.upstream_record([("D", "U", 12)], {"U": up, "D": flat}, step=1)
+    assert a["n"] == b["n"] > 0 and a["hit"] > 0.4 and b["hit"] == 0.0
+
+
+def test_chip_text_is_counts_out_of_ten_and_needs_30_cases():
+    # owner 2026-10-03 kept "6 ใน 10" over a percent: counts read better and match "… 7 ใน 10 ครั้ง" in the ⓘ
+    assert risks.chip_text({"n": 132, "hit": 0.614}) == "6 ใน 10"
+    assert risks.chip_text({"n": 345, "hit": 0.035}) == "< 1 ใน 10"
+    assert risks.chip_text({"n": 12, "hit": 0.9}) is None and risks.chip_text(None) is None

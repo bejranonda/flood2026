@@ -4,7 +4,11 @@ province, the satellite summary and the track records (compute_records). A gauge
 provinces are listed for rain and satellite. Evidence for every threshold: research/2026-10-03_verify_*.py."""
 from __future__ import annotations
 
-from floodwatch import regions
+import datetime as dt
+
+import numpy as np
+
+from floodwatch import qc, regions
 
 RAIN_MM = 35.1         # the top strip's heavy-rain threshold (SUMMARY_RAIN_MIN_MM, KI-265)
 UP_RISE_CM = 30        # upstream rose this much in 24 h: 69 % led to a >= 10 cm rise downstream (24 % without), 2026-10-03
@@ -79,3 +83,138 @@ def build(stations: list[dict], rain_by_prov: dict[str, float], sat: dict | None
     return {"groups": [{"key": k, "items": groups[k], "left_stale": stale[k]} for k in ORDER if groups[k]],
             "records": records or {},
             "sat_dates": [sat["img_from"], sat["img_to"]] if sat and sat.get("img_from") else None}
+
+
+# --- track records (D-077): how often each forecast-based group came true, from our own archive -------------------
+MIN_N = 30          # fewer cases: no chip (one week and one flood behind the first records, 2026-10-03)
+WINDOW_DAYS = 30
+
+
+def chip_text(rec: dict | None) -> str | None:
+    """"6 ใน 10": counts, like the ⓘ "ในอดีตเป็นแบบนี้ต่อ 7 ใน 10 ครั้ง" (owner 2026-10-03 kept it over a percent:
+    counts read better and do not look more precise than one flood's data). The UI's recChip mirrors this."""
+    if not rec or (rec.get("n") or 0) < MIN_N or rec.get("hit") is None:
+        return None
+    return "< 1 ใน 10" if rec["hit"] < 0.05 else f"{round(rec['hit'] * 10)} ใน 10"
+
+
+def _rate(xs: list[bool]) -> dict:
+    return {"n": len(xs), "hit": round(sum(xs) / len(xs), 3)} if xs else {"n": 0, "hit": None}
+
+
+def bank_record(runs: list[dict], obs: dict, banks: dict, hours: int) -> dict:
+    """Per band: archived runs of gauges below the bank at issue time -> any reading >= bank within `hours`
+    (readings on at least a third of the hours, or the run is skipped)."""
+    from floodwatch.forecast import bank_chance
+    out: dict[str, list] = {}
+    for r in runs:
+        bank = banks.get(r["code"])
+        if bank is None or r.get("now") is None or not r.get("path") or r["now"] >= bank:
+            continue
+        band = bank_chance(r["path"], bank, hours)
+        if band not in BANDS:
+            continue
+        t0, t1 = r["issue_time"], r["issue_time"] + dt.timedelta(hours=hours)
+        vals = [v for t, v in obs.get(r["code"], []) if t0 < t <= t1]
+        if len(vals) < hours / 3:
+            continue
+        out.setdefault(band, []).append(max(vals) >= bank)
+    return {b: _rate(v) for b, v in out.items()}
+
+
+def rise_record(runs: list[dict], obs: dict) -> dict:
+    """Runs whose 24 h median rise is >= 20 cm ("strong_rise") -> the reading 24 h later (± 30 min) is >= 10 cm up."""
+    hits = []
+    for r in runs:
+        p = [x for x in (r.get("path") or []) if x.get("h") == 24 and x.get("q")]
+        if not p or r.get("now") is None or p[0]["q"][2] - r["now"] < 0.20:
+            continue
+        t = r["issue_time"] + dt.timedelta(hours=24)
+        v = [lv for ti, lv in obs.get(r["code"], []) if abs((ti - t).total_seconds()) <= 1800]
+        if v:
+            hits.append(v[0] - r["now"] >= 0.10)
+    return _rate(hits)
+
+
+def upstream_record(pairs: list[tuple[str, str, int]], series: dict, step: int = 6) -> dict:
+    """pairs = (gauge, upstream gauge, travel time h); series = hourly arrays on one grid. Signal: the upstream's
+    fitted 24 h change (qc.observed24, the same number the live rule reads) >= UP_RISE_CM; came true: the gauge rose
+    >= 10 cm within travel time + 6 h."""
+    hits = []
+    for gcode, ucode, lag in pairs:
+        y, x = series.get(gcode), series.get(ucode)
+        if y is None or x is None:
+            continue
+        for i in range(24, len(x) - lag - 6, step):
+            if not np.isfinite(y[i]):
+                continue
+            w = [(k * 3600.0, float(x[k])) for k in range(i - 24, i + 1) if np.isfinite(x[k])]
+            o = qc.observed24(w) if len(w) >= 12 else None
+            if not o or o["change_cm"] < UP_RISE_CM:
+                continue
+            fut = y[i + 1:i + lag + 7]
+            if np.isfinite(fut).any():
+                hits.append(float(np.nanmax(fut)) - float(y[i]) >= 0.10)
+    return _rate(hits)
+
+
+# One run per gauge per 6 h; the database reduces each path to the numbers the records need (whole paths for 30 days
+# did not fit the forecaster's 1 GB: killed, 2026-10-03).
+RUNS_SQL = """
+WITH pick AS (
+  SELECT DISTINCT ON (code, date_trunc('day', issue_time), extract(hour from issue_time)::int / 6) id
+  FROM forecast_run WHERE issue_time > %(since)s AND issue_time < now() - interval '24 hours'
+  ORDER BY code, date_trunc('day', issue_time), extract(hour from issue_time)::int / 6, issue_time)
+SELECT f.code, f.issue_time, (f.payload->>'level_now')::float AS now, x.*
+FROM forecast_run f JOIN pick USING (id), LATERAL (
+  SELECT max((e->'q'->>2)::float) FILTER (WHERE (e->>'h')::int <= 24) AS a2,
+         max((e->'q'->>3)::float) FILTER (WHERE (e->>'h')::int <= 24) AS a3,
+         max((e->'q'->>4)::float) FILTER (WHERE (e->>'h')::int <= 24) AS a4,
+         max((e->'q'->>2)::float) FILTER (WHERE (e->>'h')::int <= 48) AS b2,
+         max((e->'q'->>3)::float) FILTER (WHERE (e->>'h')::int <= 48) AS b3,
+         max((e->'q'->>4)::float) FILTER (WHERE (e->>'h')::int <= 48) AS b4,
+         max((e->'q'->>2)::float) FILTER (WHERE (e->>'h')::int = 24) AS m24
+  FROM jsonb_array_elements(f.payload->'path') e) x"""
+
+HOURLY_SQL = """SELECT code, date_trunc('hour', obs_time) AS t, max(level_msl) AS hi, avg(level_msl) AS mean
+    FROM observation WHERE obs_time > %(since)s AND level_msl IS NOT NULL AND quality_flag='ok' GROUP BY 1, 2"""
+
+
+def compute_records(c) -> dict:
+    """Daily in the forecaster: each group's record over the last WINDOW_DAYS (forecast archive since 2026-09-26),
+    one run per gauge per 6 h as research/2026-10-03_verify_*.py, readings as hourly max (bank) or mean (rises).
+    Stored in collector_state 'risk_record'."""
+    from floodwatch import db
+    now = dt.datetime.now(dt.timezone.utc)
+    since = now - dt.timedelta(days=WINDOW_DAYS)
+    banks = {r["code"]: r["bank_msl"] for r in c.execute("SELECT code, bank_msl FROM station WHERE bank_msl IS NOT NULL")}
+    runs = c.execute(RUNS_SQL, {"since": since}).fetchall()
+    hi: dict[str, list] = {}
+    mean: dict[str, list] = {}
+    for r in c.execute(HOURLY_SQL, {"since": since}):
+        hi.setdefault(r["code"], []).append((r["t"], r["hi"]))
+        mean.setdefault(r["code"], []).append((r["t"], r["mean"]))
+    q = lambda h, a, b, d: [{"h": h, "q": [None, None, a, b, d]}] if None not in (a, b, d) else []
+    r24 = [{"code": r["code"], "issue_time": r["issue_time"], "now": r["now"], "path": q(24, r["a2"], r["a3"], r["a4"])} for r in runs]
+    old = now - dt.timedelta(hours=48)
+    r48 = [{"code": r["code"], "issue_time": r["issue_time"], "now": r["now"], "path": q(48, r["b2"], r["b3"], r["b4"])}
+           for r in runs if r["issue_time"] < old]
+    rise = [{"code": r["code"], "issue_time": r["issue_time"], "now": r["now"],
+             "path": [{"h": 24, "q": [0, 0, r["m24"], 0, 0]}] if r["m24"] is not None else []} for r in runs]
+    learned = db.get_state(c, "upstream_learned") or {}
+    pairs = [(gc, u[0], int(u[1])) for gc, v in learned.items() for u in v
+             if u[1] is not None and UP_LAG_H[0] <= int(u[1]) <= UP_LAG_H[1]]
+    n_h = int((now - since).total_seconds() // 3600) + 1
+    series = {}
+    for code in {p for pr in pairs for p in pr[:2]}:
+        a = np.full(n_h, np.nan)
+        for t, v in mean.get(code, []):
+            k = int((t - since).total_seconds() // 3600)
+            if 0 <= k < n_h:
+                a[k] = v
+        series[code] = a
+    rec = {"bank_24": bank_record(r24, hi, banks, 24), "bank_48": bank_record(r48, hi, banks, 48),
+           "upstream": upstream_record(pairs, series), "fast_rise": rise_record(rise, mean),
+           "window_days": WINDOW_DAYS, "computed_at": now.isoformat()}
+    db.set_state(c, "risk_record", rec)
+    return rec
