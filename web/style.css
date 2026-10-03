@@ -399,3 +399,7 @@ a { color: var(--accent); }
 .thin { margin: 4px 2px 0; font-size: 13px; }
 .rv-oth { margin-top: 14px; }
 .rv-oth-h { font-weight: 600; font-size: 14px; margin: 10px 2px 2px; color: #374151; }
+/* DWR early-warning posts: grey squares (circles are gauges; Leaflet owns the marker transform) */
+.dwr-pin, .legend i.dwr-key { background: #cfd8dc; border: 1.5px solid #455a64; box-sizing: border-box; }
+.legend i.dwr-key { width: 9px; height: 9px; border-radius: 0; margin: 0 6px 0 2px; }
+.dwr-pin.old { opacity: .45; }

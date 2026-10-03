@@ -436,7 +436,7 @@ function renderMap() {
       const d = L.DomUtil.create("div", "legend");
       d.innerHTML = Object.values(STATUS).map((s) => `<div><i style="background:${s.color}"></i>${esc(s.th)}</div>`).join("")
         + `<div><i style="background:#7b1fa2;opacity:.4"></i>น้ำท่วมบนถนน (Traffy) 6 ชม.<span id="street-age"></span></div>`
-        + `<div><i style="background:${DWR_FILL};border:1px solid ${DWR_LINE}"></i>เสาวัดน้ำ กรมทรัพยากรน้ำ (แนวโน้มเท่านั้น)</div>`;
+        + `<div><i class="dwr-key"></i>เสาวัดน้ำ กรมทรัพยากรน้ำ (แนวโน้มเท่านั้น)</div>`;
       return d;
     };
     legend.addTo(map);
@@ -489,7 +489,7 @@ function renderMap() {
 /* ---------- DWR early-warning posts: a trend-only layer (owner 2026-10-03, D-078) ---------- */
 // Depth on a local staff post (not m MSL), alarm levels mostly a 4.00 m default: no status colour, never compared
 // with the gauges; shown from zoom 9 (455 posts on a country view would bury the gauges).
-const DWR_FILL = "#cfd8dc", DWR_LINE = "#455a64", DWR_MIN_ZOOM = 9;
+const DWR_MIN_ZOOM = 9;
 let dwrOn = true, dwrData = null, dwrLayer = null;
 const DWR_TIP = "เสาวัดน้ำของระบบเตือนภัยล่วงหน้า กรมทรัพยากรน้ำ วัดความลึกที่เสาในพื้นที่ ไม่ใช่ ม.รทก. และไม่มีระดับตลิ่ง จึงแสดงเฉพาะการเปลี่ยนแปลงที่วัดได้ ไม่เทียบกับสถานีอื่นและไม่คาดการณ์ · ข้อมูลผ่านเครือข่ายในไทย อาจหยุดชั่วคราว";
 function dwrPopup(d) {
@@ -506,8 +506,10 @@ async function drawDwr() {
   if (!dwrOn || map.getZoom() < DWR_MIN_ZOOM) return;
   try { dwrData = dwrData || (await getJSON("/api/dwr")).stations; } catch { return; }
   dwrLayer = L.layerGroup().addTo(map);
-  dwrData.forEach((d) => L.circleMarker([d.lat, d.lon], { pane: "dwr", radius: 5, color: DWR_LINE, weight: 1.5,
-    fillColor: DWR_FILL, fillOpacity: d.age_min > 180 ? 0.4 : 0.95 }).bindPopup(dwrPopup(d)).addTo(dwrLayer));
+  // a square, not a circle: circles are gauges, and a hollow circle is a gauge without a forecast (owner check 2026-10-03)
+  dwrData.forEach((d) => L.marker([d.lat, d.lon], { pane: "dwr", keyboard: false,
+    icon: L.divIcon({ className: `dwr-pin${d.age_min > 180 ? " old" : ""}`, iconSize: [11, 11] }) })
+    .bindPopup(dwrPopup(d), { maxWidth: 260, autoPanPaddingTopLeft: L.point(12, 150) }).addTo(dwrLayer));
 }
 
 // Map view follows the region chip: Bangkok at street level, any other region fitted to its gauges (D-064). The
