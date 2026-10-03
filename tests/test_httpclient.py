@@ -30,3 +30,30 @@ def test_connect_timeout_is_short_and_a_dead_host_fails_fast(monkeypatch):
     with pytest.raises(requests.exceptions.ConnectTimeout):
         httpclient.fetch("https://alive.example/c")  # other hosts are unaffected
     assert Down.calls > first
+
+
+def test_fetch_sends_extra_headers_such_as_an_api_key(monkeypatch):
+    seen = {}
+
+    class Resp:
+        status_code = 200
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def iter_content(self, n):
+            return [b"{}"]
+
+    class S:
+        def request(self, *a, **kw):
+            seen.update(kw["headers"])
+            return Resp()
+
+    monkeypatch.setattr(httpclient, "_session", S())
+    httpclient._host_down.clear()
+    httpclient.fetch("https://ok.example/x", headers={"API-Key": "k"})
+    assert seen["API-Key"] == "k" and "BKK-FloodWatch" in seen["User-Agent"]

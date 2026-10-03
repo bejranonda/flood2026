@@ -25,7 +25,7 @@ def test_collectors_never_wait_for_forecasts():
     collector = {n for n, _ in worker.tasks_for("collector")}
     forecaster = {n for n, _ in worker.tasks_for("forecaster")}
     assert "forecast" not in collector and "upstream_learn" not in collector
-    assert forecaster == {"forecast", "upstream_learn"}
+    assert forecaster == {"forecast", "upstream_learn", "gistda_flood"}  # long jobs live here (gistda_flood: D-071)
     assert "hii_waterlevel" in collector and "retention" in collector
 
 
@@ -38,7 +38,8 @@ def test_only_the_collector_changes_the_schema():
 def test_rain_cells_are_fetched_at_start_not_three_hours_later():
     # 2026-09-30: after each restart the nationwide rain cells waited a full interval; pins read "ยังไม่มีข้อมูลฝน"
     assert {"openmeteo_cells", "openmeteo_prev_cells"} <= set(worker.FIRST_RUN["collector"])
-    assert worker.FIRST_RUN["forecaster"][-1] == "forecast"
+    fr = worker.FIRST_RUN["forecaster"]  # forecast after upstream_learn; the satellite download never delays it
+    assert fr.index("upstream_learn") < fr.index("forecast") < fr.index("gistda_flood")
 
 
 def test_upstream_gauges_are_relearned_daily():
@@ -63,3 +64,17 @@ def test_upstream_is_relearned_at_start_when_empty_or_a_day_old():
 
 def test_basin_and_river_maps_are_refreshed_weekly_and_at_start():
     assert dict(worker.TASKS)["hii_geo"] == 7 * 24 * 3600 and "hii_geo" in worker.FIRST_RUN["collector"]
+
+
+def test_satellite_cells_are_checked_hourly_but_downloaded_at_most_every_20_hours():
+    # Q45 (D-071): GISTDA's 7-day layer is ~300 MB and rebuilt daily; restarts must not download it again
+    import datetime as dt
+    from floodwatch import collectors
+    # the download held the collector loop ~7 min (2026-10-03 06:16-06:23 UTC): it runs beside the forecasts instead,
+    # so the 10-min collectors never wait (D-064)
+    assert dict(worker.FORECASTER_TASKS)["gistda_flood"] == 3600 and "gistda_flood" in worker.FIRST_RUN["forecaster"]
+    assert "gistda_flood" not in dict(worker.TASKS) and "gistda_flood" not in worker.FIRST_RUN["collector"]
+    now = dt.datetime(2026, 10, 3, 6, tzinfo=dt.timezone.utc)
+    assert collectors.gistda_due(None, now)
+    assert not collectors.gistda_due(now - dt.timedelta(hours=19), now)
+    assert collectors.gistda_due(now - dt.timedelta(hours=20), now)

@@ -572,6 +572,11 @@
   - New `.env` keys (empty in git): `GFM_EMAIL`, `GFM_PASSWORD`, `GOOGLE_APPLICATION_CREDENTIALS`, `WEATHERNEXT_PROJECT`, `WEATHERNEXT_DATASET`, `EWDS_API_KEY` — worker only, never the web app; `owner_status.py` checks each with one request and prints no value.
 - **Revisit:** satellite UI if users outside Bangkok ask what the fields look like; WeatherNext after its backtest (owner step WNEXT: subscribe to the listing).
 
+### D-071 — Satellite flooding near a pin: "seen" only, from GISTDA, in the pin panel (Q45)
+- **Date:** 2026-10-03 · **Status:** accepted (owner: "Q45 : yes")
+- **Decision:** a factor line "ดาวเทียมเห็นน้ำท่วม<บริเวณจุดนี้|ห่างราว N ม.>" with the flooded area within 1 km (rai) and the image dates, when GISTDA's 7-day layer has flooded cells within 1 km of the pin (images ≤ 10 days old). Nothing when none: never "not flooded" (radar is blind among buildings; research/2026-10-02_satellite_flood.md). Does not change the headline or status (gauges judge channels; this is water on the ground, like street reports). Told in the AI story and its lines too.
+- **Rulings (Claude):** GISTDA only (Thai, more satellites; GFM stays research); 1 km radius (as street reports); the 7-day layer's composite image dates (cells carry no own date; the 1/3-day layers were empty on 2026-10-03); a daily bulk download (no user location is sent to GISTDA), kept as centre + area + place in `sat_flood`; runs in the forecaster container (~7 min per download).
+
 ### D-070 — Polder rules only in กทม. + ปริมณฑล; the top strip shows rain only when heavy (amends D-059, D-064)
 - **Date:** 2026-10-02 · **Status:** accepted (owner: "The point is next to station บางปะหัน LBI001, but showed no near station!!"; "Review the topbar of UI, it used too much space again!! and it showed specifically for Bangkok, for what?" → chose "Only when heavy")
 - **Decision:** (1) A pin uses the Bangkok polder rules (a river gauge never judges the canals) only when its nearest gauge is in กทม. or ปริมณฑล (`point.POLDER_REGIONS`); upstream focus provinces (Ayutthaya to Nakhon Sawan) are judged like the rest of the country: the nearest river or stream gauge is the local evidence (KI-263). (2) The summary strip shows no rain unless the chosen region expects or measured heavy rain (TMD ≥ 35.1 mm), then one line (KI-265).

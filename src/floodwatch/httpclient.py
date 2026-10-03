@@ -29,10 +29,11 @@ class Fetched:
 
 
 def fetch(url: str, *, via_thai_egress: bool = False, retries: int = 3, method: str = "GET",
-          data: dict | None = None) -> Fetched:
-    """Fetch a URL. Raises the last error if every attempt fails."""
+          data: dict | None = None, headers: dict | None = None) -> Fetched:
+    """Fetch a URL. Raises the last error if every attempt fails. `headers` adds to (never replaces) the honest
+    User-Agent, e.g. GISTDA's `API-Key` (KI-510); keys never go in the URL, which is archived and logged."""
     headers = {"User-Agent": settings.user_agent, "Accept": "application/json, text/html;q=0.8, */*;q=0.5",
-               "Accept-Encoding": "gzip, deflate"}
+               "Accept-Encoding": "gzip, deflate", **{k: v for k, v in (headers or {}).items() if k.lower() != "user-agent"}}
     proxies = None
     if via_thai_egress:
         if not settings.thai_egress_proxy:

@@ -430,3 +430,27 @@ def test_a_metro_river_gauge_still_never_judges_the_canals():
     cpy = {**_st("CPY014", 13.947, 100.535, "critical", river="แม่น้ำเจ้าพระยา"), "in_focus": True, "region": "metro"}
     out = point.assess(13.948, 100.536, [cpy], 0, {}, None)
     assert out["mode"] == "bkk" and out["nearest_canal"] is None and out["nearest_river"]["code"] == "CPY014"
+
+
+# --- satellite flood near a pin (Q45 yes, D-071): "seen" only, never "not flooded" ---------------------------------
+def _cell(lat, lon, area=120_000.0, f="2026-09-27", t="2026-09-29"):
+    import datetime as dt
+    return {"lat": lat, "lon": lon, "area_m2": area, "img_from": dt.date.fromisoformat(f), "img_to": dt.date.fromisoformat(t)}
+
+
+def test_satellite_seen_gives_nearest_distance_area_in_rai_and_image_dates():
+    cells = [_cell(14.4300, 100.5553), _cell(14.4330, 100.5553), _cell(14.4500, 100.5553)]  # ~0.35, ~0.69, ~2.6 km
+    s = point.satellite_seen(14.4268, 100.5553, cells)
+    assert s["nearest_m"] == 400 and s["cells"] == 2  # rounded to 100 m; only cells within 1 km count
+    assert s["area_rai"] == 150  # 240,000 m2 / 1,600 m2 per rai
+    assert s["img_from"] == "2026-09-27" and s["img_to"] == "2026-09-29" and s["source"] == "GISTDA"
+
+
+def test_satellite_seen_is_none_when_nothing_was_seen_within_1_km():
+    assert point.satellite_seen(14.4268, 100.5553, [_cell(14.4500, 100.5553)]) is None
+    assert point.satellite_seen(14.4268, 100.5553, []) is None
+
+
+def test_satellite_seen_at_the_pin_says_zero_distance():
+    s = point.satellite_seen(14.4268, 100.5553, [_cell(14.4269, 100.5554)])
+    assert s["nearest_m"] == 0

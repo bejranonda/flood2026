@@ -858,6 +858,22 @@ function pointHTML(d, src, place = "") {
   const streetF = nRep >= 3 ? { color: "#c62828", word: `มีแจ้ง ${nRep} เรื่อง` } : nRep > 0 ? { color: "#b45309", word: `มีแจ้ง ${nRep} เรื่อง` }
     : { color: "#9ca3af", word: "ยังไม่มีรายงาน" };
   const hasStreetFlood = (d.warnings || []).includes("street_flooding_despite_channels");
+  // Satellite (Q45 yes, D-071): one line only when GISTDA's radar SAW flooding within 1 km; silence otherwise, because
+  // radar is blind among buildings and trees (research/2026-10-02_satellite_flood.md: 61-71 % of central Bangkok).
+  const satDates = (a, b) => {
+    const f = (x, m) => new Date(`${x}T12:00:00+07:00`).toLocaleDateString("th-TH", { day: "numeric", ...(m ? { month: "short" } : {}), timeZone: "Asia/Bangkok" });
+    if (!b) return "";
+    if (!a || a === b) return f(b, true);
+    return a.slice(0, 7) === b.slice(0, 7) ? `${f(a, false)}–${f(b, true)}` : `${f(a, true)}–${f(b, true)}`;
+  };
+  const sat = d.satellite;
+  const satLine = sat ? (() => {
+    const m = sat.nearest_m, where = m <= 200 ? "บริเวณจุดนี้" : m >= 1000 ? `ห่างราว ${Math.floor(m / 1000)} กม.` : `ห่างราว ${m} ม.`;
+    const tip = "ภาพเรดาร์จากดาวเทียม (Sentinel-1, COSMO-SkyMed, Radarsat-2) ประมวลผลโดย GISTDA ช่วง 7 วัน · ดาวเทียมมองไม่เห็นน้ำในเขตเมืองหนาแน่นและใต้ต้นไม้ ไม่เห็นไม่ได้แปลว่าไม่มีน้ำท่วม · เป็นน้ำบนพื้นดิน ไม่ใช่ระดับน้ำในคลองหรือแม่น้ำ";
+    const dates = satDates(sat.img_from, sat.img_to);
+    return `<li><span class="pf-dot" style="background:${m <= 200 ? "#c62828" : "#b45309"}"></span><div><b class="pf-word">ดาวเทียมเห็นน้ำท่วม${esc(where)}</b>${infoBtn(tip, "ที่มาของภาพดาวเทียม")}
+      <div class="pf-sub">${sat.area_rai >= 1 ? `รวมราว ${esc(String(sat.area_rai))} ไร่ในรัศมี 1 กม. · ` : ""}${dates ? `ภาพ ${esc(dates)} ` : ""}(GISTDA)</div></div></li>`;
+  })() : "";
 
   // Everything that explains or qualifies goes behind one ⓘ (owner 2026-09-27: "everything into ⓘ", issue #3).
   const staticWarnings = (d.warnings || []).filter((w) => w !== "street_flooding_despite_channels");
@@ -881,7 +897,7 @@ function pointHTML(d, src, place = "") {
         <li><span class="pf-dot" style="background:${rainColor}"></span><div><b class="pf-word">${esc(rainHead)}</b>${rainInfo}
           ${rainBody}</div></li>
         <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b class="pf-word">${esc(nRep > 0 ? `มีแจ้งน้ำท่วมบนถนน ${nRep} เรื่อง` : "ยังไม่มีรายงานน้ำท่วมบนถนน")}</b>
-          <div class="pf-sub">${hasStreetFlood ? `<b>น้ำรอระบายรอบจุดนี้ แม้${W}ใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · ` : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
+          <div class="pf-sub">${hasStreetFlood ? `<b>น้ำรอระบายรอบจุดนี้ แม้${W}ใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · ` : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>${satLine}
       </ul>
     </section>`;
 

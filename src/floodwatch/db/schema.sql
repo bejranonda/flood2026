@@ -124,6 +124,22 @@ CREATE TABLE IF NOT EXISTS rain_hindcast (
     PRIMARY KEY (point, valid_time)
 );
 
+-- Flooded H3 cells seen by satellite radar in the last 7 days (GISTDA, D-071; Q45). Replaced as a whole once a day;
+-- only the centre, area and place are kept (no polygons, no raw payload: ~300 MB and it echoes our key, KI-262).
+CREATE TABLE IF NOT EXISTS sat_flood (
+    h3          text PRIMARY KEY,
+    lat         double precision NOT NULL,
+    lon         double precision NOT NULL,
+    area_m2     double precision,
+    province    text,
+    amphoe      text,
+    tambon      text,
+    img_from    date,
+    img_to      date,
+    fetched_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS sat_flood_latlon_idx ON sat_flood (lat, lon);
+
 -- Small key/value store for collector bookkeeping (e.g. which stations were backfilled).
 CREATE TABLE IF NOT EXISTS collector_state (
     key         text PRIMARY KEY,

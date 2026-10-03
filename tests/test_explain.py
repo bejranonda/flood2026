@@ -332,3 +332,26 @@ def test_bank_certainty_and_harmless_phrases():
     assert not [i for i in explain.check("เก็บเอกสารสำคัญและยาไว้ในที่สูง จะได้ไม่ต้องตกใจทีหลัง", prep) if i.startswith("verdict")]
     trav = "\n".join(explain.answer("travel", _out()))
     assert not [i for i in explain.check("แอปไม่รู้สภาพถนนทุกเส้น จะเดินทางได้ไหมให้ดูจุดสีม่วงบนแผนที่อีกครั้ง", trav) if i.startswith("verdict")]
+
+
+# --- satellite (Q45 yes, D-071): told as seen, in the past, with its distance; silent when nothing was seen ----------
+SAT = {"nearest_m": 300, "cells": 4, "area_rai": 120, "img_from": "2026-09-27", "img_to": "2026-09-29", "source": "GISTDA"}
+
+
+def test_the_story_and_lines_tell_what_the_satellite_saw():
+    out = {**_out(ch12=FALLING, ch24=FALLING), "satellite": SAT}
+    lines = text(explain.answer("simple", out))
+    assert "🛰️" in lines and "ห่างราว 300 ม." in lines and "27–29 ก.ย." in lines
+    story = explain.narrative("simple", out)
+    assert "ดาวเทียม" in story and "300 ม." in story and "ไม่ท่วม" not in story
+    assert explain.check(story, "\n".join(explain.answer("simple", out)) + "\nบทสรุป: " + story) == []
+
+
+def test_no_satellite_line_when_nothing_was_seen():
+    out = _out(ch12=FALLING, ch24=FALLING)
+    assert "ดาวเทียม" not in text(explain.answer("simple", out)) + explain.narrative("simple", out)
+
+
+def test_satellite_seen_at_the_pin_is_said_as_around_here():
+    out = {**_out(), "satellite": {**SAT, "nearest_m": 0}}
+    assert "บริเวณจุดนี้" in explain.narrative("simple", out)

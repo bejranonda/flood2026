@@ -55,3 +55,11 @@ def test_summary_rain_shows_only_heavy_rain_in_one_line():
     assert m and float(m.group(1)) > point.RAIN_MODERATE_MAX_MM
     body = APP[APP.index("function rainSummary("):APP.index("let lastStats")]
     assert "rainRows(" not in body and "SUMMARY_RAIN_MIN_MM" in body
+
+
+def test_the_satellite_factor_says_only_what_was_seen():
+    # Q45 (D-071): one factor line when the satellite saw flooding within 1 km; never "not flooded"; the blind spot
+    # (city, trees) is said behind the ⓘ
+    body = APP[APP.index("const satDates"):APP.index("const panel")]
+    assert "d.satellite" in body and "ดาวเทียมเห็นน้ำท่วม" in body and "ไม่ท่วม" not in body
+    assert "ไม่เห็นไม่ได้แปลว่าไม่มีน้ำท่วม" in body and "GISTDA" in body

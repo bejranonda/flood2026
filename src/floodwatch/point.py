@@ -159,6 +159,32 @@ def area_index(lat: float, lon: float, stations: list[dict], mode: str = "bkk") 
             "max": LEVELS[max(ranks)], "min_all": LEVELS[min(all_ranks)], "max_all": LEVELS[max(all_ranks)]}
 
 
+SAT_KM = 1.0          # satellite-flooded cells within this radius of a pin are told (Q45, D-071)
+RAI_M2 = 1600.0
+
+
+def satellite_seen(lat: float, lon: float, cells: list[dict]) -> dict | None:
+    """What the satellite saw near a pin (GISTDA 7-day flooded H3 cells, D-071): the nearest flooded cell (m, rounded to
+    100 m), the flooded area within 1 km (rai) and the image dates. Only what was SEEN: None when nothing was seen
+    within 1 km, never "not flooded" (radar is blind among buildings and trees: 61-71 % of land in central Bangkok,
+    research/2026-10-02_satellite_flood.md)."""
+    near = []
+    for c in cells:
+        if c.get("lat") is None or c.get("lon") is None:
+            continue
+        d = haversine_km(lat, lon, c["lat"], c["lon"])
+        if d <= SAT_KM:
+            near.append((d, c))
+    if not near:
+        return None
+    d0 = min(d for d, _ in near)
+    dates = [x for _, c in near for x in (c.get("img_from"), c.get("img_to")) if x is not None]
+    return {"nearest_m": int(round(d0 * 10)) * 100, "cells": len(near),
+            "area_rai": int(round(sum(c.get("area_m2") or 0 for _, c in near) / RAI_M2)),
+            "img_from": min(dates).isoformat() if dates else None, "img_to": max(dates).isoformat() if dates else None,
+            "source": "GISTDA"}
+
+
 def assess(lat: float, lon: float, stations: list[dict], reports_1km: int, feedback_depths: dict[str, int],
            rain_next24_mm: float | None, rain_measured: dict | None = None) -> dict:
     listed = []

@@ -146,7 +146,44 @@ def _facts(out: dict) -> dict:
             "fc_rain": _rain_word(out.get("rain_next24_mm")),
             "fell": _rain_word(float(m["rain_24h"])) if m.get("rain_24h") is not None else None,
             "street": int((out.get("evidence") or {}).get("traffy_flood_reports_1km_6h") or 0), "signal": _signal(out),
-            "fb": round(st["freeboard_m"] * 100) if st.get("freeboard_m") is not None else None}
+            "fb": round(st["freeboard_m"] * 100) if st.get("freeboard_m") is not None else None,
+            "sat": out.get("satellite")}
+
+
+TH_MON = ("ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.")
+
+
+def _sat_where(s: dict) -> str:
+    """Where the satellite saw flooding (D-071): at the pin or how far, in the panel's words."""
+    m = s.get("nearest_m") or 0
+    return "บริเวณจุดนี้" if m <= 200 else f"ห่างราว {m // 1000} กม." if m >= 1000 else f"ห่างราว {m} ม."
+
+
+def _sat_dates(s: dict) -> str | None:
+    """The image dates as the UI prints them: "27–29 ก.ย.", "30 ก.ย.–2 ต.ค.", "29 ก.ย."."""
+    import datetime as _dt
+    a, b = s.get("img_from"), s.get("img_to")
+    if not b:
+        return None
+    a, b = _dt.date.fromisoformat(a or b), _dt.date.fromisoformat(b)
+    if a == b:
+        return f"{b.day} {TH_MON[b.month - 1]}"
+    if a.month == b.month:
+        return f"{a.day}–{b.day} {TH_MON[b.month - 1]}"
+    return f"{a.day} {TH_MON[a.month - 1]}–{b.day} {TH_MON[b.month - 1]}"
+
+
+def _sat_line(f: dict) -> str | None:
+    s = f.get("sat")
+    if not s:
+        return None
+    d = _sat_dates(s)
+    return f"🛰️ ดาวเทียมเห็นน้ำท่วม{_sat_where(s)}{f' (ภาพ {d})' if d else ''}"
+
+
+def _sat_sentence(f: dict) -> str | None:
+    s = f.get("sat")
+    return f"ภาพดาวเทียมเมื่อไม่กี่วันก่อนเห็นน้ำท่วม{_sat_where(s)}" if s else None
 
 
 def _bank(f: dict) -> dict | None:
@@ -287,12 +324,13 @@ def answer(q: str, out: dict) -> list[str]:
     street = (f"🚧 ตอนนี้มีคนแจ้งน้ำท่วมถนนใกล้ ๆ {f['street']} เรื่อง" if f["street"]
               else "🚧 ตอนนี้ยังไม่มีใครแจ้งน้ำท่วมถนนในรัศมี 1 กม.")
     story = _story(f)
+    sat = _sat_line(f)  # what the satellite saw near the pin (D-071), only when it saw something
     if q == "simple":
-        lines = story + [f"🌧️ {rs}" if rs else None, _todo(f, q)]
+        lines = story + [f"🌧️ {rs}" if rs else None, sat, _todo(f, q)]
     elif q == "home":
-        lines = [f"🏠 แอปบอกไม่ได้ว่าน้ำจะเข้าบ้านหรือไม่ เพราะวัดน้ำใน{f['W']} ไม่ได้วัดที่บ้านหรือบนถนน"] + story[:4] + [_todo(f, q)]
+        lines = [f"🏠 แอปบอกไม่ได้ว่าน้ำจะเข้าบ้านหรือไม่ เพราะวัดน้ำใน{f['W']} ไม่ได้วัดที่บ้านหรือบนถนน"] + story[:4] + [sat, _todo(f, q)]
     elif q == "car":
-        lines = ["🚗 แอปบอกไม่ได้ว่าต้องย้ายรถหรือไม่"] + story[:4] + [street, _todo(f, q)]
+        lines = ["🚗 แอปบอกไม่ได้ว่าต้องย้ายรถหรือไม่"] + story[:4] + [street, sat, _todo(f, q)]
     elif q == "travel":
         fc = (f"🌧️ อีก 24 ชม. {'ไม่น่าจะมีฝน' if f['fc_rain'] == 'ไม่มีฝน' else 'คาดว่ามี' + f['fc_rain']}"
               if f["fc_rain"] else None)
@@ -392,11 +430,12 @@ def narrative(q: str, out: dict) -> str:
     if q == "simple":
         trend = _easy_trend(f)
         rain = _easy_rain(f, after_trend=bool(trend))
-        parts = [_easy_water(f), f"{trend} และ{rain}" if trend and rain else trend or rain, todo]
+        parts = [_easy_water(f), f"{trend} และ{rain}" if trend and rain else trend or rain, _sat_sentence(f), todo]
     elif q == "home":
-        parts = [f"แอปบอกไม่ได้ว่าน้ำจะเข้าบ้านไหม เพราะวัดน้ำใน{f['W']} ไม่ใช่ที่บ้าน", _easy_water(f), _easy_trend(f), todo]
+        parts = [f"แอปบอกไม่ได้ว่าน้ำจะเข้าบ้านไหม เพราะวัดน้ำใน{f['W']} ไม่ใช่ที่บ้าน", _easy_water(f), _easy_trend(f),
+                 _sat_sentence(f), todo]
     elif q == "car":
-        parts = ["แอปบอกไม่ได้ว่าต้องย้ายรถหรือไม่", _easy_water(f), street, todo]
+        parts = ["แอปบอกไม่ได้ว่าต้องย้ายรถหรือไม่", _easy_water(f), street, _sat_sentence(f), todo]
     elif q == "travel":
         rain = f"อีกหนึ่งวันข้างหน้า{'ไม่น่าจะมีฝน' if f['fc_rain'] == 'ไม่มีฝน' else 'คาดว่ามี' + f['fc_rain']}" if f["fc_rain"] else ""
         parts = ["แอปไม่รู้สภาพถนนทุกเส้น", street, rain, "ก่อนออกเดินทางให้ดูจุดสีม่วงบนแผนที่อีกครั้ง"]

@@ -2,6 +2,17 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.19.0 — 2026-10-03
+- **"ดาวเทียมเห็นน้ำท่วม" in the pin panel (Q45: owner "yes"; D-071).** When GISTDA's satellite radar mapped flooding
+  within 1 km of a pin in the last 7 days, the panel gets one factor line: "ดาวเทียมเห็นน้ำท่วมห่างราว 400 ม. · รวมราว
+  286 ไร่ในรัศมี 1 กม. · ภาพ 27–29 ก.ย. (GISTDA)". Only what was seen: nothing is said when nothing was seen, never
+  "ไม่ท่วม"; the ⓘ explains that radar cannot see water among buildings and trees. The AI story and its numbers tell
+  it too ("ภาพดาวเทียมเมื่อไม่กี่วันก่อนเห็นน้ำท่วมห่างราว 400 ม.").
+- **New daily collector `gistda_flood`:** GISTDA's national 7-day layer (111,387 flooded cells, 3,474 km² on
+  2026-10-03), checked hourly, downloaded at most every 20 h, in the forecaster container (a download takes ~7 min and
+  held the collector loop on the first try). Only centre, area and place are kept; no raw archive (size; the payload
+  echoes our key, KI-262). `/api/point` gains `satellite`. Live check C13.
+
 ## v0.18.9 — 2026-10-02
 - **Pins upstream of Bangkok use the river next to them (owner: "The point is next to station บางปะหัน LBI001, but
   showed no near station!!"; KI-263, D-070).** The Bangkok polder rules (a river gauge never judges the canals) were

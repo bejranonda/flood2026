@@ -762,6 +762,11 @@ def _point_out(lat: float, lon: float) -> dict:
                AND created_at > now() - interval '24 hours'
                AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s GROUP BY 1""", box).fetchall()}
         rain_rows = c.execute(RAIN_OBS_SQL).fetchall()
+        # satellite-flooded cells near the pin (GISTDA 7-day layer, D-071): ~1.3 km box, images at most 10 days old
+        sat_cells = c.execute("""SELECT lat, lon, area_m2, img_from, img_to FROM sat_flood
+                                 WHERE lat BETWEEN %(a0)s AND %(a1)s AND lon BETWEEN %(o0)s AND %(o1)s
+                                   AND (img_to IS NULL OR img_to > current_date - 10)""",
+                              {"a0": lat - 0.012, "a1": lat + 0.012, "o0": lon - 0.012, "o1": lon + 0.012}).fetchall()
         pt = rain_cells.rain_point_at(lat, lon, _fine_ids())  # ~8 km point (Bangkok region), Bangkok point, or 0.5° cell
         rain = c.execute("""SELECT sum(precip_mm) AS mm FROM weather_forecast WHERE point=%s
                             AND issue_time=(SELECT max(issue_time) FROM weather_forecast WHERE point=%s)
@@ -769,6 +774,7 @@ def _point_out(lat: float, lon: float) -> dict:
     measured = point.measured_rain(lat, lon, rain_rows, dt.datetime.now(dt.timezone.utc))
     out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1), measured)
     out["rain_point"] = pt
+    out["satellite"] = point.satellite_seen(lat, lon, sat_cells)
     out["forecast"]["plain"] = explain.plain(out)  # the panel's everyday-words line (D-068), by template
     return out
 

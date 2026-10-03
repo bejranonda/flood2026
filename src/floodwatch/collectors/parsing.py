@@ -296,3 +296,37 @@ def parse_canal_graph(code: str, payload: dict, raw_ref: str) -> list[dict[str, 
         out.append({"code": code, "obs_time": t, "level_msl": v, "discharge": None, "situation_level": None,
                     "source": "hii_canal_graph", "quality_flag": "ok", "raw_ref": raw_ref})
     return out
+
+
+_SAT_FILE = re.compile(r"(?:^|\s|,)[A-Za-z0-9]{2,4}_(\d{8})_\d{4}")
+
+
+def _strip_admin(name: str | None, prefix: str) -> str | None:
+    name = (name or "").strip()
+    return name[len(prefix):].strip() if name.startswith(prefix) else (name or None)
+
+
+def parse_gistda_flood(payload: dict) -> list[dict]:
+    """GISTDA flooded H3 cells (features/flood/7days; KI-510) -> one row per cell: centre (mean of the outer ring),
+    flooded area, province/amphoe/tambon and the first/last image date named in `file_name` (S1C/S1D Sentinel-1,
+    rd2 Radarsat-2, cg2/cm4 COSMO-SkyMed; the 7-day layer carries one composite list, so these are the layer's dates).
+    The payload's `links` echo the caller's API key (KI-262) and are never read or kept. Cells without geometry are
+    skipped."""
+    rows = []
+    for f in payload.get("features") or []:
+        p, g = f.get("properties") or {}, f.get("geometry") or {}
+        try:
+            polys = g["coordinates"] if g.get("type") == "MultiPolygon" else [g["coordinates"]]
+            ring = polys[0][0]
+            pts = ring[:-1] if len(ring) > 1 and ring[0] == ring[-1] else ring
+            lon = sum(x for x, _ in pts) / len(pts)
+            lat = sum(y for _, y in pts) / len(pts)
+        except (KeyError, IndexError, TypeError, ZeroDivisionError):
+            continue
+        days = sorted(dt.date(int(d[:4]), int(d[4:6]), int(d[6:])) for d in _SAT_FILE.findall(p.get("file_name") or ""))
+        rows.append({"h3": p.get("h3_address"), "lat": round(lat, 6), "lon": round(lon, 6), "area_m2": to_float(p.get("f_area")),
+                     "province": _strip_admin(p.get("pv_tn"), "จ."), "amphoe": _strip_admin(p.get("ap_tn"), "อ."),
+                     "tambon": _strip_admin(p.get("tb_tn"), "ต."),
+                     "img_from": days[0] if days else None, "img_to": days[-1] if days else None})
+    return [r for r in rows if r["h3"]]
+

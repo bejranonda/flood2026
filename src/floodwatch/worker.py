@@ -43,6 +43,9 @@ TASKS = [
 FORECASTER_TASKS = [
     ("forecast", 1800),
     ("upstream_learn", 24 * 3600),  # upstream gauges learned per basin for gauges off the Chao Phraya chain (daily: history grows)
+    # satellite-flooded cells (GISTDA 7-day layer, D-071): checked hourly, downloaded <= every 20 h; ~7 min per download,
+    # so it lives here, never in the collector loop
+    ("gistda_flood", 3600),
 ]
 
 
@@ -50,7 +53,7 @@ FORECASTER_TASKS = [
 FIRST_RUN = {
     "collector": ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev",
                   "openmeteo_cells", "openmeteo_prev_cells", "openmeteo_fine", "hii_geo", "traffy", "bma_klong", "qc", "hii_rain", "disk"),
-    "forecaster": ("upstream_learn", "forecast"),  # upstream_learn only when never learned
+    "forecaster": ("upstream_learn", "forecast", "gistda_flood"),  # upstream_learn only when never learned
 }
 
 
