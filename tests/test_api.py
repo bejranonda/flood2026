@@ -321,3 +321,11 @@ def test_station_row_carries_the_24_and_48_h_bank_chances():
 def test_sat_grid_size_coarsens_when_zoomed_out():
     from floodwatch.api import sat_grid_size
     assert sat_grid_size(6) == 0.02 and sat_grid_size(9) == 0.005 and sat_grid_size(12) == 0.002
+
+
+def test_rain_by_province_takes_the_wettest_point_serving_each_province():
+    # the จับตา tab's 🌧 group (D-077): provinces of the gauges each forecast point serves, as point_regions
+    from floodwatch.api import rain_by_province
+    pts = [{"point": "c1", "mm24": 40.0}, {"point": "c2", "mm24": 12.0}, {"point": "f9", "mm24": None}]
+    pp = {"c1": {"น่าน", "แพร่"}, "c2": {"น่าน"}}
+    assert rain_by_province(pts, pp) == {"น่าน": 40.0, "แพร่": 40.0}

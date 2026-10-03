@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from floodwatch import __version__, ai, db, explain, geocode, point
 from floodwatch.config import DATUM_SUSPECT
-from floodwatch import rain_cells, regions
+from floodwatch import rain_cells, regions, risks
 from floodwatch import rivers as rivers_mod
 from floodwatch.forecast import change_summary, classify_status
 
@@ -505,6 +505,45 @@ def _fine_ids() -> set[str]:
             return {r["point"] for r in c.execute(
                 "SELECT DISTINCT point FROM weather_forecast WHERE left(point, 2) = 'f_' AND issue_time > now() - interval '3 hours'").fetchall()}
     return _memo(("fine_ids",), build, ttl=600)
+
+
+def point_provinces(rows: list[dict]) -> dict[str, set]:
+    """Provinces of the gauges each 0.5° cell and fine rain point serves (as point_regions)."""
+    out: dict[str, set] = {}
+    for r in rows:
+        if r.get("lat") is None or not r.get("province"):
+            continue
+        out.setdefault(rain_cells.cell_of(r["lat"], r["lon"])[0], set()).add(r["province"])
+        for pid in rain_cells.fine_points([r]):
+            out.setdefault(pid, set()).add(r["province"])
+    return out
+
+
+def rain_by_province(points: list[dict], pp: dict[str, set]) -> dict[str, float]:
+    """The wettest 24 h forecast among the points serving each province (the จับตา tab's 🌧 group, D-077)."""
+    out: dict[str, float] = {}
+    for p in points:
+        if p.get("mm24") is None:
+            continue
+        for prov in pp.get(p["point"], ()):
+            out[prov] = max(out.get(prov, 0.0), p["mm24"])
+    return out
+
+
+@app.get("/api/risks")
+def risks_api():
+    """The "⚠️ จับตา" tab: the next 24-48 h risks in six groups with their track records (D-077). Built from the same
+    station rows as the list, so a gauge reads the same in both."""
+    def build():
+        _station_rows(True)
+        items = _stations_data("all")["stations"]
+        rd = _memo(("rain",), _rain_data)
+        pp = _memo(("point_provinces",), lambda: point_provinces(_station_rows(True)), ttl=3600)
+        with db.connect() as c:
+            rec = db.get_state(c, "risk_record") or {}
+        out = risks.build(items, rain_by_province(rd["points"], pp), _sat_summary() or None, rec)
+        return {**out, "generated": dt.datetime.now(dt.timezone.utc).isoformat()}
+    return _json(_memo(("risks",), build, ttl=300))
 
 
 def sat_grid_size(z: int) -> float:
