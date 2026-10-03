@@ -2,6 +2,14 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.20.5 — 2026-10-03
+- **Satellite cells follow GISTDA's new layer within about two hours (KI-268).** Found answering the owner's "Developing
+  progress for satellite inputs?": GISTDA rebuilt its 7-day layer at ~15 UTC today (~18 UTC yesterday), cell by cell
+  (23,650 → 30,700 → 88,200 cells while we watched), with a new Sentinel-1 pass of 2 Oct, while our 20-hour rule kept the
+  morning copy (images 27–29 Sep) until ~02:30 UTC. Now a 1-cell probe every hour reads the rebuild stamp and count;
+  the ~300 MB download runs only for a new stamp whose count stood still for an hour (never a half-built layer), and a
+  copy older than 36 h is refreshed anyway.
+
 ## v0.20.4 — 2026-10-03
 - **One "where" row for both tabs: ภาค ▾ · จังหวัด ▾ (owner: "Suggest, if the users like to see stations in their
   province?" → "Should we improve the dropdown menu under tab แม่น้ำ to have also province dropdown after select ภาค? …

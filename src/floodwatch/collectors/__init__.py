@@ -593,50 +593,72 @@ def bma_dds() -> dt.datetime | None:
 
 GISTDA_FLOOD = "https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/7days"
 GISTDA_PAGE = 5000      # ~14 MB a page (polygons); the national 7-day layer had 111,387 cells on 2026-10-03
-GISTDA_EVERY_H = 20     # the layer is rebuilt once a day (~18 UTC); a restart must not download ~300 MB again
+GISTDA_MAX_AGE_H = 36   # safety net: refresh a copy this old even without a new stamp
 
 
-def gistda_due(fetched_at: dt.datetime | None, now: dt.datetime) -> bool:
-    return fetched_at is None or (now - fetched_at).total_seconds() >= GISTDA_EVERY_H * 3600
+def gistda_decide(state: dict, probe: dict, now: dt.datetime) -> tuple[bool, dict]:
+    """Download GISTDA's 7-day layer? (2026-10-03: it is rebuilt at no fixed hour — ~18 UTC one day, ~15 UTC the next —
+    cell by cell, 23,650 -> 30,700 cells within minutes.) Yes when the probe shows a stamp we do not have AND the same
+    stamp and count as the previous hourly probe (the rebuild has finished); or when our copy is older than 36 h and the
+    layer is steady. `state` = {"have": stamp of our copy, "fetched": when, "seen": the previous probe}."""
+    steady = state.get("seen") == probe
+    fetched = state.get("fetched")
+    old = fetched is None or (now - fetched).total_seconds() >= GISTDA_MAX_AGE_H * 3600
+    go = steady and (probe.get("stamp") != state.get("have") or old)
+    return go, {**state, "seen": probe}
+
+
+def _gistda_get(query: str) -> dict:
+    r = fetch(f"{GISTDA_FLOOD}?{query}", headers={"API-Key": settings.gistda_api_key}, retries=2)
+    if r.status != 200:
+        raise RuntimeError(f"HTTP {r.status}")
+    page = json.loads(r.body)
+    page.pop("links", None)  # KI-262: GISTDA echoes the caller's key in these URLs
+    return page
 
 
 def gistda_flood(pause_s: float = 2.0) -> dt.datetime | None:
     """Satellite-flooded cells (GISTDA 7-day layer) for the pin panel's "ดาวเทียมเห็นน้ำท่วม" line (Q45, D-071).
-    Checked hourly, downloaded at most every 20 h; the whole table is replaced in one transaction. Key in the API-Key
-    header (KI-510). Not raw-archived: ~300 MB a day and every page echoes our key in `links` (KI-262)."""
+    Hourly: a 1-cell probe (rebuild stamp = the cells' `_createdAt` hour, and the count); the ~300 MB download only
+    when gistda_decide says a new layer is complete. The table is replaced in one transaction. Key in the API-Key header
+    (KI-510); not raw-archived (size; the payload echoes our key, KI-262)."""
     if not settings.gistda_api_key:
         return None
+    now = dt.datetime.now(dt.timezone.utc)
+    head = _gistda_get("limit=1")
+    feats = head.get("features") or []
+    probe = {"stamp": ((feats[0].get("properties") or {}).get("_createdAt") or "")[:13] if feats else None,
+             "matched": int(head.get("numberMatched") or 0)}
     with db.connect() as c:
-        last = c.execute("SELECT max(fetched_at) AS t FROM sat_flood").fetchone()["t"]
-        if last is None:
-            st = c.execute("SELECT updated_at FROM collector_state WHERE key='gistda_flood_empty'").fetchone()
-            last = st["updated_at"] if st else None
-    if not gistda_due(last, dt.datetime.now(dt.timezone.utc)):
-        return last
-    rows, off, total = [], 0, None
-    while total is None or off < total:
-        r = fetch(f"{GISTDA_FLOOD}?limit={GISTDA_PAGE}&offset={off}", headers={"API-Key": settings.gistda_api_key}, retries=2)
-        if r.status != 200:
-            raise RuntimeError(f"HTTP {r.status}")
-        page = json.loads(r.body)
-        page.pop("links", None)  # KI-262
-        total = int(page.get("numberMatched") or 0)
-        rows += parsing.parse_gistda_flood(page)
-        if not page.get("features"):
-            break
-        off += GISTDA_PAGE
-        time.sleep(pause_s)
+        row = c.execute("SELECT value FROM collector_state WHERE key='gistda_flood'").fetchone()
+    st = dict((row or {}).get("value") or {})
+    st["fetched"] = dt.datetime.fromisoformat(st["fetched"]) if st.get("fetched") else None
+    go, st = gistda_decide(st, probe, now)
+    rows = []
+    if go:
+        off, total = 0, None
+        while total is None or off < total:
+            page = _gistda_get(f"limit={GISTDA_PAGE}&offset={off}")
+            total = int(page.get("numberMatched") or 0)
+            rows += parsing.parse_gistda_flood(page)
+            if not page.get("features"):
+                break
+            off += GISTDA_PAGE
+            time.sleep(pause_s)
+        st.update(have=probe["stamp"], fetched=now)
     with db.connect() as c, c.cursor() as cur:
-        cur.execute("DELETE FROM sat_flood")
-        cur.executemany("""INSERT INTO sat_flood (h3, lat, lon, area_m2, province, amphoe, tambon, img_from, img_to)
-                           VALUES (%(h3)s,%(lat)s,%(lon)s,%(area_m2)s,%(province)s,%(amphoe)s,%(tambon)s,%(img_from)s,%(img_to)s)
-                           ON CONFLICT (h3) DO NOTHING""", rows)
-        # an empty layer is a true answer (nothing seen in 7 days): remember when we asked, so it is not re-asked hourly
-        cur.execute("""INSERT INTO collector_state (key, value, updated_at) VALUES ('gistda_flood_empty', %s, now())
-                       ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()""", (json.dumps(not rows),))
+        if go:
+            cur.execute("DELETE FROM sat_flood")
+            cur.executemany("""INSERT INTO sat_flood (h3, lat, lon, area_m2, province, amphoe, tambon, img_from, img_to)
+                               VALUES (%(h3)s,%(lat)s,%(lon)s,%(area_m2)s,%(province)s,%(amphoe)s,%(tambon)s,%(img_from)s,%(img_to)s)
+                               ON CONFLICT (h3) DO NOTHING""", rows)
+        cur.execute("""INSERT INTO collector_state (key, value, updated_at) VALUES ('gistda_flood', %s, now())
+                       ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()""",
+                    (json.dumps({**st, "fetched": st["fetched"].isoformat() if st.get("fetched") else None}),))
         c.commit()
-    log.info("gistda_flood: %d flooded cells (layer said %s)", len(rows), total)
-    return dt.datetime.now(dt.timezone.utc)
+    if go:
+        log.info("gistda_flood: %d flooded cells (layer %s, %s cells)", len(rows), probe["stamp"], probe["matched"])
+    return st.get("fetched")
 
 
 def run(source: str) -> None:

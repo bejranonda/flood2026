@@ -66,15 +66,24 @@ def test_basin_and_river_maps_are_refreshed_weekly_and_at_start():
     assert dict(worker.TASKS)["hii_geo"] == 7 * 24 * 3600 and "hii_geo" in worker.FIRST_RUN["collector"]
 
 
-def test_satellite_cells_are_checked_hourly_but_downloaded_at_most_every_20_hours():
-    # Q45 (D-071): GISTDA's 7-day layer is ~300 MB and rebuilt daily; restarts must not download it again
+def test_satellite_cells_are_downloaded_when_gistda_finished_a_new_layer():
+    # 2026-10-03 15:11 UTC: GISTDA rebuilt its 7-day layer at ~15 UTC (18 UTC the day before), cell by cell (23,650 ->
+    # 30,700 in minutes), with a new pass; our 20-hour rule kept the morning copy. Probe hourly; download a NEW stamp only
+    # once the count stood still for an hour (a finished rebuild); a copy older than 36 h is refreshed anyway.
     import datetime as dt
-    from floodwatch import collectors
-    # the download held the collector loop ~7 min (2026-10-03 06:16-06:23 UTC): it runs beside the forecasts instead,
-    # so the 10-min collectors never wait (D-064)
+    from floodwatch import collectors as C
     assert dict(worker.FORECASTER_TASKS)["gistda_flood"] == 3600 and "gistda_flood" in worker.FIRST_RUN["forecaster"]
-    assert "gistda_flood" not in dict(worker.TASKS) and "gistda_flood" not in worker.FIRST_RUN["collector"]
-    now = dt.datetime(2026, 10, 3, 6, tzinfo=dt.timezone.utc)
-    assert collectors.gistda_due(None, now)
-    assert not collectors.gistda_due(now - dt.timedelta(hours=19), now)
-    assert collectors.gistda_due(now - dt.timedelta(hours=20), now)
+    now = dt.datetime(2026, 10, 3, 16, tzinfo=dt.timezone.utc)
+    old = {"have": "2026-10-02T18", "fetched": now - dt.timedelta(hours=10), "seen": None}
+    probe = {"stamp": "2026-10-03T15", "matched": 30700}
+    go, st = C.gistda_decide(old, probe, now)
+    assert not go and st["seen"] == probe                       # new stamp, first sight: maybe still rebuilding
+    go, st = C.gistda_decide(st, {"stamp": "2026-10-03T15", "matched": 41200}, now)
+    assert not go                                               # still growing
+    go, st = C.gistda_decide(st, {"stamp": "2026-10-03T15", "matched": 41200}, now)
+    assert go                                                   # stood still for an hour: finished
+    same = {"have": "2026-10-03T15", "fetched": now - dt.timedelta(hours=2), "seen": {"stamp": "2026-10-03T15", "matched": 41200}}
+    assert not C.gistda_decide(same, {"stamp": "2026-10-03T15", "matched": 41200}, now)[0]  # nothing new
+    stale = {**same, "fetched": now - dt.timedelta(hours=37)}
+    assert C.gistda_decide(stale, {"stamp": "2026-10-03T15", "matched": 41200}, now)[0]       # safety net
+    assert C.gistda_decide({"have": None, "fetched": None, "seen": None}, probe, now)[0] is False  # first sight waits too
