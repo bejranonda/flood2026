@@ -91,7 +91,7 @@ def same(a, b):
 
 def open_home(pg):
     pg.goto(URL, wait_until="domcontentloaded"); pg.wait_for_selector("#list li", timeout=30000)
-    pg.locator('.rchip[data-region="all"]').click(); pg.wait_for_timeout(800)
+    pg.locator("#regions .pick-region").select_option("all"); pg.wait_for_timeout(800)  # v0.20.4: pickers, not chips
 
 
 with sync_playwright() as p:
@@ -247,7 +247,7 @@ with sync_playwright() as p:
     # gauges say "ไม่อัปเดต", no river km in the rows; a station's river tag opens its river
     open_home(pg)
     pg.locator('.tabs [data-tab=river]').click(); pg.wait_for_selector("#view-river #rv-river", timeout=30000)
-    pg.select_option("#rv-region", "all"); pg.wait_for_timeout(1200)  # every river (v0.20.2: the picker follows the region)
+    pg.locator("#view-river .pick-region").select_option("all"); pg.wait_for_timeout(1500)  # every river (shared where-row)
     # v0.20.3 overview ("ทุกสาย", the default): each river's "↗ เพิ่มขึ้น N" must equal the rising rows in its own view
     over = pg.evaluate("""() => Object.fromEntries([...document.querySelectorAll('#view-river .rv-sum')].map(e => {
         const n = (re) => { const m = e.innerText.match(re); return m ? +m[1] : 0; };
@@ -291,9 +291,9 @@ with sync_playwright() as p:
     bands = [(0.1, "ไม่มีฝน"), (10.0, "ฝนเล็กน้อย"), (35.0, "ฝนปานกลาง"), (90.0, "ฝนหนัก"), (1e9, "ฝนหนักมาก")]
     word = lambda mm: next(l for i, (mx, l) in enumerate(bands) if (mm < mx if i == 0 else mm <= mx))
     for reg in ("bkk", "metro", "up", "north", "northeast", "east", "west", "south", "all"):
-        if pg.locator(f'.rchip[data-region="{reg}"]').count() == 0:
+        if pg.locator(f'#regions .pick-region option[value="{reg}"]').count() == 0:
             continue
-        pg.locator(f'.rchip[data-region="{reg}"]').click(); pg.wait_for_timeout(500)
+        pg.locator("#regions .pick-region").select_option(reg); pg.wait_for_timeout(500)
         line = pg.evaluate("() => document.querySelector('#summary .sumrain')?.innerText || ''")
         r = rainreg.get(reg) or {}
         fc, mm = r.get("forecast_mm24"), (r.get("measured") or {}).get("rain_24h")
@@ -310,10 +310,10 @@ with sync_playwright() as p:
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep
         b = p.chromium.launch(args=["--no-sandbox"])
         pg = b.new_page(viewport={"width": w, "height": h}, is_mobile=w < 700, has_touch=w < 700, locale="th-TH")
-        pg.goto(URL, wait_until="domcontentloaded"); pg.wait_for_selector(".rchip", timeout=30000); pg.wait_for_timeout(2500)
-        hidden = pg.evaluate("() => [...document.querySelectorAll('.rchip[data-region]')].filter(b => { const r = b.getBoundingClientRect(); return r.right > window.innerWidth || r.left < 0; }).map(b => b.innerText)")
+        pg.goto(URL, wait_until="domcontentloaded"); pg.wait_for_selector("#regions .pick-region", timeout=30000); pg.wait_for_timeout(2500)
+        hidden = pg.evaluate("() => [...document.querySelectorAll('#regions .where select')].filter(b => { const r = b.getBoundingClientRect(); return r.right > window.innerWidth || r.left < 0 || r.width < 100; }).map(b => b.className)")
         if hidden:
-            note("C8", f"{w}px home", f"region chips off-screen: {hidden}")
+            note("C8", f"{w}px home", f"where pickers off-screen or too narrow: {hidden}")
         if pg.locator(".tabs [data-tab=map]").is_visible():  # phones and tablets: the map sits behind its tab
             pg.locator(".tabs [data-tab=map]").click(); pg.wait_for_timeout(1200)
         pg.evaluate("() => { map.setView([18.79, 98.98], 9); }"); pg.wait_for_timeout(1200)

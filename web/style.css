@@ -94,6 +94,10 @@ a { color: var(--accent); }
 .prow .pname small { color: var(--muted); }
 .prow .pfc { grid-column: 1 / -1; margin-top: -2px; }
 .prow .pfc .tr-rows { margin: 0; }
+.where { display: flex; gap: 8px; margin: 0 0 6px; width: 100%; }
+.where select { flex: 1 1 0; min-width: 0; min-height: 40px; font: inherit; font-size: 15px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.regions .where { flex-basis: 100%; }
+.prow.here { box-shadow: inset 4px 0 0 var(--accent); }
 .rv-pick { display: flex; gap: 8px; margin: 4px 0 6px; align-items: center; }
 .rv-pick select { flex: 1 1 0; min-width: 0; min-height: 40px; font: inherit; font-size: 15px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .rv-pick #rv-river { flex-grow: 1.4; }

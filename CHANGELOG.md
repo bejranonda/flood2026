@@ -2,6 +2,17 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.20.4 — 2026-10-03
+- **One "where" row for both tabs: ภาค ▾ · จังหวัด ▾ (owner: "Suggest, if the users like to see stations in their
+  province?" → "Should we improve the dropdown menu under tab แม่น้ำ to have also province dropdown after select ภาค? …
+  ภาค จังหวัด แม่น้ำ as dropdown menu. Is it good or bad? And how can we arrange it?" → chose "Shared where-row +
+  river row"; D-076).** In the list, two pickers with counts ("ภาคเหนือ (173)", "น่าน (26)") replace the four rows of
+  region chips; the province filters the status counts, list and map. The river tab shows the same row and its own
+  "แม่น้ำ ▾ ⓘ" row below: the overview lists that province's rivers and counts its gauges; a river shows whole, with the
+  province's gauges marked and scrolled to. Search hint "ค้นหา จังหวัด/อำเภอ/สถานี" (it always matched provinces).
+- Validated at 390 px: the where row fits on one line in both tabs; Nan → 26 gauges in the list, overview แม่น้ำน่าน 9 ·
+  น้ำมวบ 3 · น้ำยาว 3 · แม่น้ำน้ำว้า 3, 9 of 26 Nan-river gauges marked. Live checks C8/C9/C14 use the pickers.
+
 ## v0.20.3 — 2026-10-03
 - **Usual region names (owner: "Users might expect กทม , กทมและปริมณฑล ภาคกลาง and other usual regions. The เหนือกทม
   and ปริมณฑล might sounds strange?"; D-075):** กทม. · **กทม. และปริมณฑล** (now includes Bangkok, 237 gauges) ·

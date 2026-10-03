@@ -187,7 +187,10 @@ const REGION_TH = { bkk: "กทม.", metro: "กทม. และปริม�
 const REGION_TEST = { metro: (s) => s.region === "metro" || s.region === "bkk" };
 const REGIONS = Object.fromEntries([...Object.entries(REGION_TH).map(([k, th]) => [k, { th, test: REGION_TEST[k] || ((s) => s.region === k) }]),
   ["all", { th: "ทั่วประเทศ", test: () => true }]]);
-const inRegion = (s) => REGIONS[region].test(s);
+// v0.20.4 (owner: "if the users like to see stations in their province?" → one "where" row for both tabs): a province
+// narrows the region; "" = every province of the region. Both are remembered.
+let prov = (() => { try { return localStorage.getItem("prov") || ""; } catch { return ""; } })();
+const inRegion = (s) => REGIONS[region].test(s) && (!prov || s.province === prov);
 const AGENCY_TH = { BMA: "สำนักการระบายน้ำ กทม.", RID: "กรมชลประทาน", HII: "สสน.", EGAT: "กฟผ.",
   FOP: "มูลนิธิอาสาเพื่อนพึ่ง (ภาฯ) ยามยาก สภากาชาดไทย" };
 const agencyTh = (a) => AGENCY_TH[a] || a || "";
@@ -312,24 +315,48 @@ function bindItems(root) {
   });
 }
 
+// The "where" row, the same in the list and the river tab: [ภาค ▾][จังหวัด ▾] with counts (v0.20.4). It replaced the
+// list's region chips (4 rows on a phone after the v0.20.3 names, D-075).
+function whereRow() {
+  const inReg = (k) => stations.filter((s) => REGIONS[k].test(s));
+  const regs = Object.keys(REGIONS).filter((k) => inReg(k).length);
+  const pc = new Map();
+  inReg(region).forEach((s) => s.province && pc.set(s.province, (pc.get(s.province) || 0) + 1));
+  const provs = [...pc.keys()].sort((a, b) => a.localeCompare(b, "th"));
+  return `<div class="where">
+    <select class="pick-region" aria-label="ภาค">${regs.map((k) => `<option value="${esc(k)}"${k === region ? " selected" : ""}>${esc(REGIONS[k].th)} (${inReg(k).length})</option>`).join("")}</select>
+    <select class="pick-prov" aria-label="จังหวัด"><option value="">ทุกจังหวัด (${inReg(region).length})</option>${provs.map((p) => `<option value="${esc(p)}"${p === prov ? " selected" : ""}>${esc(p)} (${pc.get(p)})</option>`).join("")}</select></div>`;
+}
+document.addEventListener("change", (e) => {
+  if (e.target.matches(".pick-region")) setRegion(e.target.value);
+  else if (e.target.matches(".pick-prov")) setProv(e.target.value);
+});
+
 function renderRegions() {
   const el = document.getElementById("regions");
   if (!el) return;
-  el.innerHTML = Object.entries(REGIONS).map(([k, r]) => {
-    const n = stations.filter((s) => r.test(s)).length;
-    return n ? `<button type="button" class="rchip" data-region="${k}" aria-pressed="${k === region}">${esc(r.th)} <b>${n}</b></button>` : "";
-  }).join("") + `<button type="button" class="rchip fchip" aria-pressed="${forecastOnly}" title="ซ่อนสถานีที่ยังคาดการณ์ไม่ได้ (เช่น สถานีใหม่)">📈 เฉพาะที่คาดการณ์ได้</button>`;
+  el.innerHTML = whereRow() + `<button type="button" class="rchip fchip" aria-pressed="${forecastOnly}" title="ซ่อนสถานีที่ยังคาดการณ์ไม่ได้ (เช่น สถานีใหม่)">📈 เฉพาะที่คาดการณ์ได้</button>`;
   el.querySelector(".fchip").addEventListener("click", () => { forecastOnly = !forecastOnly; renderList(); });
-  el.querySelectorAll(".rchip[data-region]").forEach((b) => b.addEventListener("click", () => setRegion(b.dataset.region)));
 }
-// One region for the list, the summary, the map and the river tab (v0.20.2, owner: "Change filter from จังหวัด to ภาค?")
+// One place for the list, the summary, the map and the river tab (v0.20.2 region, v0.20.4 province)
 function setRegion(k) {
   region = k;
-  try { localStorage.setItem("region", region); localStorage.setItem("regionSource", "user"); } catch { /* private mode */ }
+  prov = "";  // a province belongs to one region
+  try { localStorage.setItem("region", region); localStorage.setItem("regionSource", "user"); localStorage.setItem("prov", ""); } catch { /* private mode */ }
+  placeChanged();
+}
+function setProv(p) {
+  prov = p;
+  try { localStorage.setItem("prov", prov); } catch { /* private mode */ }
+  placeChanged();
+}
+function placeChanged() {
   if (lastStats) renderSummary(lastStats);
   renderRegions();
   renderList();
   fitRegion();
+  riverPicked = false; rvFocus = null;
+  if (document.body.dataset.tab === "river") renderRiver().then(scrollRiver);
 }
 
 function renderList() {
@@ -491,7 +518,8 @@ function defaultRiver(list) {
 // so the overview never says more than the river view behind it (owner 2026-10-03: "Can user select all rivers?").
 function riverSummary(r) {
   const byCode = new Map(stations.map((s) => [s.code, s]));
-  const gs = (r.codes || []).map((c) => byCode.get(c)).filter((s) => s && s.agency !== "BMA");
+  // with a province chosen, the overview counts that province's gauges (v0.20.4); the river view shows the whole river
+  const gs = (r.codes || []).map((c) => byCode.get(c)).filter((s) => s && s.agency !== "BMA" && (!prov || s.province === prov));
   const fresh = gs.filter((s) => !s.stale && s.status !== "unknown");
   const lvl = (s) => (s.change24 && directional(s.change24) ? s.change24.level || "" : "");
   return { n: gs.length, stale: gs.length - fresh.length, critical: fresh.filter((s) => s.status === "critical").length,
@@ -509,7 +537,7 @@ function riverOverview(list) {
       x.rise ? `<span class="chg" style="background:${CHANGE.rise.color}">${CHANGE.rise.icon} เพิ่มขึ้น ${x.rise}</span>` : "",
       x.fall ? `<span class="chg" style="background:${CHANGE.fall.color}">↘ ลดลง ${x.fall}</span>` : ""].filter(Boolean);
     return `<div class="rv-sum" data-river="${esc(r.river)}" role="button" tabindex="0">
-      <div><b>${esc(r.river)}</b> <small class="muted">${x.n} สถานี${x.stale ? ` · ไม่อัปเดต ${x.stale}` : ""}</small></div>
+      <div><b>${esc(r.river)}</b> <small class="muted">${x.n} สถานี${prov ? `ใน${esc(prov)}` : ""}${x.stale ? ` · ไม่อัปเดต ${x.stale}` : ""}</small></div>
       <div class="rv-sum-b">${bits.length ? bits.join(" ") : `<span class="muted">ยังรับน้ำได้ทั้งสาย · ไม่มีสถานีที่น่าจะเพิ่มขึ้นในอีก 24 ชม.</span>`}</div></div>`;
   }).join("");
 }
@@ -520,9 +548,8 @@ async function renderRiver() {
     await loadRivers();
     if (!riverList.length) { box.innerHTML = "<p class='muted'>ยังไม่มีข้อมูลแม่น้ำ</p>"; return; }
     // the region of the list (one region everywhere); a region without a river view shows every river
-    const inReg = (r) => region === "all" || (r.regions || []).includes(region);
-    const regs = Object.keys(REGIONS).filter((k) => k === "all" || riverList.some((r) => (r.regions || []).includes(k)));
-    const shown = riverList.filter(inReg).length ? riverList.filter(inReg) : riverList;
+    const inReg = (r) => (region === "all" || (r.regions || []).includes(region)) && (!prov || (r.provinces || []).includes(prov));
+    const shown = riverList.filter(inReg);
     // default: the overview of every river in the region ("ทุกสาย"); a picked river or a tag opens that river
     if (!riverPicked || !shown.some((r) => r.river === river)) river = "";
     const d = river ? await getJSON(`/api/profile?river=${encodeURIComponent(river)}`) : { stations: [] };
@@ -530,8 +557,7 @@ async function renderRiver() {
     const tip = !river ? "ทุกสายในภาคที่เลือก: นับสถานีที่ล้นตลิ่ง ใกล้ตลิ่ง และที่คาดว่าจะเพิ่มขึ้นหรือลดลงในอีก 24 ชม. (เฉพาะสถานีที่ทดสอบย้อนหลังผ่าน) · แตะชื่อแม่น้ำเพื่อดูทั้งสาย"
       : `ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง) · แถบ = ความลึกน้ำเทียบตลิ่ง · เรียงจากต้นน้ำ (บน) ไปปลายน้ำ (ล่าง) ${byBank
       ? "ตามความสูงของตลิ่ง (สายนี้ไม่มีแนวลำน้ำในแผนที่ของ สสน.)" : "ตามแนวลำน้ำในแผนที่ของ สสน."} · "อีก 24 ชม." แสดงเฉพาะสถานีที่ทดสอบย้อนหลังผ่าน · ค่าระหว่างสถานีไม่ได้ประมาณ · สถานีของ กทม. ดูได้ในรายการและแผนที่`;
-    const pick = `<div class="rv-pick">
-      <select id="rv-region" aria-label="ภาค">${regs.map((k) => `<option value="${esc(k)}"${k === region ? " selected" : ""}>${esc(k === "all" ? "ทั่วประเทศ" : REGIONS[k].th)}</option>`).join("")}</select>
+    const pick = `${whereRow()}<div class="rv-pick">
       <select id="rv-river" aria-label="แม่น้ำ"><option value=""${river ? "" : " selected"}>ทุกสาย (${shown.length})</option>${shown.map((r) => `<option value="${esc(r.river)}"${r.river === river ? " selected" : ""}>${esc(r.river)} (${r.n})</option>`).join("")}</select>
       ${infoBtn(tip, "วิธีอ่านมุมมองแม่น้ำ")}</div>`;
     // upstream at the top: the water flows down the screen (owner 2026-10-03); the API lists upstream first
@@ -540,19 +566,18 @@ async function renderRiver() {
       const pct = old || s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
       const val = old ? `<span class="pval muted">ไม่อัปเดต</span>`
         : `<span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span>`;
-      return `<div class="prow${s.code === rvFocus ? " focus" : ""}" data-code="${esc(s.code)}" role="button" tabindex="0">
+      return `<div class="prow${prov && s.province === prov ? " here" : ""}${s.code === rvFocus ? " focus" : ""}" data-code="${esc(s.code)}" role="button" tabindex="0">
         <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}</small></span>
         <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${old ? "#d1d5db" : st.color}"></span></span>
         ${val}${old ? "" : `<div class="pfc">${trendRows(s, [24])}</div>`}</div>`;
     }).join("");
     box.innerHTML = river ? `${pick}<div class="rv-end">↑ ต้นน้ำ</div>${rows}<div class="rv-end">↓ ปลายน้ำ</div>`
-      : `${pick}${riverOverview(shown)}`;
+      : `${pick}${shown.length ? riverOverview(shown) : `<p class="muted">ไม่มีแม่น้ำที่มีสถานีวัด 3 แห่งขึ้นไปใน${esc(prov || REGIONS[region].th)} · ดูสถานีในแท็บรายการ</p>`}`;
     box.querySelectorAll(".rv-sum").forEach((el) => {
-      const open = () => { river = el.dataset.river; riverPicked = true; rvFocus = null; renderRiver().then(() => window.scrollTo({ top: 0 })); };
+      const open = () => { river = el.dataset.river; riverPicked = true; rvFocus = null; renderRiver().then(scrollRiver); };
       el.addEventListener("click", open);
       el.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
     });
-    box.querySelector("#rv-region").addEventListener("change", (e) => { riverPicked = false; rvFocus = null; setRegion(e.target.value); renderRiver(); });
     box.querySelector("#rv-river").addEventListener("change", (e) => { river = e.target.value; riverPicked = !!river; rvFocus = null; renderRiver(); });
     box.querySelectorAll(".prow").forEach((r) => {
       r.addEventListener("click", (e) => { if (!e.target.closest(".conf-badge")) showDetail(r.dataset.code); });
@@ -562,18 +587,23 @@ async function renderRiver() {
     box.innerHTML = `<p>โหลดข้อมูลไม่สำเร็จ (${esc(e.message)})</p>`;
   }
 }
-// after a river tag: show the station, not the top of the river
+// after a river tag or with a province: show the station (or the province's first gauge), not the top of the river
 function scrollRiver() {
-  const el = document.querySelector("#view-river .prow.focus");
+  const el = document.querySelector("#view-river .prow.focus") || document.querySelector("#view-river .prow.here");
   if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest(".rv-tag");
   if (!b) return;
   river = b.dataset.river; riverPicked = true; rvFocus = b.dataset.code;
-  // the river must be in the picker: follow the station's region when the chosen one does not hold this river
+  // the river must be in the picker: follow the station's region (and drop a province) when they do not hold it
   const r = (riverList || []).find((x) => x.river === river);
-  if (region !== "all" && r && !(r.regions || []).includes(region)) setRegion(b.dataset.region);
+  if (r && ((region !== "all" && !(r.regions || []).includes(region)) || (prov && !(r.provinces || []).includes(prov)))) {
+    region = b.dataset.region; prov = "";
+    try { localStorage.setItem("region", region); localStorage.setItem("prov", ""); } catch { /* private mode */ }
+    if (lastStats) renderSummary(lastStats);
+    renderRegions(); renderList(); fitRegion();
+  }
   closeDetail();
   setTab("river");
 });
