@@ -20,6 +20,8 @@ in many possibilities"). One browser session, views compared at the same moment:
      headline never repeats a rain amount (owner 2026-10-02: "rainfall info … one long sentence").
   C14 (v0.20.0, D-072) the แม่น้ำ tab: every river loads, downstream first, no BMA gauge, 24 h row where a forecast exists.
   C13 (v0.19.0, D-071) the satellite line appears exactly when /api/point reports GISTDA flooding within 1 km, never "no flood".
+  C15 (v0.20.6) text = graph: every trend-based row (ⓘ "แนวโน้มที่วัดได้") has an orange chart point at the same horizon with
+     the same cm, and no orange point exists without such a row (owner 2026-10-03, Kgt.19A: rows +75 ซม., chart flat).
   C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
      opens a story with no verdict word (ปลอดภัย, ไม่ท่วม, ได้ครับ, ไปได้, ปกติ) and no rain amount.
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
@@ -36,6 +38,12 @@ LIST_JS = "() => { const f = " + PARSE + "; return Object.fromEntries([...docume
 BLOCKS_JS = """() => [...document.querySelectorAll('#detail li.item, #detail .pf-gauge[data-code]')].map(el => ({ code: el.dataset.code,
   rows: [...el.querySelectorAll('.tr-rows')].map(r => { const c = [...r.children], o = []; for (let i = 0; i + 2 < c.length; i += 4) o.push([c[i].textContent.trim(), c[i+1].textContent.trim(), c[i+2].textContent.trim()]); return o; }).flat(),
   obs: [...el.querySelectorAll('.pf-obs')].map(e => e.textContent.trim()) }))"""
+TREND_JS = r"""() => { const d = document.querySelector('#detail'); if (!d) return null;
+  const rows = [...d.querySelectorAll('.sheet-trend .tr-rows')].flatMap(r => { const c = [...r.children], o = [];
+    for (let i = 0; i + 3 < c.length; i += 4) { const tip = c[i+3].getAttribute('title') || ''; const m = c[i+2].textContent.match(/([+−-]?\d+)\s*ซม/);
+      if (tip.includes('แนวโน้มที่วัดได้') && m) o.push([Number(c[i].textContent.match(/\d+/)[0]), Number(m[1].replace('−', '-'))]); } return o; });
+  const pts = [...d.querySelectorAll('circle.trend-pt')].map(c => [Number(c.dataset.h), Number(c.dataset.cm)]);
+  return { rows, pts }; }"""
 SHEET_JS = """(scope) => { const d = document.querySelector('#detail'); if (!d) return null;
   const rows = [...d.querySelectorAll('.tr-rows')].map(r => { const c = [...r.children], o = []; for (let i = 0; i + 2 < c.length; i += 4) o.push([c[i].textContent.trim(), c[i+1].textContent.trim(), c[i+2].textContent.trim()]); return o; })[0] || [];
   const box = (scope && d.querySelector(scope)) || d;  // rendered text of one block (hidden dialogs are not text)
@@ -120,6 +128,12 @@ with sync_playwright() as p:
         pg.wait_for_timeout(300)
         v = pg.evaluate(SHEET_JS, None); counts["sheets"] += 1
         check_rows(f"sheet {code}", v["rows"]); check_text(f"sheet {code}", v)
+        tg = pg.evaluate(TREND_JS)  # C15: text = graph
+        if tg:
+            rows_t = {r[0]: r[1] for r in tg["rows"]}
+            pts_t = {p[0]: p[1] for p in tg["pts"]}
+            if set(rows_t) != set(pts_t) or any(abs(rows_t[h] - pts_t[h]) > 1 for h in rows_t):
+                note("C15", f"sheet {code}", f"rows {rows_t} vs chart {pts_t}")
         if not same(card, v):  # the sheet updates its list item (v0.16.6): re-read the card the user now sees
             pg.evaluate("() => closeDetail()"); pg.wait_for_timeout(300)
             card = pg.evaluate(LIST_JS).get(code) or card
@@ -330,7 +344,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14", "C15")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

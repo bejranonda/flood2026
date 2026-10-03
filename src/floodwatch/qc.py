@@ -116,9 +116,31 @@ def observed(xs: list[tuple[float, float]]) -> dict | None:
     end = xs[-1][0]
     o24 = observed24([x for x in xs if x[0] > end - 24 * 3600], 24)
     if o24 and o24["level"] not in ("steady", "mixed"):
-        return o24
-    o48 = observed24([x for x in xs if x[0] > end - 48 * 3600], 48)
-    return o48 if o48 and o48["level"] not in ("steady", "mixed") else o24
+        out = o24
+    else:
+        o48 = observed24([x for x in xs if x[0] > end - 48 * 3600], 48)
+        out = o48 if o48 and o48["level"] not in ("steady", "mixed") else o24
+    return None if out is None else {**out, "change6_cm": recent_change_cm(xs)}
+
+
+RECENT_H = 6
+
+
+def recent_change_cm(xs: list[tuple[float, float]], hours: int = RECENT_H) -> float | None:
+    """Straight-line change over the last `hours` (cm, 0.1): whether a 24 h trend is still going (owner 2026-10-03,
+    Kgt.19A: a 70 cm jump that had levelled off was continued as "+75 ซม. ใน 24 ชม."). None with < 4 readings or
+    < 4 h of span."""
+    if not xs:
+        return None
+    end = xs[-1][0]
+    w = [x for x in xs if x[0] > end - hours * 3600]
+    if len(w) < 4 or w[-1][0] - w[0][0] < 4 * 3600:
+        return None
+    mx = sum(t for t, _ in w) / len(w)
+    my = sum(v for _, v in w) / len(w)
+    sxx = sum((t - mx) ** 2 for t, _ in w)
+    b = sum((t - mx) * (v - my) for t, v in w) / sxx
+    return round(b * hours * 3600 * 100, 1)
 
 
 def run_all(hours: float = 49) -> dict:

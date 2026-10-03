@@ -207,6 +207,15 @@ def follow_measured(ch: dict | None, obs24: dict | None, sk: dict | None, h: int
     # number and label say the same thing (owner 2026-09-28: keep numbers; "prove the consistency"). The past range
     # after such trends often leans the other way (canals rebound), so it is not printed next to the word.
     rate = obs24["change_cm"] / 100 / (obs24.get("hours") or 24)
+    # ... at its recent pace: the smaller of the 24 h and the last-6 h pace, none when the last 6 h stopped or turned
+    # (owner 2026-10-03, Kgt.19A "+75 ซม." after the rise had stopped; backtest research/2026-10-03_verify_text_graph.py:
+    # MAE at 24 h 16.3 cm vs 19.5 with the 24 h pace and 18.5 with the model; direction right 87 % vs 83 %)
+    r6 = obs24.get("change6_cm")
+    if r6 is not None:
+        r6 = r6 / 100 / 6
+        if r6 == 0 or (r6 > 0) != (rate > 0):
+            return ch
+        rate = math.copysign(min(abs(rate), abs(r6)), rate)
     v = round(rate * h * math.exp(-h / 48.0), 2)
     cm = abs(round(v * 100))
     if cm < 1:

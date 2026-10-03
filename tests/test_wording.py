@@ -111,3 +111,12 @@ def test_one_where_row_for_both_tabs_with_region_and_province():
     assert "whereRow(" in body and 'id="rv-region"' not in body
     html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
     assert 'placeholder="ค้นหา จังหวัด/อำเภอ/สถานี"' in html
+
+
+def test_the_chart_draws_the_measured_trend_the_rows_print():
+    # owner 2026-10-03 (Kgt.19A): rows "+48/+75/+91 ซม." from the measured trend, chart flat (the model). Both are
+    # drawn now, labelled (owner chose "Both, labelled"), from the same row values, so text and graph agree.
+    assert "function trendPts(s)" in APP and 'basis === "measured_trend"' in APP.split("function trendPts(s)")[1][:400]
+    assert "chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl, trendPts(s))" in APP
+    legend = APP.split('class="legend-body">')[1][:400]
+    assert "ตามแนวโน้มที่วัดได้" in legend and "แบบจำลอง" in legend

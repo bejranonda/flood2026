@@ -1,3 +1,4 @@
+import math
 import datetime as dt
 
 import pytest
@@ -190,6 +191,23 @@ def test_rows_follow_the_measured_trend_unless_a_model_sees_a_direction():
     unsure_rise = {**star_rise, "likely": [-0.01, 0.14]}  # C2: "↗ เพิ่มขึ้น −1 ถึง +14" is not a direction
     assert api.follow_measured(unsure_rise, obs, sk)["basis"] == "measured_trend"
     assert api.follow_measured(none, {"change_cm": 0, "r2": 0.1, "level": "mixed"}, sk) is none
+
+
+def test_a_measured_trend_continues_at_its_recent_pace_and_stops_when_the_last_6_h_disagree():
+    # owner 2026-10-03 (Kgt.19A): text "+48/+75/+91 ซม." from a 24 h line through a rise that had stopped, graph flat.
+    # Backtest 26 Sep - 3 Oct (research/2026-10-03_verify_text_graph.py): the smaller of the 24 h and 6 h paces, none
+    # when the last 6 h go the other way: MAE 16.3 cm at 24 h vs 19.5 (24 h line) and 18.5 (model); direction 87 %.
+    none = {"dir": "steady", "level": "steady", "method": "persistence", "likely": [-0.01, 0.01]}
+    sk = {"cont": {"rise": {"n": 40, "hit": 0.7}}}
+    stopped = {"change_cm": 124, "r2": 0.88, "level": "strong_rise", "hours": 24, "change6_cm": 0.0}
+    assert api.follow_measured(none, stopped, sk) is none  # no pace left: the model's word stands
+    slower = {**stopped, "change6_cm": 6.0}               # 1 cm/h now, not 5
+    r = api.follow_measured(none, slower, sk)
+    assert r["basis"] == "measured_trend" and r["median"] == round(0.01 * 24 * math.exp(-0.5), 2)
+    turned = {**stopped, "change6_cm": -4.0}
+    assert api.follow_measured(none, turned, sk) is none
+    faster = {"change_cm": 24, "r2": 0.9, "level": "strong_rise", "hours": 24, "change6_cm": 12.0}  # 2 cm/h now, 1 over 24 h
+    assert api.follow_measured(none, faster, sk)["median"] == round(0.01 * 24 * math.exp(-0.5), 2)
 
 
 def test_station_rows_are_computed_once_per_ttl_and_shared(monkeypatch):

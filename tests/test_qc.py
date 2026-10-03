@@ -110,3 +110,15 @@ def test_run_all_end_to_end_with_a_fake_database(monkeypatch):
     out = qc.run_all()
     assert out["erratic"] == ["S"] and state["erratic_gauges"]["S"]["kind"] == "stuck"
     assert state["observed24"]["K"]["level"] in ("fall", "strong_fall")
+
+
+def test_observed_also_says_what_the_last_6_h_did():
+    # owner 2026-10-03 (Kgt.19A): the canal jumped 70 cm in 6 h, then levelled off; the 24 h line (+124 cm) said
+    # "+75 ซม. ใน 24 ชม." while the rise had stopped. The last 6 h tell whether a trend is still going.
+    t0 = 1_790_000_000.0
+    xs = [(t0 + k * 3600, 15.78 if k < 8 else min(16.6, 15.78 + 0.14 * (k - 7)) if k < 14 else 16.6) for k in range(25)]
+    o = qc.observed(xs)
+    assert o["level"] == "strong_rise" and o["change_cm"] > 60
+    assert abs(o["change6_cm"]) < 3
+    rising = [(t0 + k * 3600, 1.0 + 0.01 * k) for k in range(25)]
+    assert abs(qc.observed(rising)["change6_cm"] - 6) < 0.5

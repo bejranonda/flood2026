@@ -2,6 +2,24 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.20.6 — 2026-10-03
+- **Text and graph tell the same forecast (owner: "Are the forecasting in text and in graph agree with each other, I
+  found the difference", Kgt.19A).** Proven: the rows came from the measured trend (a 24 h straight line, +124 cm,
+  continued and damped: "+48/+75/+91 ซม."), the graph from the model ("no change": flat). The canal had jumped ~70 cm in
+  6 h and then levelled off, so the line continued a rise that had stopped. 535 of 927 rows were trend-based; 171 said
+  ≥ 10 cm while the graph drew the model.
+  - **The trend now continues at its recent pace:** the smaller of the 24 h and the last-6 h pace, and not at all when
+    the last 6 h stopped or turned. Backtest on the archived runs 26 Sep – 3 Oct (research/2026-10-03_verify_text_graph.py,
+    ~6,000 cases per horizon): mean error 10.4 / 16.3 / 29.2 cm at 12 / 24 / 48 h (was 12.6 / 19.5 / 32.8; the model
+    12.5 / 18.5 / 31.5); direction right 85–87 % (was 80–83 %). Picked from 5 variants on one week: re-check as the
+    archive grows.
+  - **The graph draws both, labelled (owner's choice):** the model's line and bands as before, plus the measured trend
+    as an orange dashed line with points at exactly the rows' +12/+24/+48 h values; the legend and each row's ⓘ name it.
+  - Live check **C15**: every trend-based row has its orange point with the same cm, and no point without a row.
+- **Behind the scenes for the next release (D-077):** forecast runs store the 48 h bank-chance band; station rows carry
+  `bank_chance24/48`; the forecaster computes daily track records (`risk_record`: may reach bank 6 in 10 / 1 in 10,
+  upstream 6 in 10, fast rise 7 in 10). Nothing new is shown yet.
+
 ## v0.20.5 — 2026-10-03
 - **Satellite cells follow GISTDA's new layer within about two hours (KI-268).** Found answering the owner's "Developing
   progress for satellite inputs?": GISTDA rebuilt its 7-day layer at ~15 UTC today (~18 UTC yesterday), cell by cell
