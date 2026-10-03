@@ -16,7 +16,7 @@ import numpy as np
 from floodwatch import db, rain_cells
 
 log = logging.getLogger(__name__)
-VERSION = "star-0.2"  # D-052: network space-time AR + rain competes in the backtest
+VERSION = "star-0.3"  # v0.20.7: "recent" pace joins the ladder (one forecaster; the API override is gone)  # D-052: network space-time AR + rain competes in the backtest
 HORIZONS = [1, 3, 6, 12, 24, 48, 72]
 TIDE_SPEEDS = {"K1": 15.0410686, "O1": 13.9430356, "M2": 28.9841042, "S2": 30.0, "M4": 57.9682084,
                "MS4": 58.9841042}
@@ -88,6 +88,27 @@ def _predict(method: str, y0: float, tide: float, h: int, slope: float) -> float
     if method == "tide":
         return y0 + tide
     return y0 + tide + (0.0 if not np.isfinite(slope) else slope * h * math.exp(-h / 48.0))
+
+
+def _fit_rate(y: np.ndarray, i: int, w: int, min_n: int) -> float:
+    """Straight-line pace (m/h) over the w hours ending at i; nan with fewer than min_n readings."""
+    seg = y[max(0, i - w):i + 1]
+    k = np.where(np.isfinite(seg))[0]
+    if len(k) < min_n or k[-1] - k[0] < min_n - 1:
+        return float("nan")
+    x, v = k.astype(float), seg[k]
+    xm = x.mean()
+    return float(((x - xm) * (v - v.mean())).sum() / ((x - xm) ** 2).sum())
+
+
+def recent_rate(y: np.ndarray, i: int) -> float:
+    """The "recent" method's pace (m/h): the smaller of the 24 h and the last-6 h pace, 0 when they disagree (a rise
+    that stopped or turned is not continued). Owner 2026-10-03 (Kgt.19A: "+75 ซม." after a 70 cm jump had levelled
+    off; "I thought the trend were calculated by the model"). Backtest of the rule: research/2026-10-03_verify_text_graph.py."""
+    r24, r6 = _fit_rate(y, i, 24, 12), _fit_rate(y, i, 6, 4)
+    if not (np.isfinite(r24) and np.isfinite(r6)) or r24 == 0 or r6 == 0 or (r24 > 0) != (r6 > 0):
+        return 0.0
+    return float(math.copysign(min(abs(r24), abs(r6)), r24))
 
 
 def _slope(ybar: np.ndarray, i: int) -> float:
@@ -242,7 +263,7 @@ def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
     n = len(y)
     split = max(int(n * 0.6), n - EVAL_HOURS)
     eta = fit_tide(t[:split], y[:split])
-    methods = ["persistence"] + (["tide", "tide_trend"] if eta else ["trend"])
+    methods = ["persistence"] + (["tide", "tide_trend"] if eta else ["trend"]) + ["recent"]
     ybar = trailing_mean(y, 25)
     etag = eta(t) if eta else np.zeros(n)
     errs = {h: {m: {} for m in methods} for h in HORIZONS}  # row index -> error, so methods compare on the same rows
@@ -250,13 +271,14 @@ def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
         if not np.isfinite(y[i]):
             continue
         sl = _slope(ybar, i)
+        rr = recent_rate(y, i)
         for h in HORIZONS:
             j = i + h
             if j >= n or not np.isfinite(y[j]):
                 continue
             for m in methods:
                 tide = 0.0 if m == "trend" else etag[j] - etag[i]
-                p = _predict("tide_trend" if m == "trend" else m, y[i], tide, h, sl)
+                p = _predict("tide_trend" if m in ("trend", "recent") else m, y[i], tide, h, rr if m == "recent" else sl)
                 errs[h][m][i] = y[j] - p
     if ex:  # star: trained only on targets that end before the window, tested on the window (no leakage)
         yf = _ffill(y, OWN_FFILL_H)
@@ -327,6 +349,9 @@ def model_is_fresh(row: dict | None, n_rows: int, now: dt.datetime) -> bool:
     """True when a cached backtest (forecast_model row) may be reused for a gauge with `n_rows` readings."""
     if not row or row.get("trained_at") is None:
         return False
+    sk = row.get("payload")
+    if isinstance(sk, dict) and sk and not any("recent" in (v or {}).get("rmse", {}) for v in sk.values()):
+        return False  # stored before the "recent" method joined the ladder (v0.20.7): backtest again
     return (now - row["trained_at"]).total_seconds() < MODEL_MAX_AGE_H * 3600 and n_rows <= row["n_rows"] * MODEL_MAX_GROWTH
 
 
@@ -346,6 +371,7 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
     eta = fit_tide(t, y) if enough else None
     ybar = trailing_mean(y, 25)
     sl = _slope(ybar, len(y) - 1)
+    rr = recent_rate(y, len(y) - 1)
     fut = eta(t0 + np.arange(0, 73, dtype=float)) if eta else np.zeros(73)
 
     yf = _ffill(y, OWN_FFILL_H) if ex else y
@@ -369,8 +395,8 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
             own = {m: r for m, r in e["rmse"].items() if m != "star"}
             method = min(own, key=own.get)
         if p is None:
-            m = "tide_trend" if method == "trend" else method
-            p = _predict(m, y0, 0.0 if method == "trend" else float(fut[hh] - fut[0]), hh, sl)
+            m = "tide_trend" if method in ("trend", "recent") else method
+            p = _predict(m, y0, 0.0 if method == "trend" else float(fut[hh] - fut[0]), hh, rr if method == "recent" else sl)
         if e:
             lo_h = max([h for h in HORIZONS if h <= hh and h in ev], default=hb)
             w = 0.0 if hb == lo_h else (hh - lo_h) / (hb - lo_h)

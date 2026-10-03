@@ -2,20 +2,25 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## v0.20.6 — 2026-10-03
-- **Text and graph tell the same forecast (owner: "Are the forecasting in text and in graph agree with each other, I
-  found the difference", Kgt.19A).** Proven: the rows came from the measured trend (a 24 h straight line, +124 cm,
-  continued and damped: "+48/+75/+91 ซม."), the graph from the model ("no change": flat). The canal had jumped ~70 cm in
-  6 h and then levelled off, so the line continued a rise that had stopped. 535 of 927 rows were trend-based; 171 said
-  ≥ 10 cm while the graph drew the model.
-  - **The trend now continues at its recent pace:** the smaller of the 24 h and the last-6 h pace, and not at all when
-    the last 6 h stopped or turned. Backtest on the archived runs 26 Sep – 3 Oct (research/2026-10-03_verify_text_graph.py,
-    ~6,000 cases per horizon): mean error 10.4 / 16.3 / 29.2 cm at 12 / 24 / 48 h (was 12.6 / 19.5 / 32.8; the model
-    12.5 / 18.5 / 31.5); direction right 85–87 % (was 80–83 %). Picked from 5 variants on one week: re-check as the
-    archive grows.
-  - **The graph draws both, labelled (owner's choice):** the model's line and bands as before, plus the measured trend
-    as an orange dashed line with points at exactly the rows' +12/+24/+48 h values; the legend and each row's ⓘ name it.
-  - Live check **C15**: every trend-based row has its orange point with the same cm, and no point without a row.
+## v0.20.7 — 2026-10-03 (includes v0.20.6, live ~15 min, not tagged)
+- **One forecaster: the rows and the chart come from the same model (owner: "Are the forecasting in text and in graph
+  agree with each other, I found the difference" → "Why trend and model forecast in the chart are different? … I thought
+  the trend were calculated by the model").** Proven at Kgt.19A: the rows came from a measured-trend override in the API
+  (D-060, 2026-09-28: a 24 h straight line, +124 cm, continued and damped: "+48/+75/+91 ซม."), the chart from the model
+  ("no change": flat), far outside the model's own 90 % band. The canal had jumped ~70 cm in 6 h and then levelled off.
+  535 of 927 rows were override rows; 171 said ≥ 10 cm while the chart drew the model.
+  - **The override is gone.** The rows are the model's own path (`change_summary` of the stored quantiles), the band
+    the chart draws; the chart marks the model's 50 % range at 12/24/48 h for the live check.
+  - **The trend became a method of the model, "recent" (แนวโน้มล่าสุด):** the smaller of the 24 h and the last-6 h
+    pace, none when they disagree, damped like the others. It competes per gauge and horizon in the same 45-day
+    rolling backtest with the same 10 % skill gate, and its bands come from its own backtest errors. Evidence for the
+    rule (archived runs 26 Sep – 3 Oct, research/2026-10-03_verify_text_graph.py, ~6,000 cases per horizon): mean
+    error 10.4 / 16.3 / 29.2 cm at 12 / 24 / 48 h vs 12.6 / 19.5 / 32.8 for the old override and 12.5 / 18.5 / 31.5
+    for the served model; direction right 85–87 %. Cached backtests without "recent" are redone at once.
+  - The QC's measured 24 h line also reports the last 6 h (`change6_cm`), shown nowhere yet.
+  - v0.20.6 (interim, 15 min) kept the override at the recent pace and drew it as a second (orange) line; the owner's
+    next question showed two forecasters on one chart is the problem itself.
+  - Live check **C15**: every 12/24/48 h row prints the 50 % range the chart marks at that horizon.
 - **River tab: every gauge of a picked province (owner: "You can show in river tab, even this province has only one
   station … is it the expectation from visitors?").** ชลบุรี showed "ทุกสาย (0)" and a pointer elsewhere; 13 provinces
   showed nothing and 426 of 840 non-BMA gauges never appeared in the tab (< 3 gauges per waterway). Now a section

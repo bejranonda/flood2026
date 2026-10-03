@@ -275,7 +275,7 @@ def test_a_lone_close_gauge_outvoted_nearby_is_not_trusted():
 
 def test_headline_trend_is_the_trend_the_rows_show():
     # pin 13.70,100.47 on 2026-09-28: headline "ยังทรงตัว" above rows "↘ ลดลง ราว −10 ซม." (the old trend12 label)
-    measured = {"dir": "falling", "level": "fall", "basis": "measured_trend", "method": "persistence", "likely": [-0.1, -0.1]}
+    measured = {"dir": "falling", "level": "fall", "method": "recent", "likely": [-0.1, -0.1]}
     assert point._station_trend({"trend12": "steady", "change12": measured}) == "falling"
     unsure = {"dir": "rising", "level": "rise", "method": "star", "likely": [-0.01, 0.14]}  # range crosses zero
     assert point._station_trend({"trend12": "rising", "change12": unsure}) == "steady"
@@ -283,7 +283,7 @@ def test_headline_trend_is_the_trend_the_rows_show():
 
 
 def test_a_high_but_falling_canal_is_not_called_steady():
-    ch = {"dir": "falling", "level": "small_fall", "basis": "measured_trend", "method": "persistence", "likely": [-0.02, -0.02]}
+    ch = {"dir": "falling", "level": "small_fall", "method": "recent", "likely": [-0.02, -0.02]}
     st = [{"code": "K", "lat": 13.74, "lon": 100.72, "status": "warning", "stale": False, "river": "คลองประเวศ",
            "trend12": "steady", "change24": ch, "change12": ch}]
     fc = point.assess(13.741, 100.721, st, 0, {}, 3.0)["forecast"]

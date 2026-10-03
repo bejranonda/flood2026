@@ -113,13 +113,15 @@ def test_one_where_row_for_both_tabs_with_region_and_province():
     assert 'placeholder="ค้นหา จังหวัด/อำเภอ/สถานี"' in html
 
 
-def test_the_chart_draws_the_measured_trend_the_rows_print():
-    # owner 2026-10-03 (Kgt.19A): rows "+48/+75/+91 ซม." from the measured trend, chart flat (the model). Both are
-    # drawn now, labelled (owner chose "Both, labelled"), from the same row values, so text and graph agree.
-    assert "function trendPts(s)" in APP and 'basis === "measured_trend"' in APP.split("function trendPts(s)")[1][:400]
-    assert "chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl, trendPts(s))" in APP
-    legend = APP.split('class="legend-body">')[1][:400]
-    assert "ตามแนวโน้มที่วัดได้" in legend and "แบบจำลอง" in legend
+def test_one_forecaster_rows_and_chart_come_from_the_same_model_path():
+    # owner 2026-10-03 (Kgt.19A): "Why trend and model forecast in the chart are different? … I thought the trend were
+    # calculated by the model". No second forecaster beside the model: no measured-trend rows, no orange trend line;
+    # the chart marks the model's 50 % range at 12/24/48 h, which the rows print (live check C15).
+    assert "measured_trend" not in CODE and "trendPts" not in CODE
+    assert 'class="fc-pt"' in APP and "data-lo=" in APP and "data-hi=" in APP
+    assert 'recent: "แนวโน้มล่าสุด"' in APP
+    legend = APP.split('class="legend-body">')[1][:300]
+    assert "ตัวเลขในแถว" in legend
 
 
 def test_river_tab_shows_every_gauge_of_a_picked_province():

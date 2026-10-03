@@ -252,3 +252,40 @@ def test_bank_chance_bands_over_a_window():
     assert bank_chance(path, 1.25, 24) == "25-50%"
     assert bank_chance(path, 1.85, 24) == "<5%" and bank_chance(path, 1.85, 48) == "5-25%"
     assert bank_chance(path, 1.15, 48) == ">50%" and bank_chance(path, None, 24) is None
+
+
+# --- v0.20.7: one forecaster (owner 2026-10-03: "Why trend and model forecast in the chart are different? … I thought
+# the trend were calculated by the model"). The recent-pace rule is a method of the model, not an override beside it.
+def test_recent_pace_is_the_smaller_of_24_and_6_h_and_none_when_they_disagree():
+    from floodwatch.forecast import recent_rate
+    import numpy as np
+    step = np.concatenate([np.full(20, 15.78), np.linspace(15.78, 16.5, 7), np.full(12, 16.6)])   # jump, then flat
+    assert abs(recent_rate(step, len(step) - 1)) < 0.003                                           # m/h: stopped
+    steady_fall = 2.0 - 0.01 * np.arange(40)                                                       # 1 cm/h for 40 h
+    assert abs(recent_rate(steady_fall, 39) + 0.01) < 1e-6
+    turned = np.concatenate([1.0 + 0.01 * np.arange(30), 1.29 - 0.01 * np.arange(1, 8)])
+    assert recent_rate(turned, len(turned) - 1) == 0.0
+
+
+def test_recent_competes_in_the_backtest_and_wins_on_a_gauge_that_keeps_draining():
+    from floodwatch.forecast import evaluate
+    import numpy as np
+    n = 24 * 60
+    t = np.arange(n, dtype=float)
+    rng = np.random.default_rng(1)
+    # slow drains that stop and restart (a canal after rain): persistence lags, the recent pace follows
+    y = np.cumsum(np.where((t // 72) % 2 == 0, -0.004, 0.0)) + rng.normal(0, 0.002, n) + 3.0
+    ev = evaluate(t, y)
+    assert "recent" in ev[24]["rmse"]
+    assert ev[24]["rmse"]["recent"] < ev[24]["rmse"]["persistence"]
+
+
+def test_a_cached_backtest_without_the_recent_method_is_redone():
+    # v0.20.7: "recent" joined the ladder; a backtest stored before it would keep serving yesterday's choice for ~20 h
+    import datetime as dt
+    from floodwatch.forecast import model_is_fresh
+    now = dt.datetime(2026, 10, 3, 20, tzinfo=dt.timezone.utc)
+    old = {"trained_at": now - dt.timedelta(hours=1), "n_rows": 1000,
+           "payload": {"24": {"method": "persistence", "rmse": {"persistence": 0.1, "trend": 0.12}}}}
+    new = {**old, "payload": {"24": {"method": "recent", "rmse": {"persistence": 0.1, "recent": 0.08}}}}
+    assert not model_is_fresh(old, 1000, now) and model_is_fresh(new, 1000, now)

@@ -175,39 +175,18 @@ def test_change48_is_always_given_and_flagged_proven_only_at_medium_confidence()
     assert api._change_fields(row, "critical")["change48"]["proven"] is True
 
 
-def test_rows_follow_the_measured_trend_unless_a_model_sees_a_direction():
-    # owner 2026-09-28 (WL.KPM.04, WL.LBK.03): the chart falls, the rows said "? ไม่แน่ชัด" / "ทรงตัว"
-    obs = {"change_cm": -14, "r2": 0.9, "level": "fall"}
-    sk = {"cont": {"fall": {"n": 52, "hit": 0.596, "q": [-0.2, -0.1, -0.04, 0.02, 0.1]}}}
-    none = {"dir": "steady", "level": "steady", "method": "persistence", "likely": [-0.16, 0.14]}
-    r = api.follow_measured(none, obs, sk)
-    assert r["dir"] == "falling" and r["basis"] == "measured_trend" and r["hit"] == 0.596
-    assert r["likely"] == [-0.08, -0.08] and r["level"] == "fall"  # −14 cm/24 h continued, damped: word and number agree
-    assert api.follow_measured(none, {"change_cm": -3, "r2": 0.7, "level": "small_fall"}, sk, 12)["level"] == "small_fall"
-    star_steady = {**none, "method": "star"}
-    assert api.follow_measured(star_steady, obs, sk)["basis"] == "measured_trend"
-    star_rise = {**none, "method": "star", "dir": "rising", "level": "rise", "likely": [0.02, 0.14]}
-    assert api.follow_measured(star_rise, obs, sk) is star_rise  # a model with a direction keeps its word
-    unsure_rise = {**star_rise, "likely": [-0.01, 0.14]}  # C2: "↗ เพิ่มขึ้น −1 ถึง +14" is not a direction
-    assert api.follow_measured(unsure_rise, obs, sk)["basis"] == "measured_trend"
-    assert api.follow_measured(none, {"change_cm": 0, "r2": 0.1, "level": "mixed"}, sk) is none
-
-
-def test_a_measured_trend_continues_at_its_recent_pace_and_stops_when_the_last_6_h_disagree():
-    # owner 2026-10-03 (Kgt.19A): text "+48/+75/+91 ซม." from a 24 h line through a rise that had stopped, graph flat.
-    # Backtest 26 Sep - 3 Oct (research/2026-10-03_verify_text_graph.py): the smaller of the 24 h and 6 h paces, none
-    # when the last 6 h go the other way: MAE 16.3 cm at 24 h vs 19.5 (24 h line) and 18.5 (model); direction 87 %.
-    none = {"dir": "steady", "level": "steady", "method": "persistence", "likely": [-0.01, 0.01]}
-    sk = {"cont": {"rise": {"n": 40, "hit": 0.7}}}
-    stopped = {"change_cm": 124, "r2": 0.88, "level": "strong_rise", "hours": 24, "change6_cm": 0.0}
-    assert api.follow_measured(none, stopped, sk) is none  # no pace left: the model's word stands
-    slower = {**stopped, "change6_cm": 6.0}               # 1 cm/h now, not 5
-    r = api.follow_measured(none, slower, sk)
-    assert r["basis"] == "measured_trend" and r["median"] == round(0.01 * 24 * math.exp(-0.5), 2)
-    turned = {**stopped, "change6_cm": -4.0}
-    assert api.follow_measured(none, turned, sk) is none
-    faster = {"change_cm": 24, "r2": 0.9, "level": "strong_rise", "hours": 24, "change6_cm": 12.0}  # 2 cm/h now, 1 over 24 h
-    assert api.follow_measured(none, faster, sk)["median"] == round(0.01 * 24 * math.exp(-0.5), 2)
+def test_rows_come_from_the_model_only_never_from_a_trend_beside_it():
+    # owner 2026-10-03 (Kgt.19A): "Why trend and model forecast in the chart are different? … I thought the trend were
+    # calculated by the model". The D-060 override (rows from the measured trend while the chart drew the model) is
+    # gone: the recent pace is a method of the model (forecast.recent_rate) and competes in its backtest.
+    row = {"fc_now": 16.6, "q12": [16.58, 16.59, 16.6, 16.61, 16.62], "q24": [16.57, 16.59, 16.6, 16.61, 16.63],
+           "q48": [16.55, 16.58, 16.6, 16.62, 16.65], "sk12": {"method": "persistence"}, "sk24": {"method": "persistence"},
+           "sk48": {"method": "persistence"}, "outlook24": None,
+           "observed24": {"change_cm": 124, "r2": 0.88, "level": "strong_rise", "hours": 24, "change6_cm": 1.0}}
+    out = api._change_fields(row, "normal")
+    for h in (12, 24, 48):
+        assert out[f"change{h}"].get("basis") != "measured_trend" and out[f"change{h}"]["median"] == 0.0
+    assert not hasattr(api, "follow_measured")
 
 
 def test_station_rows_are_computed_once_per_ttl_and_shared(monkeypatch):
@@ -290,20 +269,6 @@ def test_rain_summary_per_region_takes_the_wettest_point_forecast_and_measured()
     assert out["bkk"]["forecast_mm24"] == 7.0 and out["bkk"]["measured"]["code"] == "HII001"
     assert out["north"]["forecast_mm24"] == 30.0 and out["north"]["measured"]["rain_24h"] == 12.0
     assert out["all"]["forecast_mm24"] == 30.0 and out["all"]["measured"]["rain_24h"] == 60.0
-
-
-def test_a_measured_trend_row_never_contradicts_a_model_proven_direction():
-    # 2026-10-01 TRD001: 12 h "⬆ เพิ่มขึ้นมาก" (model), 24 h "⬇ ลดลงมาก" (measured trend), 48 h "⬆" (model)
-    up = {"dir": "rising", "level": "strong_rise", "method": "star", "likely": [0.17, 0.50]}
-    raw24 = {"dir": "steady", "level": "steady", "method": "star", "likely": [-0.30, 0.20]}
-    meas24 = {**raw24, "dir": "falling", "level": "strong_fall", "basis": "measured_trend", "likely": [-0.23, -0.23]}
-    out = api.reconcile_rows({12: up, 24: raw24, 48: up}, {12: up, 24: meas24, 48: up})
-    assert out[24] == raw24 and out[12] == up  # the heuristic yields; the model's own reading stays
-    alone = api.reconcile_rows({24: raw24}, {24: meas24})
-    assert alone[24] == meas24  # no model direction anywhere: the measured trend speaks (D-060)
-    down = {"dir": "falling", "level": "fall", "method": "star", "likely": [-0.2, -0.05]}
-    tide = api.reconcile_rows({12: down, 24: up}, {12: down, 24: up})
-    assert tide == {12: down, 24: up}  # model vs model (tide, rain arriving later) is physics, not a contradiction
 
 
 def test_health_lists_sources_whose_data_stopped_although_the_fetch_succeeds():

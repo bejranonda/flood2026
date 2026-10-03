@@ -84,7 +84,7 @@ const CHANGE = {
 };
 const CONF_TH = { medium: "คาดการณ์ปานกลาง", low: "คาดการณ์เบื้องต้น" };
 // Method codes from the backtest (forecast.evaluate) in plain Thai; "star" = D-052 (rain + upstream + dam release)
-const METHOD_TH = { persistence: "ค่าคงที่", tide: "น้ำขึ้นน้ำลง", tide_trend: "น้ำขึ้นน้ำลง + แนวโน้ม", trend: "แนวโน้ม",
+const METHOD_TH = { persistence: "ค่าคงที่", tide: "น้ำขึ้นน้ำลง", tide_trend: "น้ำขึ้นน้ำลง + แนวโน้ม", trend: "แนวโน้ม", recent: "แนวโน้มล่าสุด",
   star: "ฝนคาดการณ์ + น้ำจากต้นน้ำ" };
 const CONF_WHY = {
   medium: "แบบจำลองทดสอบย้อนหลัง 45 วัน แม่นกว่าการถือว่าน้ำคงที่อย่างน้อย 30% และช่วงที่ให้ถูกราว 9 ใน 10 ครั้ง (ใช้น้ำขึ้นน้ำลง ฝนคาดการณ์ และน้ำจากต้นน้ำ/เขื่อนเจ้าพระยา ตามที่แต่ละสถานีทดสอบแล้วแม่นกว่า)",
@@ -94,7 +94,7 @@ const CONF_WHY = {
 // Aligned rows: horizon · chip · signed range · ⓘ. A direction only where a real model beat "no change" at that horizon
 // (the backtest's own gate); "no change" itself can only ever say "steady", so it shows "? ไม่แน่ชัด" + its error range.
 const agrees = (ch) => !ch.likely || (ch.dir === "falling" ? ch.likely[1] < 0 : ch.dir === "rising" ? ch.likely[0] > 0 : true);
-const directional = (ch) => !!ch && ch.level !== "steady" && (ch.basis === "measured_trend" || (!!ch.method && ch.method !== "persistence" && agrees(ch)));
+const directional = (ch) => !!ch && ch.level !== "steady" && !!ch.method && ch.method !== "persistence" && agrees(ch);
 const signedCm = (x) => { const v = Math.round(x * 100); return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v)}`; };
 const rangeText = (ch) => ch.wide || !ch.likely ? "ช่วงกว้างเกินไป"
   : signedCm(ch.likely[0]) === signedCm(ch.likely[1]) ? `ราว ${signedCm(ch.likely[0])} ซม.` : `${signedCm(ch.likely[0])} ถึง ${signedCm(ch.likely[1])} ซม.`;
@@ -109,11 +109,10 @@ function trendRow(ch, hours, unsure = false) {
   const chip = dirn ? `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span>`
     : steady ? `<span class="chg" style="background:${CHANGE.steady.color}">→ ${esc(CHANGE.steady.th)}</span>`
     : `<span class="chg chg-unproven">? ไม่แน่ชัด</span>`;
-  const measured = ch.basis === "measured_trend";  // D-060: the word follows the measured trend; numbers go in the ⓘ
-  const tip = measured
-    ? `ถ้าเป็นไปตามแนวโน้มที่วัดได้ (ความเร็วช่วงหลังสุด ชะลอลงตามเวลา) ไม่ใช่แบบจำลอง · เส้นประส้มในกราฟ${ch.hit != null ? ` · ในอดีตเป็นแบบนี้ต่อ ${Math.round(ch.hit * 10)} ใน 10 ครั้ง` : ""}`
-    : dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}` : steady ? STEADY_TIP : UNPROVEN_TIP;
-  const cls = dirn && ch.basis !== "measured_trend" ? `conf-${esc(ch.confidence)}` : "conf-low";
+  // one forecaster (v0.20.7): every row is the model's own path, the band the chart draws; the ⓘ names the method
+  const how = ch.method === "recent" ? " · วิธี: ต่อแนวโน้มล่าสุด (ความเร็วช่วงหลังสุด ชะลอลงตามเวลา)" : "";
+  const tip = dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}${how}` : steady ? STEADY_TIP : UNPROVEN_TIP;
+  const cls = dirn ? `conf-${esc(ch.confidence)}` : "conf-low";
   const html = `<span class="tr-h">อีก ${hours} ชม.</span>${chip}<span class="tr-r">${esc(rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
   return { html, unsure: unsure || (!dirn && !steady) };
 }
@@ -661,23 +660,15 @@ function newGaugeNote(s, fc) {
     กราฟจะยาวขึ้นเมื่อดึงข้อมูลย้อนหลังครบ 1 ปี · การคาดการณ์จะแสดงเมื่อทดสอบย้อนหลังแล้วแม่นกว่าการใช้ค่าล่าสุด</div>`;
 }
 
-// The rows' measured-trend values as chart points [h, change m] (owner 2026-10-03, Kgt.19A: rows "+75 ซม.", chart flat).
-// Drawn beside the model, labelled ("Both, labelled"), from the very numbers the rows print.
-function trendPts(s) {
-  return [12, 24, 48].map((h) => [h, s[`change${h}`]]).filter(([, c]) => c && c.basis === "measured_trend" && c.median != null)
-    .map(([h, c]) => [h, c.median]);
-}
-function chartSVG(obs, fc, bank, crit = null, trend = []) {
+function chartSVG(obs, fc, bank, crit = null) {
   const W = 400, H = 200, P = 34, GAP_MS = 90 * 60e3;  // gaps longer than 90 min are not bridged
   const pts = obs.filter((o) => o[1] != null).map((o) => [Date.parse(o[0]), o[1]]);
   if (pts.length < 2) return "<p class='muted'>ข้อมูลย้อนหลังไม่พอสำหรับกราฟ</p>";
   const t0 = pts[pts.length - 1][0];
   const band = (fc?.path || []).filter((p) => p.q).map((p) => [t0 + p.h * 3600e3, p.q]);
-  const y0 = pts[pts.length - 1][1];
-  const tr = trend.map(([h, d]) => [t0 + h * 3600e3, y0 + d]);
-  const ys = pts.map((p) => p[1]).concat(band.flatMap((b) => [b[1][0], b[1][4]]), tr.map((p) => p[1]), bank != null ? [bank] : [], crit != null ? [crit] : []);
+  const ys = pts.map((p) => p[1]).concat(band.flatMap((b) => [b[1][0], b[1][4]]), bank != null ? [bank] : [], crit != null ? [crit] : []);
   const ymin = Math.min(...ys) - 0.1, ymax = Math.max(...ys) + 0.1;
-  const tmin = pts[0][0], tmax = Math.max(band.length ? band[band.length - 1][0] : t0, tr.length ? tr[tr.length - 1][0] : t0);
+  const tmin = pts[0][0], tmax = band.length ? band[band.length - 1][0] : t0;
   const x = (t) => P + ((t - tmin) / (tmax - tmin || 1)) * (W - P - 6);
   const y = (v) => H - 20 - ((v - ymin) / (ymax - ymin || 1)) * (H - 30);
   const line = pts.map((p, i) => `${i && p[0] - pts[i - 1][0] <= GAP_MS ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
@@ -690,11 +681,11 @@ function chartSVG(obs, fc, bank, crit = null, trend = []) {
     ${band.length ? `<path d="${area(0, 4)}" fill="#1565c0" opacity=".12"/><path d="${area(1, 3)}" fill="#1565c0" opacity=".22"/>` : ""}
     ${bankLine}${crit != null ? `<line x1="${P}" x2="${W - 6}" y1="${y(crit)}" y2="${y(crit)}" stroke="#e46c0a" stroke-dasharray="2 3"/><text x="${P + 4}" y="${y(crit) - 4}" font-size="11" fill="#e46c0a">เกณฑ์ กทม. ${crit.toFixed(2)}</text>` : ""}<path d="${line}" fill="none" stroke="#0d3b66" stroke-width="1.6"/>
     ${med ? `<path d="${med}" fill="none" stroke="#1565c0" stroke-width="1.6" stroke-dasharray="4 3"/>` : ""}
-    ${tr.length ? `<path d="M${x(t0).toFixed(1)},${y(y0).toFixed(1)}${tr.map((p) => `L${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("")}" fill="none" stroke="#b45309" stroke-width="1.8" stroke-dasharray="2 3"/>${tr.map((p, i) => `<circle class="trend-pt" data-h="${trend[i][0]}" data-cm="${Math.round(trend[i][1] * 100)}" cx="${x(p[0]).toFixed(1)}" cy="${y(p[1]).toFixed(1)}" r="2.6" fill="#b45309"/>`).join("")}` : ""}
+    ${(fc?.path || []).filter((p) => p.q && [12, 24, 48].includes(p.h)).map((p) => `<circle class="fc-pt" r="0" cx="${x(t0 + p.h * 3600e3).toFixed(1)}" cy="${y(p.q[2]).toFixed(1)}" data-h="${p.h}" data-lo="${Math.round((p.q[1] - fc.level_now) * 100)}" data-hi="${Math.round((p.q[3] - fc.level_now) * 100)}"/>`).join("")}
     ${dayTicks(tmin, tmax, x, H)}
     <line x1="${x(t0)}" x2="${x(t0)}" y1="8" y2="${H - 20}" stroke="#555" stroke-width=".8"/>
     <text x="${x(t0)}" y="9" font-size="10" text-anchor="middle" fill="#333" font-weight="600">ตอนนี้</text></svg>
-    <details class="chart-legend"><summary>ℹ️ สัญลักษณ์กราฟ</summary><div class="legend-body">เส้นทึบ = ค่าตรวจวัดจริง (ช่วงที่ขาดหายไม่ได้ลากเส้นเชื่อม) · เส้นประน้ำเงิน = ค่ากลางจากแบบจำลอง · แถบเข้ม/อ่อน = ช่วง 50%/90%${trend.length ? " · เส้นประส้มและจุด = ตามแนวโน้มที่วัดได้ (ตัวเลขในแถว อีก 12/24/48 ชม.)" : ""} · หน่วย ม.รทก.</div></details>`;
+    <details class="chart-legend"><summary>ℹ️ สัญลักษณ์กราฟ</summary><div class="legend-body">เส้นทึบ = ค่าตรวจวัดจริง (ช่วงที่ขาดหายไม่ได้ลากเส้นเชื่อม) · เส้นประน้ำเงิน = ค่ากลางคาดการณ์ · แถบเข้ม = ช่วง 50% (ตัวเลขในแถว อีก 12/24/48 ชม. อ่านจากแถบนี้) · แถบอ่อน = ช่วง 90% · หน่วย ม.รทก.</div></details>`;
 }
 
 /* ---------- texts ---------- */
@@ -853,7 +844,7 @@ async function showDetail(code) {
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
         ${changeLines(s)}${upstreamLine(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
-      ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl, trendPts(s))}
+      ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
       ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic" && n !== "stuck") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
       <details class="sumdetails"><summary>วิธีคาดการณ์</summary><p class="muted">${esc(erratic ? "ไม่คาดการณ์ (ค่าระดับน้ำไม่น่าเชื่อถือ)" : methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}

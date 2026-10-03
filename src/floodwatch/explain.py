@@ -62,8 +62,7 @@ def _row(ch: dict | None, unsure: bool) -> tuple[dict | None, bool]:
         return None, unsure
     lk = ch.get("likely")
     agrees = not lk or (lk[1] < 0 if ch.get("dir") == "falling" else lk[0] > 0 if ch.get("dir") == "rising" else True)
-    directional = ch.get("level") != "steady" and (ch.get("basis") == "measured_trend" or (
-        ch.get("method") not in (None, "persistence") and agrees))
+    directional = ch.get("level") != "steady" and ch.get("method") not in (None, "persistence") and agrees
     narrow = bool(lk) and not ch.get("wide") and max(abs(lk[0]), abs(lk[1])) <= STEADY_M
     kind = "dir" if directional else "steady" if narrow and not unsure else "unclear"
     printed = ("ช่วงกว้างเกินไป" if ch.get("wide") or not lk else f"ราว {_signed(lk[0])} ซม." if _signed(lk[0]) == _signed(lk[1])

@@ -20,8 +20,8 @@ in many possibilities"). One browser session, views compared at the same moment:
      headline never repeats a rain amount (owner 2026-10-02: "rainfall info … one long sentence").
   C14 (v0.20.0, D-072) the แม่น้ำ tab: every river loads, downstream first, no BMA gauge, 24 h row where a forecast exists.
   C13 (v0.19.0, D-071) the satellite line appears exactly when /api/point reports GISTDA flooding within 1 km, never "no flood".
-  C15 (v0.20.6) text = graph: every trend-based row (ⓘ "แนวโน้มที่วัดได้") has an orange chart point at the same horizon with
-     the same cm, and no orange point exists without such a row (owner 2026-10-03, Kgt.19A: rows +75 ซม., chart flat).
+  C15 (v0.20.7) text = graph: each 12/24/48 h row prints the model's 50 % range that the chart draws at that horizon
+     (owner 2026-10-03, Kgt.19A: "Why trend and model forecast in the chart are different?").
   C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
      opens a story with no verdict word (ปลอดภัย, ไม่ท่วม, ได้ครับ, ไปได้, ปกติ) and no rain amount.
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
@@ -40,9 +40,8 @@ BLOCKS_JS = """() => [...document.querySelectorAll('#detail li.item, #detail .pf
   obs: [...el.querySelectorAll('.pf-obs')].map(e => e.textContent.trim()) }))"""
 TREND_JS = r"""() => { const d = document.querySelector('#detail'); if (!d) return null;
   const rows = [...d.querySelectorAll('.sheet-trend .tr-rows')].flatMap(r => { const c = [...r.children], o = [];
-    for (let i = 0; i + 3 < c.length; i += 4) { const tip = c[i+3].getAttribute('title') || ''; const m = c[i+2].textContent.match(/([+−-]?\d+)\s*ซม/);
-      if (tip.includes('แนวโน้มที่วัดได้') && m) o.push([Number(c[i].textContent.match(/\d+/)[0]), Number(m[1].replace('−', '-'))]); } return o; });
-  const pts = [...d.querySelectorAll('circle.trend-pt')].map(c => [Number(c.dataset.h), Number(c.dataset.cm)]);
+    for (let i = 0; i + 2 < c.length; i += 4) o.push([Number((c[i].textContent.match(/\d+/) || [0])[0]), c[i+2].textContent.trim()]); return o; });
+  const pts = [...d.querySelectorAll('circle.fc-pt')].map(c => [Number(c.dataset.h), Number(c.dataset.lo), Number(c.dataset.hi)]);
   return { rows, pts }; }"""
 SHEET_JS = """(scope) => { const d = document.querySelector('#detail'); if (!d) return null;
   const rows = [...d.querySelectorAll('.tr-rows')].map(r => { const c = [...r.children], o = []; for (let i = 0; i + 2 < c.length; i += 4) o.push([c[i].textContent.trim(), c[i+1].textContent.trim(), c[i+2].textContent.trim()]); return o; })[0] || [];
@@ -128,12 +127,16 @@ with sync_playwright() as p:
         pg.wait_for_timeout(300)
         v = pg.evaluate(SHEET_JS, None); counts["sheets"] += 1
         check_rows(f"sheet {code}", v["rows"]); check_text(f"sheet {code}", v)
-        tg = pg.evaluate(TREND_JS)  # C15: text = graph
+        tg = pg.evaluate(TREND_JS)  # C15: the rows print the model range the chart draws at 12/24/48 h
         if tg:
-            rows_t = {r[0]: r[1] for r in tg["rows"]}
-            pts_t = {p[0]: p[1] for p in tg["pts"]}
-            if set(rows_t) != set(pts_t) or any(abs(rows_t[h] - pts_t[h]) > 1 for h in rows_t):
-                note("C15", f"sheet {code}", f"rows {rows_t} vs chart {pts_t}")
+            pts_t = {p[0]: (p[1], p[2]) for p in tg["pts"]}
+            for h, txt in tg["rows"]:
+                nums = [int(x.replace("−", "-")) for x in re.findall(r"[+−-]?\d+", txt)]
+                if "กว้าง" in txt or not nums:
+                    continue
+                lo, hi = (nums[0], nums[0]) if len(nums) == 1 else (nums[0], nums[1])
+                if h not in pts_t or abs(lo - pts_t[h][0]) > 1 or abs(hi - pts_t[h][1]) > 1:
+                    note("C15", f"sheet {code}", f"+{h} h row '{txt}' vs chart {pts_t.get(h)}")
         if not same(card, v):  # the sheet updates its list item (v0.16.6): re-read the card the user now sees
             pg.evaluate("() => closeDetail()"); pg.wait_for_timeout(300)
             card = pg.evaluate(LIST_JS).get(code) or card

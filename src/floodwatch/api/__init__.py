@@ -187,70 +187,6 @@ def _observed_change(r: dict) -> dict:
     return {"change_m": round(lvl - prev, 2), "change_hours": round((t - tp).total_seconds() / 3600, 1)}
 
 
-TREND_WORDS = {"small_fall", "fall", "strong_fall", "small_rise", "rise", "strong_rise"}
-
-
-def follow_measured(ch: dict | None, obs24: dict | None, sk: dict | None, h: int = 24) -> dict | None:
-    """12/24 h rows follow the measured 24 h trend where no model gives a direction (owner 2026-09-28, D-060: "there
-    is a trend of lowering water level in the chart, but it said ทรงตัว and ? ไม่แน่ชัด"). The row then says what the
-    level has been doing (qc.observed24), with the range this gauge showed after such trends (forecast.continuation)
-    and how often they continued (`hit`, shown in the ⓘ; canals ~6 in 10, rivers ~9 in 10)."""
-    if not ch or not obs24 or obs24.get("level") not in TREND_WORDS:
-        return ch
-    lk = ch.get("likely")
-    agrees = not lk or (lk[1] < 0 if ch.get("dir") == "falling" else lk[0] > 0 if ch.get("dir") == "rising" else False)
-    if ch.get("method") != "persistence" and ch.get("level") != "steady" and agrees:
-        return ch  # a model that beat "no change" and sees a direction its whole likely range agrees with keeps its word
-    d = "fall" if obs24["level"].endswith("fall") else "rise"
-    c = ((sk or {}).get("cont") or {}).get(d) or {}
-    # The number is the measured trend continued and damped (as forecast "tide_trend": slope·h·e^(−h/48)), so word,
-    # number and label say the same thing (owner 2026-09-28: keep numbers; "prove the consistency"). The past range
-    # after such trends often leans the other way (canals rebound), so it is not printed next to the word.
-    rate = obs24["change_cm"] / 100 / (obs24.get("hours") or 24)
-    # ... at its recent pace: the smaller of the 24 h and the last-6 h pace, none when the last 6 h stopped or turned
-    # (owner 2026-10-03, Kgt.19A "+75 ซม." after the rise had stopped; backtest research/2026-10-03_verify_text_graph.py:
-    # MAE at 24 h 16.3 cm vs 19.5 with the 24 h pace and 18.5 with the model; direction right 87 % vs 83 %)
-    r6 = obs24.get("change6_cm")
-    if r6 is not None:
-        r6 = r6 / 100 / 6
-        if r6 == 0 or (r6 > 0) != (rate > 0):
-            return ch
-        rate = math.copysign(min(abs(rate), abs(r6)), rate)
-    v = round(rate * h * math.exp(-h / 48.0), 2)
-    cm = abs(round(v * 100))
-    if cm < 1:
-        return ch
-    size = "small_" if cm < 5 else "strong_" if cm >= 20 else ""
-    return {**ch, "dir": "falling" if d == "fall" else "rising", "level": size + d, "basis": "measured_trend",
-            "median": v, "likely": [v, v], "range90": None, "wide": False,
-            "hit": c.get("hit"), "hit_n": c.get("n")}
-
-
-def _model_direction(ch: dict | None) -> str | None:
-    """The direction a backtested model proved for a row (the keep-condition of follow_measured), else None."""
-    if not ch or ch.get("basis") == "measured_trend" or ch.get("method") in (None, "persistence") or ch.get("level") == "steady":
-        return None
-    lk = ch.get("likely")
-    if ch.get("dir") == "falling" and (not lk or lk[1] < 0):
-        return "falling"
-    if ch.get("dir") == "rising" and (not lk or lk[0] > 0):
-        return "rising"
-    return None
-
-
-def reconcile_rows(raw: dict, followed: dict) -> dict:
-    """A measured-trend row (D-060 heuristic) never contradicts a direction a model proved at another horizon of the
-    same gauge: it falls back to the model's own reading there (2026-10-01: TRD001 read ⬆ / ⬇ / ⬆ at 12/24/48 h;
-    63 of 719 gauges flipped, 43 of them model vs measured). Model vs model stays (tides, rain arriving later)."""
-    proven = {_model_direction(c) for c in followed.values()} - {None}
-    out = {}
-    for h, c in followed.items():
-        flip = c and c.get("basis") == "measured_trend" and c.get("dir") in ("rising", "falling") and \
-            ({"rising", "falling"} - {c["dir"]}) & proven
-        out[h] = raw.get(h) if flip else c
-    return out
-
-
 def _change_fields(r: dict, status: str) -> dict:
     """Rise/fall, how much and how sure at +12 h and +24 h, from the stored forecast (D-047). Nothing for a gauge
     whose data are too old to judge; a peak window only where a tide model makes the path vary (outlook24)."""
@@ -258,14 +194,15 @@ def _change_fields(r: dict, status: str) -> dict:
         return {"change12": None, "change24": None, "change48": None, "peak_h": None}
     o = r.get("outlook24") or {}
     c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
-    obs = r.get("observed24")
     # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050). `proven` (medium confidence) is kept
     # for API users only: since D-056 the UI shows a direction whenever a real model beat "no change" and ignores it.
     raw = {12: change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
            24: change_summary(r.get("q24"), r["fc_now"], r.get("sk24")),
            48: None if not c48 else {**c48, "proven": c48["confidence"] == "medium"}}
-    rows = reconcile_rows(raw, {h: follow_measured(c, obs, r.get(f"sk{h}"), h) for h, c in raw.items()})
-    return {"change12": rows[12], "change24": rows[24], "change48": rows[48],
+    # One forecaster (owner 2026-10-03: "I thought the trend were calculated by the model"): the rows are the model's
+    # own path, the same the chart draws. The measured-trend override beside it (D-060, 2026-09-28) is gone; its
+    # recent-pace rule is a method of the model (forecast.recent_rate) and is served where its backtest wins.
+    return {"change12": raw[12], "change24": raw[24], "change48": raw[48],
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 

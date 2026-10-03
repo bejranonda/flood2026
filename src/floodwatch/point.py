@@ -273,8 +273,6 @@ def _station_trend(s: dict) -> str | None:
         lk = ch.get("likely")
         return "steady" if lk is not None and not ch.get("wide") and max(abs(lk[0]), abs(lk[1])) <= STEADY_M else None
     if ch and ch.get("dir") in ("rising", "falling"):
-        if ch.get("basis") == "measured_trend":
-            return ch["dir"]
         lk = ch.get("likely")
         agrees = lk is not None and (lk[1] < 0 if ch["dir"] == "falling" else lk[0] > 0)
         return ch["dir"] if agrees and ch.get("method") not in (None, "persistence") else "steady"
