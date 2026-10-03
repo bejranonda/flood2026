@@ -69,7 +69,32 @@ def test_river_view_is_one_line_of_pickers_without_river_km_and_stations_carry_a
     # owner 2026-10-03 (screenshot of the แม่น้ำ tab): chips took three rows; "Is necessary to show: ระยะห่างจากปลายน้ำ?";
     # "add tag แม่น้ำ to each station" → one line "Province & river", no km, tag on list rows and sheets; upstream on top
     body = APP[APP.index("async function renderRiver"):APP.index("function scrollRiver")]
-    assert 'id="rv-prov"' in body and 'id="rv-river"' in body and "rchip" not in body
+    # v0.20.2 (owner: "Change filter from จังหวัด to ภาค?", "no long description อ่านจากบนลงล่าง") → ภาค picker synced
+    # with the list's region chip; the explanation lives behind one ⓘ
+    assert 'id="rv-region"' in body and 'id="rv-river"' in body and "rv-prov" not in body and "rchip" not in body
+    assert "อ่านจากบนลงล่าง" not in body and "<details" not in body and "infoBtn(" in body
+    assert "setRegion(" in body
     assert "จากปลายน้ำ" not in body and "chainage_km" not in body
     assert "↑ ต้นน้ำ" in body and body.index("↑ ต้นน้ำ") < body.index("↓ ปลายน้ำ")
     assert "${riverTag(s)}" in APP and "hasRiverView(s) ?" in APP
+
+
+def test_region_chips_use_the_usual_names_and_metro_includes_bangkok():
+    assert 'metro: "กทม. และปริมณฑล"' in APP and 'up: "ภาคกลาง"' in APP and "เหนือ กทม." not in CODE
+    assert 'th: "ทั่วประเทศ"' in APP and "ทั้งประเทศ" not in CODE  # one word for "all of Thailand"
+    assert 'metro: (s) => s.region === "metro" || s.region === "bkk"' in APP
+
+
+def test_all_rivers_is_an_overview_counted_like_the_rows():
+    # owner 2026-10-03: "Can user select all rivers under river filter?" → "ทุกสาย": one row per river (over/near the
+    # bank, rising/falling in 24 h), counted with the rows' own rules (directional, D-060), the default view
+    body = APP[APP.index("async function renderRiver"):APP.index("function scrollRiver")]
+    assert '<option value=""' in body and "ทุกสาย" in body
+    rs = APP[APP.index("function riverSummary"):APP.index("async function renderRiver")]
+    assert "directional(s.change24)" in rs and "stale" in rs
+
+
+def test_overview_says_strong_rises_like_the_rows():
+    # 2026-10-03 live check: คลองอู่ตะเภา (Hat Yai) had 3 "⬆ เพิ่มขึ้นมาก" rows; the overview said "↗ เพิ่มขึ้น 3"
+    rs = APP[APP.index("function riverSummary"):APP.index("async function renderRiver")]
+    assert "strong_rise" in rs and "CHANGE.strong_rise" in rs and "เพิ่มขึ้นมาก" in rs

@@ -247,12 +247,22 @@ with sync_playwright() as p:
     # gauges say "ไม่อัปเดต", no river km in the rows; a station's river tag opens its river
     open_home(pg)
     pg.locator('.tabs [data-tab=river]').click(); pg.wait_for_selector("#view-river #rv-river", timeout=30000)
-    for rv in pg.evaluate("() => [...document.querySelectorAll('#rv-river option')].map(o => o.value)"):
+    pg.select_option("#rv-region", "all"); pg.wait_for_timeout(1200)  # every river (v0.20.2: the picker follows the region)
+    # v0.20.3 overview ("ทุกสาย", the default): each river's "↗ เพิ่มขึ้น N" must equal the rising rows in its own view
+    over = pg.evaluate("""() => Object.fromEntries([...document.querySelectorAll('#view-river .rv-sum')].map(e => {
+        const n = (re) => { const m = e.innerText.match(re); return m ? +m[1] : 0; };
+        return [e.dataset.river, n(/เพิ่มขึ้นมาก (\\d+)/) + n(/เพิ่มขึ้น (\\d+)/)]; }))""")
+    if not over:
+        note("C14", "overview", "ทุกสาย shows no rivers")
+    for rv in [v for v in pg.evaluate("() => [...document.querySelectorAll('#rv-river option')].map(o => o.value)") if v]:
         pg.select_option("#rv-river", rv); pg.wait_for_timeout(700)
         prof = json.loads(pg.evaluate("async (r) => JSON.stringify(await (await fetch('/api/profile?river=' + encodeURIComponent(r))).json())", rv))
         byc = {x["code"]: x for x in prof["stations"]}
         shown = pg.evaluate("() => [...document.querySelectorAll('#view-river .prow')].map(r => ({code: r.dataset.code, text: r.innerText, fc: !!r.querySelector('.pfc .chg')}))")
         counts["river_rows"] = counts.get("river_rows", 0) + len(shown)
+        rising = pg.evaluate("() => [...document.querySelectorAll('#view-river .prow .pfc .chg')].filter(c => /เพิ่มขึ้น/.test(c.innerText)).length")
+        if rv in over and over[rv] != rising:
+            note("C14", rv, f"overview says {over[rv]} rising, the river view shows {rising}")
         counts["rivers"] = counts.get("rivers", 0) + 1
         if not shown:
             note("C14", rv, "no rows"); continue

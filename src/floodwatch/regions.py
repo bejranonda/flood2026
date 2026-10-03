@@ -6,8 +6,11 @@ its five neighbours (metro), and the rest of the central plain (up, "เหน�
 """
 from __future__ import annotations
 
-REGION_TH = {"bkk": "กทม.", "metro": "ปริมณฑล", "up": "เหนือ กทม.", "north": "ภาคเหนือ", "northeast": "อีสาน",
-             "east": "ตะวันออก", "west": "ตะวันตก", "south": "ใต้"}
+# Labels as people say them (owner 2026-10-03: "Users might expect กทม , กทมและปริมณฑล ภาคกลาง and other usual regions.
+# The เหนือกทม and ปริมณฑล might sounds strange"). The keys stay (saved choices); "metro" is shown as กทม. และปริมณฑล and
+# INCLUDES Bangkok (chips_of); "up" is the official central region without the Bangkok area.
+REGION_TH = {"bkk": "กทม.", "metro": "กทม. และปริมณฑล", "up": "ภาคกลาง", "north": "ภาคเหนือ", "northeast": "ภาคอีสาน",
+             "east": "ภาคตะวันออก", "west": "ภาคตะวันตก", "south": "ภาคใต้"}
 
 _REGIONS = {
     "bkk": "กรุงเทพมหานคร",
@@ -27,3 +30,10 @@ PROVINCE_REGION = {p: r for r, ps in _REGIONS.items() for p in ps.split()}
 def region_of(province: str | None) -> str | None:
     """Region key, or None (no province, or a gauge abroad such as the three in Myanmar): shown under ทั้งประเทศ only."""
     return PROVINCE_REGION.get((province or "").strip())
+
+
+def chips_of(province: str | None) -> set[str]:
+    """Every region chip a province's gauges appear under: its own region, "all", and "metro" for Bangkok too."""
+    r = region_of(province)
+    return {"all"} | ({r} if r else set()) | ({"metro"} if r == "bkk" else set())
+

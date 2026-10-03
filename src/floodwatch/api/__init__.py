@@ -508,14 +508,15 @@ def rain_by_region(points: list[dict], measured: list[dict], cell_region: dict[s
     for p in points:
         if p.get("mm24") is None:
             continue
-        for r in {RAIN_POINT_REGION.get(p["point"]) or cell_region.get(p["point"]), "all"} - {None}:
+        reg = RAIN_POINT_REGION.get(p["point"]) or cell_region.get(p["point"])
+        for r in {reg, "all"} - {None} | ({"metro"} if reg == "bkk" else set()):  # กทม. และปริมณฑล includes Bangkok
             o = out.setdefault(r, {"forecast_mm24": None, "measured": None})
             if o["forecast_mm24"] is None or p["mm24"] > o["forecast_mm24"]:
                 o["forecast_mm24"] = round(p["mm24"], 1)
     for m in measured:
         if m.get("rain_24h") is None:
             continue
-        for r in {regions.region_of(m.get("province")), "all"} - {None}:
+        for r in regions.chips_of(m.get("province")):
             o = out.setdefault(r, {"forecast_mm24": None, "measured": None})
             if o["measured"] is None or m["rain_24h"] > o["measured"]["rain_24h"]:
                 o["measured"] = {k: m.get(k) for k in ("code", "name_th", "province", "rain_24h", "rain_1h")}
@@ -656,10 +657,11 @@ def rivers_list():
     for name, d in kms.items():
         codes = set(d.get("stations") or {})
         regs = Counter(regions.region_of(r.get("province")) for r in rows if r["code"] in codes)
+        chips = set().union(*(regions.chips_of(r.get("province")) for r in rows if r["code"] in codes)) - {"all"}
         regs.pop(None, None)
         provs = sorted({r["province"] for r in rows if r["code"] in codes and r.get("province")})
         out.append({"river": name, "n": len(codes), "region": regs.most_common(1)[0][0] if regs else None,
-                    "provinces": provs, "has_km": d.get("mouth") is not None, "agree": d.get("agree")})
+                    "regions": sorted(chips), "provinces": provs, "codes": sorted(codes), "has_km": d.get("mouth") is not None, "agree": d.get("agree")})
     out.sort(key=lambda x: (x["river"] != "แม่น้ำเจ้าพระยา", -x["n"]))
     return _json({"rivers": out}, cache=True)
 

@@ -2,6 +2,28 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.20.3 — 2026-10-03
+- **Usual region names (owner: "Users might expect กทม , กทมและปริมณฑล ภาคกลาง and other usual regions. The เหนือกทม
+  and ปริมณฑล might sounds strange?"; D-075):** กทม. · **กทม. และปริมณฑล** (now includes Bangkok, 237 gauges) ·
+  **ภาคกลาง** (was "เหนือ กทม.": the official central region without the Bangkok area) · ภาคเหนือ · ภาคอีสาน ·
+  ภาคตะวันออก · ภาคตะวันตก · ภาคใต้ · **ทั่วประเทศ** (one word; "ทั้งประเทศ" gone). The same names in chips, list
+  headings, the rain line and the river tab; saved choices keep working.
+- **"ทุกสาย" in the river picker, the default (owner: "Can user select all rivers under river filter?"):** one row per
+  river in the region — gauges over/near the bank and how many are forecast to rise or fall in 24 h, counted with the
+  rows' own rules — most stressed first; tap a river to open it. Live check C14 compares each river's "↗ เพิ่มขึ้น N"
+  with the rising rows in its own view. That check's first run (13:30–13:50 UTC) flagged 14 rivers — a bug in the
+  check (it counted "↗" but not "⬆ เพิ่มขึ้นมาก") that showed a real gap: Hat Yai's คลองอู่ตะเภา had three
+  "⬆ เพิ่มขึ้นมาก" rows while the overview said "↗ เพิ่มขึ้น 3". The overview now says strong rises apart, in the rows'
+  red, and ranks rivers by them right after over-bank gauges.
+
+## v0.20.2 — 2026-10-03
+- **River tab picker is ภาค, shared with the list; no description line (owner: "Change filter from จังหวัด to ภาค?",
+  "no long description อ่านจากบนลงล่าง.." → chose "ภาค synced + ⓘ"; D-074).** One line "ภาค ▾ · แม่น้ำ ▾ · ⓘ": the
+  region is the same one as the list's region chip in both directions (pick ภาคเหนือ in the list → northern rivers;
+  pick ภาคใต้ here → the list follows). The explanation (numbers vs the bank, top = upstream, ordering, tested
+  forecasts only) moved behind the ⓘ; "↑ ต้นน้ำ / ↓ ปลายน้ำ" stay as small markers. A river tag on a station from
+  another region switches to that station's region, so the river is in the picker.
+
 ## v0.20.1 — 2026-10-03
 - **แม่น้ำ tab for people all over Thailand (owner, screenshot: "visitors can be people around Thailand — They might
   not found their river there … search their position by ภาค … add tag แม่น้ำ to each station … Is necessary to show

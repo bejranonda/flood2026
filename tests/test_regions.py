@@ -64,3 +64,14 @@ def test_place_search_prefers_bangkok_but_finds_thai_places_anywhere():
     from floodwatch import geocode
     assert geocode.SEARCH_PARAMS["countrycodes"] == "th" and geocode.SEARCH_PARAMS["bounded"] == 0
     assert geocode.SEARCH_PARAMS["viewbox"] == geocode.VIEWBOX  # Bangkok ranks first when names repeat
+
+
+# --- v0.20.3 (owner 2026-10-03: "Users might expect กทม , กทมและปริมณฑล ภาคกลาง and other usual regions. The เหนือกทม
+# and ปริมณฑล might sounds strange?") -------------------------------------------------------------------------------
+def test_regions_use_the_usual_names_and_the_metro_chip_includes_bangkok():
+    from floodwatch import regions as R
+    assert R.REGION_TH == {"bkk": "กทม.", "metro": "กทม. และปริมณฑล", "up": "ภาคกลาง", "north": "ภาคเหนือ",
+                           "northeast": "ภาคอีสาน", "east": "ภาคตะวันออก", "west": "ภาคตะวันตก", "south": "ภาคใต้"}
+    assert R.chips_of("กรุงเทพมหานคร") == {"bkk", "metro", "all"}
+    assert R.chips_of("นนทบุรี") == {"metro", "all"} and R.chips_of("พระนครศรีอยุธยา") == {"up", "all"}
+    assert R.chips_of(None) == {"all"}

@@ -94,11 +94,13 @@ a { color: var(--accent); }
 .prow .pname small { color: var(--muted); }
 .prow .pfc { grid-column: 1 / -1; margin-top: -2px; }
 .prow .pfc .tr-rows { margin: 0; }
-.rv-pick { display: flex; gap: 8px; margin: 4px 0 6px; }
+.rv-pick { display: flex; gap: 8px; margin: 4px 0 6px; align-items: center; }
 .rv-pick select { flex: 1 1 0; min-width: 0; min-height: 40px; font: inherit; font-size: 15px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .rv-pick #rv-river { flex-grow: 1.4; }
+.rv-sum { padding: 10px 4px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 15px; }
+.rv-sum-b { margin-top: 4px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.rv-sum-b .chg { font-size: 12px; }
 .rv-end { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
-.prow.here { box-shadow: inset 4px 0 0 var(--accent); }
 .prow.focus { background: #fff8e1; }
 .rv-tag { font: inherit; font-size: 13px; margin: 6px 0 2px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; background: #f3f6fa; color: var(--accent); cursor: pointer; }
 .pbar { position: relative; height: 12px; background: #e9ecef; border-radius: 6px; overflow: hidden; }
