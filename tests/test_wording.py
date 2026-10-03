@@ -103,7 +103,7 @@ def test_overview_says_strong_rises_like_the_rows():
 def test_one_where_row_for_both_tabs_with_region_and_province():
     # owner 2026-10-03: "if the users like to see stations in their province?" → "Shared where-row + river row":
     # [ภาค ▾][จังหวัด ▾] in the list AND the river tab (one state), replacing the list's 4 rows of region chips
-    assert 'class="pick-region"' in APP and 'class="pick-prov"' in APP
+    assert 'class="pick-region${sfx}"' in APP and 'class="pick-prov${sfx}"' in APP  # sfx "-w": the จับตา tab's own place
     rr = APP[APP.index("function renderRegions"):APP.index("function setRegion")]
     assert "data-region" not in rr  # no region chips any more; the forecast-only toggle stays
     assert "const inRegion = (s) => REGIONS[region].test(s) && (!prov || s.province === prov);" in APP
@@ -129,12 +129,12 @@ def test_river_tab_shows_every_gauge_of_a_picked_province():
     # outside a full river view (< 3 gauges per waterway) are listed below it, grouped by waterway, one line each.
     river = APP.split("async function renderRiver()")[1].split("function scrollRiver()")[0]
     assert "ลำน้ำอื่นใน" in river and "prowHTML(" in river and "ไม่ระบุชื่อลำน้ำ" in river
-    assert "function prowHTML(s)" in APP
+    assert "function prowHTML(s, " in APP
 
 
 def test_a_thin_province_says_so_in_the_shared_where_row():
     # owner chose "Yes, one line": 1-2 gauges in a province is a gap of the national network, not of the app
-    where = APP.split("function whereRow()")[1].split("document.addEventListener")[0]
+    where = APP.split("function whereRow(")[1].split("document.addEventListener")[0]
     assert "สถานีวัดระดับน้ำเพียง" in where and "THIN_MAX" in where
 
 
@@ -145,3 +145,34 @@ def test_dwr_posts_are_a_trend_only_layer_without_status_or_bank():
     assert "obsLine({ observed24: d.trend })" in js and "ตลิ่ง" not in js.replace("ไม่มีระดับตลิ่ง", "")
     assert "เสาวัดน้ำ กรมทรัพยากรน้ำ" in APP and "/api/dwr" in APP
     assert "กำลังเก็บข้อมูล" in js and "ค่าค้าง" in js
+
+
+# --- v0.21.0: the "⚠️ จับตา" tab (D-077), satellite (D-078), every gauge with data on the map (D-079) -------------------
+INDEX = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+
+
+def test_watch_tab_is_named_jabta_not_an_official_or_status_word():
+    # "เฝ้าระวัง" is the yellow status (70-90 % of bank); "เตือนภัย" reads as an official warning (owner chose จับตา)
+    assert 'data-tab="watch"' in INDEX and "⚠️ จับตา" in INDEX
+    assert ">⚠️ เฝ้าระวัง<" not in INDEX and "เตือนภัย</button>" not in INDEX
+
+
+def test_track_record_chip_is_counts_out_of_ten():
+    # owner 2026-10-03 kept "6 ใน 10" over a percent: counts read better and match "… 7 ใน 10 ครั้ง"
+    chip = APP.split("function recChip(")[1][:500]
+    assert "ใน 10" in chip and "%" not in chip and "MIN_REC_N" in chip
+
+
+def test_map_has_no_forecast_checkbox_and_draws_rings_for_gauges_without_one():
+    assert "แสดงสถานีที่ยังคาดการณ์ไม่ได้" not in APP and "เฉพาะที่คาดการณ์ได้" not in APP
+    assert "ยังไม่มีพยากรณ์" in APP and "🛰 ดาวเทียม" in APP
+
+
+def test_satellite_sheet_line_says_seen_only():
+    assert "ดาวเทียมเห็นน้ำท่วมรอบสถานี" in APP and "sat_near_rai" in APP
+
+
+def test_tributaries_appear_with_their_river_not_under_other_waterways():
+    # owner 2026-10-03: "คลองนางน้อย is under basin แม่น้ำตรัง" → same HII sub-basin = shown with the river
+    assert "tribOf.get(s.code)" in APP and "ลำน้ำสาขาในลุ่ม" in APP and "รวมลำน้ำสาขา" in APP
+    assert "padding-left: 12px" in (ROOT / "web" / "style.css").read_text(encoding="utf-8")  # text off the province bar

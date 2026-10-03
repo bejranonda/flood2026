@@ -97,7 +97,7 @@ a { color: var(--accent); }
 .where { display: flex; gap: 8px; margin: 0 0 6px; width: 100%; }
 .where select { flex: 1 1 0; min-width: 0; min-height: 40px; font: inherit; font-size: 15px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .regions .where { flex-basis: 100%; }
-.prow.here { box-shadow: inset 4px 0 0 var(--accent); }
+.prow.here { box-shadow: inset 4px 0 0 var(--accent); padding-left: 12px; }  /* owner 2026-10-03: text touched the bar */
 .rv-pick { display: flex; gap: 8px; margin: 4px 0 6px; align-items: center; }
 .rv-pick select { flex: 1 1 0; min-width: 0; min-height: 40px; font: inherit; font-size: 15px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .rv-pick #rv-river { flex-grow: 1.4; }
@@ -403,3 +403,18 @@ a { color: var(--accent); }
 .dwr-pin, .legend i.dwr-key { background: #cfd8dc; border: 1.5px solid #455a64; box-sizing: border-box; }
 .legend i.dwr-key { width: 9px; height: 9px; border-radius: 0; margin: 0 6px 0 2px; }
 .dwr-pin.old { opacity: .45; }
+/* v0.21.0 จับตา tab (D-077), map ring and satellite keys */
+.whead { margin: 6px 2px 2px; font-size: 13px; }
+.wgrp { margin: 12px 0 4px; }
+.wgrp-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 2px 4px; font-size: 15px; }
+.wrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 14px; min-height: 40px; }
+.wrow .wname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 auto; }
+.wrow .wval { white-space: nowrap; flex: 0 0 auto; color: #374151; display: flex; align-items: center; gap: 4px; }
+.wsub { padding-left: 12px; }
+.wmore { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; padding: 8px 4px; cursor: pointer; }
+.conf-badge.rec { width: auto; padding: 0 6px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
+.legend i.ring-key { background: #fff; border: 2.5px solid #2f6ba0; box-sizing: border-box; }
+.legend i.sat-key { background: #0277bd; opacity: .55; border-radius: 0; }
+.wrow.w2 { display: block; padding: 7px 4px; }
+.wrow.w2 .wname { white-space: normal; }
+.wrow .wmeta { font-size: 13px; color: #4b5563; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

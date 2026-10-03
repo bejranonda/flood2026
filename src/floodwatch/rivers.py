@@ -181,3 +181,27 @@ def river_km(features: list[dict], stations: list[dict], min_gauges: int = MIN_G
             out[r] = {"mouth": None, "agree": None,
                       "stations": {g["code"]: {"km": None, "up": float(g["bank_msl"])} for g in gs}}
     return out
+
+
+def tributaries(rows: list[dict], views: dict[str, set]) -> dict[str, list[str]]:
+    """{river with a view: [codes of its sub-basin's other gauges]} (owner 2026-10-03: "The canals which are under the
+    same basin of river, they should be located in the same as that river … คลองนางน้อย is under basin แม่น้ำตรัง").
+    HII's sub-basin (station.sub_basin_id, 237 of them) groups a river and its tributaries: a gauge outside every view
+    joins the view with the most gauges in its sub-basin. No confluence data, so tributaries are listed, never put into
+    the upstream-downstream order. BMA gauges stay out (KI-217)."""
+    in_view = {c: r for r, cs in views.items() for c in cs}
+    sub_of = {r["code"]: r.get("sub_basin") for r in rows}
+    votes: dict = {}
+    for code, river in in_view.items():
+        sb = sub_of.get(code)
+        if sb is not None:
+            votes.setdefault(sb, {}).setdefault(river, 0)
+            votes[sb][river] += 1
+    out: dict[str, list[str]] = {}
+    for r in rows:
+        sb = r.get("sub_basin")
+        if r["code"] in in_view or r.get("agency") == "BMA" or sb is None or sb not in votes:
+            continue
+        river = max(votes[sb].items(), key=lambda kv: (kv[1], kv[0]))[0]
+        out.setdefault(river, []).append(r["code"])
+    return {k: sorted(v) for k, v in out.items()}

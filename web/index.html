@@ -27,7 +27,7 @@
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
 <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=3">
-<link rel="stylesheet" href="/static/style.css?v=46">
+<link rel="stylesheet" href="/static/style.css?v=49">
 </head>
 <body>
 <header class="top">
@@ -49,6 +49,7 @@
   <button role="tab" data-tab="list" aria-selected="true">📋 รายการ</button>
   <button role="tab" data-tab="map" aria-selected="false" class="mobile-only">🗺️ แผนที่</button>
   <button role="tab" data-tab="river" aria-selected="false">〰️ แม่น้ำ</button>
+  <button role="tab" data-tab="watch" aria-selected="false">⚠️ จับตา</button>
 </nav>
 
 <main class="layout">
@@ -63,6 +64,7 @@
       <ul id="list" class="list"></ul>
     </div>
     <div id="view-river" class="view" hidden></div>
+    <div id="view-watch" class="view" hidden></div>
   </section>
   <section id="map" class="map" aria-label="แผนที่สถานี"></section>
 </main>
@@ -92,6 +94,6 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="/static/app.js?v=93"></script>
+<script src="/static/app.js?v=96"></script>
 </body>
 </html>

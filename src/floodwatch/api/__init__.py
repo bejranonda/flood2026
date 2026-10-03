@@ -88,7 +88,7 @@ def health():
 
 
 STATIONS_SQL = """
-SELECT s.code, s.in_focus, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.critical_msl, s.warning_msl, s.agency, s.province, s.amphoe,
+SELECT s.code, s.in_focus, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.ground_msl, s.critical_msl, s.warning_msl, s.agency, s.province, s.amphoe, s.sub_basin,
        s.river, s.coord_source, s.coord_precision_km, o.obs_time, o.level_msl, o.discharge, o.situation_level,
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
        f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time,
@@ -698,8 +698,19 @@ def rivers_list():
         provs = sorted({r["province"] for r in rows if r["code"] in codes and r.get("province")})
         out.append({"river": name, "n": len(codes), "region": regs.most_common(1)[0][0] if regs else None,
                     "regions": sorted(chips), "provinces": provs, "codes": sorted(codes), "has_km": d.get("mouth") is not None, "agree": d.get("agree")})
+    trib = _tributaries()
+    for x in out:  # gauges of the same HII sub-basin without a view of their own (owner: คลองนางน้อย → แม่น้ำตรัง)
+        tc = set(trib.get(x["river"], []))
+        x["tributaries"] = sorted(tc)
+        x["provinces"] = sorted(set(x["provinces"]) | {r["province"] for r in rows if r["code"] in tc and r.get("province")})
+        x["regions"] = sorted(set(x["regions"]) | set().union(*(regions.chips_of(r.get("province")) for r in rows if r["code"] in tc)) - {"all"})
     out.sort(key=lambda x: (x["river"] != "แม่น้ำเจ้าพระยา", -x["n"]))
     return _json({"rivers": out}, cache=True)
+
+
+def _tributaries() -> dict[str, list[str]]:
+    return _memo(("tributaries",), lambda: rivers_mod.tributaries(
+        _station_rows(True), {k: set((v.get("stations") or {})) for k, v in _river_km().items()}), ttl=600)
 
 
 @app.get("/api/profile")
@@ -712,8 +723,10 @@ def profile(river: str = Query("แม่น้ำเจ้าพระยา", 
         raise HTTPException(status_code=404, detail="no profile for this river")
     rows = [_station_row(r) for r in _station_rows(True) if r["river"] == river and r["lat"] is not None]
     items = rivers_mod.profile(rows, river, kms[river].get("stations") or {})
+    tc = set(_tributaries().get(river, []))
+    trib = sorted((_station_row(r) for r in _station_rows(True) if r["code"] in tc), key=lambda x: (x.get("river") or "", x["name_th"]))
     return _json({"river": river, "order": "upstream_to_downstream", "dist": "river_km_from_mouth_approx",
-                  "stations": items})
+                  "stations": items, "tributaries": trib})
 
 
 # ---- Citizen feedback (privacy: no names/contacts, IP never stored; notes never published) ----

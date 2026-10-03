@@ -30,9 +30,9 @@ def upsert_station(c: psycopg.Connection, s: dict[str, Any]) -> None:
     prev = c.execute("SELECT bank_msl, ground_msl, lat, lon FROM station WHERE code=%s", (s["code"],)).fetchone()
     c.execute(
         """INSERT INTO station (code, hii_id, name_th, name_en, lat, lon, bank_msl, ground_msl, critical_msl, warning_msl,
-                                agency, province, amphoe, river, basin, in_focus, updated_at)
+                                agency, province, amphoe, river, basin, sub_basin, in_focus, updated_at)
            VALUES (%(code)s, %(hii_id)s, %(name_th)s, %(name_en)s, %(lat)s, %(lon)s, %(bank_msl)s, %(ground_msl)s,
-                   %(critical_msl)s, %(warning_msl)s, %(agency)s, %(province)s, %(amphoe)s, %(river)s, %(basin)s, %(in_focus)s, now())
+                   %(critical_msl)s, %(warning_msl)s, %(agency)s, %(province)s, %(amphoe)s, %(river)s, %(basin)s, %(sub_basin)s, %(in_focus)s, now())
            ON CONFLICT (code) DO UPDATE SET
              hii_id=COALESCE(EXCLUDED.hii_id, station.hii_id), name_th=COALESCE(EXCLUDED.name_th, station.name_th),
              name_en=COALESCE(EXCLUDED.name_en, station.name_en), lat=COALESCE(EXCLUDED.lat, station.lat),
@@ -42,9 +42,9 @@ def upsert_station(c: psycopg.Connection, s: dict[str, Any]) -> None:
              warning_msl=COALESCE(EXCLUDED.warning_msl, station.warning_msl),
              agency=COALESCE(EXCLUDED.agency, station.agency), province=COALESCE(EXCLUDED.province, station.province),
              amphoe=COALESCE(EXCLUDED.amphoe, station.amphoe), river=COALESCE(EXCLUDED.river, station.river),
-             basin=COALESCE(EXCLUDED.basin, station.basin), in_focus=station.in_focus OR EXCLUDED.in_focus,
+             basin=COALESCE(EXCLUDED.basin, station.basin), sub_basin=COALESCE(EXCLUDED.sub_basin, station.sub_basin), in_focus=station.in_focus OR EXCLUDED.in_focus,
              updated_at=now()""",
-        {"warning_msl": None, **s},
+        {"warning_msl": None, "sub_basin": None, **s},
     )
     changed = prev is None or any(
         s.get(k) is not None and prev[k] != s.get(k) for k in ("bank_msl", "ground_msl", "lat", "lon"))

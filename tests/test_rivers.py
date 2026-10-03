@@ -88,3 +88,19 @@ def test_a_khlong_whose_provinces_are_unknown_gets_no_river_view():
     # 2026-10-03 live: the collector's query lacked `province`, so คลองหกวา (Pathum Thani polder) got a view
     unknown = [{**_g(f"K{i}", 13.9, 1.0 + i, "คลองหกวา"), "province": None} for i in range(3)]
     assert rivers.river_km([], unknown) == {}
+
+
+# --- v0.21.0 (owner 2026-10-03: "The canals which are under the same basin of river, they should be located in the same
+# as that river, not separated into ลำน้ำอื่น, for example คลองนางน้อย is under basin แม่น้ำตรัง") ---------------------------
+def _r(code, river, sub, agency="HII"):
+    return {"code": code, "river": river, "sub_basin": sub, "agency": agency}
+
+
+def test_a_gauge_without_its_own_view_joins_the_river_of_its_sub_basin():
+    # HII sub-basin 349 holds the 8 แม่น้ำตรัง gauges and TNG003 คลองนางน้อย, TNG005 คลองยวนปลา (live 2026-10-03)
+    rows = [_r(f"T{i}", "แม่น้ำตรัง", 349) for i in range(8)] + [_r("L1", "คลองท่าเลา", 349), _r("L2", "คลองท่าเลา", 349),
+            _r("L3", "คลองท่าเลา", 349), _r("TNG003", "คลองนางน้อย", 349), _r("TNG005", "คลองยวนปลา", 349),
+            _r("X", "ห้วยไกล", 999), _r("N", "คลองไม่มีลุ่ม", None), _r("B", "คลองบางกอกน้อย", 349, agency="BMA")]
+    views = {"แม่น้ำตรัง": {f"T{i}" for i in range(8)}, "คลองท่าเลา": {"L1", "L2", "L3"}}
+    trib = rivers.tributaries(rows, views)
+    assert trib == {"แม่น้ำตรัง": ["TNG003", "TNG005"]}  # the bigger view of the sub-basin; no BMA; none without a sub-basin

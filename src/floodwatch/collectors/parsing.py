@@ -71,7 +71,7 @@ def parse_waterlevel_load(payload: dict, raw_ref: str) -> tuple[list[dict], list
             "bank_msl": bank, "ground_msl": ground, "critical_msl": to_float(s.get("critical_level_msl")),
             "agency": ((r.get("agency") or {}).get("agency_shortname") or {}).get("en"),
             "province": province, "amphoe": _name(geo.get("amphoe_name"), "th"),
-            "river": r.get("river_name"), "basin": _name((r.get("basin") or {}).get("basin_name"), "th"),
+            "river": r.get("river_name"), "basin": _name((r.get("basin") or {}).get("basin_name"), "th"), "sub_basin": s.get("sub_basin_id"),
             "in_focus": province in FOCUS_PROVINCES, "meta_source": "hii_load",
         })
         t = parse_local(r.get("waterlevel_datetime"))
