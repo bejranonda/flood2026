@@ -46,7 +46,8 @@ FORECASTER_TASKS = [
     # satellite-flooded cells (GISTDA 7-day layer, D-071): checked hourly, downloaded <= every 20 h; ~7 min per download,
     # so it lives here, never in the collector loop
     ("gistda_flood", 3600),
-    ("risk_record", 24 * 3600),  # track records of the จับตา groups ("6 ใน 10") from the forecast archive (D-077)
+    ("risk_record", 24 * 3600),
+    ("dwr_ews", 1800),  # DWR early-warning level posts via the Thai egress, ~45 s per call: archived, trend-only layer  # track records of the จับตา groups ("6 ใน 10") from the forecast archive (D-077)
 ]
 
 
@@ -54,7 +55,7 @@ FORECASTER_TASKS = [
 FIRST_RUN = {
     "collector": ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev",
                   "openmeteo_cells", "openmeteo_prev_cells", "openmeteo_fine", "hii_geo", "traffy", "bma_klong", "qc", "hii_rain", "disk"),
-    "forecaster": ("upstream_learn", "forecast", "risk_record", "gistda_flood"),  # upstream_learn only when never learned
+    "forecaster": ("upstream_learn", "forecast", "risk_record", "gistda_flood", "dwr_ews"),  # upstream_learn only when never learned
 }
 
 

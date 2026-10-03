@@ -136,3 +136,12 @@ def test_a_thin_province_says_so_in_the_shared_where_row():
     # owner chose "Yes, one line": 1-2 gauges in a province is a gap of the national network, not of the app
     where = APP.split("function whereRow()")[1].split("document.addEventListener")[0]
     assert "สถานีวัดระดับน้ำเพียง" in where and "THIN_MAX" in where
+
+
+def test_dwr_posts_are_a_trend_only_layer_without_status_or_bank():
+    # owner 2026-10-03: "archive first, and show as trend-only layer". Depth on a local post, not m MSL; alarm levels
+    # mostly a 4.00 m default: no status colour, no "ตลิ่ง", only the measured change in the list's own words (obsLine).
+    js = APP.split("function dwrPopup(")[1].split("\n}\n")[0]
+    assert "obsLine({ observed24: d.trend })" in js and "ตลิ่ง" not in js.replace("ไม่มีระดับตลิ่ง", "")
+    assert "เสาวัดน้ำ กรมทรัพยากรน้ำ" in APP and "/api/dwr" in APP
+    assert "กำลังเก็บข้อมูล" in js and "ค่าค้าง" in js

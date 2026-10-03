@@ -330,3 +330,39 @@ def parse_gistda_flood(payload: dict) -> list[dict]:
                      "img_from": days[0] if days else None, "img_to": days[-1] if days else None})
     return [r for r in rows if r["h3"]]
 
+
+
+def _dwr_time(s: str | None) -> dt.datetime | None:
+    """DWR EWS dates: "04/10/69 01:15 น." = day/month/Buddhist short year (2569 = 2026), Thai time."""
+    m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{2})\s+(\d{1,2}):(\d{2})", s or "")
+    if not m:
+        return None
+    d, mo, yy, hh, mi = map(int, m.groups())
+    return dt.datetime(2500 + yy - 543, mo, d, hh, mi, tzinfo=ICT).astimezone(dt.timezone.utc)
+
+
+def _num(v: Any) -> float | None:
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return None
+    return x if math.isfinite(x) else None
+
+
+def parse_dwr_stations(payload: list) -> tuple[list[dict], list[dict]]:
+    """DWR EWS `LoadStation` (2,275 posts, 455 with a level, 2026-10-03): level posts and their latest reading. The
+    level is the depth on a local staff post, not m MSL; `alert_max` is mostly a default 4.00 m (kept, never used as
+    a bank). Rain-only posts (stn_type "RF") are skipped; the raw payload is archived with them."""
+    stations, obs = [], []
+    for r in payload or []:
+        if (r.get("stn_type") or "").strip() != "wl" or not r.get("stn"):
+            continue
+        am = _num(r.get("alert_max"))
+        stations.append({"code": r["stn"], "name_th": r.get("name"), "lat": _num(r.get("latitude")), "lon": _num(r.get("longitude")),
+                         "province": r.get("province"), "amphoe": r.get("amphoe"), "tambon": r.get("tambon"),
+                         "main_basin": r.get("main_basin"), "sub_basin": r.get("sub_basin"), "dept": r.get("dept"),
+                         "alert_max": am if am else None, "status": None if r.get("status") is None else str(r["status"])})
+        lv, t = _num(r.get("wl")), _dwr_time(r.get("date"))
+        if lv is not None and t is not None:
+            obs.append({"code": r["stn"], "obs_time": t, "level": lv})
+    return stations, obs

@@ -435,7 +435,8 @@ function renderMap() {
     legend.onAdd = () => {
       const d = L.DomUtil.create("div", "legend");
       d.innerHTML = Object.values(STATUS).map((s) => `<div><i style="background:${s.color}"></i>${esc(s.th)}</div>`).join("")
-        + `<div><i style="background:#7b1fa2;opacity:.4"></i>น้ำท่วมบนถนน (Traffy) 6 ชม.<span id="street-age"></span></div>`;
+        + `<div><i style="background:#7b1fa2;opacity:.4"></i>น้ำท่วมบนถนน (Traffy) 6 ชม.<span id="street-age"></span></div>`
+        + `<div><i style="background:${DWR_FILL};border:1px solid ${DWR_LINE}"></i>เสาวัดน้ำ กรมทรัพยากรน้ำ (แนวโน้มเท่านั้น)</div>`;
       return d;
     };
     legend.addTo(map);
@@ -445,13 +446,18 @@ function renderMap() {
     const opts = L.control({ position: "topleft" });  // bottom-left sat under the legend and below the fold at 390 px
     opts.onAdd = () => {
       const d = L.DomUtil.create("div", "legend");
-      d.innerHTML = `<label><input type="checkbox" id="nodata"> แสดงสถานีที่ยังคาดการณ์ไม่ได้ <span id="hidden-n"></span></label><div id="unplaced" class="muted"></div>`;
+      d.innerHTML = `<label><input type="checkbox" id="nodata"> แสดงสถานีที่ยังคาดการณ์ไม่ได้ <span id="hidden-n"></span></label>
+        <label><input type="checkbox" id="dwr-on" checked> เสาวัดน้ำ กรมทรัพยากรน้ำ</label><div id="unplaced" class="muted"></div>`;
       L.DomEvent.disableClickPropagation(d);
       d.querySelector("#nodata").addEventListener("change", (e) => { showNoData = e.target.checked; renderMap(); });
+      d.querySelector("#dwr-on").addEventListener("change", (e) => { dwrOn = e.target.checked; drawDwr(); });
       return d;
     };
     opts.addTo(map);
     map.on("click", (e) => checkPoint(e.latlng.lat, e.latlng.lng, "pin"));
+    map.createPane("dwr").style.zIndex = 600;  // below the gauges (650): a gauge is always the first tap target
+    map.on("zoomend", drawDwr);
+    drawDwr();
   }
   if (layer) layer.remove();
   layer = L.layerGroup().addTo(map);
@@ -478,6 +484,30 @@ function renderMap() {
   });
   const unplaced = stations.filter((s) => !s.lat && inRegion(s)).length;
   document.getElementById("unplaced").textContent = unplaced ? `${unplaced} สถานีไม่มีพิกัด (ดูในรายการ)` : "";
+}
+
+/* ---------- DWR early-warning posts: a trend-only layer (owner 2026-10-03, D-078) ---------- */
+// Depth on a local staff post (not m MSL), alarm levels mostly a 4.00 m default: no status colour, never compared
+// with the gauges; shown from zoom 9 (455 posts on a country view would bury the gauges).
+const DWR_FILL = "#cfd8dc", DWR_LINE = "#455a64", DWR_MIN_ZOOM = 9;
+let dwrOn = true, dwrData = null, dwrLayer = null;
+const DWR_TIP = "เสาวัดน้ำของระบบเตือนภัยล่วงหน้า กรมทรัพยากรน้ำ วัดความลึกที่เสาในพื้นที่ ไม่ใช่ ม.รทก. และไม่มีระดับตลิ่ง จึงแสดงเฉพาะการเปลี่ยนแปลงที่วัดได้ ไม่เทียบกับสถานีอื่นและไม่คาดการณ์ · ข้อมูลผ่านเครือข่ายในไทย อาจหยุดชั่วคราว";
+function dwrPopup(d) {
+  const line = d.note === "stuck" ? `<div class="pf-obs">ค่าค้างที่ค่าเดิมตลอด 24 ชม. (เครื่องวัดอาจขัดข้อง)</div>`
+    : d.note === "collecting" ? `<div class="pf-obs muted">กำลังเก็บข้อมูล แนวโน้มจะแสดงเมื่อครบ 24 ชม.</div>`
+    : obsLine({ observed24: d.trend });
+  return `<b>${esc(d.name_th || d.code)}</b> <span class="muted">${esc(d.code)}</span>
+    <div class="muted">ต.${esc(d.tambon || "-")} อ.${esc(d.amphoe || "-")} จ.${esc(d.province || "-")}</div>
+    ${line}<div class="muted">เสาวัดน้ำ กรมทรัพยากรน้ำ · ข้อมูล ${esc(fmtTime(d.obs_time))} (${esc(fmtAge(d.age_min))}) ${infoBtn(DWR_TIP, "เสาวัดน้ำ กรมทรัพยากรน้ำ")}</div>`;
+}
+async function drawDwr() {
+  if (!map) return;
+  if (dwrLayer) { dwrLayer.remove(); dwrLayer = null; }
+  if (!dwrOn || map.getZoom() < DWR_MIN_ZOOM) return;
+  try { dwrData = dwrData || (await getJSON("/api/dwr")).stations; } catch { return; }
+  dwrLayer = L.layerGroup().addTo(map);
+  dwrData.forEach((d) => L.circleMarker([d.lat, d.lon], { pane: "dwr", radius: 5, color: DWR_LINE, weight: 1.5,
+    fillColor: DWR_FILL, fillOpacity: d.age_min > 180 ? 0.4 : 0.95 }).bindPopup(dwrPopup(d)).addTo(dwrLayer));
 }
 
 // Map view follows the region chip: Bangkok at street level, any other region fitted to its gauges (D-064). The

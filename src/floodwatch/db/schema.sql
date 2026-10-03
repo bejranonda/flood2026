@@ -140,6 +140,31 @@ CREATE TABLE IF NOT EXISTS sat_flood (
 );
 CREATE INDEX IF NOT EXISTS sat_flood_latlon_idx ON sat_flood (lat, lon);
 
+-- DWR early-warning level posts (กรมทรัพยากรน้ำ, Thai egress only): kept apart from `station` because the level is
+-- depth on a local staff post (not m MSL) and alarm levels are mostly a 4.00 m default (2026-10-03). Trend-only layer.
+CREATE TABLE IF NOT EXISTS dwr_station (
+    code        text PRIMARY KEY,
+    name_th     text,
+    lat         double precision,
+    lon         double precision,
+    province    text,
+    amphoe      text,
+    tambon      text,
+    main_basin  text,
+    sub_basin   text,
+    dept        text,
+    alert_max   double precision,
+    status      text,
+    first_seen  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS dwr_obs (
+    code      text NOT NULL,
+    obs_time  timestamptz NOT NULL,
+    level     double precision NOT NULL,
+    PRIMARY KEY (code, obs_time)
+);
+
 -- Small key/value store for collector bookkeeping (e.g. which stations were backfilled).
 CREATE TABLE IF NOT EXISTS collector_state (
     key         text PRIMARY KEY,

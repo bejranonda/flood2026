@@ -591,6 +591,32 @@ def bma_dds() -> dt.datetime | None:
     return dt.datetime.now(dt.timezone.utc)
 
 
+DWR_EWS = "https://ews.dwr.go.th/ews/web-service/stn"
+
+
+def dwr_ews() -> dt.datetime | None:
+    """DWR early-warning posts (กรมทรัพยากรน้ำ): one POST for all 2,275 posts through the Thai egress (times out from
+    Germany), ~45 s, 3 MB; archived raw (rain posts included), level posts stored apart (dwr_station, dwr_obs)."""
+    if not settings.thai_egress_proxy:
+        raise RuntimeError("skipped: THAI_EGRESS_PROXY not set (ews.dwr.go.th times out from outside Thailand)")
+    r = fetch(DWR_EWS, via_thai_egress=True, method="POST", data={"action": "LoadStation"})
+    sha, _ = archive.store("dwr_ews", r.url, r.status, r.body)
+    if r.status != 200:
+        raise RuntimeError(f"HTTP {r.status}")
+    stations, obs = parsing.parse_dwr_stations(json.loads(r.body))
+    with db.connect() as c, c.cursor() as cur:
+        cur.executemany("""INSERT INTO dwr_station (code, name_th, lat, lon, province, amphoe, tambon, main_basin, sub_basin,
+                               dept, alert_max, status) VALUES (%(code)s, %(name_th)s, %(lat)s, %(lon)s, %(province)s,
+                               %(amphoe)s, %(tambon)s, %(main_basin)s, %(sub_basin)s, %(dept)s, %(alert_max)s, %(status)s)
+                           ON CONFLICT (code) DO UPDATE SET name_th=EXCLUDED.name_th, lat=EXCLUDED.lat, lon=EXCLUDED.lon,
+                               province=EXCLUDED.province, amphoe=EXCLUDED.amphoe, tambon=EXCLUDED.tambon,
+                               alert_max=EXCLUDED.alert_max, status=EXCLUDED.status, updated_at=now()""", stations)
+        cur.executemany("INSERT INTO dwr_obs (code, obs_time, level) VALUES (%(code)s, %(obs_time)s, %(level)s) ON CONFLICT DO NOTHING", obs)
+        c.commit()
+    log.info("dwr_ews: %d level posts, %d readings", len(stations), len(obs))
+    return max((o["obs_time"] for o in obs), default=None)
+
+
 GISTDA_FLOOD = "https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/7days"
 GISTDA_PAGE = 5000      # ~14 MB a page (polygons); the national 7-day layer had 111,387 cells on 2026-10-03
 GISTDA_MAX_AGE_H = 36   # safety net: refresh a copy this old even without a new stamp
@@ -666,4 +692,4 @@ def run(source: str) -> None:
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
                   "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
                   "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells,
-                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "gistda_flood": gistda_flood}[source])
+                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "gistda_flood": gistda_flood, "dwr_ews": dwr_ews}[source])

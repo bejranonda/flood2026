@@ -25,7 +25,7 @@ def test_collectors_never_wait_for_forecasts():
     collector = {n for n, _ in worker.tasks_for("collector")}
     forecaster = {n for n, _ in worker.tasks_for("forecaster")}
     assert "forecast" not in collector and "upstream_learn" not in collector
-    assert forecaster == {"forecast", "upstream_learn", "gistda_flood", "risk_record"}  # long jobs live here (gistda_flood: D-071)
+    assert forecaster == {"forecast", "upstream_learn", "gistda_flood", "risk_record", "dwr_ews"}  # long jobs live here (gistda_flood: D-071)
     assert "hii_waterlevel" in collector and "retention" in collector
 
 
@@ -94,3 +94,8 @@ def test_risk_record_runs_daily_in_the_forecaster_after_the_forecast():
     assert dict(worker.FORECASTER_TASKS)["risk_record"] == 24 * 3600
     f = worker.FIRST_RUN["forecaster"]
     assert f.index("risk_record") > f.index("forecast")
+
+
+def test_dwr_posts_are_archived_every_30_min_in_the_forecaster():
+    # one 3 MB request through the Thai egress takes ~45 s: never in the 10-min collector loop
+    assert dict(worker.FORECASTER_TASKS)["dwr_ews"] == 1800 and "dwr_ews" in worker.FIRST_RUN["forecaster"]

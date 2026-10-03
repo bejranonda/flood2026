@@ -19,6 +19,7 @@ FC_KEEP_DAYS = 14     # ... then one run per gauge every 6 h (hh:00-hh:29 at 00/
 RAIN_KEEP_DAYS = 14  # rain-gauge readings (rain_obs) far from any water gauge: the panel reads only the last 3 h
 RAIN_MODEL_KEEP_DAYS = 400  # gauges within ~10 km of a water gauge: hourly rain is not re-fetchable (model input, Q43)
 RAIN_NEAR_DEG = 0.09  # ~10 km box around a water gauge
+DWR_KEEP_DAYS = 400  # DWR serves ~11 h of history (2026-10-03): our archive is the only one
 BATCH = 50_000
 
 OBS_SQL = """DELETE FROM observation WHERE ctid IN (
@@ -34,6 +35,8 @@ RAIN_SQL = """DELETE FROM rain_obs WHERE ctid IN (
          AND NOT EXISTS (SELECT 1 FROM station s WHERE s.lat IS NOT NULL
                          AND abs(s.lat - r.lat) < %(near)s AND abs(s.lon - r.lon) < %(near)s))
   LIMIT %(batch)s)"""
+DWR_SQL = """DELETE FROM dwr_obs WHERE ctid IN (
+  SELECT ctid FROM dwr_obs WHERE obs_time < now() - make_interval(days => %(days)s) LIMIT %(batch)s)"""
 FC_SQL = """DELETE FROM forecast_run WHERE id IN (
   SELECT id FROM forecast_run WHERE issue_time < now() - make_interval(days => %(keep_all_days)s)
   AND (issue_time < now() - make_interval(days => %(days)s)
@@ -54,6 +57,7 @@ def _drain(c, sql: str, days: int, **extra) -> int:
 def run(c) -> dict:
     out = {"observation": _drain(c, OBS_SQL, OBS_KEEP_DAYS), "weather_forecast": _drain(c, WF_SQL, WF_KEEP_DAYS),
            "forecast_run": _drain(c, FC_SQL, FC_KEEP_DAYS, keep_all_days=FC_KEEP_ALL_DAYS),
-           "rain_obs": _drain(c, RAIN_SQL, RAIN_KEEP_DAYS, model_days=RAIN_MODEL_KEEP_DAYS, near=RAIN_NEAR_DEG)}
+           "rain_obs": _drain(c, RAIN_SQL, RAIN_KEEP_DAYS, model_days=RAIN_MODEL_KEEP_DAYS, near=RAIN_NEAR_DEG),
+           "dwr_obs": _drain(c, DWR_SQL, DWR_KEEP_DAYS)}
     log.info("retention: deleted %s", out)
     return out

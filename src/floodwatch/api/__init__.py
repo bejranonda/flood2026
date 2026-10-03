@@ -503,6 +503,21 @@ def _fine_ids() -> set[str]:
     return _memo(("fine_ids",), build, ttl=600)
 
 
+@app.get("/api/dwr")
+def dwr_layer():
+    """DWR early-warning level posts as a trend-only layer (owner 2026-10-03; not m MSL, no bank, no status)."""
+    def build():
+        from floodwatch import dwr
+        now = dt.datetime.now(dt.timezone.utc)
+        with db.connect() as c:
+            st = c.execute("SELECT code, name_th, lat, lon, province, amphoe, tambon FROM dwr_station").fetchall()
+            rows = c.execute("SELECT code, obs_time, level FROM dwr_obs WHERE obs_time > now() - interval '30 hours'").fetchall()
+            since = c.execute("SELECT min(obs_time) AS m FROM dwr_obs").fetchone()["m"]
+        return {"generated": now.isoformat(), "since": _iso(since), "source": "กรมทรัพยากรน้ำ (ระบบเตือนภัยล่วงหน้า)",
+                "stations": dwr.items(st, rows, now)}
+    return _json(_memo(("dwr",), build, ttl=300))
+
+
 @app.get("/api/rain")
 def rain():
     return _json(_memo(("rain",), _rain_data))  # every visitor's 5-min refresh reads it: shared for 60 s (KI-246)

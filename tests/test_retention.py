@@ -34,7 +34,7 @@ def test_retention_keeps_bma_and_400_days_and_deletes_in_batches():
     sql, p = obs[0]
     assert "agency IS DISTINCT FROM 'BMA'" in sql  # BMA relay history is not re-fetchable (KI-218)
     assert p["days"] == retention.OBS_KEEP_DAYS == 400 and p["batch"] == retention.BATCH
-    assert out == {"observation": retention.BATCH + 10, "weather_forecast": 0, "forecast_run": 0, "rain_obs": 0}
+    assert out == {"observation": retention.BATCH + 10, "weather_forecast": 0, "forecast_run": 0, "rain_obs": 0, "dwr_obs": 0}
     assert c.commits >= 2  # short transactions: one per batch
 
 
@@ -68,3 +68,8 @@ def test_rain_gauge_readings_are_bounded_too():
     # so gauges near a water gauge (model inputs, Q43) keep a year; the others two weeks (panel only reads 3 h)
     assert "rain_obs" in retention.RAIN_SQL and retention.RAIN_KEEP_DAYS == 14 and retention.RAIN_MODEL_KEEP_DAYS == 400
     assert "NOT EXISTS (SELECT 1 FROM station" in retention.RAIN_SQL and "%(model_days)s" in retention.RAIN_SQL
+
+
+def test_dwr_readings_are_kept_400_days_because_dwr_serves_only_11_hours():
+    # 2026-10-03: ews.dwr.go.th's chart gives the last ~11 h; our archive is the only history
+    assert retention.DWR_KEEP_DAYS == 400 and "dwr_obs" in inspect.getsource(retention.run)
