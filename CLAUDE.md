@@ -1,6 +1,6 @@
 # CLAUDE.md — Working rules for AI agents in this repo
 
-**Project:** BKK FloodWatch 2026. Thai-language water-level monitoring and forecasting for Bangkok and the lower Chao Phraya, built during an active flood.
+**Project:** BKK FloodWatch 2026. Thai-language water-level monitoring and forecasting for canals and rivers across Thailand (1,000+ gauges; it started in Bangkok during the 2026 flood, hence the name, D-073).
 **Current state:** MVP live at https://flood.autobahn.bot (the only domain; flood.bejranonda.com just redirects there; single server, docker compose). **Start with [HANDOFF.md](HANDOFF.md)**, then [docs/plan/PLAN.md](docs/plan/PLAN.md).
 
 ## Before you do anything

@@ -572,6 +572,15 @@
   - New `.env` keys (empty in git): `GFM_EMAIL`, `GFM_PASSWORD`, `GOOGLE_APPLICATION_CREDENTIALS`, `WEATHERNEXT_PROJECT`, `WEATHERNEXT_DATASET`, `EWDS_API_KEY` — worker only, never the web app; `owner_status.py` checks each with one request and prints no value.
 - **Revisit:** satellite UI if users outside Bangkok ask what the fields look like; WeatherNext after its backtest (owner step WNEXT: subscribe to the listing).
 
+### D-073 — The name stays "BKK FloodWatch"; every description says nationwide
+- **Date:** 2026-10-03 · **Status:** accepted (owner: "Think about rebrand from BKK flood watch to nationwide, please suggest and validate" → I recommended ริมตลิ่ง · Rim Taling; owner: "But it sounds not international?" → "Keep old name, and adapt the description everywhere for nationwide, please suggest and validate")
+- **Validated names (2026-10-03, web search):** taken or confusable — เช็คน้ำ (GISTDA's app), checknam.com, Water Watch (CIPAT), ThaiWater (HII, official), Tuammai/ท่วมไหม, NamWatch (a Bangkok volunteer flood map with HII + Traffy), "Flood Watch Thailand" (GitHub project), "Taling" (Korean learning startup); free — ริมตลิ่ง. Freeboard: a technical term and a dashboard tool.
+- **Decision:** keep the name (recognition, links, the honest User-Agent agencies will see). One wording everywhere: title "BKK FloodWatch — ระดับน้ำคลองและแม่น้ำทั่วไทย" (45 chars); meta description 153 chars; English "Water levels of canals and rivers across Thailand: 1,000+ gauges (HII, RID, EGAT, BMA) compared with the bank, with backtested 12–48 hour forecasts. Started in Bangkok during the 2026 flood." Counts in static text are rounded ("กว่า 1,000"), never exact.
+
+### D-072 — "แม่น้ำ" tab: every river with ≥ 8 gauges, ordered by river km, with the 24 h forecast row
+- **Date:** 2026-10-03 · **Status:** accepted (owner chose "แม่น้ำ tab + forecast")
+- **Decision:** river chips (Chao Phraya first, then by gauges; the region chip picks the default for north/northeast/east/west/south); rows from the downstream end up; each fresh gauge with a forecast gets the list's "อีก 24 ชม." row (`trendRows`, D-060); stale or unknown gauges say "ไม่อัปเดต" (D-024); BMA gauges stay in the list and map, never in an HII/RID chain (KI-217). River km by `rivers.chainage` (weekly with the river map, `collector_state.river_km`), ±10 km, never used to interpolate water between gauges (D-019).
+
 ### D-071 — Satellite flooding near a pin: "seen" only, from GISTDA, in the pin panel (Q45)
 - **Date:** 2026-10-03 · **Status:** accepted (owner: "Q45 : yes")
 - **Decision:** a factor line "ดาวเทียมเห็นน้ำท่วม<บริเวณจุดนี้|ห่างราว N ม.>" with the flooded area within 1 km (rai) and the image dates, when GISTDA's 7-day layer has flooded cells within 1 km of the pin (images ≤ 10 days old). Nothing when none: never "not flooded" (radar is blind among buildings; research/2026-10-02_satellite_flood.md). Does not change the headline or status (gauges judge channels; this is water on the ground, like street reports). Told in the AI story and its lines too.

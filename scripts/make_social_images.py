@@ -14,8 +14,8 @@ h1{font-size:47px;line-height:1.2;margin:18px 0 22px;font-weight:700}
 p{font-size:28px;line-height:1.45;margin:0;opacity:.92}
 .u{position:absolute;left:56px;bottom:52px;font-size:30px;font-weight:700;background:#fff;color:#0d3b66;padding:8px 22px;border-radius:999px}
 .ph{position:absolute;top:40px;width:250px;border-radius:26px;border:6px solid #07243f;box-shadow:0 18px 40px rgba(0,0,0,.4)}
-</style><div class=t><div class=b>BKK FloodWatch</div><h1>ระดับน้ำ กทม.<br>ตอนนี้ และ 12–48 ชม.</h1>
-<p>กี่ ซม. ถึงตลิ่ง · แนวโน้มที่วัดจริง<br>Bangkok water levels &amp; trends</p></div>
+</style><div class=t><div class=b>BKK FloodWatch</div><h1>ระดับน้ำทั่วไทย<br>ตอนนี้ และ 12–48 ชม.</h1>
+<p>คลองและแม่น้ำกว่า 1,000 สถานี<br>กี่ ซม. ถึงตลิ่ง<br>Thailand water levels &amp; forecasts</p></div>
 <div class=u>flood.autobahn.bot</div>
 <img class=ph style="right:%(r1)dpx;top:%(t1)dpx" src="%(a)s"><img class=ph style="right:%(r2)dpx;top:%(t2)dpx" src="%(b)s">"""
 with sync_playwright() as p:

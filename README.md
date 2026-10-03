@@ -1,7 +1,7 @@
-# BKK FloodWatch — Bangkok and Thailand flood and water-level monitor 🌊
+# BKK FloodWatch — Thailand flood and water-level monitor 🌊
 
-**ติดตามระดับน้ำคลองในกรุงเทพฯ และแม่น้ำทั่วประเทศ แบบเรียลไทม์ พร้อมแนวโน้ม 12–48 ชั่วโมง**
-Real-time water levels of Bangkok's canals (khlong) in depth and of every HII, RID and EGAT river gauge in Thailand, compared with the bank, with honest 12–48 h trends — in plain Thai, on your phone.
+**ติดตามระดับน้ำคลองและแม่น้ำกว่า 1,000 สถานีทั่วประเทศ เทียบตลิ่ง พร้อมคาดการณ์ 12–48 ชั่วโมง**
+Real-time water levels of canals and rivers across Thailand — 1,000+ gauges from HII, RID, EGAT and BMA, compared with the bank, with backtested 12–48 h forecasts — in plain Thai, on your phone. It started in Bangkok during the 2026 flood (hence the name) and covers the whole country since v0.16.
 
 **[▶ Open the app — flood.autobahn.bot](https://flood.autobahn.bot)** · [API docs](https://flood.autobahn.bot/api/docs) · [Changelog](CHANGELOG.md) · [Handoff (for developers)](HANDOFF.md)
 
@@ -35,13 +35,14 @@ Real-time water levels of Bangkok's canals (khlong) in depth and of every HII, R
 - **Forecasts that earn their place.** Every gauge is backtested for each horizon with a year of history, rain for its own area and the gauges upstream of it; a model is used only where it beats "no change". Otherwise the rows follow the measured trend, and the ⓘ says how often such a trend continued in the past (canals ≈ 5–6 in 10, rivers ≈ 9 in 10).
 - **Plain words, with an AI helper that cannot mislead.** Each pin has a plain-language line, and AI runs only when you ask: one button retells the panel as a short story. Rules write the story; the AI (GLM) retelling is shown only when a checker finds nothing new, nothing stronger and no yes/no verdict. The AI never sees your location.
 - **Bad data is hidden, not shown as fact.** Single-reading dropouts are removed; gauges next to pumps or with stuck sensors keep their dot and chart, but not a level or a trend.
-- **Built for a phone during a flood.** Thai first, Bangkok first, short panels, place search (ซอย/ถนน/ย่าน), map, Chao Phraya profile, share links, and a one-tap water report from where you are.
+- **Built for a phone during a flood.** Thai first, short panels, place search (ซอย/ถนน/ย่าน), map, **river profiles for 15 rivers with each gauge's 24 h forecast** (เจ้าพระยา, น่าน, ยม, ปิง, มูล, ชี …), share links, and a one-tap water report from where you are.
+- **What the satellite saw.** Where GISTDA's radar mapped flooding within 1 km of a place in the last 7 days, the panel says so (only what was seen: radar cannot see water among buildings).
 - **Open.** MIT-licensed code and a free, key-less JSON API.
 
 ## How it works
 ```mermaid
 flowchart LR
-  S["HII · BMA canals · RID · Open-Meteo rain · Traffy reports"] --> C["Collectors<br/>(raw archive, every 5–10 min)"]
+  S["HII · BMA canals · RID · Open-Meteo rain · Traffy reports · GISTDA satellite"] --> C["Collectors<br/>(raw archive, every 5–10 min)"]
   C --> DB[("Postgres")]
   DB --> Q["Quality control<br/>dropouts · erratic & stuck gauges · measured trend"]
   Q --> F["Forecasts per gauge<br/>backtested per horizon, conformal ranges"]

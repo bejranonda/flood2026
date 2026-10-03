@@ -10,7 +10,7 @@
 | Q18 | `flood.autobahn.bot` challenged non-browser clients | ✅ **done** (owner turned Bot Fight Mode off, verified 17:33 UTC) | |
 | **HYDROBASINS** | Download HydroBASINS (Asia) in a browser and copy it to the server | ✅ **done** 2026-10-02 (owner downloaded the lake version + ONWR's 22 basins; tested: no forecast gain, [research](../research/2026-10-02_catchment_rain.md)) | |
 | **UPTIME** | An external uptime check that alerts you when `/api/health` fails (KI-246: a 4.5 h overload on 2026-09-30 went unnoticed) | ⬜ open — new 2026-09-30 | 1 |
-| **SOCIAL** | Upload `docs/img/social-preview.png` as the GitHub repository social preview; optionally add the site to Google Search Console | ⬜ open — new 2026-09-30 | 3 |
+| **SOCIAL** | Upload `docs/img/social-preview.png` as the GitHub repository social preview (**regenerated 2026-10-03 with the nationwide text, D-073**); optionally add the site to Google Search Console | ⬜ open — new 2026-09-30 | 3 |
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
 | **GISTDA** | GISTDA key works for the flood-extent service | ✅ **works** (2026-09-27 10:05 UTC): the key was fine; our endpoint path and key placement were outdated (KI-510). Fixed from the docs link you sent | |

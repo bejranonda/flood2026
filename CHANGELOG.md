@@ -2,6 +2,24 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.20.0 — 2026-10-03
+- **"〰️ แม่น้ำ" replaces the เจ้าพระยา tab, with forecasts (owner: "Should we adapt tab เจ้าพระยา? because we extended
+  to nationwide already. Will users expect to see forecasting additionally under this tab too?" → chose "แม่น้ำ tab +
+  forecast"; D-072).** 15 rivers with ≥ 8 gauges (เจ้าพระยา, น่าน, ยม, ชี, มูล, ปิง, วัง, ป่าสัก, ปัตตานี, แควน้อย,
+  ท่าจีน, ตรัง, ตาปี, บางปะกง, เพชรบุรี) as chips; the region chip picks the default. Each gauge row adds the same
+  "อีก 24 ชม." row as the list (tested forecasts only, D-060); stale gauges say "ไม่อัปเดต". On the Chao Phraya the
+  rows show the flood wave moving down (rising Chai Nat → Ayutthaya, falling at Nakhon Sawan, 2026-10-03).
+- **River km for every river (`rivers.py`):** HII's river lines joined into one network (bridging drawing gaps and
+  reservoirs, e.g. Bhumibol and Sirikit), measured from the end where the banks are lowest — so the Pattani and the Tapi
+  run north and the Mun east. Matches the hand-checked Chao Phraya km within 5 km; banks rise upstream for 73–100 % of
+  gauge pairs. `/api/rivers`, `/api/profile?river=`.
+- **Validation fixes (KI-266):** the BMA gauge ส.ปากคลองตลาด is no longer mixed into the HII/RID Chao Phraya chain
+  (KI-217) and no longer mis-placed by latitude between the Bang Yo gates.
+- **Nationwide descriptions, name kept (owner: "Keep old name, and adapt the description everywhere for nationwide";
+  D-073):** page title "BKK FloodWatch — ระดับน้ำคลองและแม่น้ำทั่วไทย", meta/link-preview/structured-data texts,
+  noscript, API docs, README, link-preview image and the GitHub description now say canals and rivers across
+  Thailand (1,000+ gauges) and why the name says BKK ("started in Bangkok during the 2026 flood").
+
 ## v0.19.0 — 2026-10-03
 - **"ดาวเทียมเห็นน้ำท่วม" in the pin panel (Q45: owner "yes"; D-071).** When GISTDA's satellite radar mapped flooding
   within 1 km of a pin in the last 7 days, the panel gets one factor line: "ดาวเทียมเห็นน้ำท่วมห่างราว 400 ม. · รวมราว

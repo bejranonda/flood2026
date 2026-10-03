@@ -18,6 +18,7 @@ in many possibilities"). One browser session, views compared at the same moment:
      same gauge (TRD001 read ⬆ / ⬇ / ⬆); model vs model may differ (tides, rain arriving later).
   C11 (v0.17.1) rain uses the water rows' layout in the panel and the summary (forecast = a chip row), and the panel
      headline never repeats a rain amount (owner 2026-10-02: "rainfall info … one long sentence").
+  C14 (v0.20.0, D-072) the แม่น้ำ tab: every river loads, downstream first, no BMA gauge, 24 h row where a forecast exists.
   C13 (v0.19.0, D-071) the satellite line appears exactly when /api/point reports GISTDA flooding within 1 km, never "no flood".
   C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
      opens a story with no verdict word (ปลอดภัย, ไม่ท่วม, ได้ครับ, ไปได้, ปกติ) and no rain amount.
@@ -241,6 +242,30 @@ with sync_playwright() as p:
         dirs = [(ui_dir(c), c.get("basis") == "measured_trend") for c in chs if ui_dir(c)]
         if {"rising", "falling"} <= {d for d, _ in dirs} and any(m for _, m in dirs):
             note("C10", f"rows {code}", f"measured trend opposes a model direction: {dirs}")
+    # C14 (v0.20.0, D-072): the "แม่น้ำ" tab — every river loads, downstream first, no BMA gauge in an HII/RID chain
+    # (KI-217), a 24 h row for every fresh gauge with a forecast, stale gauges say "ไม่อัปเดต"
+    open_home(pg)
+    pg.locator('.tabs [data-tab=river]').click(); pg.wait_for_selector("#view-river .rchip[data-river]", timeout=30000)
+    for rv in pg.evaluate("() => [...document.querySelectorAll('#view-river .rchip[data-river]')].map(b => b.dataset.river)"):
+        pg.locator(f'#view-river .rchip[data-river="{rv}"]').click(); pg.wait_for_timeout(900)
+        prof = json.loads(pg.evaluate("async (r) => JSON.stringify(await (await fetch('/api/profile?river=' + encodeURIComponent(r))).json())", rv))
+        byc = {x["code"]: x for x in prof["stations"]}
+        shown = pg.evaluate("() => [...document.querySelectorAll('#view-river .prow')].map(r => ({code: r.dataset.code, text: r.innerText, fc: !!r.querySelector('.pfc .chg')}))")
+        counts["river_rows"] = counts.get("river_rows", 0) + len(shown)
+        if not shown:
+            note("C14", rv, "no rows"); continue
+        kms = [byc[x["code"]]["chainage_km"] for x in shown if x["code"] in byc]
+        if kms != sorted(kms):
+            note("C14", rv, "rows not ordered from the downstream end")
+        for x in shown:
+            st = byc.get(x["code"]) or {}
+            if st.get("agency") == "BMA":
+                note("C14", f"{rv} {x['code']}", "BMA gauge in a river profile")
+            old = st.get("stale") or st.get("status") == "unknown"
+            if old and "ไม่อัปเดต" not in x["text"]:
+                note("C14", f"{rv} {x['code']}", "stale gauge shows a value")
+            if not old and st.get("change24") and not x["fc"]:
+                note("C14", f"{rv} {x['code']}", "forecast missing in the profile row")
     # C9: the summary rain line of every region chip = /api/rain by_region (TMD word of the wettest forecast point)
     open_home(pg)
     rainreg = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/rain')).json()).by_region)"))
@@ -286,7 +311,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

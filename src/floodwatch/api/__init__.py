@@ -10,6 +10,7 @@ import re
 import secrets
 import threading
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Literal
 
@@ -22,6 +23,7 @@ from pydantic import BaseModel, Field
 from floodwatch import __version__, ai, db, explain, geocode, point
 from floodwatch.config import DATUM_SUSPECT
 from floodwatch import rain_cells, regions
+from floodwatch import rivers as rivers_mod
 from floodwatch.forecast import change_summary, classify_status
 
 PRIVATE_QUERY_PATHS = ("/api/geocode", "/api/point", "/api/reverse", "/api/near", "/api/explain")
@@ -41,7 +43,7 @@ class RedactQuery(logging.Filter):
 
 logging.getLogger("uvicorn.access").addFilter(RedactQuery())
 
-app = FastAPI(title="BKK FloodWatch API", version=__version__, docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(title="BKK FloodWatch API", description="Water levels of canals and rivers across Thailand (1,000+ gauges) compared with the bank, with backtested 12–48 h forecasts. Free, no key. Not an official warning.", version=__version__, docs_url="/api/docs", openapi_url="/api/openapi.json")
 WEB_DIR = Path(os.environ.get("WEB_DIR", Path(__file__).resolve().parents[3] / "web"))
 CACHE = {"Cache-Control": "public, max-age=60, stale-while-revalidate=300"}
 STALE_MIN = 180  # observation older than this is shown as stale
@@ -628,18 +630,49 @@ def _stats_data() -> dict:
     }
 
 
+_RIVER_KM: dict = {"t": 0.0, "v": {}}
+
+
+def _river_km() -> dict:
+    """River km per gauge for every river with a profile (collector hii_geo, weekly; rivers.river_km), cached 10 min.
+    Before the first run the Chao Phraya falls back to the hand-checked chainage file (scripts/build_chainage.py)."""
+    if time.time() - _RIVER_KM["t"] > 600:
+        with db.connect() as c:
+            row = c.execute("SELECT value FROM collector_state WHERE key='river_km'").fetchone()
+        v = (row or {}).get("value") or {}
+        if "แม่น้ำเจ้าพระยา" not in v and CHAINAGE:
+            v = {**v, "แม่น้ำเจ้าพระยา": {"stations": {k: {"km": x["chainage_km"]} for k, x in CHAINAGE.items()}}}
+        _RIVER_KM.update(t=time.time(), v=v)
+    return _RIVER_KM["v"]
+
+
+@app.get("/api/rivers")
+def rivers_list():
+    """Rivers with a profile (>= 8 gauges with a bank, D-072): name, gauges on it, the region most of them are in."""
+    kms = _river_km()
+    rows = _station_rows(True)
+    out = []
+    for name, d in kms.items():
+        codes = set(d.get("stations") or {})
+        regs = Counter(regions.region_of(r.get("province")) for r in rows if r["code"] in codes)
+        regs.pop(None, None)
+        out.append({"river": name, "n": len(codes), "region": regs.most_common(1)[0][0] if regs else None,
+                    "agree": d.get("agree")})
+    out.sort(key=lambda x: (x["river"] != "แม่น้ำเจ้าพระยา", -x["n"]))
+    return _json({"rivers": out}, cache=True)
+
+
 @app.get("/api/profile")
-def profile():
-    """Chao Phraya main stem, north to south: level vs bank at each gauge (1-D, no interpolation between gauges;
-    APPROACH §2.9). chainage_km = approximate river km from the mouth along HII's centreline (±10 km near
-    branches); stations without chainage fall back to latitude order."""
-    with db.connect() as c:
-        rows = [r for r in _station_rows(False) if r["river"] == "แม่น้ำเจ้าพระยา" and r["lat"] is not None]
-    items = [_station_row(r) for r in rows]
-    for s in items:
-        s["chainage_km"] = (CHAINAGE.get(s["code"]) or {}).get("chainage_km")
-    items.sort(key=lambda s: (-(s["chainage_km"] if s["chainage_km"] is not None else s["lat"] * 100)))
-    return _json({"river": "แม่น้ำเจ้าพระยา", "order": "north_to_south", "dist": "river_km_from_mouth_approx",
+def profile(river: str = Query("แม่น้ำเจ้าพระยา", max_length=60)):
+    """One river, upstream to downstream: level vs bank and the tested forecast at each gauge (1-D, no interpolation
+    between gauges; APPROACH §2.9). chainage_km = approximate river km from the mouth or confluence along HII's river
+    line (±10 km near branches; rivers.py). BMA gauges never join an HII/RID chain (KI-217)."""
+    kms = _river_km()
+    if river not in kms:
+        raise HTTPException(status_code=404, detail="no profile for this river")
+    rows = [_station_row(r) for r in _station_rows(True) if r["river"] == river and r["lat"] is not None]
+    items = rivers_mod.profile(rows, river, kms[river].get("stations") or {})
+    return _json({"river": river, "order": "upstream_to_downstream", "dist": "river_km_from_mouth_approx",
                   "stations": items})
 
 

@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d3b66">
-<title>BKK FloodWatch — ระดับน้ำ กทม. และทั่วประเทศ</title>
-<meta name="description" content="ระดับน้ำคลองในกรุงเทพฯ และแม่น้ำทั่วประเทศ ล่าสุด อีกกี่ ซม. ถึงตลิ่ง และแนวโน้ม 12–48 ชั่วโมงจากข้อมูลที่วัดจริง (สสน. กรมชลประทาน กฟผ. กทม.) — ไม่ใช่ประกาศทางการ (ฉบับทดลอง)">
+<title>BKK FloodWatch — ระดับน้ำคลองและแม่น้ำทั่วไทย</title>
+<meta name="description" content="ระดับน้ำคลองและแม่น้ำกว่า 1,000 สถานีทั่วไทยเทียบตลิ่ง พร้อมคาดการณ์ 12–48 ชม. เฉพาะสถานีที่ทดสอบผ่าน · ข้อมูล สสน. กรมชลฯ กฟผ. กทม. · ไม่ใช่ประกาศทางการ">
 <link rel="canonical" href="https://flood.autobahn.bot/">
-<meta property="og:title" content="BKK FloodWatch — ระดับน้ำ กทม. และทั่วประเทศ">
-<meta property="og:description" content="อีกกี่ ซม. น้ำจะถึงตลิ่ง และแนวโน้ม 12–48 ชั่วโมง ของคลองในกรุงเทพฯ และแม่น้ำทั่วประเทศ (ไม่ใช่ประกาศทางการ)">
+<meta property="og:title" content="BKK FloodWatch — ระดับน้ำคลองและแม่น้ำทั่วไทย">
+<meta property="og:description" content="อีกกี่ ซม. น้ำจะถึงตลิ่ง และแนวโน้ม 12–48 ชั่วโมง ของคลองและแม่น้ำกว่า 1,000 สถานีทั่วไทย (ไม่ใช่ประกาศทางการ)">
 <meta property="og:url" content="https://flood.autobahn.bot/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="BKK FloodWatch">
@@ -16,18 +16,18 @@
 <meta property="og:image" content="https://flood.autobahn.bot/static/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="BKK FloodWatch: หน้าจอมือถือแสดงระดับน้ำและแนวโน้มของสถานีคลองลาดพร้าว">
+<meta property="og:image:alt" content="BKK FloodWatch: ระดับน้ำคลองและแม่น้ำทั่วไทยเทียบตลิ่ง พร้อมแนวโน้ม 12–48 ชม. บนหน้าจอมือถือ">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="BKK FloodWatch — ระดับน้ำ กทม. และทั่วประเทศ">
+<meta name="twitter:title" content="BKK FloodWatch — ระดับน้ำคลองและแม่น้ำทั่วไทย">
 <meta name="twitter:image" content="https://flood.autobahn.bot/static/og-image.jpg">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"BKK FloodWatch","url":"https://flood.autobahn.bot/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","inLanguage":"th","isAccessibleForFree":true,"description":"Water levels of Bangkok canals in depth and of every HII/RID/EGAT river gauge in Thailand, with honest 12–48 hour trends. Not an official warning.","license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/bejranonda/flood2026"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"BKK FloodWatch","url":"https://flood.autobahn.bot/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","inLanguage":"th","isAccessibleForFree":true,"description":"Water levels of canals and rivers across Thailand: 1,000+ gauges (HII, RID, EGAT, BMA) compared with the bank, with backtested 12–48 hour forecasts. Started in Bangkok during the 2026 flood. Not an official warning.","license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/bejranonda/flood2026"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v=3">
 <link rel="alternate icon" type="image/x-icon" href="/favicon.ico?v=3">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=3">
-<link rel="stylesheet" href="/static/style.css?v=38">
+<link rel="stylesheet" href="/static/style.css?v=39">
 </head>
 <body>
 <header class="top">
@@ -41,14 +41,14 @@
   ศูนย์ป้องกันน้ำท่วม กทม. <a href="tel:022485115">02-248-5115</a> · แบบฟอร์มความเห็นในเว็บนี้<strong>ไม่ใช่ช่องทางขอความช่วยเหลือ</strong>
 </details>
 
-<noscript><p style="padding:12px 16px">BKK FloodWatch ต้องเปิด JavaScript เพื่อแสดงระดับน้ำล่าสุดของคลองและแม่น้ำเจ้าพระยาในกรุงเทพฯ · ไม่ใช่ประกาศทางการ เหตุฉุกเฉินโทร ปภ. 1784 หรือ กทม. 1555</p></noscript>
+<noscript><p style="padding:12px 16px">BKK FloodWatch ต้องเปิด JavaScript เพื่อแสดงระดับน้ำล่าสุดของคลองและแม่น้ำทั่วประเทศ · ไม่ใช่ประกาศทางการ เหตุฉุกเฉินโทร ปภ. 1784 (ในกรุงเทพฯ โทร กทม. 1555)</p></noscript>
 
 <section id="summary" class="summary" aria-label="สรุปภาพรวม"></section>
 
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="list" aria-selected="true">📋 รายการ</button>
   <button role="tab" data-tab="map" aria-selected="false" class="mobile-only">🗺️ แผนที่</button>
-  <button role="tab" data-tab="river" aria-selected="false">〰️ เจ้าพระยา</button>
+  <button role="tab" data-tab="river" aria-selected="false">〰️ แม่น้ำ</button>
 </nav>
 
 <main class="layout">
@@ -92,6 +92,6 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script src="/static/app.js?v=83"></script>
+<script src="/static/app.js?v=84"></script>
 </body>
 </html>

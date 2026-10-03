@@ -40,6 +40,7 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-266 | River profile mixed a BMA gauge into the HII/RID Chao Phraya chain and placed it by latitude between the Bang Yo gates | Data quality / UI | 🟢 fixed v0.20.0 (BMA out; km for every river) |
 | KI-265 | Top strip: the region's rain took 3–4 lines (v0.17.1 rows layout) and read as "Bangkok only" (it followed the region chip far below) | UI | 🟢 fixed v0.18.9 (shown only for heavy rain, one line) |
 | KI-264 | A research run (49 points × 1 year) hit Open-Meteo's per-minute limit (HTTP 429); the free allowance is shared with production rain | Infrastructure | 🟡 (research runs paced and sized; production unaffected) |
 | KI-263 | Pins upstream of Bangkok (focus provinces Ayutthaya–Nakhon Sawan) used the polder rules: a pin 0.1 km from LBI001 (over bank) said "no gauge close enough" | UX / Product | 🟢 fixed v0.18.9 (polder rules only in กทม.+ปริมณฑล) |
@@ -677,4 +678,7 @@ Owner, 2026-10-02 (pin 14.4268, 100.5553, screenshot): "The point is next to sta
 
 ### KI-265 — The top strip's rain took too much space and read as "Bangkok only" · 🟢 fixed v0.18.9
 Owner, 2026-10-02 (screenshot): "Review the topbar of UI, it used too much space again!! and it showed specifically for Bangkok, for what?" v0.17.1 had given the strip the pin panel's rain rows (title + row + past line = 3–4 lines). The block followed the region chip in the list (default กทม.), far below the strip, so it read as Bangkok-only. Owner chose **"Only when heavy"**: no rain line unless the chosen region expects or measured heavy rain (TMD ≥ 35.1 mm), then one line ("🌧️ <region>: อีก 24 ชม. ฝนหนัก ราว 48 มม. · …"). Everyday rain stays where it is about a place (pin panel, station sheet). Live check C9/C11 follow the new rule.
+
+### KI-266 — The river profile mixed agencies and mis-ordered a gauge · 🟢 fixed v0.20.0
+Found 2026-10-03 validating the เจ้าพระยา tab for the owner (screenshot): ส.ปากคลองตลาด (WL.PKG.01) is a BMA gauge (levels differ from HII's by 0.3–0.6 m, KI-217); it had no river km, so `/api/profile` fell back to latitude × 100 and the tab showed it between ปตร. คลองลัดบางยอ 2 (22 km) and 1 (35 km), with a grey bar of −103 cm. **Fix:** `rivers.profile` keeps BMA gauges out of HII/RID river chains (they stay in the list and on the map) and orders every gauge by its river km. Live check C14.
 

@@ -498,6 +498,11 @@ def hii_geo() -> dt.datetime | None:
             cur.executemany("""UPDATE station SET basin22=%(basin22)s, river_main=%(river_main)s, river_system=%(river_system)s,
                                basin=COALESCE(basin, %(basin)s) WHERE code=%(code)s""", rows)
         db.set_state(c, "geo_rivers", r)  # river lines for the upstream rule and later views
+        # river km of every gauge on rivers with >= 8 gauges, for the "แม่น้ำ" tab (2026-10-03; Ping ~6 s, all ~10 s)
+        from floodwatch import rivers
+        gauges = c.execute("""SELECT code, lat, lon, bank_msl, river, agency FROM station
+                              WHERE lat IS NOT NULL AND code !~ '^TEST'""").fetchall()
+        db.set_state(c, "river_km", rivers.river_km(r.get("features") or [], gauges))
         c.commit()
     log.info("hii_geo: %d gauges; %d with a main river", len(rows), sum(1 for x in rows if x["river_main"]))
     return None

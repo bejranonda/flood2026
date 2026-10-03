@@ -92,6 +92,9 @@ a { color: var(--accent); }
 .prow { display: grid; grid-template-columns: 1fr 120px 64px; gap: 8px; align-items: center; padding: 6px 4px;
   border-bottom: 1px solid var(--line); cursor: pointer; font-size: 14px; }
 .prow .pname small { color: var(--muted); }
+.prow .pfc { grid-column: 1 / -1; margin-top: -2px; }
+.prow .pfc .tr-rows { margin: 0; }
+.regions.rivers { margin-top: 4px; }
 .pbar { position: relative; height: 12px; background: #e9ecef; border-radius: 6px; overflow: hidden; }
 .pbar span { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 6px; }
 .pval { text-align: right; font-weight: 600; white-space: nowrap; }

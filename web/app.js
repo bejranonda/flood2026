@@ -456,27 +456,46 @@ function fitRegion() {
   if (pts.length) map.fitBounds(pts, { padding: [24, 24], maxZoom: 11 });
 }
 
-/* ---------- Chao Phraya profile (1-D, gauges only; no interpolation between them) ---------- */
+/* ---------- river profiles (1-D, gauges only; no interpolation between them) ---------- */
+// v0.20.0 (owner 2026-10-03: "Should we adapt tab เจ้าพระยา? because we extended to nationwide already. Will users expect
+// to see forecasting additionally under this tab too?" → chose "แม่น้ำ tab + forecast"; D-072): every river with >= 8
+// gauges, ordered along HII's river line (rivers.py), each row with the same 24 h forecast row as the list (D-060).
+let riverList = null, river = null, riverPicked = false;
+const riverShort = (r) => r.replace(/^แม่น้ำ/, "");
+function defaultRiver() {
+  // the region chip's biggest river (the list is sorted by gauges), else the Chao Phraya
+  const mine = ["bkk", "metro", "up", "all"].includes(region) ? null : riverList.find((r) => r.region === region);
+  return (mine || riverList[0]).river;
+}
 async function renderRiver() {
   const box = document.getElementById("view-river");
   box.innerHTML = "<p class='muted'>กำลังโหลด…</p>";
   try {
-    const d = await getJSON("/api/profile");
-    // Bangkok first (resident first, 2026-09-28): from the mouth upstream; no river km -> estimate from latitude
-    const km = (s) => s.chainage_km ?? (s.lat - 13.5) * 111;
-    const rows = [...d.stations].sort((a, b) => km(a) - km(b)).map((s) => {
-      const st = stOf(s);
-      const pct = s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
+    if (!riverList) riverList = (await getJSON("/api/rivers")).rivers;
+    if (!riverList.length) { box.innerHTML = "<p class='muted'>ยังไม่มีข้อมูลแม่น้ำ</p>"; return; }
+    if (!riverPicked || !riverList.some((r) => r.river === river)) river = defaultRiver();
+    const d = await getJSON(`/api/profile?river=${encodeURIComponent(river)}`);
+    const chips = riverList.map((r) => `<button type="button" class="rchip" data-river="${esc(r.river)}" aria-pressed="${r.river === river}">${esc(riverShort(r.river))} <b>${r.n}</b></button>`).join("");
+    // from the downstream end up (Bangkok first on the Chao Phraya, resident first 2026-09-28)
+    const rows = [...d.stations].sort((a, b) => a.chainage_km - b.chainage_km).map((s) => {
+      const st = stOf(s), old = s.stale || s.status === "unknown";
+      const pct = old || s.pct_bank == null ? 0 : Math.max(2, Math.min(100, s.pct_bank));
+      const val = old ? `<span class="pval muted">ไม่อัปเดต</span>`
+        : `<span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span>`;
       return `<div class="prow" data-code="${esc(s.code)}" role="button" tabindex="0">
-        <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")}${s.chainage_km != null ? ` · ราว ${Math.round(s.chainage_km)} กม. จากปากแม่น้ำ` : ""}</small></span>
-        <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${st.color}"></span></span>
-        <span class="pval" style="color:${st.color}">${s.freeboard_m == null ? "-" : esc(cm(-s.freeboard_m))}</span></div>`;
+        <span class="pname">${esc(s.name_th)} <small>${esc(s.province || "")} · ราว ${Math.round(s.chainage_km)} กม. จากปลายน้ำ</small></span>
+        <span class="pbar" title="ความลึกน้ำเทียบความลึกตลิ่ง ${esc(s.pct_bank ?? "-")}%"><span style="width:${pct}%;background:${old ? "#d1d5db" : st.color}"></span></span>
+        ${val}${old ? "" : `<div class="pfc">${trendRows(s, [24])}</div>`}</div>`;
     }).join("");
-    box.innerHTML = `<p class="muted">เจ้าพระยา จากกรุงเทพฯ ขึ้นไปทางเหนือ · ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง)
-      <details class="sumdetails"><summary>อ่านกราฟนี้</summary>แถบ = ความลึกน้ำเทียบตลิ่ง · ระยะทางตามลำน้ำจากปากแม่น้ำโดยประมาณ (คลาดเคลื่อนได้ราว 10 กม.) ·
-      ค่าระหว่างสถานีไม่ได้ประมาณ เพราะตลิ่งและคันกั้นน้ำแต่ละช่วงสูงไม่เท่ากัน</details></p>${rows}`;
+    box.innerHTML = `<div class="regions rivers">${chips}</div>
+      <p class="muted">แม่น้ำ${esc(riverShort(river))} จากปลายน้ำขึ้นไปต้นน้ำ · ตัวเลข = ระดับน้ำเทียบตลิ่ง (ติดลบ = ต่ำกว่าตลิ่ง)
+      <details class="sumdetails"><summary>อ่านกราฟนี้</summary>แถบ = ความลึกน้ำเทียบตลิ่ง · ระยะทางตามลำน้ำจากปากแม่น้ำหรือจุดที่ไหลลงแม่น้ำสายอื่นโดยประมาณ (คลาดเคลื่อนได้ราว 10 กม.) ·
+      "อีก 24 ชม." แสดงเฉพาะสถานีที่ทดสอบย้อนหลังผ่าน · ค่าระหว่างสถานีไม่ได้ประมาณ เพราะตลิ่งและคันกั้นน้ำแต่ละช่วงสูงไม่เท่ากัน · สถานีของ กทม. ดูได้ในรายการและแผนที่</details></p>${rows}`;
+    box.querySelectorAll(".rchip[data-river]").forEach((b) => b.addEventListener("click", () => {
+      river = b.dataset.river; riverPicked = true; renderRiver();
+    }));
     box.querySelectorAll(".prow").forEach((r) => {
-      r.addEventListener("click", () => showDetail(r.dataset.code));
+      r.addEventListener("click", (e) => { if (!e.target.closest(".conf-badge")) showDetail(r.dataset.code); });
       r.addEventListener("keydown", (e) => { if (e.key === "Enter") showDetail(r.dataset.code); });
     });
   } catch (e) {
