@@ -2,7 +2,45 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## v0.20.7 — 2026-10-03 (includes v0.20.6, live ~15 min, not tagged)
+## v0.21.0 — 2026-10-03/04 (includes v0.20.6 and v0.20.7, interim deploys, not tagged)
+- **New tab "⚠️ จับตา": the next 24–48 h risks (owner: "I need another tab to have the list of potential risks according to
+  the water level in next 24 or 48 hr … link to the stations or areas … with the confidence").** Six groups, worst
+  first, a gauge listed once (in its worst group): 🔴 ล้นตลิ่งแล้ว (per province, tap for the gauges), 🟠 อาจถึงตลิ่ง
+  (bank-chance band ">50%" or "25–50%" within 24/48 h), 🟠 น้ำเหนือกำลังมา (a learned upstream gauge, travel time 3–48 h,
+  rose ≥ 30 cm in 24 h; gauge at watch/warning), 🟡 น้ำขึ้นเร็ว (24 h forecast ≥ +20 cm), 🌧 ฝนหนักคาดการณ์ (≥ 35.1 mm in
+  24 h per province), 🛰 ดาวเทียมเห็นน้ำท่วม (rai per province). Confidence is the measured track record as counts,
+  "6 ใน 10" (owner kept counts over percent), from our own archived forecasts over 30 days, shown only with ≥ 30 cases
+  (`risk_record`, daily in the forecaster): may reach the bank 6 in 10 (">50%") and 1 in 10 ("25–50%"; the model's
+  own band says 25–50 %: ~3× too high, so never shown as a percent), upstream 6 in 10, fast rise 7 in 10. Opens
+  nationwide each time with its own ภาค ▾ · จังหวัด ▾; "เฝ้าระวัง" (the yellow status) and "เตือนภัย" (official) were
+  rejected as names. Rows: station name, one detail line; `/api/risks` builds the groups from the list's own rows.
+- **Satellite in the station sheet and on the map (owner: "Can we apply the info from satellite?").** Sheet line when
+  ≥ 100 rai were seen flooded within 5 km ("🛰 ดาวเทียมเห็นน้ำท่วมรอบสถานี (5 กม.) ราว 14,000 ไร่ ⓘ"); map toggle
+  "🛰 ดาวเทียม" (off by default; on from the จับตา group) drawing observed cells merged into squares (`/api/satellite`,
+  ≤ 5,000 squares, never interpolated); per-gauge and per-province totals computed once per download (`sat_summary`).
+  Evidence: outside กทม./ปริมณฑล, 38 % of over-bank gauges have ≥ 100 rai flooded within 5 km vs 8 % of normal ones.
+- **Map shows every gauge with data < 24 h (owner: "Do we still need 'แสดงสถานีที่ยังคาดการณ์ไม่ได้ (118)'?").** The
+  switch hid 117 gauges, among them 3 over the bank and 3 near it, and 65 in Bangkok. Now a gauge without a tested
+  forecast is a hollow ring in its status colour; gauges silent > 24 h stay off (the legend says how many). The list's
+  "📈 เฉพาะที่คาดการณ์ได้" chip is gone too (owner: remove).
+- **Satellite data lost and guarded (KI-269).** At 19:44 UTC GISTDA served an empty layer for over an hour before a
+  rebuild; the "steady for an hour" rule took it as finished and replaced our 72,008 cells with nothing. Now an empty
+  probe never counts and a download must hold ≥ 95 % of the announced cells. The cells return with GISTDA's next layer.
+- **Tributaries join their river (owner: "คลองนางน้อย is under basin แม่น้ำตรัง").** HII's sub-basin id (stored per gauge
+  now) groups a river and its tributaries: sub-basin 349 = the 8 แม่น้ำตรัง gauges plus คลองนางน้อย and คลองยวนปลา. A gauge
+  without a river view of its own joins the view with the most gauges in its sub-basin, listed as "ลำน้ำสาขาในลุ่ม…"
+  after the upstream→downstream chain (no confluence data, so not slotted into it); cards say "(รวมลำน้ำสาขา N)"; river
+  tags follow. 170 of 426 "other" gauges placed; the rest stay under "ลำน้ำอื่นใน<จังหวัด>". Text no longer touches the
+  province bar.
+- **DWR early-warning level posts archived and shown as a trend-only layer (owner: "Get history, if possible, then
+  archive first, and show as trend-only layer").** 455 posts of กรมทรัพยากรน้ำ (ews.dwr.go.th, Thai egress only); DWR
+  serves ~11 h of history, so our 30-min archive (400 days) is the history. Kept apart from the gauges (`dwr_station`,
+  `dwr_obs`): the level is depth on a local post, not m MSL, and 336 of 439 alarm levels are a default 4.00 m. Map: grey
+  squares from zoom 9, popup with the measured 24 h change (same words and QC as the gauges), "กำลังเก็บข้อมูล" until
+  24 h are archived, "ค่าค้าง" for stuck posts.
+- **Forecast method "recent" and live check C15–C17:** see the forecaster item below; C16: the map draws every gauge
+  with data < 24 h; C17: the จับตา tab agrees with the list's station data.
+
 - **One forecaster: the rows and the chart come from the same model (owner: "Are the forecasting in text and in graph
   agree with each other, I found the difference" → "Why trend and model forecast in the chart are different? … I thought
   the trend were calculated by the model").** Proven at Kgt.19A: the rows came from a measured-trend override in the API
@@ -31,9 +69,12 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
   "จังหวัดนี้มีสถานีวัดระดับน้ำเพียง N แห่ง ⓘ". Checked first: we already carry all 808 gauges of HII's national feed
   (0 missing, 77 provinces); ภูเก็ต, ชลบุรี, หนองคาย and บึงกาฬ have one gauge there too — a gap of the network, not of
   the app. Other networks were tested (DWR EWS, RID Telerid, HII's BMA canal feed): see KNOWLEDGE and KNOWN_ISSUES.
-- **Behind the scenes for the next release (D-077):** forecast runs store the 48 h bank-chance band; station rows carry
-  `bank_chance24/48`; the forecaster computes daily track records (`risk_record`: may reach bank 6 in 10 / 1 in 10,
-  upstream 6 in 10, fast rise 7 in 10). Nothing new is shown yet.
+- **"More stations → better forecasts?" (owner) answered with an ablation** (60 random gauges with learned upstream
+  gauges, the same 45-day rolling backtest, research/2026-10-03_ablate_upstream.py): with their 2 upstream gauges the
+  error is 7.6 / 5.4 / 4.2 % lower at 12 / 24 / 48 h than without (1 upstream: 4.3 / 2.2 / 1.8 %); skill over "no
+  change" 22.8 vs 16.4 % at 12 h; 12 of 60 gauges gain > 15 %, 10–12 get slightly worse (the per-gauge backtest keeps
+  them off). The second gauge adds as much as the first: no saturation at 2 (next: try 3–4). DWR posts can be tested as
+  inputs once ~30 days are archived.
 
 ## v0.20.5 — 2026-10-03
 - **Satellite cells follow GISTDA's new layer within about two hours (KI-268).** Found answering the owner's "Developing

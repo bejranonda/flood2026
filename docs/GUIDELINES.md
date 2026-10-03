@@ -208,6 +208,15 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **One "where" for the whole app:** region and province are one shared state across tabs; changing it anywhere changes it everywhere.
 - **When a consistency check disagrees with the app, read both:** C14 flagged 14 rivers because the check missed "⬆"; the investigation still found a real gap (strong rises hidden in the overview).
 
+### 6c-0. Lessons from the 2026-10-03 night round (D-077–D-082, KI-269–KI-274)
+- **One forecaster per chart.** Text, chart, tab and pin read the same model path. A better rule becomes a model method and wins its place in the backtest; never print one forecast while drawing another (KI-270). Drawing the second forecaster as an extra line only shows the problem.
+- **Confidence = our measured record, as counts.** "6 ใน 10" from our own archive with ≥ 30 cases; never a model band as a percent (the middle bands were ~3× too high). Name risk tabs without official words ("เตือนภัย") or status words ("เฝ้าระวัง").
+- **Never hide a red gauge.** A filter for "how much we know" changes the look (ring), not the presence (KI-271).
+- **Never replace data with an unchecked download.** Empty or partial downloads keep the previous copy (KI-269).
+- **A new source enters beside the gauges first.** Different datum or default thresholds → own table, own shape on the map, trend only, archive before judging (DWR, D-081).
+- **Group by the water, not by the name.** Tributaries belong with their river (HII sub-basin), and a picked place never leads to an empty screen (KI-274).
+- **Validate as a visitor, every time:** 390 px screenshots caught cut-off names, a popup under the controls, a diamond rendered as a square, and text touching a bar.
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Rules write the content, AI may only retell it (D-068).** The story (`explain.narrative`, a few easy sentences) and the numbers (`explain.answer`, folded under "ดูตัวเลข") are decided by rules from the panel's own data. An AI retelling is shown only if `explain.check` passes (no new number, no direction/strength the rules don't say, no past told as future, no verdict word, no dropped "cannot tell", no far gauge's state called "แถวนี้", Thai, ≤ 320 chars); otherwise the rule story is shown. Never let AI decide a yes/no about safety, travel or moving a car. Validate any prompt or checker change with `scripts/ai_explain_validate.py` and **read the passing answers yourself** — the checker cannot see every error (a past rise told as a future one passed the first checker).

@@ -169,6 +169,16 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | EWDS (CEMS GloFAS archive) | `GET https://ewds.climate.copernicus.eu/api/catalogue/v1/collections/cems-glofas-forecast` | ✅ 200, forecasts 2019-11-05 → 2026-10-01; reforecast 1999–2023. Token check `POST /api/profiles/v1/account/verification/pat` with `PRIVATE-TOKEN`: 401 without/with a dummy, **200 with the owner's token** | ✅ works; not needed (GloFAS upper bound failed) |
 | WeatherNext 3 (Google DeepMind) | Docs: `developers.google.com/weathernext/guides/{access-forecast,models,bigquery}`; terms `storage.googleapis.com/weathernext-public/terms-of-use.pdf` (modified 2026-09-03) | Hourly init (15 d at 00/06/12/18 UTC, 48 h otherwise), 1 h steps, 64 members, 0.05° station / 0.1° grid; rain `total_precipitation_1hr` (m), also `imerg_tp_1hr`, `experimental_tp_1hr`; BigQuery `weathernext_3_0_0_0p1deg` / `_0p05deg` via an Analytics Hub listing (stats `_mean`, `_p10…_p90`). Owner's service-account key: token ✅, project has **no dataset yet** (404) → subscribe step open | ⏳ research only (D-069) |
 
+### 2l. More stations and sub-basins (probed 2026-10-03 19:00–20:00 UTC; Thai egress for DWR/Telerid, public pages only, no credentials; D-081, D-082)
+| Source | Request | Result | Use |
+|---|---|---|---|
+| HII `waterlevel_load` (again) | as §2 | 808 rows, 794 fresh; **all in our app**; `station.sub_basin_id` on every row (237 ids); `left_bank`/`right_bank` differ from `min_bank` by > 1 m at 254 rows (KI-272) | ✅ `sub_basin` stored (D-082) |
+| DWR EWS stations | `POST https://ews.dwr.go.th/ews/web-service/stn` `action=LoadStation` | ✅ 200 via Thai egress, 45 s, 3 MB: 2,275 posts (1,819 rain, 455 level); `wl` m on a local post; `alert_max` mostly 4.00; `date` "04/10/69 01:15 น." (day/month/BE short year, ICT) | ✅ `dwr_ews` every 30 min, archived (D-081) |
+| DWR EWS chart | `GET https://ews.dwr.go.th/ews/graph/wl_graph.php?FilterSTN={stn}` (from the site's `assets/js/utils.js`) | ✅ 200, ~23 s, JSON `[[epoch_ms, m], …]` 15-min, **~11 h only**, no date parameter; 5 of 30 sampled posts empty | ⚠️ not collected (too short, too slow) |
+| RID Telerid | `GET https://telerid.rid.go.th/restapi/main/station_list/` | ✅ 921 stations (code, basin, sub-basin, province, point); `/restapi/main/` 401 "Authentication credentials were not provided" | ❌ readings need RID's permission (owner declined to ask, 2026-10-03) |
+| HII BMA canals | `GET …/thaiwater30/public/canal_waterlevel` | 282 rows, newest 2026-09-28 (frozen, KI-273); 76 BMA gauges not in our app | ⚠️ re-check weekly |
+| GISTDA 7-day layer | as §2k | 2026-10-03 19:44 UTC: `numberMatched` 0, no features for > 1 h (rebuild) | guarded (KI-269) |
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |

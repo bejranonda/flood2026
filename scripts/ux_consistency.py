@@ -22,6 +22,8 @@ in many possibilities"). One browser session, views compared at the same moment:
   C13 (v0.19.0, D-071) the satellite line appears exactly when /api/point reports GISTDA flooding within 1 km, never "no flood".
   C15 (v0.20.7) text = graph: each 12/24/48 h row prints the model's 50 % range that the chart draws at that horizon
      (owner 2026-10-03, Kgt.19A: "Why trend and model forecast in the chart are different?").
+  C16 (v0.21.0, D-079) the map draws every gauge with data < 24 h; C17 (v0.21.0, D-077) the จับตา tab agrees with the
+     list's station data (each gauge once, over-bank rows critical, may-reach rows banded, cm to the bank equal).
   C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
      opens a story with no verdict word (ปลอดภัย, ไม่ท่วม, ได้ครับ, ไปได้, ปกติ) and no rain amount.
 Every Bangkok-area gauge is checked, plus PER_REGION random gauges from each other region (1,040 gauges would take
@@ -275,7 +277,8 @@ with sync_playwright() as p:
         pg.select_option("#rv-river", rv); pg.wait_for_timeout(700)
         prof = json.loads(pg.evaluate("async (r) => JSON.stringify(await (await fetch('/api/profile?river=' + encodeURIComponent(r))).json())", rv))
         byc = {x["code"]: x for x in prof["stations"]}
-        shown = pg.evaluate("() => [...document.querySelectorAll('#view-river .prow')].map(r => ({code: r.dataset.code, text: r.innerText, fc: !!r.querySelector('.pfc .chg')}))")
+        # the chain only (direct children); tributaries of the same sub-basin are listed after it, unordered (v0.21.0)
+        shown = pg.evaluate("() => [...document.querySelectorAll('#view-river > .prow')].map(r => ({code: r.dataset.code, text: r.innerText, fc: !!r.querySelector('.pfc .chg')}))")
         counts["river_rows"] = counts.get("river_rows", 0) + len(shown)
         rising = pg.evaluate("() => [...document.querySelectorAll('#view-river .prow .pfc .chg')].filter(c => /เพิ่มขึ้น/.test(c.innerText)).length")
         if rv in over and over[rv] != rising:
@@ -302,6 +305,36 @@ with sync_playwright() as p:
         pg.locator("#detail .rv-tag").click(); pg.wait_for_selector("#view-river .prow", timeout=30000); pg.wait_for_timeout(800)
         if pg.evaluate("() => document.querySelector('#rv-river')?.value") != rv or not pg.locator(f'#view-river .prow.focus[data-code="{code}"]').count():
             note("C14", f"tag {code}", "river tag did not open its river at the station")
+    # C16 (v0.21.0, D-079): the map draws every gauge with data < 24 h (the old switch hid 6 red/orange gauges)
+    open_home(pg)
+    if pg.locator(".tabs [data-tab=map]").is_visible():
+        pg.locator(".tabs [data-tab=map]").click(); pg.wait_for_timeout(1500)
+    c16 = pg.evaluate("""() => { const drawn = new Set(); layer.eachLayer(l => { if (l.options && l.options.pane === 'stations') drawn.add(l.getLatLng().lat + ',' + l.getLatLng().lng); });
+        const want = stations.filter(s => s.lat && s.lon && s.age_min != null && s.age_min <= 1440);
+        return { want: want.length, missing: want.filter(s => !drawn.has(s.lat + ',' + s.lon)).map(s => s.code).slice(0, 10),
+                 red_missing: want.filter(s => s.status === 'critical' && !drawn.has(s.lat + ',' + s.lon)).length }; }""")
+    counts["map_gauges"] = c16["want"]
+    if c16["missing"]:
+        note("C16", "map", f"gauges with data < 24 h not drawn: {c16['missing']} (red: {c16['red_missing']})")
+    # C17 (v0.21.0, D-077): the จับตา tab agrees with the list's station data: each gauge once; over-bank rows are
+    # critical; may-reach rows have a >= 1 in 10 band; the cm to the bank printed = the station's freeboard
+    pg.locator(".tabs [data-tab=watch]").click(); pg.wait_for_selector("#view-watch .wgrp, #view-watch p", timeout=30000)
+    pg.wait_for_timeout(1500)
+    pg.evaluate("() => { document.querySelectorAll('#view-watch .wmore').forEach(b => b.click()); document.querySelectorAll('#view-watch .wsub').forEach(d => d.hidden = false); }")
+    c17 = pg.evaluate(r"""() => { const by = new Map(stations.map(s => [s.code, s])); const out = { rows: 0, issues: [] }; const seen = new Set();
+        document.querySelectorAll('#view-watch .wgrp').forEach(g => { const title = g.querySelector('.wgrp-h b').textContent;
+          g.querySelectorAll('[data-code]').forEach(r => { out.rows++; const c = r.dataset.code, s = by.get(c), t = r.innerText;
+            if (seen.has(c)) out.issues.push([c, 'listed twice']); seen.add(c);
+            if (!s) { out.issues.push([c, 'not in /api/stations']); return; }
+            if (title.includes('ล้นตลิ่ง') && s.status !== 'critical') out.issues.push([c, 'over-bank row but status ' + s.status]);
+            if (title.includes('อาจถึงตลิ่ง') && !['>50%', '25-50%'].includes(s.bank_chance24) && !['>50%', '25-50%'].includes(s.bank_chance48)) out.issues.push([c, 'may-reach row without a band']);
+            const m = t.match(/(ต่ำกว่าตลิ่ง|เกินตลิ่ง) (\d+) ซม/);
+            if (m && s.freeboard_m != null) { const want = Math.round(Math.abs(s.freeboard_m) * 100); if (Math.abs(+m[2] - want) > 1) out.issues.push([c, `${m[0]} vs freeboard ${want} cm`]); }
+          }); });
+        return out; }""")
+    counts["watch_rows"] = c17["rows"]
+    for code, msg in c17["issues"]:
+        note("C17", f"watch {code}", msg)
     # C9: the summary rain line of every region chip = /api/rain by_region (TMD word of the wettest forecast point)
     open_home(pg)
     rainreg = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/rain')).json()).by_region)"))
@@ -347,7 +380,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14", "C15")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])
