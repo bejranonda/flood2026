@@ -77,21 +77,6 @@ def test_region_chips_use_the_usual_names_and_metro_includes_bangkok():
     assert 'metro: (s) => s.region === "metro" || s.region === "bkk"' in APP
 
 
-def test_all_rivers_is_an_overview_counted_like_the_rows():
-    # owner 2026-10-03: "Can user select all rivers under river filter?" → "ทุกสาย": one row per river (over/near the
-    # bank, rising/falling in 24 h), counted with the rows' own rules (directional, D-060), the default view
-    body = APP[APP.index("async function renderRiver"):APP.index("function scrollRiver")]
-    assert '<option value=""' in body and "ทุกสาย" in body
-    rs = APP[APP.index("function riverSummary"):APP.index("async function renderRiver")]
-    assert "directional(s.change24)" in rs and "stale" in rs
-
-
-def test_overview_says_strong_rises_like_the_rows():
-    # 2026-10-03 live check: คลองอู่ตะเภา (Hat Yai) had 3 "⬆ เพิ่มขึ้นมาก" rows; the overview said "↗ เพิ่มขึ้น 3"
-    rs = APP[APP.index("function riverSummary"):APP.index("async function renderRiver")]
-    assert "strong_rise" in rs and "CHANGE.strong_rise" in rs and "เพิ่มขึ้นมาก" in rs
-
-
 def test_one_where_row_for_both_tabs_with_region_and_province():
     # owner 2026-10-03: "if the users like to see stations in their province?" → "Shared where-row + river row":
     # [ภาค ▾][จังหวัด ▾] in the list AND the river tab (one state), replacing the list's 4 rows of region chips
@@ -175,3 +160,17 @@ def test_over_bank_is_split_by_the_one_trend_rule_with_both_labels():
     # owner 2026-10-04: ล้นตลิ่งแล้ว → "น้ำยังขึ้น" / "ทรงตัวหรือลดลง"; labels "วัดได้ ↗ · คาด ?" (D-083)
     assert 'rising: "⬆ น้ำยังขึ้น"' in APP and 'flat_or_falling: "→ ทรงตัวหรือลดลง"' in APP
     assert "function trendLabels(t)" in APP and "`วัดได้ ${" in APP and "`คาด ${" in APP
+
+
+def test_rivers_and_other_waterways_share_one_two_dimension_card():
+    # owner 2026-10-04: "Keep format of summary show แม่น้ำหลัก and ลำน้ำอื่น consistency … status in 2 dimensions"
+    assert APP.count("cardHTML(") >= 3 and "function summaryOf(gs" in APP
+    card = APP.split("function cardHTML(")[1].split("\n}\n")[0]
+    assert "ล้นตลิ่ง" in card and "ใกล้ตลิ่ง" in card and "น้ำยังขึ้น" in card and "ทรงตัวหรือลดลง" in card
+
+
+def test_all_rivers_overview_counts_the_rows_own_trend_group():
+    # v0.22.0 (D-083): the overview counts status.trend (forecast when sure, measured otherwise) and the statuses, the
+    # same fields every row and the จับตา tab read; no second counting rule
+    so = APP.split("function summaryOf(gs")[1].split("\n}\n")[0]
+    assert "s.trend?.group" in so and '"rising"' in so and '"flat_or_falling"' in so and "directional(" not in so

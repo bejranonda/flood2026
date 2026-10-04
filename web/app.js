@@ -643,31 +643,37 @@ function defaultRiver(list) {
 }
 // "ทุกสาย": one row per river, counted from the same station data and rules as the rows (stOf, directional; D-060),
 // so the overview never says more than the river view behind it (owner 2026-10-03: "Can user select all rivers?").
+// One card for every waterway (owner 2026-10-04: "Keep format of summary show แม่น้ำหลัก and ลำน้ำอื่น consistency …
+// status in 2 dimensions"): level (the app's statuses) and trend group (status.trend, D-083), from the rows' own data.
+function summaryOf(gs, tribs = new Set()) {
+  const fresh = gs.filter((s) => !s.stale && s.status !== "unknown");
+  const tg = (s) => s.trend?.group;
+  return { n: gs.length, trib: gs.filter((s) => tribs.has(s.code)).length, stale: gs.length - fresh.length,
+    critical: fresh.filter((s) => s.status === "critical").length, warning: fresh.filter((s) => s.status === "warning").length,
+    watch: fresh.filter((s) => s.status === "watch").length,
+    rising: gs.filter((s) => tg(s) === "rising").length, flat: gs.filter((s) => tg(s) === "flat_or_falling").length };
+}
 function riverSummary(r) {
   const byCode = new Map(stations.map((s) => [s.code, s]));
   // with a province chosen, the overview counts that province's gauges (v0.20.4); the river view shows the whole river
   const gs = [...(r.codes || []), ...(r.tributaries || [])].map((c) => byCode.get(c)).filter((s) => s && s.agency !== "BMA" && (!prov || s.province === prov));
-  const fresh = gs.filter((s) => !s.stale && s.status !== "unknown");
-  const lvl = (s) => (s.change24 && directional(s.change24) ? s.change24.level || "" : "");
-  const tribs = new Set(r.tributaries || []);
-  return { n: gs.length, trib: gs.filter((s) => tribs.has(s.code)).length, stale: gs.length - fresh.length, critical: fresh.filter((s) => s.status === "critical").length,
-    warning: fresh.filter((s) => s.status === "warning").length,
-    strong: fresh.filter((s) => lvl(s) === "strong_rise").length,  // "⬆ เพิ่มขึ้นมาก" in the rows: said apart (Hat Yai, 2026-10-03)
-    rise: fresh.filter((s) => lvl(s) === "rise" || lvl(s) === "small_rise").length, fall: fresh.filter((s) => lvl(s).endsWith("fall")).length };
+  return summaryOf(gs, new Set(r.tributaries || []));
+}
+function cardHTML(name, x, attr) {
+  const lvl = [x.critical ? `<b style="color:${STATUS.critical.color}">ล้นตลิ่ง ${x.critical}</b>` : "",
+    x.warning ? `<b style="color:${STATUS.warning.color}">ใกล้ตลิ่ง ${x.warning}</b>` : "",
+    x.watch ? `<b style="color:${STATUS.watch.color}">เฝ้าระวัง ${x.watch}</b>` : ""].filter(Boolean);
+  const trd = [x.rising ? `<span class="chg" style="background:${CHANGE.rise.color}">⬆ น้ำยังขึ้น ${x.rising}</span>` : "",
+    x.flat ? `<span class="chg" style="background:${CHANGE.steady.color}">→ ทรงตัวหรือลดลง ${x.flat}</span>` : ""].filter(Boolean);
+  return `<div class="rv-sum" ${attr} role="button" tabindex="0">
+      <div><b>${esc(name)}</b> <small class="muted">${x.n} สถานี${prov ? `ใน${esc(prov)}` : ""}${x.trib ? ` (รวมลำน้ำสาขา ${x.trib})` : ""}${x.stale ? ` · ไม่อัปเดต ${x.stale}` : ""}</small></div>
+      <div class="rv-sum-b">${lvl.length ? lvl.join(" · ") : `<span class="muted">ยังรับน้ำได้ทุกสถานี</span>`}</div>
+      ${trd.length ? `<div class="rv-sum-b">${trd.join(" ")}</div>` : ""}</div>`;
 }
 function riverOverview(list) {
   const rows = list.map((r) => ({ r, x: riverSummary(r) }))
-    .sort((a, b) => b.x.critical - a.x.critical || b.x.strong - a.x.strong || b.x.warning - a.x.warning || b.x.rise - a.x.rise || b.x.n - a.x.n);
-  return rows.map(({ r, x }) => {
-    const bits = [x.critical ? `<b style="color:${STATUS.critical.color}">ล้นตลิ่ง ${x.critical}</b>` : "",
-      x.warning ? `<b style="color:${STATUS.warning.color}">ใกล้ตลิ่ง ${x.warning}</b>` : "",
-      x.strong ? `<span class="chg" style="background:${CHANGE.strong_rise.color}">${CHANGE.strong_rise.icon} เพิ่มขึ้นมาก ${x.strong}</span>` : "",
-      x.rise ? `<span class="chg" style="background:${CHANGE.rise.color}">${CHANGE.rise.icon} เพิ่มขึ้น ${x.rise}</span>` : "",
-      x.fall ? `<span class="chg" style="background:${CHANGE.fall.color}">↘ ลดลง ${x.fall}</span>` : ""].filter(Boolean);
-    return `<div class="rv-sum" data-river="${esc(r.river)}" role="button" tabindex="0">
-      <div><b>${esc(r.river)}</b> <small class="muted">${x.n} สถานี${prov ? `ใน${esc(prov)}` : ""}${x.trib ? ` (รวมลำน้ำสาขา ${x.trib})` : ""}${x.stale ? ` · ไม่อัปเดต ${x.stale}` : ""}</small></div>
-      <div class="rv-sum-b">${bits.length ? bits.join(" ") : `<span class="muted">ยังรับน้ำได้ทั้งสาย · ไม่มีสถานีที่น่าจะเพิ่มขึ้นในอีก 24 ชม.</span>`}</div></div>`;
-  }).join("");
+    .sort((a, b) => b.x.critical - a.x.critical || b.x.rising - a.x.rising || b.x.warning - a.x.warning || b.x.n - a.x.n);
+  return rows.map(({ r, x }) => cardHTML(r.river, x, `data-river="${esc(r.river)}"`)).join("");
 }
 async function renderRiver() {
   const box = document.getElementById("view-river");
@@ -697,13 +703,17 @@ async function renderRiver() {
     const groups = new Map();
     others.forEach((s) => { const k = s.river || "ไม่ระบุชื่อลำน้ำ"; groups.set(k, [...(groups.get(k) || []), s]); });
     const otherHTML = groups.size ? `<div class="rv-oth"><div class="pf-h">〰️ ลำน้ำอื่นใน${esc(prov)} ${infoBtn("ลำน้ำที่มีสถานีวัดน้อยกว่า 3 แห่ง จึงเรียงจากต้นน้ำไปปลายน้ำไม่ได้ · แสดงทุกสถานีของจังหวัดนี้ เรียงตามชื่อลำน้ำ", "ลำน้ำอื่น")}</div>
-      ${[...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], "th")).map(([k, v]) => `<div class="rv-oth-h">${esc(k)}</div>${v.map((s) => prowHTML(s, { mark: false })).join("")}`).join("")}</div>` : "";
+      ${[...groups.entries()].sort((a, b) => summaryOf(b[1]).critical - summaryOf(a[1]).critical || a[0].localeCompare(b[0], "th"))
+        .map(([k, v]) => `${cardHTML(k, summaryOf(v), 'data-other="1"')}<div class="rv-oth-rows" hidden>${v.map((s) => prowHTML(s, { mark: false })).join("")}</div>`).join("")}</div>` : "";
     const tribs = d.tributaries || [];
     const tribHTML = tribs.length ? `<div class="rv-oth"><div class="pf-h">〰️ ลำน้ำสาขาในลุ่ม${esc(river)} ${infoBtn("สถานีบนลำน้ำสาขาในลุ่มน้ำย่อยเดียวกับแม่น้ำสายนี้ (ลุ่มน้ำย่อยของ สสน.) · ไม่มีข้อมูลจุดที่ไหลลงแม่น้ำ จึงไม่ได้เรียงต้นน้ำ–ปลายน้ำ", "ลำน้ำสาขา")}</div>${tribs.map((s) => prowHTML(s, { withRiver: true })).join("")}</div>` : "";
     box.innerHTML = river ? `${pick}<div class="rv-end">↑ ต้นน้ำ</div>${rows}<div class="rv-end">↓ ปลายน้ำ</div>${tribHTML}`
       : `${pick}${shown.length ? riverOverview(shown) : groups.size ? "" : `<p class="muted">ไม่มีสถานีวัดระดับน้ำของ สสน. กรมชลประทาน หรือ กฟผ. ใน${esc(prov || REGIONS[region].th)} · ดูสถานีของ กทม. ในแท็บรายการ</p>`}${otherHTML}`;
     box.querySelectorAll(".rv-sum").forEach((el) => {
-      const open = () => { river = el.dataset.river; riverPicked = true; rvFocus = null; renderRiver().then(scrollRiver); };
+      const open = () => {
+        if (el.dataset.other) { el.nextElementSibling.hidden = !el.nextElementSibling.hidden; return; }  // ลำน้ำอื่น: rows open in place
+        river = el.dataset.river; riverPicked = true; rvFocus = null; renderRiver().then(scrollRiver);
+      };
       el.addEventListener("click", open);
       el.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
     });
