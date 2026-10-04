@@ -54,3 +54,12 @@ def test_the_ticker_uses_the_ai_text_only_when_it_passes_and_otherwise_the_rules
 def test_the_ticker_is_rewritten_every_30_min_in_the_collector_loop():
     from floodwatch import worker
     assert dict(worker.TASKS)["situation"] == 1800
+
+
+def test_everyday_words_that_are_province_names_are_not_new_places():
+    # 2026-10-04 14:59: two good retellings rejected as "new place" — เลย ("at all"), แพร่ ("spread"), ตาก ("to dry") are
+    # also provinces; they count as places only after จ./จังหวัด
+    f = situation.facts(STATIONS, RISKS, RAIN)
+    ok = "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา ฝนตกหนักสุด 93 มม. ที่ขอนแก่น ภาพรวมไม่เปลี่ยนมากเลย"
+    assert situation.check(ok, f) == []
+    assert "new place" in situation.check(ok + " ที่จังหวัดเลยด้วย", f)

@@ -77,8 +77,14 @@ def rule_text(f: dict) -> str:
     return " · ".join(parts)
 
 
+AMBIGUOUS = {"เลย", "แพร่", "ตาก", "น่าน", "ตรัง", "ยะลา", "ระนอง", "เพชรบุรี"}  # also everyday words or inside other names
+
+
 def _places(text: str) -> set[str]:
-    found = {p for p in regions.PROVINCE_REGION if p in text}
+    """Provinces named in a text; names that are also everyday Thai words count only after จ./จังหวัด (2026-10-04: "…เลย"
+    rejected a good retelling as a new place)."""
+    found = {p for p in regions.PROVINCE_REGION if p not in AMBIGUOUS and p in text}
+    found |= {p for p in AMBIGUOUS if re.search(rf"(?:จ\.\s?|จังหวัด){p}", text)}
     found |= {full for short, full in SHORT.items() if short in text}
     return found
 
