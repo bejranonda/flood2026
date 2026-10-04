@@ -422,3 +422,16 @@ a { color: var(--accent); }
 .legend.layers summary { cursor: pointer; font-weight: 600; }
 .legend.layers label { display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer; line-height: 1.7; }
 .legend.layers .lc { color: var(--muted); margin-left: auto; padding-left: 8px; }
+/* v0.22.0 top bar (D-086): folded counts, one urgent line, disclaimer in the header on desktop */
+.summary .summini { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; padding: 2px 0; }
+.summary .summini::-webkit-details-marker { display: none; }
+.summary .summini::after { content: "▾"; color: var(--muted); margin-left: 4px; }
+.summary .sumbox[open] > .summini::after { content: "▴"; }
+.summary .summini .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.summary .urgent { display: block; width: 100%; text-align: left; border: 1px solid #f5c2c2; background: #fdecea; color: #8a1c1c; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; margin: 0 0 6px; cursor: pointer; }
+.desk-notice { display: none; font-size: 13px; }
+.desk-notice a { color: #fff; }
+@media (min-width: 900px) {
+  .desk-notice { display: inline; }
+  details.notice { display: none; }
+}

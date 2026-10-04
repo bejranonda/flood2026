@@ -183,3 +183,13 @@ def test_the_map_has_one_layer_box_whose_legend_lines_are_switches():
     for k in ("critical", "warning", "watch", "normal", "unknown", "ring", "dwr", "traffy"):
         assert f'"{k}"' in box
     assert 'localStorage.setItem("layers"' in box and "<summary>ชั้นข้อมูล</summary>" in box
+
+
+def test_top_bar_folds_names_the_rain_place_and_raises_one_urgent_line():
+    # owner 2026-10-04: top bar uses much space → collapsible; "ทั่วประเทศ: … 142 มม." misleads → name the place;
+    # "Can we notify what is also emergency" → one line only when gauges are over the bank and still rising (D-086)
+    rs = APP.split("function rainSummary(")[1].split("\n}\n")[0]
+    assert "ฝนมากสุด" in rs and "ที่ ${" in rs and "forecast_where" in rs and "ทั่วประเทศ: " not in rs
+    sm = APP.split("function renderSummary(")[1].split("\n}\n")[0]
+    assert "ล้นตลิ่งและน้ำยังขึ้น" in sm and 'setTab("watch")' in sm and '"sumOpen"' in sm
+    assert 'class="desk-notice"' in INDEX

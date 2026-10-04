@@ -345,3 +345,11 @@ def test_every_station_row_carries_one_trend_group():
            "observed24": {"change_cm": 20, "hours": 24, "level": "strong_rise", "change6_cm": 4.0, "r2": 0.9}}
     r = api._station_row(row)
     assert r["trend"] == {"group": "rising", "forecast": None, "measured": "up", "basis": "measured"}
+
+
+def test_the_rain_line_knows_where_the_wettest_forecast_is():
+    # owner 2026-10-04: "ทั่วประเทศ: 24 ชม. ที่ผ่านมา ฝนหนักมาก 142 มม." reads as 142 mm all over Thailand → name the place
+    pts = [{"point": "g_19.0_99.0", "mm24": 30.0}, {"point": "g_15.0_100.0", "mm24": 45.0}]
+    pp = {"g_19.0_99.0": {"เชียงใหม่"}, "g_15.0_100.0": {"นครสวรรค์", "ชัยนาท"}}
+    out = api.rain_by_region(pts, [], {"g_19.0_99.0": "north", "g_15.0_100.0": "up"}, pp)
+    assert out["all"]["forecast_where"] == "ชัยนาท" and out["north"]["forecast_where"] == "เชียงใหม่"

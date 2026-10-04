@@ -244,15 +244,18 @@ async function getJSON(url, opts) {
 let rainRegions = null;
 const SUMMARY_RAIN_MIN_MM = 35.1;
 function rainSummary(bkkRain) {
-  const r = rainRegions?.[region], where = region === "all" ? "ทั่วประเทศ" : REGIONS[region].th;
+  // Never a region label in front of one amount — it read as that much rain everywhere (owner 2026-10-04): the wettest gauge and the
+  // wettest forecast point, each with its place (D-086). Only when heavy (KI-265).
+  const r = rainRegions?.[region];
   const fc = r?.forecast_mm24 ?? (region === "bkk" ? bkkRain : null), m = r?.measured;
   const mm24 = m ? Number(m.rain_24h) : null;
   const fcHeavy = fc != null && fc >= SUMMARY_RAIN_MIN_MM, mHeavy = mm24 != null && mm24 >= SUMMARY_RAIN_MIN_MM;
   if (!fcHeavy && !mHeavy) return "";
-  const tip = [fcHeavy ? "คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดในพื้นที่" : "",
-    mHeavy ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : ""].filter(Boolean).join(" · ");
-  const parts = [fcHeavy ? `อีก 24 ชม. ${rainPill(fc)}` : "", mHeavy ? `24 ชม. ที่ผ่านมา ${rainPill(mm24, false)}` : ""];
-  return `<p class="sumline sumrain">🌧️ ${esc(where)}: ${parts.filter(Boolean).join(" · ")} ${infoBtn(tip, "ที่มาของข้อมูลฝน")}</p>`;
+  const tip = [mHeavy ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : "",
+    fcHeavy ? `คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดใน${REGIONS[region].th}` : ""].filter(Boolean).join(" · ");
+  const parts = [mHeavy ? `ฝนมากสุด 24 ชม. ที่ผ่านมา ${rainPill(mm24, false)} ที่ ${esc(m.name_th)}${m.province ? ` จ.${esc(m.province)}` : ""}` : "",
+    fcHeavy ? `คาดมากสุดอีก 24 ชม. ${rainPill(fc)}${r?.forecast_where ? ` แถว จ.${esc(r.forecast_where)}` : ""}` : ""];
+  return `<p class="sumline sumrain">🌧️ ${parts.filter(Boolean).join(" · ")} ${infoBtn(tip, "ที่มาของข้อมูลฝน")}</p>`;
 }
 let lastStats = null;
 function renderSummary(st) {
@@ -276,14 +279,28 @@ function renderSummary(st) {
   const staleLast = mine.filter((s) => s.stale && s.obs_time).map((s) => s.obs_time).sort().pop();
   const staleLine = staleN >= 5 && staleN * 2 >= mine.length
     ? `<p class="sumline warn-line">⚠️ ${staleN} สถานีไม่อัปเดตเกิน 3 ชม. (ล่าสุด ${esc(fmtTime(staleLast))}) <button type="button" class="conf-badge conf-low" title="แหล่งข้อมูลหยุดส่งชั่วคราว ตัวเลขเป็นค่าล่าสุดที่ได้รับ ไม่ใช่สถานการณ์ตอนนี้ ระบบจะอัปเดตเองเมื่อข้อมูลกลับมา" aria-label="ทำไมข้อมูลไม่อัปเดต">ⓘ</button></p>` : "";
-  document.getElementById("summary").innerHTML = `<div class="chips">${chips}</div>${staleLine}
+  // One urgent line, only when it matters: over the bank and still rising (the trend rule, D-083); never folded away
+  const urgent = mine.filter((s) => s.status === "critical" && !s.stale && s.trend?.group === "rising");
+  const byProv = new Map();
+  urgent.forEach((s) => byProv.set(s.province || "?", (byProv.get(s.province || "?") || 0) + 1));
+  const top = [...byProv.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([p, n]) => `${esc(p)} ${n}`).join(" · ");
+  const urgentLine = urgent.length ? `<button type="button" class="urgent">🔴 ล้นตลิ่งและน้ำยังขึ้น <b>${urgent.length}</b> สถานี (${top}${byProv.size > 3 ? " · …" : ""}) ›</button>` : "";
+  // Folded: one line of counts (owner: "The top bar in desktop mode use much space"); desktop starts folded, phones open
+  let open = window.innerWidth < 900;
+  try { const v = localStorage.getItem("sumOpen"); if (v !== null) open = v === "1"; } catch { /* private mode */ }
+  const mini = ["critical", "warning", "watch", "normal", "unknown"].map((k) => `<span class="dot" style="background:${STATUS[k].color}"></span><b>${cnt(k)}</b>`).join(" ");
+  document.getElementById("summary").innerHTML = `${urgentLine}<details class="sumbox"${open ? " open" : ""}><summary class="summini" aria-label="สรุปจำนวนสถานี">${mini} <span class="muted">สถานี${region === "all" ? "" : `ใน${esc(REGIONS[region].th)}`}</span></summary>
+    <div class="chips">${chips}</div>${staleLine}
     ${rainSummary(rain)}
     <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
     <p class="sumline">${esc(TREND.rising)} <b>${tr("rising")}</b> · ${esc(TREND.falling)} <b>${tr("falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`} (คาดการณ์อีก 12 ชม.)</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั่วประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
-        · ในพื้นที่ติดตาม ${f.no_coords} สถานีไม่มีพิกัด, ${f.no_bank} สถานีไม่มีระดับตลิ่ง</details></div></details>`;
+        · ในพื้นที่ติดตาม ${f.no_coords} สถานีไม่มีพิกัด, ${f.no_bank} สถานีไม่มีระดับตลิ่ง</details></div></details></details>`;
+  const box = document.querySelector("#summary .sumbox");
+  box.addEventListener("toggle", () => { try { localStorage.setItem("sumOpen", box.open ? "1" : "0"); } catch { /* private mode */ } setTopH(); });
+  document.querySelector("#summary .urgent")?.addEventListener("click", () => setTab("watch"));
   document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
     statusFilter = statusFilter === b.dataset.status ? null : b.dataset.status;
     document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.status === statusFilter)));

@@ -462,7 +462,7 @@ RAIN_POINT_REGION = {"bkk_central": "bkk", "bkk_east": "bkk", "bkk_north": "bkk"
                      "ayutthaya": "up", "chainat": "up", "nakhon_sawan": "up"}
 
 
-def rain_by_region(points: list[dict], measured: list[dict], cell_region: dict[str, str]) -> dict:
+def rain_by_region(points: list[dict], measured: list[dict], cell_region: dict[str, str], pp: dict | None = None) -> dict:
     """For the summary line of each region chip (owner 2026-10-01: "There is no rain in panel anymore?"): the wettest
     forecast point/cell (mm in the next 24 h) and the wettest rain gauge (mm in the last 24 h); "all" = the country."""
     out: dict[str, dict] = {}
@@ -474,6 +474,8 @@ def rain_by_region(points: list[dict], measured: list[dict], cell_region: dict[s
             o = out.setdefault(r, {"forecast_mm24": None, "measured": None})
             if o["forecast_mm24"] is None or p["mm24"] > o["forecast_mm24"]:
                 o["forecast_mm24"] = round(p["mm24"], 1)
+                # the province of the wettest point, so the top bar never reads as "this much everywhere" (2026-10-04)
+                o["forecast_where"] = min((pp or {}).get(p["point"]) or [None], key=lambda x: x or "")
     for m in measured:
         if m.get("rain_24h") is None:
             continue
@@ -584,7 +586,8 @@ def _rain_data() -> dict:
         measured = c.execute(RAIN_OBS_SQL).fetchall()
     pts = [{"point": r["point"], "mm24": r["mm24"], "mm72": r["mm72"], "issue_time": _iso(r["issue"])} for r in rows]
     return {"source": "Open-Meteo (forecast) · HII rain gauges (measured)", "points": pts,
-            "by_region": rain_by_region(pts, measured, _cell_regions())}
+            "by_region": rain_by_region(pts, measured, _cell_regions(),
+                                        _memo(("point_provinces",), lambda: point_provinces(_station_rows(True)), ttl=3600))}
 
 
 def _load_chainage() -> dict:
