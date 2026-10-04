@@ -254,8 +254,10 @@ def test_the_summary_cards_tone_rules_apply_to_ticker_items():
     # GLM run 4 (2026-10-04): "…และน้ำยังขึ้นอยู่นะ", "สบายใจได้ว่าส่วนใหญ่…ทรงตัวหรือลดลงแล้ว" (a reassurance verdict)
     f = situation.facts(STATIONS, RISKS, RAIN)
     rule = situation.items(f)
-    for bad in ("1) ที่พระนครศรีอยุธยามีน้ำล้นตลิ่ง 2 สถานี และน้ำยังขึ้นอยู่นะ",
-                "2) ล้นตลิ่ง 3 สถานี สบายใจได้ว่าส่วนใหญ่ทรงตัวหรือลดลงแล้ว"):
+    tidied = situation.parse_items("1) ที่พระนครศรีอยุธยามีน้ำล้นตลิ่ง 2 สถานี และน้ำยังขึ้นอยู่นะคะ", rule)
+    assert tidied[0]["text"].endswith("ยังขึ้นอยู่") and situation.check_items(tidied, rule) == []  # particles dropped
+    for bad in ("2) ล้นตลิ่ง 3 สถานี สบายใจได้ว่าส่วนใหญ่ทรงตัวหรือลดลงแล้ว",
+                "1) ข่าวดีคือที่พระนครศรีอยุธยามีน้ำล้นตลิ่ง 2 สถานี และน้ำยังขึ้น"):
         assert any("tone" in x for x in situation.check_items(situation.parse_items(bad, rule), rule)), bad
     ok = situation.parse_items("1) ที่พระนครศรีอยุธยามีน้ำล้นตลิ่ง 2 สถานี และน้ำยังกำลังขึ้นอยู่", rule)
     assert situation.check_items(ok, rule) == []

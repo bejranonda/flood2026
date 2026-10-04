@@ -516,7 +516,7 @@ def watch(out: dict, area: str) -> tuple[list[str], str]:
     if may_up:
         who = f"{some(may_up, 1)}{nm(may_up[0])}" if len(may_up) > 1 else f"คือ {nm(may_up[0])}"
         parts.append(f"ส่วนอีก {len(may_up)} สถานีที่ยังไม่ถึงตลิ่ง น้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน {who}")
-    if up:
+    if up and not crit and not may_up:  # a long story makes GLM slip; upstream stays in the numbers (lines)
         parts.append(f"น้ำเหนือกำลังมาที่ {nm(up[0])}")
     if fast and not crit and not may_up:
         parts.append(f"น้ำอาจขึ้นเร็วที่ {nm(fast[0])}")
@@ -576,6 +576,8 @@ def check(text: str, rule: str) -> list[str]:
         issues.append("tone")
     if re.match(r"\s*(?:เดี๋ยว|ขอ)?เล่าให้ฟัง", t):
         issues.append("filler opening")
+    if re.search(r"(?:ไหม|มั้ย|หรือเปล่า|อยากให้\S*)\s*[?？]?\s*$", t):  # "…อยากให้ช่วยดูจุดไหนเพิ่มเติมไหม" (live 2026-10-04)
+        issues.append("asks the reader")
     if len(t) > GIST_MAX:
         issues.append("too long")
     return issues
@@ -607,6 +609,13 @@ def prompt(q: str, lines: list[str], story: str | None = None) -> tuple[list[dic
              {"role": "user", "content": f"คำถามของผู้ใช้: {QUESTIONS.get(q, q)}\nข้อมูล:\n{rule}"}], rule)
 
 
+def tidy(text: str) -> str:
+    """Drop sentence-final polite particles GLM adds despite the prompt (validation 2026-10-04: 13 of 18 rejections were
+    only these): "นะคะ/นะครับ" -> "นะ", a lone "ครับ/ค่ะ/คะ" goes. Nothing else changes."""
+    t = re.sub(r"นะ(?:คะ|ค่ะ|ครับ)(?=\s|$|[.!,])", "นะ", text)
+    return re.sub(r"\s*(?:ครับ|ค่ะ|คะ)(?=\s|$|[.!,])", "", t).strip()
+
+
 def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
     """A warm retelling of the story (and the lines behind it) by GLM, or None (AI off, failed, capped or rejected)."""
     if os.environ.get("AI_EXPLAIN", "1") != "1":  # the owner's off switch (.env AI_EXPLAIN=0)
@@ -622,15 +631,16 @@ def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
             return None
         _count["n"] += 1
     good = None
-    for _ in range(2):  # one retry when an answer fails the check ("ครับ" on the จับตา summary, 2026-10-04)
+    for _ in range(3):  # retries when an answer fails the check (live 2026-10-04: 1 in 3 national จับตา answers passed)
         try:
             text = ai.run(messages, max_tokens=400, timeout=15)  # GLM takes ~6-10 s; 8 s timed out (2026-10-04)
         except Exception:
             text = None
         if not text:
             break  # no answer (off, paused, timeout): do not wait twice
+        text = tidy(text)
         if not check(text, rule):
-            good = text.strip()
+            good = text
             break
     with _lock:
         _cache[key] = (good, now)

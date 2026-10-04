@@ -80,7 +80,7 @@ def test_station_rain_reads_naturally_when_dry_or_at_the_same_spot():
 
 
 def test_a_gist_that_fails_the_check_is_asked_once_more(monkeypatch):
-    answers = iter(["ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่งครับ", "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง"])
+    answers = iter(["ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง ปลอดภัยดี", "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง"])
     monkeypatch.setattr(explain.ai, "run", lambda *a, **k: next(answers))
     explain._cache.clear()
     assert explain.gist("simple", ["✅ ไม่มีจุดที่น้ำล้นตลิ่ง"], "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง") == "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง"
@@ -95,3 +95,25 @@ def test_the_watch_story_keeps_over_the_bank_and_may_reach_apart():
     rule = "\n".join(["บทสรุป: " + story] + lines)
     assert "stronger than the forecast" in explain.check("สถานีM1 น้ำกำลังจะถึงตลิ่งในหนึ่งถึงสองวัน", rule)
     assert "stronger than the forecast" not in explain.check("สถานีM1 น้ำยังขึ้นและอาจถึงตลิ่งในหนึ่งถึงสองวัน", rule)
+
+
+def test_a_retelling_never_ends_by_asking_the_reader_something():
+    # live 2026-10-04: "… อยากให้ช่วยดูจุดไหนเพิ่มเติมไหม" (a chatbot question on a summary card)
+    rule = "บทสรุป: ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง\n✅ ไม่พบจุดเสี่ยง"
+    assert "asks the reader" in explain.check("ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง อยากให้ช่วยดูจุดไหนเพิ่มเติมไหม", rule)
+    assert explain.check("ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง", rule) == []
+
+
+def test_the_watch_story_leaves_upstream_to_the_numbers_when_more_critical_things_exist():
+    with_up = {**WATCH, "groups": WATCH["groups"] + [{"key": "upstream", "items": [
+        G("U1", "อุตรดิตถ์", 0.5, up={"name_th": "ต้นน้ำ", "rise_cm": 120, "lag_h": 7}, region="north")]}]}
+    lines, story = explain.watch(with_up, "ทั่วประเทศ")
+    assert "สถานีU1" not in story and any("สถานีU1" in l for l in lines)
+
+
+def test_polite_particles_are_dropped_not_rejected(monkeypatch):
+    # validation 2026-10-04: 13 of 18 rejections were only "ครับ/ค่ะ" (WL.LPG.03 failed three times on them alone)
+    monkeypatch.setattr(explain.ai, "run", lambda *a, **k: "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่งค่ะ ติดตามข่าวกันต่อไปนะคะ")
+    explain._cache.clear()
+    assert explain.gist("simple", ["✅ ไม่มีจุดที่น้ำล้นตลิ่ง"], "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง") == "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง ติดตามข่าวกันต่อไปนะ"
+    assert explain.tidy("ได้คะแนนดี") == "ได้คะแนนดี"  # a word that starts with คะ is not a particle

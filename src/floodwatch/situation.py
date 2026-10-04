@@ -234,7 +234,9 @@ def parse_items(text: str | None, rule: list[dict]) -> list[dict]:
         k = int(m.group(1))
         if 1 <= k <= len(rule) and k not in seen:
             seen.add(k)
-            out.append({"n": k, "topic": rule[k - 1]["topic"], "icon": rule[k - 1]["icon"], "text": m.group(2).strip()})
+            from floodwatch.explain import tidy  # polite particles go, not the item (as on the ✨ card); "นะ" too here
+            text = re.sub(r"\s*นะ(?=\s*$)", "", tidy(m.group(2).strip()))
+            out.append({"n": k, "topic": rule[k - 1]["topic"], "icon": rule[k - 1]["icon"], "text": text})
     return out
 
 
