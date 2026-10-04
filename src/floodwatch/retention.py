@@ -14,8 +14,9 @@ log = logging.getLogger(__name__)
 OBS_KEEP_DAYS = 400  # the one-year training window (forecast.LOOKBACK_DAYS = 370) plus a margin
 WF_KEEP_DAYS = 3
 FC_KEEP_ALL_DAYS = 2  # every 30-min forecast run for 2 days ...
-FC_KEEP_DAYS = 14     # ... then one run per gauge every 6 h (hh:00-hh:29 at 00/06/12/18 UTC) up to 14 days, for
-                      # scripts/score_hii_forecast.py; ~1,000 gauges x 48 runs/day x ~4 KB would add ~150 MB a day
+FC_KEEP_DAYS = 31     # ... then one run per gauge every 6 h (hh:00-hh:29 at 00/06/12/18 UTC) up to 31 days: the track
+                      # records read 30 days (risks.WINDOW_DAYS; was 14 until v0.25.2, KI-290) and
+                      # scripts/score_hii_forecast.py; ~4.6 KB a run -> ~0.5 GB for the thinned month
 RAIN_KEEP_DAYS = 14  # rain-gauge readings (rain_obs) far from any water gauge: the panel reads only the last 3 h
 RAIN_MODEL_KEEP_DAYS = 400  # gauges within ~10 km of a water gauge: hourly rain is not re-fetchable (model input, Q43)
 RAIN_NEAR_DEG = 0.09  # ~10 km box around a water gauge

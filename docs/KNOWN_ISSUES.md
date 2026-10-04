@@ -773,3 +773,6 @@ Post-release validation 2026-10-04 21:40 UTC: `google_floodhub` last succeeded a
 
 ### KI-289 — Thai egress (OpenVPN sidecar) cannot connect · 🔴 open (owner)
 2026-10-04: `vpn` logs "TLS key negotiation failed to occur within 60 seconds … TLS handshake failed", container restart count 402. Sources behind the egress fail: `bma_dds` (last success 08:39 UTC), `dwr_ews` (17:15 UTC, 5 failures, backing off). BMA canal levels still arrive through the flood69 relay (`bma_klong`). Needs the owner's VPN server/credentials (OWNER_ACTIONS EGRESS); no change in code.
+
+### KI-290 — Track records said "30 days" but forecast runs were kept 14 days · 🟢 fixed v0.25.2
+Post-release validation 2026-10-04: `risks.WINDOW_DAYS = 30` (the "N ใน 10" chips and their ⓘ say "30 วันที่ผ่านมา") while `retention.FC_KEEP_DAYS = 14`; the archive began 2026-09-26, so from ~10 Oct the records would silently cover 14 days. Found when the unstarved retention task (KI-288) thinned 115,820 runs (the designed thinning, nothing past 14 days existed yet). Fix: `FC_KEEP_DAYS = 31` (~0.5 GB, 29 GB free) and a test that keeps it above `WINDOW_DAYS`.

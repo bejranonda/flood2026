@@ -6,6 +6,8 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
 - **Long-interval tasks no longer starve on restarts.** Post-release validation found Google Flood Hub last collected at
   10:40 UTC: every worker restart reset the schedule to "now + interval", and with deploys every hour or two a 6 h task
   never came due. A task that does not run at start is now due one interval after its last success (KI-288).
+- **Track records keep their 30 days.** Forecast runs were dropped after 14 days while the "N ใน 10" records read 30;
+  runs are now kept (one per gauge every 6 h) for 31 days, with a test that keeps the two in step (KI-290).
 - **Thai egress down (owner):** the OpenVPN sidecar fails its TLS handshake (402 restarts); BMA DDS (last 08:39 UTC) and
   DWR village posts (last 17:15 UTC) wait for it; BMA canal levels still arrive through the relay (KI-289, OWNER_ACTIONS
   EGRESS).

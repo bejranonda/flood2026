@@ -118,3 +118,10 @@ def test_a_long_interval_task_is_due_from_its_last_success_not_from_the_restart(
     one_h_ago = dt.datetime(2026, 10, 4, 20, 40, tzinfo=dt.timezone.utc)
     assert worker.first_due(6 * 3600, one_h_ago, now) == one_h_ago.timestamp() + 6 * 3600  # 5 h from now
     assert worker.first_due(6 * 3600, None, now) == now + 60  # never ran
+
+
+def test_forecast_runs_are_kept_as_long_as_the_track_records_read_them():
+    # post-release validation 2026-10-04: track records say "30 วันที่ผ่านมา" (risks.WINDOW_DAYS) but forecast runs were
+    # dropped after 14 days (retention.FC_KEEP_DAYS) — from ~10 Oct the records would have covered 14 days only
+    from floodwatch import retention, risks
+    assert retention.FC_KEEP_DAYS > risks.WINDOW_DAYS
