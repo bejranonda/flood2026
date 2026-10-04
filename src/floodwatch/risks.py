@@ -1,7 +1,7 @@
 """The "⚠️ จับตา" tab (owner 2026-10-03: "the list of potential risks according to the water level in next 24 or 48 hr
 … link to the stations or areas … with the confidence"; D-077). Pure: the API passes the station rows, rain per
-province, the satellite summary and the track records (compute_records). A gauge is listed once, in its worst group;
-provinces are listed for rain and satellite. Evidence for every threshold: research/2026-10-03_verify_*.py."""
+province and the track records (compute_records). A gauge is listed once, in its worst group; provinces are listed
+for heavy rain (satellite removed 2026-10-04, D-084). Evidence for every threshold: research/2026-10-03_verify_*.py."""
 from __future__ import annotations
 
 import datetime as dt
@@ -14,7 +14,7 @@ RAIN_MM = 35.1         # the top strip's heavy-rain threshold (SUMMARY_RAIN_MIN_
 UP_RISE_CM = 30        # upstream rose this much in 24 h: 69 % led to a >= 10 cm rise downstream (24 % without), 2026-10-03
 UP_LAG_H = (3, 48)     # learned travel times inside the tab's window
 BANDS = (">50%", "25-50%")  # bank-chance bands whose record is >= 1 in 10 (61 % and 12 % came true, 2026-10-03)
-ORDER = ("over_bank", "may_reach", "upstream", "fast_rise", "rain", "satellite")
+ORDER = ("over_bank", "may_reach", "upstream", "fast_rise", "rain")
 
 
 def _item(s: dict, **k) -> dict:
@@ -53,7 +53,7 @@ def _group_of(s: dict, by: dict) -> tuple[str | None, dict]:
     return None, {}
 
 
-def build(stations: list[dict], rain_by_prov: dict[str, float], sat: dict | None, records: dict | None) -> dict:
+def build(stations: list[dict], rain_by_prov: dict[str, float], records: dict | None) -> dict:
     by = {s["code"]: s for s in stations}
     groups: dict[str, list] = {k: [] for k in ORDER}
     stale = {k: 0 for k in ORDER}
@@ -77,12 +77,8 @@ def build(stations: list[dict], rain_by_prov: dict[str, float], sat: dict | None
     groups["fast_rise"].sort(key=lambda i: -i["rise_cm"])
     groups["rain"] = [{"province": p, "region": regions.region_of(p), "mm24": round(mm, 1)}
                       for p, mm in sorted(rain_by_prov.items(), key=lambda x: -x[1]) if mm >= RAIN_MM]
-    sp = (sat or {}).get("province") or {}
-    groups["satellite"] = [{"province": p, "region": regions.region_of(p), "rai": int(r)}
-                           for p, r in sorted(sp.items(), key=lambda x: -x[1]) if r > 0]
     return {"groups": [{"key": k, "items": groups[k], "left_stale": stale[k]} for k in ORDER if groups[k]],
-            "records": records or {},
-            "sat_dates": [sat["img_from"], sat["img_to"]] if sat and sat.get("img_from") else None}
+            "records": records or {}}
 
 
 # --- track records (D-077): how often each forecast-based group came true, from our own archive -------------------

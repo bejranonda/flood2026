@@ -57,14 +57,6 @@ def test_summary_rain_shows_only_heavy_rain_in_one_line():
     assert "rainRows(" not in body and "SUMMARY_RAIN_MIN_MM" in body
 
 
-def test_the_satellite_factor_says_only_what_was_seen():
-    # Q45 (D-071): one factor line when the satellite saw flooding within 1 km; never "not flooded"; the blind spot
-    # (city, trees) is said behind the ⓘ
-    body = APP[APP.index("const satDates"):APP.index("const panel")]
-    assert "d.satellite" in body and "ดาวเทียมเห็นน้ำท่วม" in body and "ไม่ท่วม" not in body
-    assert "ไม่เห็นไม่ได้แปลว่าไม่มีน้ำท่วม" in body and "GISTDA" in body
-
-
 def test_river_view_is_one_line_of_pickers_without_river_km_and_stations_carry_a_river_tag():
     # owner 2026-10-03 (screenshot of the แม่น้ำ tab): chips took three rows; "Is necessary to show: ระยะห่างจากปลายน้ำ?";
     # "add tag แม่น้ำ to each station" → one line "Province & river", no km, tag on list rows and sheets; upstream on top
@@ -165,14 +157,15 @@ def test_track_record_chip_is_counts_out_of_ten():
 
 def test_map_has_no_forecast_checkbox_and_draws_rings_for_gauges_without_one():
     assert "แสดงสถานีที่ยังคาดการณ์ไม่ได้" not in APP and "เฉพาะที่คาดการณ์ได้" not in APP
-    assert "ยังไม่มีพยากรณ์" in APP and "🛰 ดาวเทียม" in APP
-
-
-def test_satellite_sheet_line_says_seen_only():
-    assert "ดาวเทียมเห็นน้ำท่วมรอบสถานี" in APP and "sat_near_rai" in APP
+    assert "ยังไม่มีพยากรณ์" in APP
 
 
 def test_tributaries_appear_with_their_river_not_under_other_waterways():
     # owner 2026-10-03: "คลองนางน้อย is under basin แม่น้ำตรัง" → same HII sub-basin = shown with the river
     assert "tribOf.get(s.code)" in APP and "ลำน้ำสาขาในลุ่ม" in APP and "รวมลำน้ำสาขา" in APP
     assert "padding-left: 12px" in (ROOT / "web" / "style.css").read_text(encoding="utf-8")  # text off the province bar
+
+
+def test_no_satellite_cells_anywhere_in_the_app():
+    # D-084: GISTDA's cells could mislead (owner 2026-10-04); a future source will get its own design
+    assert "ดาวเทียม" not in CODE and "/api/satellite" not in APP and "sat_near_rai" not in APP

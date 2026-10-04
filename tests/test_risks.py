@@ -23,19 +23,19 @@ def test_a_gauge_appears_once_in_its_worst_group():
     st = [g("A", "critical", freeboard_m=-0.2, change24={"level": "strong_rise", "median": 0.3}),
           g("B", "warning", bank_chance24=">50%", change24={"level": "strong_rise", "median": 0.3}),
           g("C", change24={"level": "strong_rise", "median": 0.25})]
-    assert keys(risks.build(st, {}, None, None)) == {"over_bank": ["ชัยนาท"], "may_reach": ["B"], "fast_rise": ["C"]}
+    assert keys(risks.build(st, {}, None)) == {"over_bank": ["ชัยนาท"], "may_reach": ["B"], "fast_rise": ["C"]}
 
 
 def test_over_bank_is_grouped_by_province_with_its_gauges():
     st = [g("A", "critical"), g("B", "critical"), g("C", "critical", province="สิงห์บุรี")]
-    grp = risks.build(st, {}, None, None)["groups"][0]
+    grp = risks.build(st, {}, None)["groups"][0]
     assert grp["key"] == "over_bank"
     assert [(i["province"], len(i["gauges"])) for i in grp["items"]] == [("ชัยนาท", 2), ("สิงห์บุรี", 1)]
 
 
 def test_may_reach_uses_only_the_two_upper_bands_and_says_which_window():
     st = [g("A", bank_chance24="25-50%"), g("B", bank_chance24="<5%", bank_chance48=">50%"), g("C", bank_chance24="5-25%")]
-    items = risks.build(st, {}, None, None)["groups"][0]["items"]
+    items = risks.build(st, {}, None)["groups"][0]["items"]
     assert [(i["code"], i["band"], i["hours"]) for i in items] == [("B", ">50%", 48), ("A", "25-50%", 24)]
 
 
@@ -48,26 +48,24 @@ def test_upstream_needs_a_fresh_strong_rise_upstream_and_a_gauge_at_watch_or_war
           g("S", "watch", upstream=[{"code": "V", "lag_h": 10}]),
           g("V", stale=True, observed24={"change_cm": 80, "level": "strong_rise"}),  # stale upstream
           g("M", "watch", upstream=[{"code": "Z", "lag_h": 10}]), g("Z", observed24=None)]
-    items = [grp for grp in risks.build(st, {}, None, None)["groups"] if grp["key"] == "upstream"][0]["items"]
+    items = [grp for grp in risks.build(st, {}, None)["groups"] if grp["key"] == "upstream"][0]["items"]
     assert [(i["code"], i["up"]["code"], i["up"]["lag_h"], i["up"]["rise_cm"]) for i in items] == [("W", "U", 20, 45)]
 
 
 def test_stale_gauges_are_counted_not_listed():
-    out = risks.build([g("A", "critical", stale=True), g("B", "critical")], {}, None, None)
+    out = risks.build([g("A", "critical", stale=True), g("B", "critical")], {}, None)
     assert out["groups"][0]["left_stale"] == 1 and len(out["groups"][0]["items"][0]["gauges"]) == 1
 
 
-def test_area_groups_rain_and_satellite_sorted_by_amount():
-    sat = {"province": {"นครสวรรค์": 483000, "พิจิตร": 196000}, "img_from": "2026-09-28", "img_to": "2026-10-02"}
-    out = risks.build([], {"เชียงใหม่": 20.0, "น่าน": 52.4, "ตาก": 36.0}, sat, None)
-    assert keys(out) == {"rain": ["น่าน", "ตาก"], "satellite": ["นครสวรรค์", "พิจิตร"]}
-    assert out["sat_dates"] == ["2026-09-28", "2026-10-02"]
-    assert {i["province"]: i["region"] for i in out["groups"][1]["items"]}["นครสวรรค์"] == "up"
+def test_heavy_rain_provinces_sorted_by_amount():
+    out = risks.build([], {"เชียงใหม่": 20.0, "น่าน": 52.4, "ตาก": 36.0}, None)
+    assert keys(out) == {"rain": ["น่าน", "ตาก"]}
+    assert out["groups"][0]["items"][0]["region"] == "north"
 
 
 def test_nothing_to_report_gives_no_groups():
-    out = risks.build([g("A")], {}, None, None)
-    assert out["groups"] == [] and out["records"] == {} and out["sat_dates"] is None
+    out = risks.build([g("A")], {}, None)
+    assert out["groups"] == [] and out["records"] == {} and "sat_dates" not in out
 
 
 # --- track records (risk_record): counts out of ten from our own forecasts and readings ------------------------------

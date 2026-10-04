@@ -205,21 +205,3 @@ def _gistda_feature(h3="8964a402d03ffff", files="S1D_20260927_0601, S1C_20260928
                            "tb_tn": "ต.เชียงรากน้อย", "file_name": files}}
 
 
-def test_gistda_flood_cells_keep_centre_area_place_and_image_dates():
-    payload = {"type": "FeatureCollection", "numberMatched": 1, "features": [_gistda_feature()],
-               "links": [{"href": "https://x/?api_key=SECRET"}]}
-    rows = parsing.parse_gistda_flood(payload)
-    assert len(rows) == 1
-    r = rows[0]
-    assert r["h3"] == "8964a402d03ffff" and abs(r["lat"] - 14.1012) < 0.001 and abs(r["lon"] - 100.5708) < 0.001
-    assert r["area_m2"] == 38065.5 and r["province"] == "ปทุมธานี" and r["tambon"] == "เชียงรากน้อย"
-    assert r["img_from"] == dt.date(2026, 9, 27) and r["img_to"] == dt.date(2026, 9, 29)
-    assert "SECRET" not in repr(rows)  # KI-262: the echoed key never travels further
-
-
-def test_gistda_flood_cells_without_geometry_or_dates_are_handled():
-    bad = _gistda_feature(files="")
-    bad["geometry"] = None
-    assert parsing.parse_gistda_flood({"features": [bad]}) == []
-    r = parsing.parse_gistda_flood({"features": [_gistda_feature(files="")]})[0]
-    assert r["img_from"] is None and r["img_to"] is None

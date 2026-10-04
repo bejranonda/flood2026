@@ -414,7 +414,6 @@ a { color: var(--accent); }
 .wmore { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; padding: 8px 4px; cursor: pointer; }
 .conf-badge.rec { width: auto; padding: 0 6px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
 .legend i.ring-key { background: #fff; border: 2.5px solid #2f6ba0; box-sizing: border-box; }
-.legend i.sat-key { background: #0277bd; opacity: .55; border-radius: 0; }
 .wrow.w2 { display: block; padding: 7px 4px; }
 .wrow.w2 .wname { white-space: normal; }
 .wrow .wmeta { font-size: 13px; color: #4b5563; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

@@ -328,7 +328,7 @@ function whereRow(region_ = region, prov_ = prov, sfx = "") {
     prov && (pc.get(prov) || 0) <= THIN_MAX ? `<p class="thin muted">จังหวัดนี้มีสถานีวัดระดับน้ำเพียง ${pc.get(prov) || 0} แห่ง ${infoBtn(THIN_TIP, "ทำไมมีสถานีน้อย")}</p>` : ""}`;
 }
 const THIN_MAX = 2;
-const THIN_TIP = "หน่วยงานรัฐ (สสน. กรมชลประทาน กฟผ.) มีสถานีวัดระดับน้ำในจังหวัดนี้น้อย แอปแสดงครบทุกสถานีที่เปิดเผยแล้ว · แตะจุดบนแผนที่เพื่อดูฝนคาดการณ์และสิ่งที่ดาวเทียมเห็นรอบจุดนั้น";
+const THIN_TIP = "หน่วยงานรัฐ (สสน. กรมชลประทาน กฟผ.) มีสถานีวัดระดับน้ำในจังหวัดนี้น้อย แอปแสดงครบทุกสถานีที่เปิดเผยแล้ว · แตะจุดบนแผนที่เพื่อดูฝนคาดการณ์รอบจุดนั้น";
 document.addEventListener("change", (e) => {
   if (e.target.matches(".pick-region")) setRegion(e.target.value);
   else if (e.target.matches(".pick-prov")) setProv(e.target.value);
@@ -437,7 +437,6 @@ function renderMap() {
         + `<div><i style="background:#7b1fa2;opacity:.4"></i>น้ำท่วมบนถนน (Traffy) 6 ชม.<span id="street-age"></span></div>`
         + `<div><i class="ring-key"></i>ยังไม่มีพยากรณ์ (แตะดูแนวโน้มที่วัดได้)</div>`
         + `<div><i class="dwr-key"></i>เสาวัดน้ำ กรมทรัพยากรน้ำ (แนวโน้มเท่านั้น)</div>`
-        + `<div id="sat-key" hidden><i class="sat-key"></i>ดาวเทียมเห็นน้ำท่วม <span id="sat-dates"></span></div>`
         + `<div id="dead-n" class="muted"></div>`;
       return d;
     };
@@ -448,17 +447,13 @@ function renderMap() {
     const opts = L.control({ position: "topleft" });  // bottom-left sat under the legend and below the fold at 390 px
     opts.onAdd = () => {
       const d = L.DomUtil.create("div", "legend");
-      d.innerHTML = `<label><input type="checkbox" id="sat-on"> 🛰 ดาวเทียม</label>
-        <label><input type="checkbox" id="dwr-on" checked> เสาวัดน้ำ กรมทรัพยากรน้ำ</label><div id="unplaced" class="muted"></div>`;
+      d.innerHTML = `<label><input type="checkbox" id="dwr-on" checked> เสาวัดน้ำ กรมทรัพยากรน้ำ</label><div id="unplaced" class="muted"></div>`;
       L.DomEvent.disableClickPropagation(d);
-      d.querySelector("#sat-on").addEventListener("change", (e) => satOn(e.target.checked));
       d.querySelector("#dwr-on").addEventListener("change", (e) => { dwrOn = e.target.checked; drawDwr(); });
       return d;
     };
     opts.addTo(map);
     map.on("click", (e) => checkPoint(e.latlng.lat, e.latlng.lng, "pin"));
-    map.createPane("sat").style.zIndex = 340;  // observed flooded squares under everything that can be tapped
-    map.on("moveend", () => { if (satShown) drawSat(); });
     map.createPane("dwr").style.zIndex = 600;  // below the gauges (650): a gauge is always the first tap target
     map.on("zoomend", drawDwr);
     drawDwr();
@@ -494,57 +489,16 @@ function renderMap() {
   document.getElementById("unplaced").textContent = unplaced ? `${unplaced} สถานีไม่มีพิกัด (ดูในรายการ)` : "";
 }
 
-/* ---------- satellite (GISTDA 7-day radar layer, D-078): observed squares, seen only ---------- */
-let satShown = false, satLayer = null, satDates = null, satTimer = null;
-const thDay = (iso) => iso ? new Date(`${iso}T00:00:00+07:00`).toLocaleDateString("th-TH", { ...TZ, day: "numeric", month: "short" }) : "";
-const satSpan = () => satDates ? `ภาพ ${thDay(satDates[0])}–${thDay(satDates[1])}` : "";
-const SAT_TIP = "ภาพเรดาร์ดาวเทียมรวม 7 วันจาก GISTDA เห็นน้ำในที่โล่ง ไม่เห็นใต้อาคารหรือต้นไม้ (ในเมืองแทบไม่เห็น) จึงไม่ได้แปลว่าที่อื่นไม่ท่วม";
-function satOn(on) {
-  satShown = on;
-  const cb = document.getElementById("sat-on");
-  if (cb) cb.checked = on;
-  const k = document.getElementById("sat-key");
-  if (k) k.hidden = !on;
-  if (!on) { if (satLayer) satLayer.remove(); satLayer = null; return; }
-  drawSat();
-}
-function drawSat() {
-  clearTimeout(satTimer);
-  satTimer = setTimeout(async () => {  // a pan or zoom settles first
-    const b = map.getBounds().pad(0.2);
-    const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((v) => v.toFixed(3)).join(",");
-    let d;
-    try { d = await getJSON(`/api/satellite?bbox=${bbox}&z=${map.getZoom()}`); } catch { return; }
-    if (!satShown) return;
-    if (d.img_from) satDates = [d.img_from, d.img_to];
-    const sd = document.getElementById("sat-dates");
-    if (sd) sd.textContent = d.cells.length ? `(${satSpan()})` : "(ไม่มีภาพในบริเวณนี้)";
-    if (satLayer) satLayer.remove();
-    satLayer = L.layerGroup().addTo(map);
-    const h = d.g / 2, cellM2 = (d.g * 111200) ** 2;
-    d.cells.forEach(([la, lo, rai]) => {
-      const share = Math.min(1, (rai * 1600) / (cellM2 * Math.cos((la * Math.PI) / 180)));
-      L.rectangle([[la - h, lo - h], [la + h, lo + h]], { pane: "sat", interactive: false, stroke: false,
-        fillColor: "#0277bd", fillOpacity: 0.2 + 0.6 * share }).addTo(satLayer);
-    });
-  }, 250);
-}
-function satNote(s) {
-  if (!s.sat_near_rai) return "";
-  return `<p class="pf-obs">🛰 ดาวเทียมเห็นน้ำท่วมรอบสถานี (5 กม.) ราว ${esc(s.sat_near_rai.toLocaleString("th-TH"))} ไร่ ${infoBtn(`${satSpan()} · ${SAT_TIP}`, "ดาวเทียม")}</p>`;
-}
-
 /* ---------- ⚠️ จับตา: the next 24-48 h risks in six groups (owner 2026-10-03, D-077) ---------- */
 let wRegion = "all", wProv = "", risks = null;
 const MIN_REC_N = 30;
-const WATCH_TIP = "ไม่ใช่ประกาศเตือนภัยทางการ โปรดติดตามประกาศจาก ปภ. กรมชลประทาน และหน่วยงานในพื้นที่ · รวมจากระดับน้ำที่วัดได้ การคาดการณ์ของแอป ฝนคาดการณ์ และภาพดาวเทียม · \"6 ใน 10\" = ใน 30 วันที่ผ่านมา เมื่อแอปคาดแบบนี้ เกิดจริงราว 6 ใน 10 ครั้ง";
+const WATCH_TIP = "ไม่ใช่ประกาศเตือนภัยทางการ โปรดติดตามประกาศจาก ปภ. กรมชลประทาน และหน่วยงานในพื้นที่ · รวมจากระดับน้ำที่วัดได้ การคาดการณ์ของแอป และฝนคาดการณ์ · \"6 ใน 10\" = ใน 30 วันที่ผ่านมา เมื่อแอปคาดแบบนี้ เกิดจริงราว 6 ใน 10 ครั้ง";
 const WATCH_GROUPS = {
   over_bank: { t: "🔴 ล้นตลิ่งแล้ว", tip: "ระดับน้ำสูงกว่าตลิ่งตอนนี้ (วัดได้จริง) · แตะจังหวัดเพื่อดูสถานี" },
   may_reach: { t: "🟠 อาจถึงตลิ่ง", tip: "ยังต่ำกว่าตลิ่ง แต่การคาดการณ์มีโอกาสถึงตลิ่งในอีก 24 หรือ 48 ชม." },
   upstream: { t: "🟠 น้ำเหนือกำลังมา", tip: "สถานีต้นน้ำที่เคยส่งน้ำมาถึงที่นี่ เพิ่มขึ้น 30 ซม. ขึ้นไปใน 24 ชม. ที่ผ่านมา · เวลาเดินทางเรียนรู้จากข้อมูลย้อนหลัง" },
   fast_rise: { t: "🟡 น้ำขึ้นเร็ว", tip: "คาดว่าจะเพิ่มขึ้น 20 ซม. ขึ้นไปในอีก 24 ชม." },
   rain: { t: "🌧 ฝนหนักคาดการณ์", tip: "จังหวัดที่คาดว่าฝนรวม 35 มม. ขึ้นไปในอีก 24 ชม. (Open-Meteo) · แตะเพื่อดูสถานีในจังหวัด" },
-  satellite: { t: "🛰 ดาวเทียมเห็นน้ำท่วม", tip: `${SAT_TIP} · แตะเพื่อดูบนแผนที่` },
 };
 function recChip(rec, what) {
   if (!rec || (rec.n || 0) < MIN_REC_N || rec.hit == null) return "";  // MIN_REC_N: no number from a handful of cases
@@ -563,7 +517,6 @@ async function renderWatch() {
   if (!box) return;
   if (!risks) box.innerHTML = "<p class='muted'>กำลังโหลด…</p>";
   try { risks = await getJSON("/api/risks"); } catch (e) { if (!risks) { box.innerHTML = `<p>โหลดข้อมูลไม่สำเร็จ (${esc(e.message)})</p>`; return; } }
-  if (risks.sat_dates) satDates = risks.sat_dates;
   const rec = risks.records || {};
   // a gauge: its name on one line, one line of detail under it (owner's rule: headline + one line); names stay readable
   const gauge = (it, tail) => `<div class="wrow w2" data-code="${esc(it.code)}" role="button" tabindex="0"><div class="wname">${esc(it.name_th)} <small class="muted">${esc(it.province || "")}</small></div><div class="wmeta">${tail}</div></div>`;
@@ -585,13 +538,10 @@ async function renderWatch() {
       rows = items.map((it) => gauge(it, `+${it.rise_cm} ซม. ในอีก 24 ชม.`));
     } else if (g.key === "rain") {
       rows = items.map((it) => `<div class="wrow" data-rain="${esc(it.province)}" data-region="${esc(it.region || "all")}" role="button" tabindex="0"><span class="wname">${esc(it.province)}</span><span class="wval">ราว ${Math.round(it.mm24)} มม. ›</span></div>`);
-    } else if (g.key === "satellite") {
-      head = `<small class="muted">${esc(satSpan())}</small>`;
-      rows = items.map((it) => `<div class="wrow" data-sat="${esc(it.province)}" role="button" tabindex="0"><span class="wname">${esc(it.province)}</span><span class="wval">${esc(it.rai.toLocaleString("th-TH"))} ไร่ ›</span></div>`);
     }
     const old = wRegion === "all" && !wProv && g.left_stale ? ` <small class="muted">· ข้อมูลเก่า ${g.left_stale}</small>` : "";
     const n = g.key === "over_bank" ? `${items.reduce((a, p) => a + p.gauges.length, 0)} สถานี · ${items.length} จังหวัด`
-      : g.key === "rain" || g.key === "satellite" ? `${items.length} จังหวัด` : `${items.length} สถานี`;
+      : g.key === "rain" ? `${items.length} จังหวัด` : `${items.length} สถานี`;
     return `<section class="wgrp"><div class="wgrp-h"><b>${cfg.t}</b> <small class="muted">${n}</small>${old} ${head} ${infoBtn(cfg.tip, cfg.t)}</div>${wRows(rows)}</section>`;
   }).join("");
   const area = wProv || REGIONS[wRegion].th;
@@ -609,12 +559,7 @@ document.addEventListener("click", (e) => {
   if (g) { showDetail(g.dataset.code); return; }
   const rn = e.target.closest("[data-rain]");
   if (rn) { setRegion(rn.dataset.region); setProv(rn.dataset.rain); setTab("list"); return; }
-  const sat = e.target.closest("[data-sat]");
-  if (sat) {
-    setTab("map");
-    const pts = stations.filter((s) => s.province === sat.dataset.sat && s.lat).map((s) => [s.lat, s.lon]);
-    setTimeout(() => { if (pts.length) map.fitBounds(pts, { padding: [30, 30], maxZoom: 10 }); satOn(true); }, 120);
-  }
+
 });
 
 /* ---------- DWR early-warning posts: a trend-only layer (owner 2026-10-03, D-078) ---------- */
@@ -1013,7 +958,7 @@ async function showDetail(code) {
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
       ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
         ${changeLines(s)}${upstreamLine(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
-      ${streetNote(s)}${satNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
+      ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
       ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic" && n !== "stuck") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
       <details class="sumdetails"><summary>วิธีคาดการณ์</summary><p class="muted">${esc(erratic ? "ไม่คาดการณ์ (ค่าระดับน้ำไม่น่าเชื่อถือ)" : methods.map((m) => METHOD_TH[m] || m).join(", ") || "ข้อมูลไม่พอ")}${skill12 ? ` · ที่ 12 ชม. ทดสอบย้อนหลัง ${skill12.n} ครั้ง` : ""}${fc && !fc.tide_fitted ? " · ยังไม่มีข้อมูลพอสำหรับคำนวณน้ำขึ้นน้ำลง" : ""}
@@ -1165,23 +1110,6 @@ function pointHTML(d, src, place = "") {
   const streetF = nRep >= 3 ? { color: "#c62828", word: `มีแจ้ง ${nRep} เรื่อง` } : nRep > 0 ? { color: "#b45309", word: `มีแจ้ง ${nRep} เรื่อง` }
     : { color: "#9ca3af", word: "ยังไม่มีรายงาน" };
   const hasStreetFlood = (d.warnings || []).includes("street_flooding_despite_channels");
-  // Satellite (Q45 yes, D-071): one line only when GISTDA's radar SAW flooding within 1 km; silence otherwise, because
-  // radar is blind among buildings and trees (research/2026-10-02_satellite_flood.md: 61-71 % of central Bangkok).
-  const satDates = (a, b) => {
-    const f = (x, m) => new Date(`${x}T12:00:00+07:00`).toLocaleDateString("th-TH", { day: "numeric", ...(m ? { month: "short" } : {}), timeZone: "Asia/Bangkok" });
-    if (!b) return "";
-    if (!a || a === b) return f(b, true);
-    return a.slice(0, 7) === b.slice(0, 7) ? `${f(a, false)}–${f(b, true)}` : `${f(a, true)}–${f(b, true)}`;
-  };
-  const sat = d.satellite;
-  const satLine = sat ? (() => {
-    const m = sat.nearest_m, where = m <= 200 ? "บริเวณจุดนี้" : m >= 1000 ? `ห่างราว ${Math.floor(m / 1000)} กม.` : `ห่างราว ${m} ม.`;
-    const tip = "ภาพเรดาร์จากดาวเทียม (Sentinel-1, COSMO-SkyMed, Radarsat-2) ประมวลผลโดย GISTDA ช่วง 7 วัน · ดาวเทียมมองไม่เห็นน้ำในเขตเมืองหนาแน่นและใต้ต้นไม้ ไม่เห็นไม่ได้แปลว่าไม่มีน้ำท่วม · เป็นน้ำบนพื้นดิน ไม่ใช่ระดับน้ำในคลองหรือแม่น้ำ";
-    const dates = satDates(sat.img_from, sat.img_to);
-    return `<li><span class="pf-dot" style="background:${m <= 200 ? "#c62828" : "#b45309"}"></span><div><b class="pf-word">ดาวเทียมเห็นน้ำท่วม${esc(where)}</b>${infoBtn(tip, "ที่มาของภาพดาวเทียม")}
-      <div class="pf-sub">${sat.area_rai >= 1 ? `รวมราว ${esc(String(sat.area_rai))} ไร่ในรัศมี 1 กม. · ` : ""}${dates ? `ภาพ ${esc(dates)} ` : ""}(GISTDA)</div></div></li>`;
-  })() : "";
-
   // Everything that explains or qualifies goes behind one ⓘ (owner 2026-09-27: "everything into ⓘ", issue #3).
   const staticWarnings = (d.warnings || []).filter((w) => w !== "street_flooding_despite_channels");
   const infoBody = `<p><b>ข้อมูลที่ใช้:</b> ${esc((fc.basis || []).map((b) => FC_BASIS[b] || b).join(" · ") || "-")}</p>
@@ -1204,7 +1132,7 @@ function pointHTML(d, src, place = "") {
         <li><span class="pf-dot" style="background:${rainColor}"></span><div><b class="pf-word">${esc(rainHead)}</b>${rainInfo}
           ${rainBody}</div></li>
         <li><span class="pf-dot" style="background:${streetF.color}"></span><div><b class="pf-word">${esc(nRep > 0 ? `มีแจ้งน้ำท่วมบนถนน ${nRep} เรื่อง` : "ยังไม่มีรายงานน้ำท่วมบนถนน")}</b>
-          <div class="pf-sub">${hasStreetFlood ? `<b>น้ำรอระบายรอบจุดนี้ แม้${W}ใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · ` : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>${satLine}
+          <div class="pf-sub">${hasStreetFlood ? `<b>น้ำรอระบายรอบจุดนี้ แม้${W}ใกล้เคียงยังไม่ล้น ระวังการเดินทาง</b> · ` : ""}ในรัศมี 1 กม. ช่วง 6 ชม. (จุดสีม่วงบนแผนที่)${depths ? ` · ผู้ใช้แจ้งระดับ: ${depths}` : ""}</div></div></li>
       </ul>
     </section>`;
 

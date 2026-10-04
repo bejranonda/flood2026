@@ -19,7 +19,6 @@ in many possibilities"). One browser session, views compared at the same moment:
   C11 (v0.17.1) rain uses the water rows' layout in the panel and the summary (forecast = a chip row), and the panel
      headline never repeats a rain amount (owner 2026-10-02: "rainfall info … one long sentence").
   C14 (v0.20.0, D-072) the แม่น้ำ tab: every river loads, downstream first, no BMA gauge, 24 h row where a forecast exists.
-  C13 (v0.19.0, D-071) the satellite line appears exactly when /api/point reports GISTDA flooding within 1 km, never "no flood".
   C15 (v0.20.7) text = graph: each 12/24/48 h row prints the model's 50 % range that the chart draws at that horizon
      (owner 2026-10-03, Kgt.19A: "Why trend and model forecast in the chart are different?").
   C16 (v0.21.0, D-079) the map draws every gauge with data < 24 h; C17 (v0.21.0, D-077) the จับตา tab agrees with the
@@ -208,12 +207,6 @@ with sync_playwright() as p:
                     note("C12", where9, f"story calls a far gauge 'here': {story12[:60]}")
             except Exception:
                 note("C12", where9, "AI button opened no story")
-        # C13 (Q45, D-071): the satellite line exactly when /api/point has one; it never says "not flooded"
-        sat_line = pg.locator("#detail .pf-word", has_text="ดาวเทียมเห็นน้ำท่วม").count()
-        if bool(sat_line) != bool(api.get("satellite")):
-            note("C13", where9, f"satellite line {'shown' if sat_line else 'missing'} vs API {api.get('satellite')}")
-        if "ดาวเทียม" in full9 and re.search(r"ดาวเทียม\S{0,20}ไม่(?:เห็น)?(?:มี)?น้ำท่วม(?!\s*·)", full9.replace("ไม่เห็นไม่ได้แปลว่าไม่มีน้ำท่วม", "")):
-            note("C13", where9, "satellite text says 'no flood'")
         river_line = pg.locator("#detail .pf-word", has_text="แม่น้ำใกล้จุด:").count()  # the line, not a sentence
         if river_line and (api.get("mode") != "bkk" or not api.get("nearest_river") or api["nearest_river"]["distance_km"] > 3):
             note("C9", where9, "river line without a Bangkok river gauge within 3 km")
@@ -380,7 +373,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C14", "C15", "C16", "C17")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

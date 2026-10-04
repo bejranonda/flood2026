@@ -318,11 +318,6 @@ def test_station_row_carries_the_24_and_48_h_bank_chances():
     assert api._station_row({**row, "obs_time": now - dt.timedelta(days=3)})["bank_chance24"] is None  # unknown: none
 
 
-def test_sat_grid_size_coarsens_when_zoomed_out():
-    from floodwatch.api import sat_grid_size
-    assert sat_grid_size(6) == 0.02 and sat_grid_size(9) == 0.005 and sat_grid_size(12) == 0.002
-
-
 def test_rain_by_province_takes_the_wettest_point_serving_each_province():
     # the จับตา tab's 🌧 group (D-077): provinces of the gauges each forecast point serves, as point_regions
     from floodwatch.api import rain_by_province
