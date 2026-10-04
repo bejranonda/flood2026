@@ -737,3 +737,6 @@ Live trials 2026-10-04: "เร่งด่วน:", "ด่วน!" openings; "
 
 ### KI-281 — Most forecast rows said "? ไม่แน่ชัด" although the chart showed a trend · 🟢 mitigated v0.24.0
 Owner (CPY010, HDA009, WL.BBR.02 screenshots): 63 / 79 / 83 % of 24 / 48 / 72 h rows were "?" because the served model ("no change" at 355 gauges) or a range across zero cannot say how much, though the direction was often clear. D-091 leans those rows by the measured trend with its record (75 %). Residual: a lean word and a model range can point different ways (Q51); pumped canals whose last 6 h contradict the 24 h stay "?" (WL.BBR.02).
+
+### KI-282 — A leaning row contradicted the chart's dashed line · 🟢 fixed v0.24.0 (same day)
+Owner (T.13, BKK017): "↘ น่าจะลดลง" beside a flat line and beside "0 ถึง +8 ซม." with a rising line. The first lean rule used the measured pace only, so the word and the chart (the model) could disagree — the KI-270 pattern again, which I had flagged as the risk of this option. Fixed: lean only where the model median moves ≥ 3 cm the same way (80–83 % right over 30 days); live check C20 compares each leaning row with the chart's line.
