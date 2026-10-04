@@ -430,29 +430,34 @@ function renderMap() {
     map.createPane("reports").style.zIndex = 350;
     map.createPane("stations").style.zIndex = 650;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(map);
+    // One box: the legend is the switch (owner 2026-10-04: "Let the all stations can be show and hide … simplify the
+    // categories", chose "One box: legend with checkboxes"). Choices are remembered; phones start folded.
     legend = L.control({ position: "bottomright" });
     legend.onAdd = () => {
-      const d = L.DomUtil.create("div", "legend");
-      d.innerHTML = Object.values(STATUS).map((s) => `<div><i style="background:${s.color}"></i>${esc(s.th)}</div>`).join("")
-        + `<div><i style="background:#7b1fa2;opacity:.4"></i>น้ำท่วมบนถนน (Traffy) 6 ชม.<span id="street-age"></span></div>`
-        + `<div><i class="ring-key"></i>ยังไม่มีพยากรณ์ (แตะดูแนวโน้มที่วัดได้)</div>`
-        + `<div><i class="dwr-key"></i>เสาวัดน้ำ กรมทรัพยากรน้ำ (แนวโน้มเท่านั้น)</div>`
+      const d = L.DomUtil.create("details", "legend layers");
+      d.open = window.innerWidth >= 700;
+      const row = (k, key, label) => `<label><input type="checkbox" data-layer="${k}"${layerOn[k] ? " checked" : ""}> ${key} ${label} <span class="lc" data-count="${k}"></span></label>`;
+      d.innerHTML = `<summary>ชั้นข้อมูล</summary>`
+        + ["critical", "warning", "watch", "normal", "unknown"].map((k) => row(k, `<i style="background:${STATUS[k].color}"></i>`, esc(STATUS[k].th))).join("")
+        + row("ring", `<i class="ring-key"></i>`, "สถานีที่ยังไม่มีพยากรณ์ (วงกลมกลวง)")
+        + row("dwr", `<i class="dwr-key"></i>`, "เสาวัดน้ำ กรมทรัพยากรน้ำ (แนวโน้ม)")
+        + row("traffy", `<i style="background:#7b1fa2;opacity:.4"></i>`, `น้ำท่วมบนถนน (Traffy) 6 ชม.<span id="street-age"></span>`)
         + `<div id="dead-n" class="muted"></div>`;
+      L.DomEvent.disableClickPropagation(d);
+      L.DomEvent.disableScrollPropagation(d);
+      d.addEventListener("change", (e) => {
+        const k = e.target.dataset.layer;
+        if (!k) return;
+        layerOn[k] = e.target.checked;
+        try { localStorage.setItem("layers", JSON.stringify(layerOn)); } catch { /* private mode */ }
+        if (k === "dwr") { dwrOn = layerOn.dwr; drawDwr(); } else renderMap();
+      });
       return d;
     };
     legend.addTo(map);
     const hint = L.control({ position: "topright" });
     hint.onAdd = () => { const d = L.DomUtil.create("div", "legend"); d.textContent = "👆 แตะจุดใดก็ได้บนแผนที่ เพื่อดูข้อมูลรอบจุดนั้น"; return d; };
     hint.addTo(map);
-    const opts = L.control({ position: "topleft" });  // bottom-left sat under the legend and below the fold at 390 px
-    opts.onAdd = () => {
-      const d = L.DomUtil.create("div", "legend");
-      d.innerHTML = `<label><input type="checkbox" id="dwr-on" checked> เสาวัดน้ำ กรมทรัพยากรน้ำ</label><div id="unplaced" class="muted"></div>`;
-      L.DomEvent.disableClickPropagation(d);
-      d.querySelector("#dwr-on").addEventListener("change", (e) => { dwrOn = e.target.checked; drawDwr(); });
-      return d;
-    };
-    opts.addTo(map);
     map.on("click", (e) => checkPoint(e.latlng.lat, e.latlng.lng, "pin"));
     map.createPane("dwr").style.zIndex = 600;  // below the gauges (650): a gauge is always the first tap target
     map.on("zoomend", drawDwr);
@@ -460,7 +465,7 @@ function renderMap() {
   }
   if (layer) layer.remove();
   layer = L.layerGroup().addTo(map);
-  getJSON("/api/reports?hours=6").then((r) => r.cells.forEach(([lat, lon, n]) => {
+  if (layerOn.traffy) getJSON("/api/reports?hours=6").then((r) => r.cells.forEach(([lat, lon, n]) => {
     L.circle([lat, lon], { pane: "reports", interactive: false, radius: 150 + 50 * Math.min(n, 20), color: "#6a1b9a",
       weight: 1, opacity: 0.5, fillColor: "#7b1fa2", fillOpacity: Math.min(0.30 + n * 0.03, 0.55) }).addTo(layer);
   })).catch(() => {});
@@ -476,7 +481,14 @@ function renderMap() {
   const dead = stations.filter((s) => s.lat && !onMap(s)).length;
   const dn = document.getElementById("dead-n");
   if (dn) dn.textContent = dead ? `ไม่แสดง ${dead} สถานีที่ไม่ส่งข้อมูลเกิน 24 ชม.` : "";
-  stations.filter((s) => s.lat && s.lon && onMap(s)).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
+  const shown = stations.filter((s) => s.lat && s.lon && onMap(s));
+  document.querySelectorAll("[data-count]").forEach((el) => {
+    const k = el.dataset.count;
+    const n = k === "ring" ? shown.filter((s) => !hasForecast(s)).length : k in STATUS ? shown.filter((s) => s.status === k).length : null;
+    el.textContent = n == null ? "" : String(n);
+  });
+  // a hidden status hides its gauges; unticking "ring" hides the gauges without a forecast (whatever their status)
+  shown.filter((s) => layerOn[s.status] !== false && (layerOn.ring || hasForecast(s))).sort((a, b) => RANK[b.status] - RANK[a.status]).forEach((s) => {
     const st = stOf(s), ring = !hasForecast(s);
     const approx = (s.notes || []).includes("approx_location");
     L.circleMarker([s.lat, s.lon], { pane: "stations", radius: s.status === "critical" ? 10 : 8, color: ring ? st.color : approx ? "#333" : "#fff",
@@ -485,8 +497,6 @@ function renderMap() {
       .bindTooltip(`${esc(s.name_th)} — ${esc(st.th)} ${esc(levelText(s))}${notesText(s) ? `<br><small>${esc(notesText(s))}</small>` : ""}`)
       .on("click", () => showDetail(s.code)).addTo(layer);
   });
-  const unplaced = stations.filter((s) => !s.lat && inRegion(s)).length;
-  document.getElementById("unplaced").textContent = unplaced ? `${unplaced} สถานีไม่มีพิกัด (ดูในรายการ)` : "";
 }
 
 /* ---------- ⚠️ จับตา: the next 24-48 h risks in six groups (owner 2026-10-03, D-077) ---------- */
@@ -579,7 +589,9 @@ document.addEventListener("click", (e) => {
 // Depth on a local staff post (not m MSL), alarm levels mostly a 4.00 m default: no status colour, never compared
 // with the gauges; shown from zoom 9 (455 posts on a country view would bury the gauges).
 const DWR_MIN_ZOOM = 9;
-let dwrOn = true, dwrData = null, dwrLayer = null;
+const LAYERS_DEFAULT = { critical: true, warning: true, watch: true, normal: true, unknown: true, ring: true, dwr: true, traffy: true };
+const layerOn = (() => { try { return { ...LAYERS_DEFAULT, ...JSON.parse(localStorage.getItem("layers") || "{}") }; } catch { return { ...LAYERS_DEFAULT }; } })();
+let dwrOn = layerOn.dwr, dwrData = null, dwrLayer = null;
 const DWR_TIP = "เสาวัดน้ำของระบบเตือนภัยล่วงหน้า กรมทรัพยากรน้ำ วัดความลึกที่เสาในพื้นที่ ไม่ใช่ ม.รทก. และไม่มีระดับตลิ่ง จึงแสดงเฉพาะการเปลี่ยนแปลงที่วัดได้ ไม่เทียบกับสถานีอื่นและไม่คาดการณ์ · ข้อมูลผ่านเครือข่ายในไทย อาจหยุดชั่วคราว";
 function dwrPopup(d) {
   const line = d.note === "stuck" ? `<div class="pf-obs">ค่าค้างที่ค่าเดิมตลอด 24 ชม. (เครื่องวัดอาจขัดข้อง)</div>`

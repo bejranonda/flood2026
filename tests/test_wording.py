@@ -174,3 +174,12 @@ def test_all_rivers_overview_counts_the_rows_own_trend_group():
     # same fields every row and the จับตา tab read; no second counting rule
     so = APP.split("function summaryOf(gs")[1].split("\n}\n")[0]
     assert "s.trend?.group" in so and '"rising"' in so and '"flat_or_falling"' in so and "directional(" not in so
+
+
+def test_the_map_has_one_layer_box_whose_legend_lines_are_switches():
+    # owner 2026-10-04: "Let the all stations can be show and hide … simplify the categories" → one box (D-085)
+    assert 'L.control({ position: "topleft" })' not in APP and "ไม่มีพิกัด (ดูในรายการ)" not in APP
+    box = APP.split("legend.onAdd = () => {")[1].split("legend.addTo(map)")[0]
+    for k in ("critical", "warning", "watch", "normal", "unknown", "ring", "dwr", "traffy"):
+        assert f'"{k}"' in box
+    assert 'localStorage.setItem("layers"' in box and "<summary>ชั้นข้อมูล</summary>" in box
