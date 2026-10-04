@@ -436,7 +436,7 @@ def station(s: dict, rain_measured: dict | None, rain_next24: float | None) -> t
     the station itself is the subject (never "แถวนี้"), the same rows as the sheet, the rain that fell nearby and the
     forecast. A stale station tells no "now" (D-024)."""
     name = s.get("name_th") or s["code"]
-    head = f"📍 สถานีวัดน้ำ{name}" + (f" ({s['river']})" if s.get("river") else "") + (f" จ.{s['province']}" if s.get("province") else "")
+    head = " · ".join([f"📍 สถานีวัดน้ำ{name}"] + ([s["river"]] if s.get("river") else []) + ([f"จ.{s['province']}"] if s.get("province") else []))
     if s.get("stale"):
         hrs = max(1, round((s.get("age_min") or 0) / 60))
         return ([head, f"⏳ ข้อมูลล่าสุดเมื่อราว {hrs} ชม. ก่อน จึงไม่ใช้บอกสถานการณ์ตอนนี้"],
@@ -451,13 +451,16 @@ def station(s: dict, rain_measured: dict | None, rain_next24: float | None) -> t
     m = rain_measured or {}
     if m.get("rain_24h") is not None:
         mm = float(m["rain_24h"])
-        where = f" ที่สถานีวัดฝน{m['name_th']} ห่าง {_km(m.get('distance_km'))} กม." if m.get("name_th") else ""
-        lines.append(f"🌧️ 24 ชม. ที่ผ่านมา: {_rain_word(mm)} {round(mm)} มม.{where}")
+        d = m.get("distance_km")
+        where = (" ที่สถานีนี้" if d is not None and d < 0.5 else
+                 f" ที่สถานีวัดฝน{m['name_th']} ห่าง {_km(d)} กม." if m.get("name_th") and d is not None else "")
+        word = _rain_word(mm)
+        lines.append("🌧️ 24 ชม. ที่ผ่านมา: ไม่มีฝน" if word == "ไม่มีฝน" else f"🌧️ 24 ชม. ที่ผ่านมา: {word} {round(mm)} มม.{where}")
     if rain_next24 is not None:
         w = _rain_word(rain_next24)
         lines.append("☁️ อีก 24 ชม.: ไม่น่าจะมีฝน" if w == "ไม่มีฝน" else f"☁️ อีก 24 ชม.: คาดว่ามี{w} ราว {round(rain_next24)} มม.")
     lvl = _easy_level(f)
-    first = f"น้ำที่สถานีวัดน้ำ{name}{EASY_STATE.get(s.get('status'), 'ยังบอกสถานะไม่ได้')}" + (f" ({lvl})" if lvl else "")
+    first = f"น้ำที่สถานีวัดน้ำ{name} {EASY_STATE.get(s.get('status'), 'ยังบอกสถานะไม่ได้')}" + (f" ({lvl})" if lvl else "")
     trend, rain = _easy_trend(f), _easy_rain(f, after_trend=True)
     todo = (f"ใครอยู่ริม{W}ใกล้สถานีนี้ ควรติดตามประกาศของอำเภอหรือเขตอย่างใกล้ชิด" if s.get("status") == "critical"
             else f"ถ้าฝนตกหนัก ใครอยู่ริม{W}ใกล้สถานีนี้ให้กลับมาดูอีกครั้ง" if s.get("status") == "warning" else "")
@@ -480,9 +483,12 @@ def watch(out: dict, area: str) -> tuple[list[str], str]:
     may_up = [i for i in may if i.get("sub") == "rising"]
     up, fast, rain = g.get("upstream", []), g.get("fast_rise", []), g.get("rain", [])
     nm = lambda x: f"{x['name_th']} ({x['province']})" if x.get("province") else x["name_th"]
+    some = lambda xs, shown=3: "เช่น " if len(xs) > shown else ""  # an example stays an example; a full list is not one
     lines = []
     if n_over:
-        lines.append(f"🔴 ล้นตลิ่งแล้ว {n_over} สถานี ใน {n_prov} จังหวัด · น้ำยังขึ้น {len(rising)} · ทรงตัวหรือลดลง {len(flat)}")
+        split = (f"น้ำยังขึ้น {len(rising)} · ทรงตัวหรือลดลง {len(flat)}" if rising and flat
+                 else "น้ำยังขึ้นทั้งหมด" if rising and not flat else "ทรงตัวหรือลดลงทั้งหมด" if flat else "")
+        lines.append(f"🔴 ล้นตลิ่งแล้ว {n_over} สถานี ใน {n_prov} จังหวัด" + (f" · {split}" if split else ""))
     if crit:
         lines.append("❗ จุดที่ควรจับตาที่สุด (ล้นตลิ่งและน้ำยังขึ้น): "
                      + " · ".join(f"{nm(c)} สูงกว่าตลิ่ง {-round(fb(c) * 100)} ซม." for c in crit))
@@ -492,25 +498,28 @@ def watch(out: dict, area: str) -> tuple[list[str], str]:
     if len(may) > len(may_up):
         lines.append(f"↔️ อีก {len(may) - len(may_up)} สถานีอยู่ใกล้ตลิ่งแต่ทรงตัวหรือลดลง")
     if up:
-        lines.append(f"🌊 น้ำเหนือกำลังมา {len(up)} สถานี เช่น "
+        lines.append(f"🌊 น้ำเหนือกำลังมา {len(up)} สถานี: {some(up)}"
                      + " · ".join(f"{nm(i)} ต้นน้ำขึ้น {i['up']['rise_cm']} ซม." for i in up[:3]))
     if fast:
-        lines.append(f"🟡 คาดว่าน้ำขึ้นเร็ว (20 ซม. ขึ้นไปใน 24 ชม.) {len(fast)} สถานี เช่น " + " · ".join(nm(i) for i in fast[:3]))
+        lines.append(f"🟡 คาดว่าน้ำขึ้นเร็ว (20 ซม. ขึ้นไปใน 24 ชม.) {len(fast)} สถานี: {some(fast)}" + " · ".join(nm(i) for i in fast[:3]))
     if rain:
         lines.append("🌧 ฝนหนักคาดการณ์ใน 24 ชม.: " + " · ".join(f"{r['province']} ราว {round(r['mm24'])} มม." for r in rain[:3]))
     if not lines:
         return [f"✅ ไม่พบจุดเสี่ยงใน{area}ในอีก 24–48 ชม. ข้างหน้า"], f"ตอนนี้ยังไม่พบจุดเสี่ยงใน{area}ในอีก 24–48 ชม. ข้างหน้า"
-    parts = [f"ตอนนี้{area}มีน้ำล้นตลิ่ง {n_over} สถานี" + (" ส่วนใหญ่ทรงตัวหรือลดลงแล้ว" if len(flat) > len(rising) else "")
+    trend_word = ("ทั้งหมดทรงตัวหรือลดลง" if flat and not rising else " ส่วนใหญ่ทรงตัวหรือลดลงแล้ว" if len(flat) > len(rising) else "")
+    parts = [f"ตอนนี้{area}มีน้ำล้นตลิ่ง {n_over} สถานี" + (f" {trend_word.strip()}" if trend_word else "")
              if n_over else f"ตอนนี้{area}ยังไม่มีสถานีที่น้ำล้นตลิ่ง"]
     if crit:
-        more = f" รวมถึง{crit[1]['name_th']}" if len(crit) > 1 else ""
-        parts.append(f"จุดที่ควรจับตาที่สุดคือ{nm(crit[0])}ที่น้ำล้นตลิ่งและยังขึ้นอยู่{more}")
+        more = f" รวมถึง {crit[1]['name_th']}" if len(crit) > 1 else ""
+        parts.append(f"จุดที่ควรจับตาที่สุดคือ {nm(crit[0])} ที่น้ำล้นตลิ่งและยังขึ้นอยู่{more}")
     if may_up:
-        parts.append(f"อีก {len(may_up)} สถานีน้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน เช่น{nm(may_up[0])}")
+        who = f"{some(may_up, 1)}{nm(may_up[0])}"
+        parts.append(f"อีก {len(may_up)} สถานีน้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน {who}" if len(may_up) > 1
+                     else f"อีก 1 สถานีน้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน คือ {nm(may_up[0])}")
     if up:
-        parts.append(f"น้ำเหนือกำลังมาที่{nm(up[0])}")
+        parts.append(f"น้ำเหนือกำลังมาที่ {nm(up[0])}")
     if fast and not crit and not may_up:
-        parts.append(f"น้ำอาจขึ้นเร็วที่{nm(fast[0])}")
+        parts.append(f"น้ำอาจขึ้นเร็วที่ {nm(fast[0])}")
     if rain:
         parts.append(f"ส่วนฝนหนักคาดว่าจะตกแถว{rain[0]['province']}")
     return lines, " ".join(parts)
@@ -609,11 +618,17 @@ def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
         if _calls_today() >= DAILY_CAP:
             return None
         _count["n"] += 1
-    try:
-        text = ai.run(messages, max_tokens=400, timeout=8)
-    except Exception:
-        text = None
-    good = text.strip() if text and not check(text, rule) else None
+    good = None
+    for _ in range(2):  # one retry when an answer fails the check ("ครับ" on the จับตา summary, 2026-10-04)
+        try:
+            text = ai.run(messages, max_tokens=400, timeout=15)  # GLM takes ~6-10 s; 8 s timed out (2026-10-04)
+        except Exception:
+            text = None
+        if not text:
+            break  # no answer (off, paused, timeout): do not wait twice
+        if not check(text, rule):
+            good = text.strip()
+            break
     with _lock:
         _cache[key] = (good, now)
         if len(_cache) > 5000:

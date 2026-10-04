@@ -1107,7 +1107,7 @@ async function fillStory(card, url, isOpen) {
       };
     }
     if (r.ai) {  // fetch GLM warm retelling in background without blocking initial render
-      const g = await Promise.race([getJSON(`${url}&part=gist`).catch(() => null), new Promise((ok) => setTimeout(() => ok(null), 7000))]);
+      const g = await Promise.race([getJSON(`${url}&part=gist`).catch(() => null), new Promise((ok) => setTimeout(() => ok(null), 16000))]);  // GLM ~6-10 s, a retry up to 15 s more
       if (!isOpen() || !body.isConnected) return;
       if (g && g.gist) {
         text = g.gist;

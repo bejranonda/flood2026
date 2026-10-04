@@ -57,3 +57,30 @@ def test_the_watch_summary_follows_the_tabs_filters():
     assert "สถานีF1" in story and "สถานีA1" not in story and "ภาคเหนือ" in story
     lines, story = explain.watch(risks.only(WATCH, region="all", prov="ตรัง"), "ตรัง")
     assert "ไม่พบ" in story
+
+
+def test_watch_wording_says_examples_only_when_there_are_more_and_all_when_none_rise():
+    one = {"groups": [{"key": "over_bank", "items": [{"sub": "flat_or_falling", "provinces": [
+        {"province": "กรุงเทพมหานคร", "region": "bkk", "gauges": [G("B1", "กรุงเทพมหานคร", -0.2), G("B2", "กรุงเทพมหานคร", -0.1)]}]}]},
+        {"key": "may_reach", "items": [G("M1", "กรุงเทพมหานคร", 0.32, sub="rising", band=">50%", hours=24)]}], "records": {}}
+    lines, story = explain.watch(one, "กทม.")
+    assert "ทรงตัวหรือลดลงทั้งหมด" in " ".join(lines) and "น้ำยังขึ้น 0" not in " ".join(lines)
+    assert "เช่น" not in story and "ทั้งหมดทรงตัวหรือลดลง" in story
+    assert "สถานีM1 (กรุงเทพมหานคร) " in story or story.endswith("สถานีM1 (กรุงเทพมหานคร)")
+
+
+def test_station_rain_reads_naturally_when_dry_or_at_the_same_spot():
+    lines, story = explain.station(station(), {"rain_24h": 0.0, "name_th": "บ้านบางการ้อง", "distance_km": 0.0}, 0.0)
+    rain = [l for l in lines if l.startswith("🌧️")][0]
+    assert rain == "🌧️ 24 ชม. ที่ผ่านมา: ไม่มีฝน" and "ห่าง 0" not in " ".join(lines)
+    near = explain.station(station(), {"rain_24h": 12.0, "name_th": "บ้านบางการ้อง", "distance_km": 0.2}, None)[0]
+    assert any(l == "🌧️ 24 ชม. ที่ผ่านมา: ฝนปานกลาง 12 มม. ที่สถานีนี้" for l in near)
+    assert lines[0] == "📍 สถานีวัดน้ำบ้านบางการ้อง · แม่น้ำท่าจีน · จ.สุพรรณบุรี"
+    assert "บ้านบางการ้อง ล้นตลิ่ง" in story
+
+
+def test_a_gist_that_fails_the_check_is_asked_once_more(monkeypatch):
+    answers = iter(["ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่งครับ", "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง"])
+    monkeypatch.setattr(explain.ai, "run", lambda *a, **k: next(answers))
+    explain._cache.clear()
+    assert explain.gist("simple", ["✅ ไม่มีจุดที่น้ำล้นตลิ่ง"], "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง") == "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง"
