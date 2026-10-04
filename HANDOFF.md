@@ -19,6 +19,7 @@
 
 | T.13 / BKK017: "I follow the dash trendline in chart … How we can calculate differently between description and chart?" | the first lean rule (measured pace alone) contradicted the chart's line; now a row leans only where the model median moves ≥ 3 cm the same way: right 82.9/80.3/82.3 %, 19–22 % of "?" rows lean; live check C20 | D-091 amended, KI-282 |
 | Ticker rejected as "new place" | "เลย", "แพร่", "ตาก" are also everyday words: counted only after จ./จังหวัด | situation.AMBIGUOUS |
+| v0.24.0 live check | **0 findings on C1–C20** (443 sheets, 2,017 rows, 62 rivers, 984 map gauges, ticker AI accepted); T.13 and BKK017 now "?" where the line is flat/opposite, CPY010 leans "↗ น่าจะขึ้น 8 ใน 10" at 48/72 h with a rising line | scripts/ux_consistency.py |
 
 ## 3i. Session 2026-10-04 13:45–14:40 UTC: ticker, 24/48/72 h rows, จับตา chips, dam releases tested, MODELS.md detail (v0.23.0)
 | Owner request | Result | Where |
