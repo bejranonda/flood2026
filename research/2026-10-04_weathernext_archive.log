@@ -1,0 +1,36 @@
+archive  30 days back (2026-09-04 00:00:00): yes  [total 0.01 GB]
+archive  90 days back (2026-07-06 00:00:00): yes  [total 0.01 GB]
+archive 180 days back (2026-04-07 00:00:00): yes  [total 0.02 GB]
+archive 365 days back (2025-10-04 00:00:00): no  [total 0.02 GB]
+Traceback (most recent call last):
+  File "/r/2026-10-04_weathernext_rain_v2.py", line 45, in <module>
+    for r in q(f"""SELECT DATE(f.time, 'Asia/Bangkok') AS day, SUM(f.total_precipitation_1hr_mean) * 1000 AS mean_mm,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/r/2026-10-04_weathernext_rain_v2.py", line 23, in q
+    r = gcp.bq_query(sql, tok, billing, 180_000)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/floodwatch/gcp.py", line 66, in bq_query
+    return _post(f"{BQ}/projects/{billing_project}/queries", body,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/floodwatch/gcp.py", line 45, in _post
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 521, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 630, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 403: Forbidden
+

@@ -1,0 +1,18 @@
+our gauges within 10.0 km of a Flood Hub gauge: 79 (Flood Hub gauges 103)
+gauges scored: 75
+
+=== +12 h (chosen on the first half, scored on the second)
+star (today, V12)      n   75 · error vs no-change -13.3% (per-gauge mean -14.4%) · served a model   51 (star   37) · held ≥10 %   35 · worse   7
+star + Flood Hub       n   75 · error vs no-change -13.1% (per-gauge mean -14.1%) · served a model   51 (star   37) · held ≥10 %   36 · worse   9
+
+=== +24 h (chosen on the first half, scored on the second)
+star (today, V12)      n   75 · error vs no-change -11.9% (per-gauge mean -12.0%) · served a model   45 (star   26) · held ≥10 %   27 · worse   8
+star + Flood Hub       n   75 · error vs no-change -11.9% (per-gauge mean -12.1%) · served a model   46 (star   27) · held ≥10 %   29 · worse   7
+
+=== +48 h (chosen on the first half, scored on the second)
+star (today, V12)      n   75 · error vs no-change -11.2% (per-gauge mean  -9.7%) · served a model   41 (star   28) · held ≥10 %   28 · worse   7
+star + Flood Hub       n   75 · error vs no-change -11.4% (per-gauge mean -10.3%) · served a model   39 (star   26) · held ≥10 %   29 · worse   4
+
+=== +72 h (chosen on the first half, scored on the second)
+star (today, V12)      n   75 · error vs no-change  -8.3% (per-gauge mean  -6.6%) · served a model   31 (star   26) · held ≥10 %   23 · worse   3
+star + Flood Hub       n   75 · error vs no-change  -9.2% (per-gauge mean  -7.6%) · served a model   32 (star   26) · held ≥10 %   24 · worse   3

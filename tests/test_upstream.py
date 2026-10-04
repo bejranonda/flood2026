@@ -56,14 +56,20 @@ def test_learn_picks_only_leading_gauges_in_the_same_basin_within_reach_before_t
     assert 10 <= lag <= 14 and r >= upstream.MIN_R
 
 
-def test_learn_keeps_at_most_two():
+def test_learn_keeps_at_most_four():
+    # D-093 (2026-10-04): up to 4 learned gauges (was 2) — on gauges the choice never saw, the served error vs "no change"
+    # improved at every horizon (24 h −6.6 → −9.1 %), research/2026-10-04_upstream_k_s{1,2}.log
     s = _walk(11)
     ser = {"T": _grid(_shift(s, 12))}
     meta = {"T": META["T"]}
-    for i in range(4):
+    for i in range(6):
         ser[f"U{i}"] = _grid(s + i * 0.1)
         meta[f"U{i}"] = {"basin": "น้ำพอง", "lat": 16.6 + i * 0.05, "lon": 101.3}
-    assert len(upstream.learn(ser, meta, cutoff_h=int(ser["T"][0][CUT]))["T"]) == upstream.K == 2
+    assert len(upstream.learn(ser, meta, cutoff_h=int(ser["T"][0][CUT]))["T"]) == upstream.K == 4
+
+
+def test_ninety_days_of_pairs_are_enough_to_learn_from():
+    assert upstream.MIN_PAIRS == 90 * 24  # was 180 days (D-093)
 
 
 def test_short_overlap_is_not_enough():

@@ -22,7 +22,7 @@ in many possibilities"). One browser session, views compared at the same moment:
   C15 (v0.20.7) text = graph: each 12/24/48 h row prints the model's 50 % range that the chart draws at that horizon
      (owner 2026-10-03, Kgt.19A: "Why trend and model forecast in the chart are different?").
   C18 (v0.22.0, D-083) a card whose 24 h line says "เพิ่มขึ้น" while the recent pace is not rising says what the last 6 h did;
-  C19 (v0.23.0, D-089) the top-bar ticker is shown, equals /api/situation and is at most 45 min old (the summary rain line
+  C19 (v0.23.0, D-089; items since v0.25.0, D-094) the top-bar ticker is shown, carries every /api/situation item and is at most 45 min old (the summary rain line
      of C9/C11 is gone: heavy rain now reaches the top bar through the ticker).
   C20 (v0.24.0, D-091) a leaning row ("น่าจะเพิ่มขึ้น/ลดลง") goes the way of the chart's dashed line at that horizon.
   C16 (v0.21.0, D-079) the map draws every gauge with data < 24 h; C17 (v0.21.0, D-077) the จับตา tab agrees with the
@@ -349,8 +349,9 @@ with sync_playwright() as p:
     shown = pg.evaluate("() => document.querySelector('#summary .ticker .tk-more')?.innerText || ''")
     import datetime as _dt
     age = (_dt.datetime.now(_dt.timezone.utc) - _dt.datetime.fromisoformat(sit["at"])).total_seconds() / 60 if sit.get("at") else None
-    if not sit.get("text") or sit["text"] not in shown:
-        note("C19", "ticker", f"ticker missing or not the API text ({shown[:60]!r})")
+    items = sit.get("items") or ([{"text": sit["text"]}] if sit.get("text") else [])  # v0.25.0: a list of items (D-094)
+    if not items or any(i["text"] not in shown for i in items):
+        note("C19", "ticker", f"ticker missing or not the API items ({shown[:60]!r})")
     elif age is None or age > 45:
         note("C19", "ticker", f"ticker is {age} min old")
     counts["ticker_ai"] = bool(sit.get("ai"))

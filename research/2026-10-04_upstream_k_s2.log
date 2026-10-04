@@ -1,0 +1,45 @@
+ Container floodwatch-worker-run-45598f41fdc2 Creating 
+ Container floodwatch-worker-run-45598f41fdc2 Created 
+… 20
+… 40
+… 60
+… 80
+… 100
+… 120
+… 140
+sample 2: gauges 148; upstream gauges used per variant: {'K2/180d (today)': 114, 'K3/180d': 143, 'K4/180d': 164, 'K2/90d': 123, 'K4/90d': 176}
+
+=== +6 h (chosen on the first half, scored on the second)
+K2/180d (today)        n  148 · error vs no-change -19.9% (per-gauge mean -14.0%) · served a model   76 (star   65) · held ≥10 %   58 · worse   8
+K3/180d                n  148 · error vs no-change -20.6% (per-gauge mean -14.6%) · served a model   77 (star   66) · held ≥10 %   59 · worse   8
+K4/180d                n  148 · error vs no-change -20.7% (per-gauge mean -14.7%) · served a model   77 (star   66) · held ≥10 %   59 · worse   8
+K2/90d                 n  148 · error vs no-change -19.9% (per-gauge mean -14.0%) · served a model   76 (star   65) · held ≥10 %   58 · worse   8
+K4/90d                 n  148 · error vs no-change -20.7% (per-gauge mean -14.6%) · served a model   77 (star   66) · held ≥10 %   59 · worse   8
+
+=== +12 h (chosen on the first half, scored on the second)
+K2/180d (today)        n  147 · error vs no-change -14.8% (per-gauge mean -10.4%) · served a model   76 (star   60) · held ≥10 %   53 · worse  13
+K3/180d                n  147 · error vs no-change -15.2% (per-gauge mean -11.0%) · served a model   77 (star   61) · held ≥10 %   54 · worse  13
+K4/180d                n  147 · error vs no-change -15.6% (per-gauge mean -11.4%) · served a model   77 (star   61) · held ≥10 %   54 · worse  13
+K2/90d                 n  147 · error vs no-change -15.0% (per-gauge mean -10.8%) · served a model   77 (star   60) · held ≥10 %   54 · worse  13
+K4/90d                 n  147 · error vs no-change -15.9% (per-gauge mean -11.7%) · served a model   79 (star   62) · held ≥10 %   55 · worse  13
+
+=== +24 h (chosen on the first half, scored on the second)
+K2/180d (today)        n  148 · error vs no-change  -6.6% (per-gauge mean  -6.9%) · served a model   62 (star   43) · held ≥10 %   44 · worse  11
+K3/180d                n  148 · error vs no-change  -8.4% (per-gauge mean  -8.0%) · served a model   64 (star   45) · held ≥10 %   46 · worse  10
+K4/180d                n  148 · error vs no-change  -9.1% (per-gauge mean  -8.5%) · served a model   66 (star   48) · held ≥10 %   48 · worse  11
+K2/90d                 n  148 · error vs no-change  -6.7% (per-gauge mean  -7.0%) · served a model   63 (star   45) · held ≥10 %   43 · worse  12
+K4/90d                 n  148 · error vs no-change  -9.1% (per-gauge mean  -8.4%) · served a model   67 (star   50) · held ≥10 %   47 · worse  12
+
+=== +48 h (chosen on the first half, scored on the second)
+K2/180d (today)        n  148 · error vs no-change  -7.5% (per-gauge mean  -6.0%) · served a model   65 (star   50) · held ≥10 %   43 · worse  12
+K3/180d                n  148 · error vs no-change  -7.9% (per-gauge mean  -6.5%) · served a model   65 (star   51) · held ≥10 %   43 · worse  11
+K4/180d                n  148 · error vs no-change  -8.5% (per-gauge mean  -6.8%) · served a model   66 (star   52) · held ≥10 %   45 · worse  12
+K2/90d                 n  148 · error vs no-change  -7.6% (per-gauge mean  -6.2%) · served a model   65 (star   51) · held ≥10 %   42 · worse  13
+K4/90d                 n  148 · error vs no-change  -8.6% (per-gauge mean  -6.7%) · served a model   66 (star   53) · held ≥10 %   44 · worse  13
+
+=== +72 h (chosen on the first half, scored on the second)
+K2/180d (today)        n  147 · error vs no-change  -6.9% (per-gauge mean  -4.5%) · served a model   58 (star   50) · held ≥10 %   36 · worse  15
+K3/180d                n  147 · error vs no-change  -6.6% (per-gauge mean  -4.5%) · served a model   56 (star   48) · held ≥10 %   35 · worse  14
+K4/180d                n  147 · error vs no-change  -7.5% (per-gauge mean  -5.0%) · served a model   58 (star   51) · held ≥10 %   36 · worse  14
+K2/90d                 n  147 · error vs no-change  -7.2% (per-gauge mean  -5.1%) · served a model   59 (star   51) · held ≥10 %   37 · worse  15
+K4/90d                 n  147 · error vs no-change  -8.0% (per-gauge mean  -5.3%) · served a model   60 (star   53) · held ≥10 %   38 · worse  14

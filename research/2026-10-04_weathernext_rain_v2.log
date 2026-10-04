@@ -1,0 +1,8 @@
+query refused: HTTP Error 403: Forbidden {
+  "error": {
+    "code": 403,
+    "message": "Quota exceeded: Your project exceeded quota for free query bytes scanned. For more information, see https://cloud.google.com/bigquery/docs/troubleshoot-quotas",
+    "errors": [
+      {
+        "message": "Quota exceeded: Your project exceeded quota for
+

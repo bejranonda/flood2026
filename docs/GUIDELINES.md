@@ -230,6 +230,12 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Answer the question people ask.** Residents ask "which way?" first; a row that only knows "how much is uncertain" should still say the direction it has evidence for, with that evidence's record, and keep the uncertainty in the numbers.
 - **Past, then future** in every trend block.
 
+### 6c-3. Lessons from 2026-10-04 evening (D-092–D-096, KI-284–KI-287)
+- **Research never touches live state (D-096).** `db.connect_readonly()` for scripts; `ai.run(..., account=False)` for model tests; BigQuery: one literal point per query, literal init times in small batches, a running byte cap — a joined point list scanned 56 GB for one init (KI-283 correction). A long open transaction plus a redeploy took the site down for ~12 min (KI-284).
+- **Improve the forecast honestly (MODELS §5d).** Choose on the first half, score on the second, confirm on a disjoint sample; report the gauges a change makes worse; never narrow a band unless it still holds on unseen hours (trend-dependent bands were narrower and held less often: rejected).
+- **Say only what the group is.** "อาจถึงตลิ่ง" in the ticker names only gauges whose water is rising (KI-286); an example list says "เช่น" only when there are more; a summary closes each group's sentence.
+- **AI wording item by item.** One slip should not throw away good wording: check each item against its own fact, fall back per item, drop polite particles instead of rejecting, and keep the ✨ card's voice everywhere (owner: "as at current ✨ ให้ AI สรุปให้ฟังง่าย ๆ").
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Zero-wait two-stage UX (v0.22.0):** Tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" immediately renders the deterministic rule-written story (`r.story`, ~40 ms) so visitors never face a blank 5–7 s shimmer. In the background, GLM retells the story in warm, natural spoken Thai (`&part=gist`); when verified, the card seamlessly updates with the polished retelling and badge. If GLM times out or is rejected, the rule story remains in place without error.

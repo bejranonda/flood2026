@@ -2,6 +2,30 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.25.0 — 2026-10-04
+- **A better forecast, tested honestly (owner: "Continue to improve the model forecasting performance … not fake the result
+  and error or uncertainty").** `star` now also reads how far the level sits from its 7- and 30-day means and its 1/3/72 h
+  changes. Chosen on one sample of gauges and confirmed on another it never saw: the served error against "no change" went
+  from −6.6/−5.5/−5.3 % to −8.3/−8.5/−9.4 % at 24/48/72 h, and 67/70/69 gauges (was 51/44/49) keep a ≥ 10 % gain; at
+  72 h 21 gauges end up worse than "no change" (was 10) — stated, not hidden (D-092). Tried and not kept: averaging
+  methods, a stricter selection rule, trend-dependent and shorter-window ranges (narrower but less honest). Google Flood
+  Hub as an input gains ~1 point at 72 h only (Q55); WeatherNext awaits a BigQuery billing step (Q53). The served 24 h
+  ranges hold as stated; at 72 h they are too confident in a falling river (KI-287, Q54). MODELS.md §5d, §9a.
+- **The ticker (owner: "ควรจับตาพื้นที่กรุงเทพฯ … but no Bangkok gauge rising"; "use symbols … to see the separation";
+  "simple, attractive and lovely Thai … only GLM").** "อาจถึงตลิ่ง" names only provinces where the water is rising (the
+  จับตา tab shows น้ำยังขึ้น / ทรงตัวหรือลดลง pills for it too); new items for Bangkok, the Chao Phraya Dam release and
+  the flow at Nakhon Sawan (with the change since yesterday) and counts against yesterday; the ticker is short items
+  with a symbol and a ◆ divider, a list when tapped. GLM rewrites each item in the voice of the ✨ card; each item is
+  checked against its own fact and falls back alone (9.3/11 items accepted in tests, 11/11 live) (D-094, KI-286).
+- **✨ ให้ AI สรุปให้ฟังง่าย ๆ on station sheets and on the จับตา tab (owner request).** A station's summary says what
+  its water is doing, the next 24–72 h and the rain measured nearby and forecast; the จับตา summary gives the overview
+  for the tab's region/province with the most critical gauges first. Retelling shown for 9/9 regions and 11/13 test
+  stations; new checks for every card: "กำลังจะถึงตลิ่ง" where the facts say "อาจถึง", a question to the reader;
+  polite particles are dropped (D-095).
+- **Robustness.** The collector's schema step gives up within 5 s when a lock is held (a research run took the site
+  down ~12 min, KI-284); research uses read-only connections and AI calls that never touch the visitors' AI breaker
+  (KI-285); a lean chip says "น่าจะเพิ่มขึ้น" (one verb with the solid chip).
+
 ## v0.24.0 — 2026-10-04
 - **"? ไม่แน่ชัด" rows lean by the measured trend, with their own track record (owner: "Why many stations say ? ไม่แน่ชัด, even we
   can see the trend from graphs" → "Lean the rows by the trend").** 63 / 79 / 83 % of the 24 / 48 / 72 h rows were "?": the model

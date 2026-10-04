@@ -3,7 +3,7 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.22.0** (code in `src/floodwatch/`). Numbers come from running code or the cited research files;
+> It describes **v0.25.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52). Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -25,6 +25,12 @@
 ถ้า "ไม่แน่ชัด" ใช้การเปลี่ยนแปลงที่วัดได้ล่าสุด (24 ชม. แต่ถ้า 6 ชม. ล่าสุดหยุดหรือกลับทิศ ถือว่าหยุด)
 
 **แท็บจับตา** — รวมสิ่งที่ควรรู้ล่วงหน้า 24–48 ชม. ตัวเลข "6 ใน 10" คือ **สถิติจริงของแอปเอง** 30 วันที่ผ่านมา ว่าเมื่อแอปคาดแบบนี้ เกิดจริงกี่ครั้ง
+
+**ปรับปรุงแบบจำลอง (4 ต.ค. 2569, ทดสอบแบบไม่โกง: เลือกวิธีจากครึ่งแรก วัดผลครึ่งหลัง ยืนยันกับสถานีอีกชุดที่ไม่เคยเห็น)** —
+แบบจำลอง star อ่านค่าเพิ่ม: ระดับน้ำเทียบค่าเฉลี่ย 7 และ 30 วัน และการเปลี่ยนแปลง 1/3/72 ชม. ความคลาดเคลื่อนลดลงจาก "ถือว่าคงที่"
+−5.3…−6.6 % เป็น −8.3…−9.4 % ที่ 24–72 ชม. (สถานีชุดที่สอง) · สิ่งที่ลองแล้วได้น้อยหรือไม่ได้: เฉลี่ยหลายวิธี (+0.4–0.9 จุด),
+ช่วงคาดการณ์ตามแนวโน้ม (แคบลงแต่พลาดบ่อยขึ้น = ไม่ซื่อตรง จึงไม่ใช้), ใช้ Google Flood Hub เป็นข้อมูลเข้า (+0.9 จุดที่ 72 ชม. เท่านั้น)
+· ตรวจย้อนหลัง 30 วัน: ช่วงที่แอปบอกที่ 24 ชม. ถูกตามที่บอก (50 % ถูก 51 %) แต่ที่ 72 ชม. มั่นใจเกินไป (ถูก 44 %) และมักพลาดด้านต่ำ (น้ำลดมากกว่าที่คาด)
 
 **สิ่งที่ลองแล้วไม่ใช้** — ภาพดาวเทียม GISTDA (คลาดเคลื่อน อาจทำให้เข้าใจผิด) · GloFAS (ไม่ช่วยในเจ้าพระยาตอนล่าง) · ฝนรายวันที่วัดได้ใส่ในแบบจำลอง (ไม่แม่นขึ้น) ·
 แบบจำลองไฮดรอลิกร่างแรก (ให้ผลไม่สมจริง)
@@ -88,7 +94,8 @@ BMA critical → คลองเต็ม, over BMA warning → คลองเ�
 
 ## 5. The forecast ladder (one forecaster per gauge, D-080)
 
-Code: `floodwatch/forecast/__init__.py` (`evaluate`, `forecast_station`, `run_all`), version `star-0.3`.
+Code: `floodwatch/forecast/__init__.py` (`evaluate`, `_backtest_errors`, `forecast_station`, `run_all`), version `star-0.4`
+(`STAR_INPUTS = 2`, stamped on every cached backtest; one from older inputs is redone).
 
 | Method | Formula (change over h hours from now, level y₀) | When it can win |
 |---|---|---|
@@ -96,10 +103,11 @@ Code: `floodwatch/forecast/__init__.py` (`evaluate`, `forecast_station`, `run_al
 | `tide` | η(t₀+h) − η(t₀), harmonic tide fitted by least squares on K1, O1, M2, S2, M4, MS4 | tidal lower reaches |
 | `trend` / `tide_trend` | (tide +) s₂₄·h·e^(−h/48), s₂₄ = 24 h slope of the 25 h trailing mean | slow, steady drains and rises |
 | `recent` | (tide +) r·h·e^(−h/48), r = smaller of the 24 h and 6 h fitted pace, 0 if they disagree | a rise or fall still going; stops when the last 6 h stop (Kgt.19A, D-080) |
-| `star` | ridge regression (λ = 1) per gauge and horizon on: tide change, own 6 h and 24 h change, deviation from the 25 h mean, each upstream gauge's 24/48 h change, C.13 dam release (+24/48 h change), rain forecast over the horizon (day-1 near, day-2 far) | rain, upstream water and dam releases (D-052) |
+| `star` | ridge regression (λ = 1) per gauge and horizon on: tide change, own 1/3/6/24/72 h change, deviation from the 25 h, 7-day and 30-day trailing means, each upstream gauge's 24/48 h change, C.13 dam release (+24/48 h change), rain forecast over the horizon (day-1 near, day-2 far) | rain, upstream water and dam releases (D-052); the 7/30-day means and 1/3/72 h changes since v0.25.0 (D-092) |
 
-- **Horizons:** 1, 3, 6, 12, 24, 48, 72 h (served 12/24/48 h). **History:** up to 370 days hourly (`LOOKBACK_DAYS`); a
-  gauge needs ≥ 7 days (`MIN_HOURS`); `star` needs ≥ 30 days of complete training rows (`STAR_MIN_TRAIN`).
+- **Horizons:** 1, 3, 6, 12, 24, 48, 72 h (rows show 24/48/72 h). **History:** up to 370 days hourly (`LOOKBACK_DAYS`); a
+  gauge needs ≥ 7 days (`MIN_HOURS`); `star` needs ≥ 30 days of complete training rows (`STAR_MIN_TRAIN`); since the 30-day mean joined (v0.25.0) that means
+  about 90 days of history before a gauge can use `star`.
 - **Backtest (rolling origin):** the last 45 days (`EVAL_HOURS`, or the last 40 % of a short record); the tide is fitted
   only on data before the window, `star` trained only on targets ending before it (no leakage). All methods are
   compared on the same rows by RMSE.
@@ -109,8 +117,9 @@ Code: `floodwatch/forecast/__init__.py` (`evaluate`, `forecast_station`, `run_al
   prediction (a split-conformal style band); 90 % coverage in the backtest is stored (`coverage90_backtest`).
 - **Cached backtests** (`forecast_model`) are reused ~20 h or until history grows 20 %; a backtest stored before a new
   ladder method existed is redone (`model_is_fresh`).
-- **Upstream gauges** (`forecast/upstream.py`): per gauge, up to 2 (`K`) gauges in the same basin and river system within
-  250 km (MAX_KM) whose 24 h change leads this gauge's by 1–48 h with correlation ≥ 0.5 over ≥ 180 days of hourly pairs;
+- **Upstream gauges** (`forecast/upstream.py`): per gauge, up to 4 (`K`, was 2 until v0.25.0, D-093) gauges in the same basin
+  and river system within 250 km (MAX_KM) whose 24 h change leads this gauge's by 1–48 h with correlation ≥ 0.5 over
+  ≥ 90 days of hourly pairs (was 180);
   relearned daily. On the Chao Phraya chain, gauges up the river by river km are used.
 
 **What the rows say** (`api.change_summary`): the median change and the 50 % range ("−3 ถึง +11 ซม."); direction
@@ -182,6 +191,35 @@ upstream water take a day or more to arrive, which a gauge's own history cannot 
 | P.1 สะพานนวรัฐ | Ping, Chiang Mai | no change 23.6 (star 21.6) | no change 28.8 | star is better but by less than 10 %, so the gate keeps "no change": the app would rather say "? ไม่แน่ชัด" than claim skill it does not have |
 | X.44 บ้านหาดใหญ่ใน | Khlong U-Taphao, Hat Yai | star 20.8 vs 24.9 | no change 28.9 | rain-driven, fast; star helps a day ahead, not three |
 
+### 5d. Improving the forecast honestly (Q52, 2026-10-04)
+
+> Owner: "Continue to improve the model forecasting performance that is our goal, not fake the result and error or
+> uncertainty to make it better." Every change below was judged the same way, and kept only if it held.
+
+**Protocol** (`research/q52_harness.py`): the gauge's own methods come from the rolling backtest; a `star` variant is
+trained only on hours before the 45-day window; the served method (best + the 10 % gate) is chosen on the window's
+**first half** and scored on the **second**; a variant is picked on gauge sample 1 and confirmed on a **disjoint**
+sample 2. We report the served error against "no change" (summed and per-gauge mean), how many gauges keep a ≥ 10 % gain
+on the unseen half, and how many end up **worse** than "no change" (the cost of serving a model).
+
+| Experiment | Result on the unseen half | Decision |
+|---|---|---|
+| Where the "?" comes from (`_uncertainty_sources.py`) | 528/520/512 of 961 gauges serve "no change" at 24/48/72 h; the best model gains 5–10 % at ~200 of them (just under the gate), 0–5 % at ~210; `star` is the near-miss at ~280 | aim at `star` |
+| Average the methods (`_combine.py`) | −5.9 → −6.8 % at 24 h, −5.4 → −5.6 % at 72 h | not shipped (too small) |
+| `star` inputs V1–V5 (`_star_variants.py`, picked on sample 1) | V1 (7/30-day means) best at 24–72 h, V2 (1/3/72 h changes) at 6 h; time of day and recency weights did not help | V12 = V1 + V2 |
+| V12 confirmed on sample 2 | served error vs "no change" 24/48/72 h: −6.6/−5.5/−5.3 → **−8.3/−8.5/−9.4 %**; gauges keeping ≥ 10 %: 51/44/49 → **67/70/69**; worse than "no change": 12/15/10 → 12/20/21 | **shipped v0.25.0 (D-092)** |
+| Stricter selection (gain on both halves of the choosing period) | removes few failures (72 h: 21 → 17) and loses more gain (−9.4 → −5.5 %) | gate stays 10 % |
+| More upstream gauges (K 2→4, history 180→90 days, `_upstream_k.py`) | picked on sample 1 (24 h −8.0 → −9.5 %); confirmed on sample 2: 12/24/48/72 h −14.8/−6.6/−7.5/−6.9 → −15.9/**−9.1**/−8.6/−8.0 %, gauges keeping ≥ 10 % 53/44/43/36 → 55/47/44/38, worse 13/11/12/15 → 13/12/13/14 | **shipped v0.25.0 (D-093)** |
+| Google Flood Hub forecasts as an input (`_floodhub_input.py`, 75 river gauges ≤ 10 km from a Flood Hub point) | 12/24 h no gain; 48 h −11.2 → −11.4 % (worse 7 → 4); 72 h −8.3 → −9.2 %. Archive verified "as issued" (320/320 values equal to what we stored live) | candidate (Q55): small, adds a live dependency |
+| WeatherNext 3 rain (`_weathernext_*.py`) | archive ≥ 180 days (April 2026 on); one literal point costs ~12 MB per run, a join of points scans the whole 56 GB partition; the month's free BigQuery quota ran out before the 60-day test | blocked: owner step (billing or 1 Nov), then backtest (D-069, Q44, Q53) |
+| Bands by measured trend (`_bands_by_trend.py`) | narrower (90 % band 72 → 64 cm at 24 h) but held less often (78 → 75 %) | **rejected** (narrower but less honest) |
+| Shorter error window for bands (`_band_window.py`) | 10/15/30 days widen bands and lower coverage vs 45 days | 45 days stays |
+| Served bands vs reality, 30 days (`_band_coverage_live.py`) | 50 % band held 51 / 48 / 44 % and 90 % band 88 / 86 / 80 % at 24 / 48 / 72 h; misses mostly **below** the band (water fell more than forecast: 32 / 36 / 42 % below vs 17 / 16 / 14 % above) | owner decision: widen 48/72 h bands to hold as stated (Q54) |
+
+**What it means for a visitor.** More gauges carry a real forecast where `star` learned the slow return of a river to its
+usual level (V1); the 24 h ranges hold as stated; at 72 h the ranges are too confident in a falling river, so we say so
+instead of hiding it.
+
 ## 6. Derived signals
 
 - **Bank chance** (`forecast.bank_chance`): the max over horizons of the 50/75/95 % quantiles against the bank →
@@ -217,7 +255,11 @@ upstream water take a day or more to arrive, which a gauge's own history cannot 
 | Trend in the rows | override beside the model (D-060) | text and chart disagreed (Kgt.19A, 535 rows) | removed; `recent` method in the ladder (D-080) |
 | GloFAS | upper bound with perfect future discharge | 0 of 12 main-river gauges gain ≥ 10 % | rejected (D-069) |
 | Satellite radar (GFM, GISTDA) | flooded cells near pins/gauges | blind in cities; GISTDA cells could mislead; layer emptied before rebuilds | removed from the app (D-084); a future source gets its own design |
-| WeatherNext 3 | 64-member rain ensemble | BigQuery linked dataset subscribed & verified live (2026-10-04, KI-283); backtest query ready | parked for backtest (D-069, Q44) |
+| WeatherNext 3 | 64-member rain ensemble | subscribed (KI-283); archive ≥ 180 days; a literal point is ~12 MB per run but a joined point list scans 56 GB; free BigQuery quota used up before the 60-day test (2026-10-04) | backtest after the owner's billing step (D-069, Q44, Q53) |
+| `star` inputs (Q52) | 7/30-day means, 1/3/72 h changes, time of day, recency weights | V12 (means + changes) −8.3…−9.4 % vs −5.3…−6.6 % on unseen gauges | shipped v0.25.0 (D-092) |
+| Averaging methods, stricter selection | forecast combination; gain on both halves | +0.4–0.9 points; stricter loses more than it saves | not shipped |
+| Flood Hub as a `star` input | the forecast's relative discharge change | +0.9 points at 72 h, none at 12–24 h (75 gauges) | candidate (Q55) |
+| Bands | by measured trend; shorter windows | narrower but less honest; wider and less honest | rejected; 72 h overconfidence → Q54 |
 
 | Google Flood Hub | 103 virtual points | agrees when it flags (2 of 3 SEVERE over our over-bank gauges), misses 7 over-bank places; 31 points beyond our gauges; 9-day horizon | collected and validated before any display (D-087) |
 | More stations | ablation: 2 / 1 / 0 upstream gauges | 2 upstream gauges cut error 7.6 / 5.4 / 4.2 % (12/24/48 h); no saturation | try 3–4 (Q47); DWR as inputs after ~30 days (Q46) |
@@ -245,10 +287,34 @@ upstream water take a day or more to arrive, which a gauge's own history cannot 
 | 7 | **Tide predictions for the Gulf** (Navy tables) | lower reaches in the high-tide season | small–moderate at 1–12 h | Royal Thai Navy |
 | 8 | **Longer-range river outlook** (Flood Hub after validation, 3–9 days) | days of lead time where we stop at 48 h | lead time, not precision | Google Flood Hub (D-087) |
 
+### 9a. Data review for nationwide forecasting (2026-10-04; owner: "which data can we obtain … more data coverage … other variables or sources")
+
+**What we have now** (fresh gauges in the forecast, 2026-10-04): HII 336, RID 291 (290 with discharge), BMA 183, FOP 86,
+EGAT 65; DWR village posts 455 (archive since 3 Oct, trend only); rain: Open-Meteo forecasts with day-1/day-2 hindcasts
+(0.5° cells nationwide, ~8 km points around Bangkok), HII rain gauges (measured); Google Flood Hub 103 points (status +
+daily forecasts, a year of archive available); WeatherNext 3 (research only).
+
+| Candidate | Evidence so far | Next step |
+|---|---|---|
+| Discharge at RID gauges (290) as upstream inputs | levels are used; discharge is used only at C.13 | test like `_upstream_k.py` with discharge changes |
+| More learned upstream gauges | confirmed on sample 2: +1.1–2.5 points at 12–72 h | shipped (D-093) |
+| Flood Hub forecasts as inputs | +0.9 points at 72 h, none at 12–24 h | owner choice (Q55) |
+| WeatherNext rain | archive ≥ 180 days; cheap query form found | owner billing step, then the 60-day rain test (Q53) |
+| DWR posts as upstream inputs (thin provinces) | ~1 day of archive now | after 30–60 days (Q46) |
+| Hourly rain (own archive) | daily rain gave nothing | re-test mid-Dec 2026 (Q43) |
+| Soil moisture / antecedent rain (e.g. Open-Meteo soil moisture, ERA5-Land) | not tested | candidate variable for rain-fed rivers |
+| Reservoir storage % (RID dams) | dam releases beyond C.13 gave no gain (D-090) | as a regional context line, not an input |
+| Gulf tide tables (Navy) | our harmonic fit covers lower reaches | small gain expected |
+| Gate and pump operations | not in any feed we reached | ask BMA/RID (unchanged) |
+
 ## 10. How to reproduce
 
 - Tests: `docker compose run --rm --no-deps worker pytest -q` (≈ 290 tests).
 - Nationwide backtest: `scripts/backtest_nationwide.py`. Track records: `risks.compute_records` (forecaster, daily).
 - Evidence scripts: `research/2026-10-03_verify_bank.py`, `_verify_up.py`, `_verify_rise.py`, `_verify_text_graph.py`,
   `_ablate_upstream.py`, `research/2026-10-04_floodhub_validate.py`.
-- Live UI consistency: `python3 scripts/ux_consistency.py out.json 6` (checks C1–C19).
+- Live UI consistency: `python3 scripts/ux_consistency.py out.json 6` (checks C1–C20).
+- Q52 experiments (honest protocol): `research/q52_harness.py`, `2026-10-04_{combine,star_variants,star_selection,upstream_k,
+  floodhub_input,bands_by_trend,band_window,band_coverage_live,uncertainty_sources,weathernext_probe*,weathernext_rain_v2}.py`
+  with their `.log` files. Open the database read-only (`db.connect_readonly()`), never redeploy during a run (KI-284), and
+  call AI with `account=False` (KI-285).

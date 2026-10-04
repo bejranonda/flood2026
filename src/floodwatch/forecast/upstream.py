@@ -1,7 +1,7 @@
 """Upstream gauges learned from the data (D-064), for gauges off the Chao Phraya chain.
 
 Bangkok's `star` model reads the two nearest gauges up the Chao Phraya by river km. Outside it there is no national
-river network in the app, so each gauge gets up to K gauges from its own HII basin, within MAX_KM, whose 24 h change
+river network in the app, so each gauge gets up to K (4) gauges from its own HII basin, within MAX_KM, whose 24 h change
 best *leads* its own 24 h change (lag 1-48 h). Rules:
 - learned only on hours before the backtest window (cutoff), so the backtest never sees what chose its inputs;
 - a gauge whose best lag is 0 (the same place, e.g. another agency's gauge beside it) is not upstream;
@@ -17,11 +17,11 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
-K = 2
+K = 4  # D-093: up to 4 learned gauges (was 2), research/2026-10-04_upstream_k_s{1,2}.log
 MAX_KM = 250.0
 MAX_LAG = 48
 MIN_R = 0.5
-MIN_PAIRS = 180 * 24  # ~180 days of hourly pairs
+MIN_PAIRS = 90 * 24  # ~90 days of hourly pairs (was 180, D-093)
 
 
 def _d24(x: np.ndarray) -> np.ndarray:

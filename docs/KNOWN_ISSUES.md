@@ -742,6 +742,7 @@ Owner (CPY010, HDA009, WL.BBR.02 screenshots): 63 / 79 / 83 % of 24 / 48 / 72 h 
 Owner (T.13, BKK017): "↘ น่าจะลดลง" beside a flat line and beside "0 ถึง +8 ซม." with a rising line. The first lean rule used the measured pace only, so the word and the chart (the model) could disagree — the KI-270 pattern again, which I had flagged as the risk of this option. Fixed: lean only where the model median moves ≥ 3 cm the same way (80–83 % right over 30 days); live check C20 compares each leaning row with the chart's line.
 
 ### KI-283 — WeatherNext 3 BigQuery: Analytics Hub subscription, key file permissions, and dry-run scan vs GIS clustering · 🟢 resolved 2026-10-04
+**Correction 2026-10-04 20:20 UTC (measured):** the ~17 MB holds only for a *literal* point (`ST_INTERSECTS(t.geography_polygon, ST_GEOGPOINT(lon, lat))`, 11.8 MB per init). A join with a list of points (`FROM t, pts WHERE ST_INTERSECTS(..., pts.g)`) is not pruned and processed **56 GB for one init**; 61 literal init times in one `IN` list were refused; 3 per query pass (22 MB). The project's free BigQuery quota for October then ran out (HTTP 403 "exceeded quota for free query bytes scanned"). Rules: D-096; owner step WNEXT-BILL.
 2026-10-04 integrating WeatherNext 3 after Google approved access:
 - **Analytics Hub subscription step (WNEXT):** Approval allowlists the Google account, but does not auto-populate tables. The user must navigate to BigQuery > Sharing (Analytics Hub) > search "WeatherNext 3" > click "Subscribe" to create a linked dataset (`weathernext_3`). In BigQuery Explorer, the tables (`weathernext_3_0_0_0p1deg` and `weathernext_3_0_0_0p05deg`) appear with `Type: View`.
 - **Service account permissions & key file mode:** The service account (`weathernext-worker@...`) requires `BigQuery Admin` (or `BigQuery Job User` at project level + `BigQuery Data Viewer` on the dataset). In Docker, the container runs as non-root user `app` (UID 10001); key files in `certs/` created as `600 root:root` fail with `PermissionError` [Errno 13]. Fixed by `chmod 644 certs/gen-lang-client-*.json`.
@@ -757,3 +758,12 @@ behind the research transaction; every page query then queued behind the waiting
 schema pid → research pid). /api/health timed out. Recovered when the owner stopped the research container. Fixes:
 `init_schema` sets `lock_timeout = 5s` (fails fast, the start-up loop retries); research scripts use the new
 `db.connect_readonly()` (autocommit, read-only); never redeploy while a research job is running (GUIDELINES §research).
+
+### KI-285 — Research AI calls paused AI for every visitor for an hour · 🟢 fixed v0.25.0
+2026-10-04 ~19:30 UTC a model comparison sent three calls to a Workers AI model the account may not use (error 5018); they counted as consecutive failures in the shared `ai_usage` breaker, which paused AI (ticker, ✨ card) until 20:33. Cleared by hand (`paused_until` and `failures` only). Fix: `ai.run(..., account=False)` for research (no budget, no breaker); `provider`/`model` per call.
+
+### KI-286 — The ticker named Bangkok "อาจถึงตลิ่ง" while its gauges were steady under the bank · 🟢 fixed v0.25.0
+Owner: "ควรจับตาพื้นที่กรุงเทพฯ สมุทรปราการ และอ่างทอง ที่น้ำอาจถึงตลิ่งในอีก 24–48 ชม." with no Bangkok gauge rising. The five Bangkok gauges in the group sat 6–19 cm under the bank, steady or falling, inside the forecast band (">50%"/"25-50%"). Fix (D-094): may-reach items carry their trend; the ticker counts and names only rising ones; the tab shows the pills.
+
+### KI-287 — 72 h likely ranges are too confident in a falling river · 🟡 open (Q54)
+Served bands over 30 days (research/2026-10-04_band_coverage_live.log): the 50 % band held 51 / 48 / 44 % and the 90 % band 88 / 86 / 80 % at 24 / 48 / 72 h; misses mostly below the band (water fell more than forecast). Shorter error windows and trend-dependent bands make it worse; widening 48/72 h bands until they hold is honest but adds "?" rows — owner decision.

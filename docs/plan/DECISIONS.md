@@ -577,6 +577,31 @@
   - New `.env` keys (empty in git): `GFM_EMAIL`, `GFM_PASSWORD`, `GOOGLE_APPLICATION_CREDENTIALS`, `WEATHERNEXT_PROJECT`, `WEATHERNEXT_DATASET`, `EWDS_API_KEY` — worker only, never the web app; `owner_status.py` checks each with one request and prints no value.
 - **Revisit:** satellite UI if users outside Bangkok ask what the fields look like; WeatherNext after its backtest (owner step WNEXT: subscribe to the listing).
 
+### D-096 — Research never touches live state: read-only connections, a schema lock timeout, AI calls without accounting
+- **Date:** 2026-10-04 · **Status:** accepted (after KI-284 and KI-285)
+- **Decision:** research scripts open the database with `db.connect_readonly()` (autocommit, read-only); the collector's `init_schema` runs with `lock_timeout = 5s` and retries; research calls `ai.run(..., account=False)` (no daily budget, no breaker); BigQuery research uses one literal point per query, literal init times in small batches and a running byte cap (KI-283 correction). Never redeploy during a research run without these.
+
+### D-095 — ✨ ให้ AI สรุปให้ฟังง่าย ๆ on station sheets (with rain) and on the ⚠️ จับตา tab
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "เพิ่ม ✨ … ที่จุด Stations เพื่อสรุปให้ฟังแบบง่ายๆ รวมข้อมูลน้ำฝนไปด้วย" and "… ที่ tab ⚠️ จับตา เพื่ออธิบายสถานการณ์ภาพรวม และเน้นจุดที่วิกฤติ"; "The current version of app is already good")
+- **Decision:** the pin's pattern (D-068): rules write the story and the lines (`explain.station`, `explain.watch`); GLM may retell them only after `explain.check`, cached 6 h by content, on request only (`/api/explain_station`, `/api/explain_watch`). Station: the station is the subject, the sheet's own rows, rain measured nearby and forecast; stale data tells no "now"; no button where the level is hidden (D-024). จับตา: `risks.only()` = the tab's filter; over the bank and still rising first (highest above the bank), then rising toward the bank, fast rise, heavy rain; each group closes its own sentence.
+- **Checks added for every card:** "กำลังจะ/ใกล้จะถึงตลิ่ง" when the facts say "อาจถึง" (stronger than the forecast), a closing question to the reader; polite particles are dropped (not a reason to reject); 3 tries, 15 s each.
+- **Validation:** research/2026-10-04_ai_summaries_validate_run2.log — retelling shown 9/9 จับตา regions and 11/13 stations, 1.2–1.3 tries; what is left is rightly rejected or a timeout.
+
+### D-094 — The national ticker: items with symbols, rising-only "อาจถึงตลิ่ง", Bangkok, dam and river flows; GLM item by item
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "ควรจับตาพื้นที่กรุงเทพฯ … แต่ไม่พบสถานีในกรุงเทพฯ ที่น้ำขึ้นจนถึงตลิ่ง"; "very long text, try to use symbols … to see the separation of phrase"; "simple, attractive and lovely Thai … natural smooth language"; "You can use only GLM … as at current ✨ ให้ AI สรุปให้ฟังง่าย ๆ")
+- **Decision:** may-reach gauges carry their trend group (tab pills like over the bank); the ticker names provinces only for gauges whose water is rising; new facts: a Bangkok line, the C.2 (Nakhon Sawan) and C.13 (dam release) discharge with their 24 h change (RID; C.13 2,500 m³/s matched Thai PBS/Amarin 2026-10-03/04), counts against yesterday from a 30 h history; "เช่น" only for a partial list. The ticker is a list of items with a topic symbol and a divider (a list when opened). GLM (only) rewrites every item in the voice of the ✨ card; each item is checked against its own fact (numbers, places, trend words and "เช่น" kept, no alarm or tone slip, a flow never a level); a failed item keeps the rule wording; accepted wording is cached by fact.
+- **Evidence:** research/2026-10-04_ticker_models_run{1..4}*.log — GLM 6.8/11 items accepted with the first prompt → 9.3/11 with the ✨ voice; live run 11/11. Llama 3.3 (11/11) and SEA-LION (10.2/11) were tested on Workers AI; not used (owner: GLM only).
+
+### D-093 — Up to 4 learned upstream gauges after 90 days of history (was 2 after 180)
+- **Date:** 2026-10-04 · **Status:** accepted (Q47 "3–4 upstream gauges"; owner: "Continue to improve the model forecasting performance")
+- **Evidence:** research/2026-10-04_upstream_k_s{1,2}.log, honest protocol (MODELS §5d): K4/90 d picked on sample 1, confirmed on sample 2 (148 gauges outside the focus area): served error vs "no change" at 12/24/48/72 h −14.8/−6.6/−7.5/−6.9 → −15.9/−9.1/−8.6/−8.0 %; gauges keeping ≥ 10 % 53/44/43/36 → 55/47/44/38; worse 13/11/12/15 → 13/12/13/14. Upstream gauges used: 114 → 176 in the sample.
+- **Decision:** `upstream.K = 4`, `MIN_PAIRS = 90 days`; relearned daily; gauges whose inputs change are backtested again at once.
+
+### D-092 — `star` reads the 7/30-day means and the 1/3/72 h changes (STAR_INPUTS 2)
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "Continue to improve the model forecasting performance … not fake the result and error or uncertainty")
+- **Evidence:** honest protocol (MODELS §5d): V12 picked on sample 1, confirmed on disjoint sample 2 — served error vs "no change" at 24/48/72 h −6.6/−5.5/−5.3 → −8.3/−8.5/−9.4 %; gauges keeping ≥ 10 % 51/44/49 → 67/70/69; worse than "no change" 12/15/10 → 12/20/21 (stated cost). Stricter selection removed few failures and lost more gain; averaging methods +0.4–0.9 points only; time of day and recency weights did not help.
+- **Decision:** added to `star_features`; cached backtests carry `star_inputs` and are redone when it changes; `star` needs ~90 days of history (30-day mean). Deployed 2026-10-04 16:49 UTC; the next run redid 944 backtests in 1,454 s.
+
 ### D-091 — A "? ไม่แน่ชัด" row leans by the measured trend; the numbers stay the model's
 - **Date:** 2026-10-04 · **Status:** accepted (owner: "Why many stations say ? ไม่แน่ชัด, even we can see the trend from graphs. Could we think about average trend in long term" → chose "Lean the rows by the trend" over my recommended "measured trend + one forecast line"; window "24 h as now", and "move 24 ชม. ที่ผ่านมา … before 24 hr prediction")
 - **Evidence:** research/2026-10-04_unsure_rows.py — on "?" rows with a real change, direction right: measured 24 h trend 70 / 71 / 72 %, 3-day trend 67 / 66 / 63 %, model median 69 / 61 / 57 % at 24 / 48 / 72 h; amount errors 30–50 cm either way. Daily lean record (strict sign, 30 days): 75.5 / 75.4 / 76.4 %.

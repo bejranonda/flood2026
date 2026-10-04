@@ -1,0 +1,6 @@
+1) init 2026-10-03 00:00:00, 9 points: 9 rows, 56017.6 MB processed
+    {'point': 'samut_sakhon_nakhon_pathom', 'n': '72', 'mm_mean': '18.314122782953746'}
+    {'point': 'bkk_east', 'n': '144', 'mm_mean': '41.7065403921697'}
+too costly per init: stop
+    {'point': 'chainat', 'n': '72', 'mm_mean': '25.754925749538415'}
+

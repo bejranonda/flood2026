@@ -180,6 +180,13 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | HII BMA canals | `GET …/thaiwater30/public/canal_waterlevel` | 282 rows, newest 2026-09-28 (frozen, KI-273); 76 BMA gauges not in our app | ⚠️ re-check weekly |
 | GISTDA 7-day layer | as §2k | 2026-10-03 19:44 UTC: `numberMatched` 0, no features for > 1 h (rebuild) | guarded (KI-269) |
 
+### 2n. Flood Hub archive and WeatherNext query cost (probed 2026-10-04 20:00–20:30 UTC; D-094, D-096)
+| Source | Call | Result | Use |
+|---|---|---|---|
+| Google Flood Hub | `gauges:queryGaugeForecasts?gaugeIds=…&issuedTimeStart=<365 d ago>` (key in header) | 366 daily forecasts per gauge back to 2025-10-05; 320/320 values identical to our live store (2–4 Oct) | honest backtest of Flood Hub as an input (Q55) |
+| WeatherNext 3 | BigQuery, one literal point, one init | 11.8 MB processed; a joined list of 9 points 56 GB; archive at 2026-04-07 yes, 2025-10-04 no; 61 init times in one IN list refused, 3 pass (22 MB); then HTTP 403 "exceeded quota for free query bytes scanned" | backtest after the owner's billing step (Q53) |
+| RID discharge | `observation.discharge` | 290 gauges hourly; C.13 2,500 m³/s on 2026-10-04 = Thai PBS/Amarin | ticker flows (D-094) |
+
 ### 2m. Google Flood Hub and dam history (probed 2026-10-04 09:50–14:10 UTC, honest UA; D-087, D-090)
 | Source | Request | Result | Use |
 |---|---|---|---|
