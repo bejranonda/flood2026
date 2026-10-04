@@ -188,7 +188,7 @@ def test_a_past_change_told_as_the_future_is_rejected():
     rule = "\n".join(LAM_NAM_KAM)
     bad = "ตอนนี้น้ำที่ลำน้ำก่ำยังต่ำกว่าตลิ่งอยู่ แต่ช่วงหนึ่งวันสองวันนี้น้ำจะขึ้นค่อนข้างมาก ฝนคาดว่าจะตกเล็กน้อย"
     assert explain.check(bad, rule)
-    ok = "ลำน้ำก่ำยังต่ำกว่าตลิ่งมาก 24 ชม. ที่ผ่านมาน้ำเพิ่มขึ้นมาก และอีก 24 ชม. น่าจะเพิ่มขึ้นเล็กน้อยค่ะ"
+    ok = "ลำน้ำก่ำยังต่ำกว่าตลิ่งมาก 24 ชม. ที่ผ่านมาน้ำเพิ่มขึ้นมาก และอีก 24 ชม. น่าจะเพิ่มขึ้นเล็กน้อย"  # one neutral voice: no ค่ะ/ครับ (2026-10-04)
     assert explain.check(ok, rule) == []
 
 
@@ -346,3 +346,13 @@ def test_hedged_bank_phrasing_is_accepted_when_rule_allows():
 SAT = {"nearest_m": 300, "cells": 4, "area_rai": 120, "img_from": "2026-09-27", "img_to": "2026-09-29", "source": "GISTDA"}
 
 
+
+
+def test_retellings_open_with_the_water_in_one_neutral_voice_without_good_news_framing():
+    # live sample of 12 pins (2026-10-04): "ข่าวดีคือ …", "เดี๋ยวเล่าให้ฟังนะคะ" openings and mixed นะคะ / นะ voices passed
+    rule = "บทสรุป: น้ำยังต่ำกว่าตลิ่ง ช่วงที่ผ่านมาน้ำลดลง\n🔮 อีก 24 ชม.: ลดลง"
+    assert "tone" in " ".join(explain.check("ข่าวดีคือ น้ำยังต่ำกว่าตลิ่ง ช่วงที่ผ่านมาน้ำลดลง", rule))
+    assert "tone" in " ".join(explain.check("น้ำยังต่ำกว่าตลิ่ง ช่วงที่ผ่านมาน้ำลดลงนะคะ", rule))
+    assert "filler" in " ".join(explain.check("เดี๋ยวเล่าให้ฟังนะ น้ำยังต่ำกว่าตลิ่ง ช่วงที่ผ่านมาน้ำลดลง", rule))
+    assert explain.check("น้ำยังต่ำกว่าตลิ่ง ช่วงที่ผ่านมาน้ำลดลงนะ", rule) == []
+    assert "เริ่มสูง หมายถึง" in explain.SYSTEM and "สถานีวัดน้ำ" in explain.SYSTEM
