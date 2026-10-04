@@ -112,7 +112,7 @@ function trendRow(ch, hours, unsure = false) {
   const rec = lean && ch.lean_rec && ch.lean_rec.n >= MIN_REC_N ? ` <small class="lean-rec">${ch.lean_rec.hit < 0.05 ? "< 1" : Math.round(ch.lean_rec.hit * 10)} ใน 10</small>` : "";
   const chip = dirn ? `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span>`
     : steady ? `<span class="chg" style="background:${CHANGE.steady.color}">→ ${esc(CHANGE.steady.th)}</span>`
-    : lean ? `<span class="chg chg-lean ${lean}">${lean === "up" ? "↗ น่าจะขึ้น" : "↘ น่าจะลดลง"}${rec}</span>`
+    : lean ? `<span class="chg chg-lean ${lean}">${lean === "up" ? "↗ น่าจะเพิ่มขึ้น" : "↘ น่าจะลดลง"}${rec}</span>`
     : `<span class="chg chg-unproven">? ไม่แน่ชัด</span>`;
   // one forecaster (v0.20.7): every row is the model's own path, the band the chart draws; the ⓘ names the method
   const how = ch.method === "recent" ? " · วิธี: ต่อแนวโน้มล่าสุด (ความเร็วช่วงหลังสุด ชะลอลงตามเวลา)" : "";

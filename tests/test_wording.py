@@ -214,5 +214,5 @@ def test_unsure_rows_lean_with_their_record_and_the_past_comes_first():
     # owner 2026-10-04: "Lean the rows by the trend" and "move 24 ชม. ที่ผ่านมา … before 24 hr prediction … the last and then
     # the future"; the word leans, the numbers stay the model's range (= the chart band)
     tr = APP.split("function trendRow(")[1].split("\n}\n")[0]
-    assert "ch.lean" in tr and "น่าจะขึ้น" in tr and "น่าจะลดลง" in tr and "lean_rec" in tr
+    assert "ch.lean" in tr and "น่าจะเพิ่มขึ้น" in tr and "↗ น่าจะขึ้น\"" not in tr and "น่าจะลดลง" in tr and "lean_rec" in tr
     assert "${obsLine(s)}${trendRows(s, [24])}" in APP and "${changeLines(s)}${trendRows(s, [24, 48, 72])}" in APP

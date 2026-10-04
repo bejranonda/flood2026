@@ -24,7 +24,7 @@ in many possibilities"). One browser session, views compared at the same moment:
   C18 (v0.22.0, D-083) a card whose 24 h line says "เพิ่มขึ้น" while the recent pace is not rising says what the last 6 h did;
   C19 (v0.23.0, D-089) the top-bar ticker is shown, equals /api/situation and is at most 45 min old (the summary rain line
      of C9/C11 is gone: heavy rain now reaches the top bar through the ticker).
-  C20 (v0.24.0, D-091) a leaning row ("น่าจะขึ้น/ลดลง") goes the way of the chart's dashed line at that horizon.
+  C20 (v0.24.0, D-091) a leaning row ("น่าจะเพิ่มขึ้น/ลดลง") goes the way of the chart's dashed line at that horizon.
   C16 (v0.21.0, D-079) the map draws every gauge with data < 24 h; C17 (v0.21.0, D-077) the จับตา tab agrees with the
      list's station data (each gauge once, over-bank rows critical, may-reach rows banded, cm to the bank equal).
   C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
@@ -138,7 +138,7 @@ with sync_playwright() as p:
             pts_t = {p[0]: (p[1], p[2]) for p in tg["pts"]}
             med_t = {p[0]: p[3] for p in tg["pts"]}
             for h, txt, chip in tg["rows"]:  # C20 (D-091): a leaning word goes the way of the chart's dashed line
-                if "น่าจะขึ้น" in chip and not med_t.get(h, 0) >= 3 or "น่าจะลดลง" in chip and not med_t.get(h, 0) <= -3:
+                if "น่าจะเพิ่มขึ้น" in chip and not med_t.get(h, 0) >= 3 or "น่าจะลดลง" in chip and not med_t.get(h, 0) <= -3:
                     note("C20", f"sheet {code}", f"+{h} h '{chip}' while the chart's line moves {med_t.get(h)} cm")
             for h, txt, _ in tg["rows"]:
                 nums = [int(x.replace("−", "-")) for x in re.findall(r"[+−-]?\d+", txt)]

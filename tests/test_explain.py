@@ -359,7 +359,7 @@ def test_retellings_open_with_the_water_in_one_neutral_voice_without_good_news_f
 
 
 def test_a_leaning_row_is_told_as_a_likely_direction_without_an_amount():
-    # owner 2026-10-04: "Lean the rows by the trend": the panel shows "↗ น่าจะขึ้น"; the words say the same, from the
+    # owner 2026-10-04: "Lean the rows by the trend": the panel shows "↗ น่าจะเพิ่มขึ้น"; the words say the same, from the
     # measured trend, and still say the amount is not certain
     lean = {**_ch("steady", "steady", -0.05, 0.12, method="persistence"), "lean": "up", "lean_rec": {"n": 120, "hit": 0.64}}
     out = _out(ch24=lean, obs=("rise", 8, 24))
