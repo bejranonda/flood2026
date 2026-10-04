@@ -1,0 +1,30 @@
+
+=== +24 h, '?' rows
+served median            n  8217 · MAE  25.9 cm · direction right  67% of  3373 · flat right  33% of  4844
+no change                n  8217 · MAE  26.3 cm · direction right   0% of     0 · flat right  31% of  8217
+pace τ12                 n  8217 · MAE  25.0 cm · direction right  75% of  3320 · flat right  42% of  4897
+fix-if-disagree τ12      n  8217 · MAE  25.2 cm · direction right  72% of  4970 · flat right  43% of  3247
+pace τ24                 n  8217 · MAE  25.1 cm · direction right  75% of  3935 · flat right  44% of  4282
+fix-if-disagree τ24      n  8217 · MAE  25.3 cm · direction right  73% of  5387 · flat right  44% of  2830
+pace τ48                 n  8217 · MAE  25.7 cm · direction right  75% of  4263 · flat right  44% of  3954
+fix-if-disagree τ48      n  8217 · MAE  25.8 cm · direction right  73% of  5601 · flat right  45% of  2616
+
+=== +48 h, '?' rows
+served median            n  6835 · MAE  38.0 cm · direction right  62% of  3183 · flat right  24% of  3652
+no change                n  6835 · MAE  38.1 cm · direction right   0% of     0 · flat right  22% of  6835
+pace τ12                 n  6835 · MAE  36.6 cm · direction right  75% of  3070 · flat right  33% of  3765
+fix-if-disagree τ12      n  6835 · MAE  36.7 cm · direction right  72% of  4498 · flat right  34% of  2337
+pace τ24                 n  6835 · MAE  36.7 cm · direction right  75% of  3754 · flat right  36% of  3081
+fix-if-disagree τ24      n  6835 · MAE  36.9 cm · direction right  72% of  4955 · flat right  37% of  1880
+pace τ48                 n  6835 · MAE  37.9 cm · direction right  75% of  4048 · flat right  36% of  2787
+fix-if-disagree τ48      n  6835 · MAE  37.9 cm · direction right  72% of  5144 · flat right  37% of  1691
+
+=== +72 h, '?' rows
+served median            n  4332 · MAE  47.9 cm · direction right  61% of  2317 · flat right  18% of  2015
+no change                n  4332 · MAE  48.3 cm · direction right   0% of     0 · flat right  17% of  4332
+pace τ12                 n  4332 · MAE  47.1 cm · direction right  76% of  2024 · flat right  25% of  2308
+fix-if-disagree τ12      n  4332 · MAE  46.4 cm · direction right  71% of  3039 · flat right  25% of  1293
+pace τ24                 n  4332 · MAE  47.3 cm · direction right  76% of  2514 · flat right  27% of  1818
+fix-if-disagree τ24      n  4332 · MAE  46.7 cm · direction right  72% of  3367 · flat right  28% of   965
+pace τ48                 n  4332 · MAE  49.5 cm · direction right  76% of  2719 · flat right  27% of  1613
+fix-if-disagree τ48      n  4332 · MAE  48.6 cm · direction right  72% of  3489 · flat right  27% of   843

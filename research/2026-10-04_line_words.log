@@ -1,0 +1,71 @@
+
+=== +24 h ('?' rows) — 'the line's way' = up/down by sign, flat = within ±5 cm
+up         all            n   215 · went the line's way  45% · |change| median   28 cm · within ±5 cm  15%
+           measured up     n    78 · went the line's way  86% · |change| median   22 cm · within ±5 cm  15%
+           measured down   n    79 · went the line's way  18% · |change| median   55 cm · within ±5 cm  10%
+           measured steady n    44 · went the line's way  30% · |change| median   17 cm · within ±5 cm  20%
+up_small   all            n   937 · went the line's way  47% · |change| median   11 cm · within ±5 cm  29%
+           measured up     n   262 · went the line's way  77% · |change| median   12 cm · within ±5 cm  30%
+           measured down   n   292 · went the line's way  22% · |change| median   15 cm · within ±5 cm  18%
+           measured steady n   349 · went the line's way  48% · |change| median    8 cm · within ±5 cm  40%
+           measured none   n    34 · went the line's way  24% · |change| median   32 cm · within ±5 cm  15%
+flat       all            n  4844 · went the line's way  33% · |change| median    9 cm · within ±5 cm  33%
+           measured up     n   639 · went the line's way  28% · |change| median   11 cm · within ±5 cm  28%
+           measured down   n  1968 · went the line's way  23% · |change| median   11 cm · within ±5 cm  23%
+           measured steady n  2021 · went the line's way  45% · |change| median    6 cm · within ±5 cm  45%
+           measured none   n   216 · went the line's way  28% · |change| median   10 cm · within ±5 cm  28%
+down_small all            n  1808 · went the line's way  77% · |change| median    9 cm · within ±5 cm  30%
+           measured up     n   171 · went the line's way  67% · |change| median   12 cm · within ±5 cm  20%
+           measured down   n   961 · went the line's way  84% · |change| median    9 cm · within ±5 cm  28%
+           measured steady n   635 · went the line's way  69% · |change| median    8 cm · within ±5 cm  37%
+           measured none   n    41 · went the line's way  83% · |change| median   12 cm · within ±5 cm  22%
+down       all            n   413 · went the line's way  77% · |change| median   12 cm · within ±5 cm  28%
+           measured up     n    34 · went the line's way  59% · |change| median   24 cm · within ±5 cm   3%
+           measured down   n   250 · went the line's way  84% · |change| median   11 cm · within ±5 cm  25%
+           measured steady n   123 · went the line's way  69% · |change| median    8 cm · within ±5 cm  41%
+
+=== +48 h ('?' rows) — 'the line's way' = up/down by sign, flat = within ±5 cm
+up         all            n   642 · went the line's way  50% · |change| median   32 cm · within ±5 cm  12%
+           measured up     n   268 · went the line's way  84% · |change| median   32 cm · within ±5 cm  10%
+           measured down   n   209 · went the line's way  13% · |change| median   45 cm · within ±5 cm   8%
+           measured steady n   151 · went the line's way  44% · |change| median   16 cm · within ±5 cm  23%
+up_small   all            n   885 · went the line's way  44% · |change| median   15 cm · within ±5 cm  23%
+           measured up     n   252 · went the line's way  75% · |change| median   15 cm · within ±5 cm  22%
+           measured down   n   282 · went the line's way  19% · |change| median   21 cm · within ±5 cm  12%
+           measured steady n   329 · went the line's way  46% · |change| median    9 cm · within ±5 cm  34%
+flat       all            n  3652 · went the line's way  24% · |change| median   14 cm · within ±5 cm  24%
+           measured up     n   444 · went the line's way  21% · |change| median   16 cm · within ±5 cm  21%
+           measured down   n  1576 · went the line's way  12% · |change| median   17 cm · within ±5 cm  12%
+           measured steady n  1394 · went the line's way  39% · |change| median    8 cm · within ±5 cm  39%
+           measured none   n   238 · went the line's way  24% · |change| median   15 cm · within ±5 cm  24%
+down_small all            n  1083 · went the line's way  74% · |change| median   14 cm · within ±5 cm  24%
+           measured up     n   114 · went the line's way  63% · |change| median   18 cm · within ±5 cm  16%
+           measured down   n   515 · went the line's way  78% · |change| median   18 cm · within ±5 cm  12%
+           measured steady n   424 · went the line's way  73% · |change| median    7 cm · within ±5 cm  41%
+           measured none   n    30 · went the line's way  80% · |change| median   16 cm · within ±5 cm  13%
+down       all            n   573 · went the line's way  78% · |change| median   20 cm · within ±5 cm  13%
+           measured up     n    51 · went the line's way  63% · |change| median   19 cm · within ±5 cm  10%
+           measured down   n   350 · went the line's way  85% · |change| median   23 cm · within ±5 cm   8%
+           measured steady n   160 · went the line's way  68% · |change| median   12 cm · within ±5 cm  27%
+
+=== +72 h ('?' rows) — 'the line's way' = up/down by sign, flat = within ±5 cm
+up         all            n   813 · went the line's way  61% · |change| median   34 cm · within ±5 cm   9%
+           measured up     n   401 · went the line's way  85% · |change| median   40 cm · within ±5 cm   4%
+           measured down   n   178 · went the line's way  18% · |change| median   40 cm · within ±5 cm  13%
+           measured steady n   218 · went the line's way  56% · |change| median   22 cm · within ±5 cm  14%
+up_small   all            n   812 · went the line's way  46% · |change| median   19 cm · within ±5 cm  21%
+           measured up     n   255 · went the line's way  72% · |change| median   22 cm · within ±5 cm  15%
+           measured down   n   262 · went the line's way  26% · |change| median   25 cm · within ±5 cm  13%
+           measured steady n   286 · went the line's way  42% · |change| median   10 cm · within ±5 cm  34%
+flat       all            n  2015 · went the line's way  18% · |change| median   17 cm · within ±5 cm  18%
+           measured up     n   215 · went the line's way  24% · |change| median   18 cm · within ±5 cm  24%
+           measured down   n   956 · went the line's way   9% · |change| median   21 cm · within ±5 cm   9%
+           measured steady n   755 · went the line's way  28% · |change| median   12 cm · within ±5 cm  28%
+           measured none   n    89 · went the line's way  19% · |change| median   26 cm · within ±5 cm  19%
+down_small all            n   488 · went the line's way  77% · |change| median   19 cm · within ±5 cm  21%
+           measured up     n    62 · went the line's way  56% · |change| median   19 cm · within ±5 cm  19%
+           measured down   n   200 · went the line's way  88% · |change| median   23 cm · within ±5 cm  10%
+           measured steady n   214 · went the line's way  74% · |change| median   14 cm · within ±5 cm  32%
+down       all            n   204 · went the line's way  77% · |change| median   24 cm · within ±5 cm  11%
+           measured down   n   106 · went the line's way  89% · |change| median   35 cm · within ±5 cm   8%
+           measured steady n    68 · went the line's way  62% · |change| median   13 cm · within ±5 cm  22%

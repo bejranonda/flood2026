@@ -1,0 +1,18 @@
+gauges with a fresh run: 961
+
+=== +24 h · served: {'persistence': 528, 'recent': 80, 'star': 302, 'tide_trend': 14, 'tide': 11, 'no backtest': 13, 'trend': 13}
+   why 'no change' is served: {'best gains 0–5 %': 210, 'best is worse than no change': 116, '  · star not available': 47, 'best gains 5–10 % (below gate)': 202, 'history < backtest minimum': 13}
+   near-miss candidates (gain 0–10 %): {'star': 284, 'recent': 52, 'tide': 61, 'tide_trend': 12, 'trend': 3}
+   50 % band width median (cm): {'persistence': 16, 'recent': 16, 'star': 17, 'tide_trend': 6, 'tide': 14, 'trend': 5}
+
+=== +48 h · served: {'persistence': 520, 'recent': 40, 'tide_trend': 17, 'star': 321, 'tide': 20, 'no backtest': 42, 'trend': 1}
+   why 'no change' is served: {'best gains 0–5 %': 230, 'best gains 5–10 % (below gate)': 197, 'best is worse than no change': 93, '  · star not available': 34, 'history < backtest minimum': 42}
+   near-miss candidates (gain 0–10 %): {'star': 287, 'recent': 66, 'tide': 64, 'tide_trend': 10}
+   50 % band width median (cm): {'persistence': 26, 'recent': 36, 'tide_trend': 19, 'star': 24, 'tide': 23, 'trend': 18}
+
+=== +72 h · served: {'persistence': 512, 'recent': 15, 'tide_trend': 10, 'star': 361, 'tide': 21, 'no backtest': 42}
+   why 'no change' is served: {'best gains 0–5 %': 206, 'best is worse than no change': 108, '  · star not available': 41, 'best gains 5–10 % (below gate)': 198, 'history < backtest minimum': 42}
+   near-miss candidates (gain 0–10 %): {'tide': 56, 'recent': 58, 'star': 273, 'tide_trend': 16, 'trend': 1}
+   50 % band width median (cm): {'persistence': 34, 'recent': 53, 'tide_trend': 26, 'star': 33, 'tide': 29}
+
+by agency (no-change at 24 h / all): {'BMA': '130/183', 'EGAT': '33/65', 'FOP': '55/86', 'HII': '168/336', 'RID': '142/291'}

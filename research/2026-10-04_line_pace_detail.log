@@ -1,0 +1,18 @@
+
+=== +24 h, '?' rows with a measured pace
+persistence old: n  5870 MAE  27.3 | small 3–10 right  66% of  1702 | clear ≥10 right  61% of   347 | flat within ±5  32% of  3821 | 50% band holds  54%
+persistence new: n  5870 MAE  26.2 | small 3–10 right  77% of  1523 | clear ≥10 right  75% of  1373 | flat within ±5  44% of  2974 | 50% band holds  60%
+model       old: n  2036 MAE  15.3 | small 3–10 right  70% of   968 | clear ≥10 right  77% of   261 | flat within ±5  41% of   807 | 50% band holds  56%
+model       new: n  2036 MAE  15.5 | small 3–10 right  78% of   517 | clear ≥10 right  70% of   427 | flat within ±5  46% of  1092 | 50% band holds  55%
+
+=== +48 h, '?' rows with a measured pace
+persistence old: n  4564 MAE  40.5 | small 3–10 right  60% of  1195 | clear ≥10 right  52% of   624 | flat within ±5  23% of  2745 | 50% band holds  46%
+persistence new: n  4564 MAE  38.5 | small 3–10 right  74% of  1088 | clear ≥10 right  74% of  1494 | flat within ±5  37% of  1982 | 50% band holds  53%
+model       old: n  1955 MAE  24.1 | small 3–10 right  63% of   721 | clear ≥10 right  77% of   565 | flat within ±5  29% of   669 | 50% band holds  51%
+model       new: n  1955 MAE  24.0 | small 3–10 right  84% of   499 | clear ≥10 right  77% of   595 | flat within ±5  36% of   861 | 50% band holds  53%
+
+=== +72 h, '?' rows with a measured pace
+persistence old: n  2771 MAE  53.6 | small 3–10 right  56% of   757 | clear ≥10 right  55% of   548 | flat within ±5  18% of  1466 | 50% band holds  41%
+persistence new: n  2771 MAE  52.2 | small 3–10 right  76% of   661 | clear ≥10 right  75% of  1004 | flat within ±5  29% of  1106 | 50% band holds  46%
+model       old: n  1433 MAE  28.8 | small 3–10 right  61% of   522 | clear ≥10 right  77% of   451 | flat within ±5  19% of   460 | 50% band holds  49%
+model       new: n  1433 MAE  29.7 | small 3–10 right  83% of   358 | clear ≥10 right  80% of   452 | flat within ±5  26% of   623 | 50% band holds  47%
