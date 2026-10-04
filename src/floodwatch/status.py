@@ -11,7 +11,7 @@ from __future__ import annotations
 
 STEADY_M = 0.05     # "→ ทรงตัว" only when the likely range stays within ±5 cm (D-060, app.js STEADY_M)
 RISE_CM_24H = 2.0   # a measured pace below 2 cm per 24 h is "steady" (qc.observed24's own steady band)
-LEAN_MEDIAN_M = 0.01  # a row leans only if the model median also moves >= 1 cm that way (D-091 amended)
+LEAN_MEDIAN_M = 0.03  # a row leans only if the chart's line visibly moves >= 3 cm that way (D-091 amended; 80–83 % right)
 
 
 def _agrees(ch: dict) -> bool:

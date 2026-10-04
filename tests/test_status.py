@@ -54,10 +54,11 @@ def test_an_unsure_row_leans_by_the_measured_pace_and_a_sure_row_never_does():
 
 def test_a_row_leans_only_where_the_chart_line_goes_the_same_way():
     # owner 2026-10-04 (BKK017: "↘ น่าจะลดลง" beside "0 ถึง +8 ซม." and a rising dashed line; T.13: a flat line): lean only
-    # when the model's median (the chart's dashed line) moves >= 1 cm the measured way; backtest: right 81.5/78.4/78.9 %
+    # when the model's median (the chart's dashed line) visibly moves >= 3 cm the measured way; backtest: right 82.9/80.3/82.3 %
     up_line = {**UNSURE, "median": 0.04}
     flat_line = {**UNSURE, "median": 0.0}
     assert status.lean(up_line, OBS_UP) == "up"
     assert status.lean(up_line, OBS_DOWN) is None        # BKK017: measured down, chart up → "?"
     assert status.lean(flat_line, OBS_DOWN) is None      # T.13: chart flat → "?"
-    assert status.lean({**UNSURE, "median": -0.02}, OBS_DOWN) == "down"
+    assert status.lean({**UNSURE, "median": -0.04}, OBS_DOWN) == "down"
+    assert status.lean({**UNSURE, "median": -0.01}, OBS_DOWN) is None   # T.13 at 72 h: a 1 cm move is not visible

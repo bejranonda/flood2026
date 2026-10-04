@@ -138,7 +138,7 @@ with sync_playwright() as p:
             pts_t = {p[0]: (p[1], p[2]) for p in tg["pts"]}
             med_t = {p[0]: p[3] for p in tg["pts"]}
             for h, txt, chip in tg["rows"]:  # C20 (D-091): a leaning word goes the way of the chart's dashed line
-                if "น่าจะขึ้น" in chip and not med_t.get(h, 0) >= 1 or "น่าจะลดลง" in chip and not med_t.get(h, 0) <= -1:
+                if "น่าจะขึ้น" in chip and not med_t.get(h, 0) >= 3 or "น่าจะลดลง" in chip and not med_t.get(h, 0) <= -3:
                     note("C20", f"sheet {code}", f"+{h} h '{chip}' while the chart's line moves {med_t.get(h)} cm")
             for h, txt, _ in tg["rows"]:
                 nums = [int(x.replace("−", "-")) for x in re.findall(r"[+−-]?\d+", txt)]

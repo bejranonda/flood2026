@@ -32,8 +32,11 @@ for r in runs:
         if lean:
             ok = act > 0 if lean == "up" else act < 0
             tab[h]["a_n"] += 1; tab[h]["a_ok"] += ok
-            agree = (med >= 0.01) if lean == "up" else (med <= -0.01)
-            if agree: tab[h]["b_n"] += 1; tab[h]["b_ok"] += ok
+            for thr in (0.01, 0.02, 0.03, 0.05):
+                if (med >= thr) if lean == "up" else (med <= -thr):
+                    tab[h][f"b{thr}_n"] += 1; tab[h][f"b{thr}_ok"] += ok
 for h, t in tab.items():
-    print(f"+{h} h: unsure rows {t['unsure']} | (a) pace only: leans {100*t['a_n']/t['unsure']:.0f}% of them, right {100*t['a_ok']/max(1,t['a_n']):.1f}%"
-          f" | (b) pace + model agree: leans {100*t['b_n']/t['unsure']:.0f}%, right {100*t['b_ok']/max(1,t['b_n']):.1f}%")
+    print(f"+{h} h: unsure rows {t['unsure']} | (a) pace only: leans {100*t['a_n']/t['unsure']:.0f}%, right {100*t['a_ok']/max(1,t['a_n']):.1f}%")
+    for thr in (0.01, 0.02, 0.03, 0.05):
+        n, ok = t[f"b{thr}_n"], t[f"b{thr}_ok"]
+        print(f"     (b) model line moves >= {thr*100:.0f} cm the same way: leans {100*n/t['unsure']:.0f}%, right {100*ok/max(1,n):.1f}%")
