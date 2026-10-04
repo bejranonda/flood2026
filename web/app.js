@@ -868,7 +868,7 @@ function chartSVG(obs, fc, bank, crit = null) {
     ${band.length ? `<path d="${area(0, 4)}" fill="#1565c0" opacity=".12"/><path d="${area(1, 3)}" fill="#1565c0" opacity=".22"/>` : ""}
     ${bankLine}${crit != null ? `<line x1="${P}" x2="${W - 6}" y1="${y(crit)}" y2="${y(crit)}" stroke="#e46c0a" stroke-dasharray="2 3"/><text x="${P + 4}" y="${y(crit) - 4}" font-size="11" fill="#e46c0a">เกณฑ์ กทม. ${crit.toFixed(2)}</text>` : ""}<path d="${line}" fill="none" stroke="#0d3b66" stroke-width="1.6"/>
     ${med ? `<path d="${med}" fill="none" stroke="#1565c0" stroke-width="1.6" stroke-dasharray="4 3"/>` : ""}
-    ${(fc?.path || []).filter((p) => p.q && [24, 48, 72].includes(p.h)).map((p) => `<circle class="fc-pt" r="0" cx="${x(t0 + p.h * 3600e3).toFixed(1)}" cy="${y(p.q[2]).toFixed(1)}" data-h="${p.h}" data-lo="${Math.round((p.q[1] - fc.level_now) * 100)}" data-hi="${Math.round((p.q[3] - fc.level_now) * 100)}"/>`).join("")}
+    ${(fc?.path || []).filter((p) => p.q && [24, 48, 72].includes(p.h)).map((p) => `<circle class="fc-pt" r="0" cx="${x(t0 + p.h * 3600e3).toFixed(1)}" cy="${y(p.q[2]).toFixed(1)}" data-h="${p.h}" data-lo="${Math.round((p.q[1] - fc.level_now) * 100)}" data-med="${Math.round((p.q[2] - fc.level_now) * 100)}" data-hi="${Math.round((p.q[3] - fc.level_now) * 100)}"/>`).join("")}
     ${dayTicks(tmin, tmax, x, H)}
     <line x1="${x(t0)}" x2="${x(t0)}" y1="8" y2="${H - 20}" stroke="#555" stroke-width=".8"/>
     <text x="${x(t0)}" y="9" font-size="10" text-anchor="middle" fill="#333" font-weight="600">ตอนนี้</text></svg>

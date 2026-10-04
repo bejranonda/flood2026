@@ -24,6 +24,7 @@ in many possibilities"). One browser session, views compared at the same moment:
   C18 (v0.22.0, D-083) a card whose 24 h line says "เพิ่มขึ้น" while the recent pace is not rising says what the last 6 h did;
   C19 (v0.23.0, D-089) the top-bar ticker is shown, equals /api/situation and is at most 45 min old (the summary rain line
      of C9/C11 is gone: heavy rain now reaches the top bar through the ticker).
+  C20 (v0.24.0, D-091) a leaning row ("น่าจะขึ้น/ลดลง") goes the way of the chart's dashed line at that horizon.
   C16 (v0.21.0, D-079) the map draws every gauge with data < 24 h; C17 (v0.21.0, D-077) the จับตา tab agrees with the
      list's station data (each gauge once, over-bank rows critical, may-reach rows banded, cm to the bank equal).
   C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
@@ -44,8 +45,8 @@ BLOCKS_JS = """() => [...document.querySelectorAll('#detail li.item, #detail .pf
   obs: [...el.querySelectorAll('.pf-obs')].map(e => e.textContent.trim()) }))"""
 TREND_JS = r"""() => { const d = document.querySelector('#detail'); if (!d) return null;
   const rows = [...d.querySelectorAll('.sheet-trend .tr-rows')].flatMap(r => { const c = [...r.children], o = [];
-    for (let i = 0; i + 2 < c.length; i += 4) o.push([Number((c[i].textContent.match(/\d+/) || [0])[0]), c[i+2].textContent.trim()]); return o; });
-  const pts = [...d.querySelectorAll('circle.fc-pt')].map(c => [Number(c.dataset.h), Number(c.dataset.lo), Number(c.dataset.hi)]);
+    for (let i = 0; i + 2 < c.length; i += 4) o.push([Number((c[i].textContent.match(/\d+/) || [0])[0]), c[i+2].textContent.trim(), c[i+1].textContent.trim()]); return o; });
+  const pts = [...d.querySelectorAll('circle.fc-pt')].map(c => [Number(c.dataset.h), Number(c.dataset.lo), Number(c.dataset.hi), Number(c.dataset.med)]);
   return { rows, pts }; }"""
 SHEET_JS = """(scope) => { const d = document.querySelector('#detail'); if (!d) return null;
   const rows = [...d.querySelectorAll('.tr-rows')].map(r => { const c = [...r.children], o = []; for (let i = 0; i + 2 < c.length; i += 4) o.push([c[i].textContent.trim(), c[i+1].textContent.trim(), c[i+2].textContent.trim()]); return o; })[0] || [];
@@ -135,7 +136,11 @@ with sync_playwright() as p:
         tg = pg.evaluate(TREND_JS)  # C15: the rows print the model range the chart draws at 12/24/48 h
         if tg:
             pts_t = {p[0]: (p[1], p[2]) for p in tg["pts"]}
-            for h, txt in tg["rows"]:
+            med_t = {p[0]: p[3] for p in tg["pts"]}
+            for h, txt, chip in tg["rows"]:  # C20 (D-091): a leaning word goes the way of the chart's dashed line
+                if "น่าจะขึ้น" in chip and not med_t.get(h, 0) >= 1 or "น่าจะลดลง" in chip and not med_t.get(h, 0) <= -1:
+                    note("C20", f"sheet {code}", f"+{h} h '{chip}' while the chart's line moves {med_t.get(h)} cm")
+            for h, txt, _ in tg["rows"]:
                 nums = [int(x.replace("−", "-")) for x in re.findall(r"[+−-]?\d+", txt)]
                 if "กว้าง" in txt or not nums:
                     continue
@@ -380,7 +385,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C14", "C15", "C16", "C17", "C18", "C19")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C14", "C15", "C16", "C17", "C18", "C19", "C20")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])

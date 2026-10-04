@@ -11,6 +11,7 @@ from __future__ import annotations
 
 STEADY_M = 0.05     # "→ ทรงตัว" only when the likely range stays within ±5 cm (D-060, app.js STEADY_M)
 RISE_CM_24H = 2.0   # a measured pace below 2 cm per 24 h is "steady" (qc.observed24's own steady band)
+LEAN_MEDIAN_M = 0.01  # a row leans only if the model median also moves >= 1 cm that way (D-091 amended)
 
 
 def _agrees(ch: dict) -> bool:
@@ -65,4 +66,11 @@ def lean(ch: dict | None, obs: dict | None) -> str | None:
     if forecast_label(ch) != "unsure":
         return None
     m = measured_label(obs)
-    return m if m in ("up", "down") else None
+    # only where the chart's dashed line (the model median) moves >= 1 cm the same way (owner 2026-10-04, BKK017/T.13:
+    # "↘ น่าจะลดลง" beside a rising or flat line); backtest: right 81.5/78.4/78.9 % vs 75 % for the pace alone
+    med = (ch or {}).get("median")
+    if m == "up" and med is not None and med >= LEAN_MEDIAN_M:
+        return "up"
+    if m == "down" and med is not None and med <= -LEAN_MEDIAN_M:
+        return "down"
+    return None

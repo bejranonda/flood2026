@@ -115,7 +115,7 @@ def test_chip_text_is_counts_out_of_ten_and_needs_30_cases():
 
 def test_lean_record_counts_how_often_an_unsure_row_went_the_measured_way():
     # runs whose 24 h row is unsure (persistence, wide range); the gauge rose 1 cm/h for 24 h before issue
-    path = [{"h": h, "q": [0.8, 0.9, 1.0, 1.1, 1.2], "method": "persistence"} for h in range(1, 73)]
+    path = [{"h": h, "q": [0.8, 0.9, 1.02, 1.1, 1.2], "method": "persistence"} for h in range(1, 73)]  # median +2 cm: same way
     hours = [T0 + k * H for k in range(-30, 80)]
     up = {t: 1.0 + 0.01 * (t - T0).total_seconds() / 3600 for t in hours}          # keeps rising: hit
     flat_after = {t: (1.0 + 0.01 * min(0, (t - T0).total_seconds() / 3600)) for t in hours}  # rose, then stays: miss

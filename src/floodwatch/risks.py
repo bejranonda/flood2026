@@ -197,6 +197,8 @@ def lean_record(runs: list[dict], hourly: dict) -> dict:
             proven = d != "steady" and p.get("method") not in (None, "persistence") and ((lo > 0) if d == "up" else (hi < 0))
             if proven or max(abs(lo), abs(hi)) <= 0.05:
                 continue  # the row was not "? ไม่แน่ชัด"
+            if (med < 0.01) if rate > 0 else (med > -0.01):
+                continue  # the model median (the chart's line) does not go the measured way: no lean (status.lean)
             y = ser.get(t0 + dt.timedelta(hours=p["h"]))
             if y is None:
                 continue

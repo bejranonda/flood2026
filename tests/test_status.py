@@ -7,6 +7,7 @@ UP = {"dir": "rising", "level": "rise", "method": "star", "likely": [0.03, 0.12]
 DOWN = {"dir": "falling", "level": "fall", "method": "recent", "likely": [-0.15, -0.04], "wide": False}
 STEADY = {"dir": "steady", "level": "steady", "method": "persistence", "likely": [-0.02, 0.03], "wide": False}
 UNSURE = {"dir": "steady", "level": "steady", "method": "persistence", "likely": [-0.10, 0.12], "wide": False}
+UNSURE_UP, UNSURE_DOWN = {**UNSURE, "median": 0.03}, {**UNSURE, "median": -0.03}
 PERSIST_UP = {"dir": "rising", "level": "rise", "method": "persistence", "likely": [0.01, 0.2], "wide": False}
 OBS_UP = {"change_cm": 30, "hours": 24, "level": "strong_rise", "change6_cm": 5.0}
 OBS_STOPPED = {"change_cm": 30, "hours": 24, "level": "strong_rise", "change6_cm": -1.0}
@@ -45,7 +46,18 @@ def test_the_12_h_row_is_used_when_there_is_no_24_h_row():
 
 # --- v0.24.0: a "? ไม่แน่ชัด" row leans by the measured pace (owner 2026-10-04: "Lean the rows by the trend") ----------
 def test_an_unsure_row_leans_by_the_measured_pace_and_a_sure_row_never_does():
-    assert status.lean(UNSURE, OBS_UP) == "up" and status.lean(UNSURE, OBS_DOWN) == "down"
-    assert status.lean(UNSURE, OBS_STOPPED) is None          # the last 6 h stopped: no lean (same rule as the groups)
+    assert status.lean(UNSURE_UP, OBS_UP) == "up" and status.lean(UNSURE_DOWN, OBS_DOWN) == "down"
+    assert status.lean(UNSURE_UP, OBS_STOPPED) is None       # the last 6 h stopped: no lean (same rule as the groups)
     assert status.lean(UP, OBS_DOWN) is None and status.lean(STEADY, OBS_UP) is None
     assert status.lean(UNSURE, None) is None and status.lean(None, OBS_UP) is None
+
+
+def test_a_row_leans_only_where_the_chart_line_goes_the_same_way():
+    # owner 2026-10-04 (BKK017: "↘ น่าจะลดลง" beside "0 ถึง +8 ซม." and a rising dashed line; T.13: a flat line): lean only
+    # when the model's median (the chart's dashed line) moves >= 1 cm the measured way; backtest: right 81.5/78.4/78.9 %
+    up_line = {**UNSURE, "median": 0.04}
+    flat_line = {**UNSURE, "median": 0.0}
+    assert status.lean(up_line, OBS_UP) == "up"
+    assert status.lean(up_line, OBS_DOWN) is None        # BKK017: measured down, chart up → "?"
+    assert status.lean(flat_line, OBS_DOWN) is None      # T.13: chart flat → "?"
+    assert status.lean({**UNSURE, "median": -0.02}, OBS_DOWN) == "down"
