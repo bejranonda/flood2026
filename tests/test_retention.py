@@ -57,10 +57,11 @@ def test_health_ignores_future_stamped_and_flagged_rows():
     assert "quality_flag='ok'" in src and "now() + interval '15 minutes'" in src  # KI-247
 
 
-def test_forecast_runs_are_thinned_after_two_days_and_dropped_after_fourteen():
+def test_forecast_runs_are_thinned_after_two_days_and_dropped_after_thirty_one():
+    # 31 days since v0.25.2: the track records read 30 (KI-290); was 14
     sql = retention.FC_SQL
     assert "forecast_run" in sql and "%(keep_all_days)s" in sql and "%(days)s" in sql
-    assert retention.FC_KEEP_ALL_DAYS == 2 and retention.FC_KEEP_DAYS == 14
+    assert retention.FC_KEEP_ALL_DAYS == 2 and retention.FC_KEEP_DAYS == 31
 
 
 def test_rain_gauge_readings_are_bounded_too():
