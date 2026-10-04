@@ -39,7 +39,10 @@ def facts(stations: list[dict], risks: dict, rain: dict, flows: dict | None = No
     rising_of = lambda xs: [s for s in xs if (s.get("trend") or {}).get("group") == "rising"]
     rising = rising_of(over)
     grp = {g["key"]: g.get("items") or [] for g in (risks or {}).get("groups") or []}
-    group = lambda k: {"n": len(grp.get(k, [])), "top": _top([i.get("province") for i in grp.get(k, [])])}
+    def group(k: str, its: list | None = None) -> dict:
+        its = grp.get(k, []) if its is None else its
+        provs = [i.get("province") for i in its]
+        return {"n": len(its), "top": _top(provs), "provinces": len({p for p in provs if p})}
     # may reach the bank: only gauges whose water is rising name a province (owner 2026-10-04: Bangkok was named while
     # its gauges sat steady just under the bank); the steady ones are only counted
     may = grp.get("may_reach", [])
@@ -64,7 +67,7 @@ def facts(stations: list[dict], risks: dict, rain: dict, flows: dict | None = No
                  **({"prev_n": prev_over} if prev_over is not None else {})},
         "near": sum(1 for s in fresh if s["status"] == "warning"),
         "below": sum(1 for s in fresh if s["status"] == "normal"),
-        "may_reach": {"n": len(may_up), "top": _top([i.get("province") for i in may_up]), "near_steady": len(may) - len(may_up)},
+        "may_reach": {**group("may_reach", may_up), "near_steady": len(may) - len(may_up)},
         "upstream": group("upstream"), "fast_rise": group("fast_rise"),
         "bkk": {"over": len(bkk_over), "over_rising": len(rising_of(bkk_over)),
                 "may_reach_rising": sum(1 for i in may_up if i.get("province") == BKK),
@@ -93,6 +96,11 @@ def _bkk_text(b: dict) -> str:
     return "กรุงเทพฯ " + " ".join(bits)
 
 
+def _where(g: dict) -> str:
+    """The provinces of a group: "เช่น …" only when there are more provinces than listed (an example stays an example)."""
+    return ("เช่น " if g.get("provinces", len(g["top"])) > len(g["top"]) else "ที่ ") + " ".join(g["top"])
+
+
 def items(f: dict) -> list[dict]:
     """The ticker as short items, urgent first, each with its own symbol (owner 2026-10-04: "very long text, try to use
     symbols or anything to see the separation of phrase"). Every item is one fact from `facts`."""
@@ -110,15 +118,15 @@ def items(f: dict) -> list[dict]:
         add("over", "📊", f"ล้นตลิ่งรวม {o['n']} สถานีใน {o['provinces']} จังหวัด{yday}"
             + (f" ส่วนใหญ่ทรงตัวหรือลดลง ({rest} สถานี)" if rest > o["rising"] else ""))
     if f["may_reach"]["n"]:
-        add("may_reach", "🟠", f"น้ำยังขึ้นและอาจถึงตลิ่งในอีก 24–48 ชม. {f['may_reach']['n']} สถานี เช่น {' '.join(f['may_reach']['top'])}")
+        add("may_reach", "🟠", f"น้ำยังขึ้นและอาจถึงตลิ่งในอีก 24–48 ชม. {f['may_reach']['n']} สถานี {_where(f['may_reach'])}")
     if f.get("bkk"):
         add("bkk", "🏙️", _bkk_text(f["bkk"]))
-    if f.get("flows"):
-        add("flows", "🏞️", " · ".join(_flow_text(x) for x in f["flows"]))
+    for x in f.get("flows") or []:  # one item per place: shorter, and each reads on its own
+        add(f"flow_{x['code']}", "🏞️", _flow_text(x))
     if f["upstream"]["n"]:
-        add("upstream", "🌊", f"น้ำเหนือกำลังมา {f['upstream']['n']} สถานี เช่น {' '.join(f['upstream']['top'])}")
+        add("upstream", "🌊", f"น้ำเหนือกำลังมา {f['upstream']['n']} สถานี {_where(f['upstream'])}")
     if f["fast_rise"]["n"]:
-        add("fast_rise", "🟡", f"น้ำขึ้นเร็ว {f['fast_rise']['n']} สถานี เช่น {' '.join(f['fast_rise']['top'])}")
+        add("fast_rise", "🟡", f"น้ำขึ้นเร็ว {f['fast_rise']['n']} สถานี {_where(f['fast_rise'])}")
     if f["rain_measured"]:
         m = f["rain_measured"]
         add("rain", "🌧️", f"ฝนมากสุด 24 ชม. ที่ผ่านมา {m['mm']} มม. ที่ {m['place']} จ.{m['province']}")
@@ -188,27 +196,32 @@ def check(text: str, f: dict) -> list[str]:
     return issues
 
 
-SYSTEM = ("คุณเป็นผู้ประกาศข่าวสถานการณ์น้ำของแอปติดตามระดับน้ำ เรียบเรียงข้อมูลที่ให้เป็นข่าววิ่งสั้น ๆ "
-          "ด้วยภาษาไทยที่เป็นธรรมชาติ ลื่นไหล อบอุ่น ใจเย็น เหมือนเพื่อนที่รู้เรื่องน้ำเล่าให้ฟัง ไม่ใช่ภาษาราชการหรือภาษารายงาน\n"
-          "กติกา:\n"
-          "- เลือก 4–5 ข้อที่คนอยากรู้ที่สุด เรียงตามเลขข้อเดิม (ข้อแรก ๆ สำคัญกว่า) ข้อที่ไม่เลือกให้ข้ามไป\n"
-          "- เขียนข้อละหนึ่งประโยคสั้น อ่านจบในครั้งเดียว ขึ้นต้นด้วยเลขข้อเดิม เช่น 1) …\n"
-          "- ใช้ได้เฉพาะตัวเลข จังหวัด และสถานที่ที่อยู่ในข้อนั้นเท่านั้น ห้ามย้ายข้อมูลข้ามข้อ ห้ามเพิ่มเหตุผลหรือคำคาดเดา\n"
-          "- ถ้าข้อมูลมีคำว่า เช่น ต้องบอกว่าเป็นตัวอย่าง ห้ามทำให้เข้าใจว่าเป็นทั้งหมด\n"
-          "- ไม่ใช้คำว่า หาก ถ้า ด่วน เร่งด่วน ปลอดภัย ปกติ ไม่ท่วม แน่นอน อพยพ ไม่ใช้เครื่องหมายตกใจ ไม่ใส่อีโมจิ "
-          "ไม่ลงท้ายด้วยครับหรือค่ะ ไม่บอกว่าเป็นประกาศทางการ\n"
+# The same voice as the "✨ ให้ AI สรุปให้ฟังง่าย ๆ" card (explain.SYSTEM), item by item (owner 2026-10-04: "You can use only
+# GLM, but … simple, attractive and lovely Thai … as at current ✨ ให้ AI สรุปให้ฟังง่าย ๆ")
+SYSTEM = ("คุณช่วยเล่าสถานการณ์น้ำทั่วประเทศในแถบข่าววิ่งของแอปให้คนทั่วไปและผู้สูงอายุฟัง เป็นภาษาพูดที่อบอุ่น อ่อนโยน เข้าใจง่าย น่าฟัง\n"
+          "- เขียนใหม่ทุกข้อ ข้อละหนึ่งประโยคสั้น ๆ ขึ้นต้นด้วยเลขข้อเดิม เช่น 1) …\n"
+          "- ใช้ตัวเลขน้อยที่สุด เก็บเฉพาะตัวเลขที่สำคัญ ใช้ได้เฉพาะตัวเลข จังหวัด และสถานที่ของข้อนั้น "
+          "ห้ามย้ายข้อมูลข้ามข้อ ห้ามเพิ่มข้อมูลใหม่ ห้ามเปลี่ยนทิศทางของน้ำ\n"
+          "- คงคำบอกแนวโน้มไว้ เช่น น้ำยังขึ้น ทรงตัวหรือลดลง ยังไม่มีจุดที่น้ำขึ้น ลดลงจากเมื่อวาน "
+          "ถ้าข้อมูลมีคำว่า เช่น ต้องคงคำว่า เช่น ไว้\n"
+          "- เขียนหน่วยแบบย่อ เช่น ลบ.ม./วินาที มม. ชม. ปริมาณน้ำที่ไหลผ่านไม่ใช่ระดับน้ำ\n"
+          "- เรียบเรียงภาษาพูดให้ลื่นไหลเป็นธรรมชาติ ขึ้นต้นแต่ละข้อให้หลากหลาย ไม่มีคำเกริ่นอย่าง ข่าวดี หรือ เล่าให้ฟัง\n"
+          "- ห้ามใช้คำว่า หาก ถ้า ด่วน เร่งด่วน ปลอดภัย ปกติ ไม่ท่วม แน่นอน อพยพ วิกฤต อันตราย "
+          "ไม่ใช้เครื่องหมายตกใจ ไม่ใส่อีโมจิ ไม่ต้องใส่ครับ ค่ะ หรือคะ\n"
           "- ตอบเฉพาะรายการข้อ")
-ITEM_MAX = 110  # characters in one AI item: one breath on a phone
+ITEM_MAX = 120  # characters in one AI item: one breath on a phone (a long fact gets 1.25x its own length)
 
 
-def prompt(f: dict) -> list[dict]:
-    lines = "\n".join(f"{k}) {i['text']}" for k, i in enumerate(items(f), 1))
+def prompt(f: dict, only: set[int] | None = None) -> list[dict]:
+    """GLM messages: the numbered facts (all, or only the numbers in `only` — the facts without accepted wording)."""
+    lines = "\n".join(f"{k}) {i['text']}" for k, i in enumerate(items(f), 1) if only is None or k in only)
     return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"ข้อมูลจากแอป (ทั่วประเทศ):\n{lines}"}]
 
 
 def _ai(messages: list[dict]) -> str | None:
+    """GLM, the app's one AI provider (owner 2026-10-04: "You can use only GLM"); a long list needs room to answer."""
     from floodwatch import ai
-    return ai.run(messages, max_tokens=700, timeout=25)
+    return ai.run(messages, max_tokens=1600, timeout=40)
 
 
 def parse_items(text: str | None, rule: list[dict]) -> list[dict]:
@@ -225,47 +238,90 @@ def parse_items(text: str | None, rule: list[dict]) -> list[dict]:
     return out
 
 
-def check_items(got: list[dict], rule: list[dict]) -> list[str]:
-    """Problems with the AI items ([] = may be shown): each item may only use the numbers and places of its own fact,
-    plus the checks on the whole text (not Thai, verdicts, conditions)."""
-    if not got:
-        return ["no items"]
-    issues = []
-    for g in got:
-        own = rule[g["n"] - 1]["text"]
-        if _nums(g["text"]) - _nums(own):
-            issues.append(f"new number in item {g['n']}")
-        if _places(g["text"]) - _places(own, ours=True):
-            issues.append(f"new place in item {g['n']}")
-        if len(g["text"]) > ITEM_MAX:
-            issues.append(f"item {g['n']} too long")
-    whole = " ".join(g["text"] for g in got)
-    if re.search(r"[A-Za-z]{3,}", whole):
-        issues.append("not Thai")
+# words an item must keep when its fact has them (Llama 3.3, 2026-10-04, dropped "ทรงตัวหรือลดลง … ยังไม่มีจุดที่น้ำขึ้น
+# จนอาจถึงตลิ่ง" from the Bangkok item, which then read more alarming than the facts): fact phrase -> accepted words
+KEEP = (("ทรงตัวหรือลดลง", ("ทรงตัว", "ลดลง")), ("ยังขึ้น", ("ยังขึ้น", "เพิ่มขึ้น", "ขึ้นต่อ", "น้ำขึ้น", "สูงขึ้น", "กำลังขึ้น")),
+        ("ยังไม่มีจุด", ("ยังไม่มี", "ไม่มีจุด")), ("ลดลงจากเมื่อวาน", ("ลดลง", "ลด")),
+        ("เพิ่มขึ้นจากเมื่อวาน", ("เพิ่มขึ้น", "เพิ่ม")), ("วินาที ทรงตัว", ("ทรงตัว", "คงที่")),
+        # examples stay examples (SEA-LION, 2026-10-04: "เลย พิษณุโลก และตราด น้ำขึ้นเร็ว" for 30 gauges)
+        ("เช่น", ("เช่น", "ตัวอย่าง", "อาทิ", "อย่างที่")))
+# words that make an item sound worse than its fact (Llama 3.3: "ใกล้ตลิ่ง/คลองเต็ม" -> "ใกล้จะล้น")
+ALARM = ("ใกล้จะล้น", "จะล้น", "วิกฤต", "รุนแรง", "อันตราย", "น่าเป็นห่วง", "น่ากังวล", "ระวังภัย")
+# the "✨ ให้ AI สรุป" card's voice (explain.check: one neutral voice, never "good news"), plus GLM's ticker slips
+# (2026-10-04: "…อยู่นะ", "สบายใจได้ว่า…")
+TONE = re.compile(r"ข่าวดี|สบายใจ|โล่งใจ|(?:ค่ะ|คะ|ครับ|นะ|จ้า|จ้ะ)(?=\s|$|[.!])")
+
+
+def check_item(g: dict, rule: list[dict]) -> list[str]:
+    """Problems with one AI item ([] = may be shown): only the numbers and places of its own fact, its trend words kept,
+    no alarm word the fact does not say, a flow never called a level, Thai, no verdict, no guess."""
+    own = rule[g["n"] - 1]["text"]
+    t, n, issues = g["text"], g["n"], []
+    if _nums(t) - _nums(own):
+        issues.append(f"new number in item {n}")
+    if _places(t) - _places(own, ours=True):
+        issues.append(f"new place in item {n}")
+    if len(t) > max(ITEM_MAX, int(len(own) * 1.25)):  # a long fact (Bangkok) cannot be retold faithfully in 110
+        issues.append(f"item {n} too long")
+    for phrase, words in KEEP:
+        if phrase in own and not any(w in t for w in words):
+            issues.append(f"item {n} dropped '{phrase}'")
+    issues += [f"item {n} alarm word '{w}'" for w in ALARM if w in t and w not in own]
+    if "ลบ.ม." in t and "ระดับ" in t:
+        issues.append(f"item {n} calls a flow a level")
+    if re.search(r"[A-Za-z]{3,}", t):
+        issues.append(f"item {n} not Thai")
+    if TONE.search(t):
+        issues.append(f"item {n} tone")
     rule_all = " ".join(i["text"] for i in rule)
-    issues += [f"verdict '{v}'" for v in _VERDICTS if v in whole and v not in rule_all]
-    if any(w in whole and w not in rule_all for w in CONDITIONALS):
-        issues.append("speculation")
+    issues += [f"item {n} verdict '{v}'" for v in _VERDICTS if v in t and v not in rule_all]
+    if any(w in t and w not in rule_all for w in CONDITIONALS):
+        issues.append(f"item {n} speculation")
     return issues
 
 
-def compose(f: dict) -> dict:
-    """{"items", "text", "rule", "ai": bool, "rejected"}: the AI items when they pass `check_items`, else the rule items."""
+def check_items(got: list[dict], rule: list[dict]) -> list[str]:
+    """All problems with the AI items ([] = every item may be shown)."""
+    if not got:
+        return ["no items"]
+    return [x for g in got for x in check_item(g, rule)]
+
+
+def compose(f: dict, cache: dict | None = None) -> dict:
+    """{"items" [{icon, text, ai}], "text", "rule", "ai", "ai_items", "rejected", "cache"}. Item by item: an AI item that
+    passes `check_item` replaces its fact's rule wording; one that fails (or is missing) keeps the rule wording, so every
+    fact is shown and nothing unchecked is (2026-10-04: rejecting a whole answer for one slip threw the good items away).
+    `cache` {fact text: accepted wording} from the last run: unchanged facts keep their wording (checked again) and only
+    the other facts go to GLM."""
     rule = items(f)
     rejected: list = []
-    for _ in range(2):  # one retry: a slip (a new number or place) is rare and random (live trials 2026-10-04)
+    best: dict = {}
+    for k, r in enumerate(rule, 1):
+        w = (cache or {}).get(r["text"])
+        if w and not check_item({"n": k, "text": w}, rule):
+            best[k] = w
+    todo = {k for k in range(1, len(rule) + 1) if k not in best}
+    for _ in range(2 if todo else 0):  # a second call only when the first gave no usable item
         try:
-            got = parse_items(_ai(prompt(f)), rule)
+            got = [g for g in parse_items(_ai(prompt(f, only=todo)), rule) if g["n"] in todo]
         except Exception:
             got = []
-        issues = check_items(got, rule)
-        if not issues:
-            shown = [{"icon": g["icon"], "text": g["text"]} for g in got]
-            return {"items": shown, "text": " · ".join(f"{i['icon']} {i['text']}" for i in shown), "rule": rule_text(f),
-                    "ai": True, "rejected": rejected}
-        rejected += issues
-    shown = [{"icon": i["icon"], "text": i["text"]} for i in rule]
-    return {"items": shown, "text": rule_text(f), "rule": rule_text(f), "ai": False, "rejected": rejected}
+        fresh = 0
+        for g in got:
+            iss = check_item(g, rule)
+            if iss:
+                rejected += iss
+            elif g["n"] not in best:
+                best[g["n"]] = g["text"]
+                fresh += 1
+        if fresh:
+            break
+        if not got:
+            rejected.append("no items")
+    shown = [{"icon": r["icon"], "text": best.get(k, r["text"]), "ai": k in best} for k, r in enumerate(rule, 1)]
+    return {"items": shown, "text": " · ".join(f"{i['icon']} {i['text']}" for i in shown), "rule": rule_text(f),
+            "ai": bool(best), "ai_items": len(best), "rejected": rejected,
+            "cache": {rule[k - 1]["text"]: w for k, w in best.items()}}
 
 
 FLOWS_SQL = """WITH latest AS (
@@ -299,7 +355,9 @@ def run(base: str = "http://app:3000") -> dict:
         hist = db.get_state(c, "situation_history") or []
     f = facts(get("/api/stations")["stations"], get("/api/risks"), get("/api/rain").get("by_region") or {},
               flows=flows, prev=yesterday(hist, now))
-    out = {**compose(f), "facts": f, "at": now.isoformat()}
+    with db.connect() as c:
+        cache = (db.get_state(c, "situation") or {}).get("cache") or {}
+    out = {**compose(f, cache=cache), "facts": f, "at": now.isoformat()}
     keep = [h for h in hist if (now - dt.datetime.fromisoformat(h["at"])).total_seconds() < HISTORY_H * 3600]
     keep.append({"at": now.isoformat(), "over": {"n": f["over"]["n"], "rising": f["over"]["rising"]},
                  "may_reach": {"n": f["may_reach"]["n"]}, "near": f["near"]})

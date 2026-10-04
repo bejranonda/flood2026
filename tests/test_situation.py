@@ -22,7 +22,8 @@ def test_facts_count_fresh_gauges_and_name_the_places():
     f = situation.facts(STATIONS, RISKS, RAIN)
     assert f["over"] == {"n": 3, "rising": 2, "provinces": 2, "rising_top": [["พระนครศรีอยุธยา", 2]]}
     assert f["near"] == 1 and f["below"] == 1
-    assert f["may_reach"] == {"n": 2, "top": ["นนทบุรี", "นครปฐม"], "near_steady": 0} and f["upstream"] == {"n": 1, "top": ["สระแก้ว"]}
+    assert f["may_reach"] == {"n": 2, "top": ["นนทบุรี", "นครปฐม"], "provinces": 2, "near_steady": 0}
+    assert f["upstream"] == {"n": 1, "top": ["สระแก้ว"], "provinces": 1}
     assert f["rain_measured"] == {"mm": 93, "place": "บ้านโนนเขวา", "province": "ขอนแก่น"}
     assert f["rain_forecast"] == {"mm": 52, "province": "น่าน"}
 
@@ -46,11 +47,16 @@ def test_the_ticker_uses_the_ai_text_only_when_it_passes_and_otherwise_the_rules
     f = situation.facts(STATIONS, RISKS, RAIN)
     monkeypatch.setattr(situation, "_ai", lambda msgs: "1) ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา")
     out = situation.compose(f)
-    assert out["ai"] is True and out["items"] == [{"icon": "🔴", "text": "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา"}]
-    assert out["text"] == "🔴 ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา" and out["rule"] == situation.rule_text(f) and out["rejected"] == []
+    rule = situation.items(f)
+    # item by item: the AI's item 1 passed, every other fact keeps its rule wording (none is ever lost)
+    assert out["ai"] is True and out["ai_items"] == 1 and len(out["items"]) == len(rule)
+    assert out["items"][0] == {"icon": "🔴", "text": "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา", "ai": True}
+    assert out["items"][1] == {"icon": rule[1]["icon"], "text": rule[1]["text"], "ai": False}
+    assert out["rule"] == situation.rule_text(f) and out["rejected"] == []
     monkeypatch.setattr(situation, "_ai", lambda msgs: "1) พื้นที่อื่นปลอดภัยทั้งหมด")
     out = situation.compose(f)
-    assert out["ai"] is False and out["text"] == situation.rule_text(f) and len(out["rejected"]) == 2  # tried twice
+    assert out["ai"] is False and out["text"] == situation.rule_text(f)
+    assert sum("verdict" in i for i in out["rejected"]) == 2  # tried twice
     assert [i["icon"] for i in out["items"]] == [i["icon"] for i in situation.items(f)]
 
 
@@ -78,7 +84,7 @@ def test_may_reach_names_only_provinces_where_the_water_is_rising():
     # owner 2026-10-04: "ควรจับตาพื้นที่กรุงเทพฯ … ที่น้ำอาจถึงตลิ่งในอีก 24–48 ชม." while no Bangkok gauge was rising (all steady
     # just under the bank): steady near-bank gauges are counted apart and never name a province
     f = situation.facts(STATIONS, MAY, RAIN)
-    assert f["may_reach"] == {"n": 3, "top": ["สมุทรปราการ", "เพชรบุรี"], "near_steady": 2}
+    assert f["may_reach"] == {"n": 3, "top": ["สมุทรปราการ", "เพชรบุรี"], "provinces": 2, "near_steady": 2}
     text = situation.rule_text(f)
     assert "อาจถึงตลิ่ง" in text and "สมุทรปราการ" in text and "กรุงเทพ" not in text.split("อาจถึงตลิ่ง")[1].split("·")[0]
 
@@ -146,7 +152,7 @@ def test_the_ticker_is_a_list_of_short_items_each_with_its_own_symbol():
 def test_an_ai_answer_is_read_as_numbered_items_and_keeps_our_symbols():
     f = situation.facts(STATIONS, RISKS, RAIN)
     rule = situation.items(f)
-    ai = "1) ตอนนี้น้ำล้นตลิ่งและยังขึ้น 2 สถานีที่พระนครศรีอยุธยา\n3) ขณะที่นนทบุรีกับนครปฐมอาจถึงตลิ่งในอีก 24–48 ชม.\nพูดเกินมาหนึ่งบรรทัด"
+    ai = "1) ตอนนี้น้ำล้นตลิ่งและยังขึ้น 2 สถานีที่พระนครศรีอยุธยา\n3) ขณะที่นนทบุรีกับนครปฐม น้ำยังขึ้นและอาจถึงตลิ่งในอีก 24–48 ชม.\nพูดเกินมาหนึ่งบรรทัด"
     got = situation.parse_items(ai, rule)
     assert [g["icon"] for g in got] == [rule[0]["icon"], rule[2]["icon"]] and got[1]["text"].startswith("ขณะที่")
     assert situation.check_items(got, rule) == []
@@ -158,3 +164,98 @@ def test_each_ai_item_may_only_use_the_numbers_and_places_of_its_own_fact():
     moved = situation.parse_items("1) น้ำล้นตลิ่งและยังขึ้น 2 สถานีที่ขอนแก่น", rule)  # Khon Kaen belongs to the rain item
     assert "new place" in situation.check_items(moved, rule)[0]
     assert situation.parse_items("ไม่มีเลขข้อเลย", rule) == []
+
+
+def test_flows_are_two_items_one_per_place():
+    flows = {"C.13": {"q": 2500.0, "q24": 2500.0}, "C.2": {"q": 2052.0, "q24": 2150.0}}
+    rule = situation.items(situation.facts(STATIONS, RISKS, RAIN, flows=flows))
+    topics = [i["topic"] for i in rule]
+    assert "flow_C.2" in topics and "flow_C.13" in topics and topics.index("flow_C.2") < topics.index("flow_C.13")
+
+
+def test_an_item_must_keep_the_trend_words_and_the_reassurance_of_its_fact():
+    # Llama 3.3 (2026-10-04) dropped "ทรงตัวหรือลดลง … ยังไม่มีจุดที่น้ำขึ้นจนอาจถึงตลิ่ง" from the Bangkok item: more alarming
+    f = situation.facts(STATIONS + BKK, MAY, RAIN)
+    rule = situation.items(f)
+    k = [i["topic"] for i in rule].index("bkk") + 1
+    bad = situation.parse_items(f"{k}) ในกรุงเทพฯ มี 2 จุดที่น้ำล้นตลิ่ง และ 1 จุดที่ใกล้ตลิ่งหรือคลองเต็ม", rule)
+    assert any("dropped" in x for x in situation.check_items(bad, rule))
+    good = situation.parse_items(f"{k}) กรุงเทพฯ ล้นตลิ่ง 2 จุดแต่ทรงตัวหรือลดลง ยังไม่มีจุดที่น้ำขึ้นจนอาจถึงตลิ่ง และใกล้ตลิ่ง/คลองเต็ม 1 จุด", rule)
+    assert situation.check_items(good, rule) == []
+
+
+def test_a_flow_is_never_called_a_water_level():
+    flows = {"C.2": {"q": 2052.0, "q24": 2150.0}}
+    rule = situation.items(situation.facts(STATIONS, RISKS, RAIN, flows=flows))
+    k = [i["topic"] for i in rule].index("flow_C.2") + 1
+    got = situation.parse_items(f"{k}) ระดับน้ำเหนือที่นครสวรรค์อยู่ที่ 2,052 ลบ.ม./วินาที ลดลงจากเมื่อวาน 98", rule)
+    assert any("level" in x for x in situation.check_items(got, rule))
+
+
+def test_an_item_that_fails_falls_back_to_its_own_rule_wording_only(monkeypatch):
+    f = situation.facts(STATIONS, RISKS, RAIN)
+    rule = situation.items(f)
+    k_rain = [i["topic"] for i in rule].index("rain") + 1
+    monkeypatch.setattr(situation, "_ai", lambda msgs: f"1) ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา\n{k_rain}) ฝนหนักสุด 93 มม. ที่เชียงใหม่")
+    out = situation.compose(f)
+    assert out["items"][0]["ai"] is True and out["items"][k_rain - 1] == {**{k: rule[k_rain - 1][k] for k in ("icon", "text")}, "ai": False}
+    assert any("new place" in x for x in out["rejected"])
+
+
+def test_alarm_words_the_fact_does_not_say_are_rejected():
+    # Llama 3.3 (2026-10-04) turned "ใกล้ตลิ่ง/คลองเต็ม" into "ใกล้จะล้น"
+    f = situation.facts(STATIONS + BKK, MAY, RAIN)
+    rule = situation.items(f)
+    k = [i["topic"] for i in rule].index("bkk") + 1
+    got = situation.parse_items(f"{k}) กรุงเทพฯ ล้นตลิ่ง 2 จุดแต่ทรงตัวหรือลดลง ยังไม่มีจุดที่น้ำขึ้นจนอาจถึงตลิ่ง อีก 1 จุดใกล้จะล้น", rule)
+    assert any("alarm" in x for x in situation.check_items(got, rule))
+
+
+def test_rising_said_in_other_words_counts_as_kept():
+    f = situation.facts(STATIONS, MAY, RAIN)
+    rule = situation.items(f)
+    k = [i["topic"] for i in rule].index("may_reach") + 1
+    got = situation.parse_items(f"{k}) สมุทรปราการและเพชรบุรีมีแนวโน้มน้ำสูงขึ้น อาจถึงตลิ่งใน 24–48 ชม. รวม 3 สถานี (ตัวอย่าง)", rule)
+    assert situation.check_items(got, rule) == []
+
+
+def test_examples_stay_examples():
+    # 7 gauges in 4 provinces: the 3 named are examples
+    f = situation.facts(STATIONS, {"groups": [{"key": "fast_rise", "items": [{"code": c, "province": p} for c, p in
+                        (("a", "ตราด"), ("b", "ตราด"), ("c", "เลย"), ("d", "เลย"), ("e", "พิษณุโลก"), ("g", "พิษณุโลก"), ("h", "สตูล"))]}]}, RAIN)
+    rule = situation.items(f)
+    k = [i["topic"] for i in rule].index("fast_rise") + 1
+    assert any("เช่น" in x for x in situation.check_items(situation.parse_items(f"{k}) จ.เลย พิษณุโลก และตราด น้ำขึ้นเร็ว", rule), rule))
+    assert situation.check_items(situation.parse_items(f"{k}) น้ำขึ้นเร็ว 7 สถานี เช่น จ.เลย พิษณุโลก ตราด", rule), rule) == []
+
+
+def test_unchanged_facts_keep_their_checked_wording_and_only_changed_items_go_to_the_ai(monkeypatch):
+    # every 30 min most facts are the same: their accepted wording is reused (stable ticker, fewer GLM calls)
+    f = situation.facts(STATIONS, RISKS, RAIN)
+    rule = situation.items(f)
+    calls = []
+
+    def fake(msgs):
+        calls.append(msgs[-1]["content"])
+        return "1) ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา"
+
+    monkeypatch.setattr(situation, "_ai", fake)
+    first = situation.compose(f)
+    assert first["cache"] == {rule[0]["text"]: "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา"}
+    again = situation.compose(f, cache=first["cache"])
+    assert again["items"][0]["text"] == "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา" and again["items"][0]["ai"] is True
+    assert "1) " not in calls[-1] and "2) " in calls[-1]  # the second call asked only for the facts without wording
+    monkeypatch.setattr(situation, "_ai", lambda msgs: (_ for _ in ()).throw(AssertionError("no call expected")))
+    full = {i["text"]: i["text"] + " " for i in rule}  # every fact has wording already
+    assert situation.compose(f, cache={k: v.strip() for k, v in full.items()})["ai_items"] == len(rule)
+
+
+def test_the_summary_cards_tone_rules_apply_to_ticker_items():
+    # GLM run 4 (2026-10-04): "…และน้ำยังขึ้นอยู่นะ", "สบายใจได้ว่าส่วนใหญ่…ทรงตัวหรือลดลงแล้ว" (a reassurance verdict)
+    f = situation.facts(STATIONS, RISKS, RAIN)
+    rule = situation.items(f)
+    for bad in ("1) ที่พระนครศรีอยุธยามีน้ำล้นตลิ่ง 2 สถานี และน้ำยังขึ้นอยู่นะ",
+                "2) ล้นตลิ่ง 3 สถานี สบายใจได้ว่าส่วนใหญ่ทรงตัวหรือลดลงแล้ว"):
+        assert any("tone" in x for x in situation.check_items(situation.parse_items(bad, rule), rule)), bad
+    ok = situation.parse_items("1) ที่พระนครศรีอยุธยามีน้ำล้นตลิ่ง 2 สถานี และน้ำยังกำลังขึ้นอยู่", rule)
+    assert situation.check_items(ok, rule) == []

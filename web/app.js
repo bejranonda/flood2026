@@ -285,11 +285,14 @@ function renderSummary(st) {
   const its = sit?.items?.length ? sit.items : (sit?.text ? [{ icon: "", text: sit.text }] : []);
   const run = its.map((i) => `<span class="tk-item">${i.icon ? `<span class="tk-ic">${esc(i.icon)}</span>` : ""}${esc(i.text)}</span>`).join('<span class="tk-sep" aria-hidden="true">◆</span>');
   const len = its.reduce((a, i) => a + i.text.length + 4, 0);
+  // item by item: AI wording only where it passed the check, the app's own wording elsewhere (say which, honestly)
+  const nAi = its.filter((i) => i.ai).length;
+  const aiNote = !sit?.ai ? "สรุปจากข้อมูลในแอป" : `✨ เรียบเรียงโดย AI${nAi && nAi < its.length ? ` ${nAi} จาก ${its.length} ข้อ` : ""} จากข้อมูลในแอป`;
   const tk = its.length ? `<div class="ticker" role="button" tabindex="0" aria-expanded="false" aria-label="สรุปสถานการณ์น้ำทั่วประเทศ">
       <span class="tk-icon" aria-hidden="true">📢</span><div class="tk-view"><div class="tk-track" style="--tk-s:${Math.max(25, Math.round(len * 0.24))}s">
         <span class="tk-run">${run}<span class="tk-sep" aria-hidden="true">◆</span></span><span class="tk-run" aria-hidden="true">${run}<span class="tk-sep">◆</span></span></div></div>
       <div class="tk-more"><ul class="tk-list">${its.map((i) => `<li>${i.icon ? `<span class="tk-ic">${esc(i.icon)}</span>` : ""}${esc(i.text)}</li>`).join("")}</ul>
-        <p class="muted">${sit.ai ? "✨ เรียบเรียงโดย AI จากข้อมูลในแอป" : "สรุปจากข้อมูลในแอป"} · อัปเดต ${esc(fmtTime(sit.at))} · <a href="#" class="tk-watch">ดูแท็บจับตา ›</a></p></div></div>` : "";
+        <p class="muted">${aiNote} · อัปเดต ${esc(fmtTime(sit.at))} · <a href="#" class="tk-watch">ดูแท็บจับตา ›</a></p></div></div>` : "";
   let open = false;
   try { open = localStorage.getItem("sumOpen") === "1"; } catch { /* private mode */ }
   document.getElementById("summary").innerHTML = `<details class="sumbox"${open ? " open" : ""}><summary class="summini" aria-label="สรุปจำนวนสถานีทั่วประเทศ">

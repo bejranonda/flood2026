@@ -57,8 +57,8 @@ def parse_label(text: str) -> dict | None:
     return {"category": d["category"], "urgent": d["urgent"]}
 
 
-def _provider() -> str:
-    p = os.environ.get("AI_PROVIDER", "").strip().lower()
+def _provider(override: str | None = None) -> str:
+    p = (override or os.environ.get("AI_PROVIDER", "")).strip().lower()
     if p in ("glm", "zhipu"):
         return "glm"
     if p == "cloudflare":
@@ -68,10 +68,11 @@ def _provider() -> str:
     return "cloudflare"
 
 
-def _credentials() -> dict | None:
+def _credentials(provider: str | None = None, model: str | None = None) -> dict | None:
+    """Credentials for the default provider, or for the one a caller picks (the ticker, D-089; `model` overrides too)."""
     if os.environ.get("AI_ENABLED", "1") != "1":
         return None
-    p = _provider()
+    p = _provider(provider)
     if p == "glm":
         key = os.environ.get("GLM_API_KEY", "").strip()
         if not key:
@@ -79,7 +80,7 @@ def _credentials() -> dict | None:
         return {
             "provider": "glm",
             "api_key": key,
-            "model": os.environ.get("GLM_MODEL", "glm-5.3-flash").strip() or "glm-5.3-flash",
+            "model": model or os.environ.get("GLM_MODEL", "glm-5.3-flash").strip() or "glm-5.3-flash",
             "endpoint": os.environ.get("GLM_ENDPOINT", "https://open.bigmodel.cn/api/paas/v4/chat/completions").strip(),
         }
     acct = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
@@ -90,7 +91,7 @@ def _credentials() -> dict | None:
         "provider": "cloudflare",
         "account_id": acct,
         "token": tok,
-        "model": os.environ.get("AI_MODEL", MODEL),
+        "model": model or os.environ.get("AI_MODEL", MODEL),
     }
 
 
@@ -133,10 +134,13 @@ def _glm_text(d: dict) -> str | None:
     return text or None
 
 
-def run(messages: list[dict], max_tokens: int = 60, timeout: float = 25) -> str | None:
-    """One AI triage call (GLM or Cloudflare Workers AI) with error handling. Returns None on any problem; never raises."""
-    cred = _credentials()
-    if cred is None or not available():
+def run(messages: list[dict], max_tokens: int = 60, timeout: float = 25, provider: str | None = None,
+        model: str | None = None, account: bool = True) -> str | None:
+    """One AI call (GLM or Cloudflare Workers AI) with error handling. Returns None on any problem; never raises.
+    `provider`/`model` let a caller pick its own model; `account=False` (research only) skips the shared budget and
+    breaker: 2026-10-04 three refused test calls paused AI for every visitor for an hour."""
+    cred = _credentials(provider, model)
+    if cred is None or (account and not available()):
         return None
     ok, text, neurons, err = False, None, 0.0, ""
     try:
@@ -171,6 +175,8 @@ def run(messages: list[dict], max_tokens: int = 60, timeout: float = 25) -> str 
                 err = json.dumps(d.get("errors"))[:200]
     except Exception as e:  # network, JSON, schema
         err = f"{type(e).__name__}: {e}"[:200]
+    if not account:
+        return text if ok else None
     with db.connect() as c:
         st = _state(c)
         st["calls"] += 1

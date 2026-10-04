@@ -57,3 +57,35 @@ def test_glm_never_passes_reasoning_off_as_the_answer():
     assert ai._glm_text(cut) is None
     assert ai._glm_text({"choices": [{"message": {"content": " ระดับน้ำลดลง "}}]}) == "ระดับน้ำลดลง"
     assert ai._glm_text({"error": {"code": "1211"}}) is None
+
+
+def test_a_caller_may_pick_its_own_provider_and_model(monkeypatch):
+    # the ticker may use another model than the AI summary button (research/2026-10-04_ticker_models.log)
+    monkeypatch.setenv("AI_PROVIDER", "glm")
+    monkeypatch.setenv("GLM_API_KEY", "k")
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "acct")
+    monkeypatch.setenv("CF_AI_TOKEN", "tok")
+    cred = ai._credentials(provider="cloudflare", model="@cf/meta/llama-3.3-70b-instruct-fp8-fast")
+    assert cred["provider"] == "cloudflare" and cred["model"] == "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    assert ai._credentials()["provider"] == "glm"  # everyone else keeps the default
+
+
+def test_research_calls_never_touch_the_shared_breaker(monkeypatch):
+    # 2026-10-04: three refused test calls (a model the account may not use) paused AI for every visitor for an hour
+    import contextlib
+    monkeypatch.setenv("AI_PROVIDER", "glm")
+    monkeypatch.setenv("GLM_API_KEY", "k")
+
+    class R:
+        ok = False
+        def json(self):
+            return {"error": {"code": "5018"}}
+
+    monkeypatch.setattr(ai.requests, "post", lambda *a, **k: R())
+
+    def no_db():
+        raise AssertionError("research call touched the database")
+        yield
+
+    monkeypatch.setattr(ai.db, "connect", contextlib.contextmanager(no_db))
+    assert ai.run([{"role": "user", "content": "x"}], account=False) is None
