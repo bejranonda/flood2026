@@ -466,3 +466,9 @@ a { color: var(--accent); }
   .ticker .tk-view { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .ticker .tk-track span[aria-hidden] { display: none; }
 }
+@media (max-width: 699px) {
+  .summary .summini { gap: 4px; }
+  .summary .summini .chips { gap: 4px; flex: 1 1 0; }
+  .summary .summini .chip { padding: 3px 8px; font-size: 13px; min-height: 30px; }
+}
+.summary .summini .nat { align-self: center; font-size: 13px; margin-right: 2px; }

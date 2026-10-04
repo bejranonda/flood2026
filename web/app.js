@@ -281,7 +281,7 @@ function renderSummary(st) {
   let open = false;
   try { open = localStorage.getItem("sumOpen") === "1"; } catch { /* private mode */ }
   document.getElementById("summary").innerHTML = `<details class="sumbox"${open ? " open" : ""}><summary class="summini" aria-label="สรุปจำนวนสถานีทั่วประเทศ">
-      <span class="muted">ทั่วประเทศ</span><div class="chips">${chips}</div></summary>${staleLine}
+      <div class="chips"><span class="muted nat">ทั่วประเทศ</span>${chips}</div></summary>${staleLine}
     <details class="sumdetails" open><summary>รายละเอียดข้อมูล</summary>
     <p class="sumline">⬆ น้ำยังขึ้น <b>${tg("rising")}</b> · → ทรงตัวหรือลดลง <b>${tg("flat_or_falling")}</b> สถานีทั่วประเทศ</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
