@@ -420,7 +420,19 @@ a { color: var(--accent); }
 .wrow.w2 { display: block; padding: 7px 4px; }
 .wrow.w2 .wname { white-space: normal; }
 .wrow .wmeta { font-size: 13px; color: #4b5563; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.wsubh { margin: 8px 2px 2px; font-size: 14px; font-weight: 600; color: #374151; }
+.wsubh { display: inline-block; margin: 10px 2px 4px; padding: 3px 10px; border-radius: 12px; font-size: 14px; font-weight: 700; }
+.wsubh.rising { background: #fdecea; color: #b71c1c; }
+.wsubh.flat { background: #eef2f6; color: #374151; }
+.wsubh.unk { background: #f3f4f6; color: #6b7280; }
+.wchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 2px 6px; }
+.wchip { font: inherit; font-size: 14px; border-radius: 16px; padding: 5px 10px; background: #fff; cursor: pointer; border: 1.5px solid #d1d5db; color: #1f2937; min-height: 36px; }
+.wchip b { margin-left: 4px; }
+.wchip.rising { border-color: #e57373; }
+.wchip.rising b { color: #b71c1c; }
+.wchip.flat b { color: #374151; }
+.wchip[aria-pressed="true"] { background: #1f2937; color: #fff; border-color: #1f2937; }
+.wchip[aria-pressed="true"] b { color: #fff; }
+.wsubdetail { border-left: 3px solid #e5e7eb; margin: 2px 0 8px 4px; padding-left: 6px; }
 /* v0.22.0 map layer box (D-085): the legend is the switch */
 .legend.layers summary { cursor: pointer; font-weight: 600; }
 .legend.layers label { display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer; line-height: 1.7; }

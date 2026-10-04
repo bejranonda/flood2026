@@ -536,6 +536,8 @@ const WATCH_GROUPS = {
 };
 // The trend group of a station row (status.trend, D-083): "น้ำยังขึ้น" / "ทรงตัวหรือลดลง", with both labels
 const TREND_SUB = { rising: "⬆ น้ำยังขึ้น", flat_or_falling: "→ ทรงตัวหรือลดลง", unknown: "ไม่ทราบแนวโน้ม" };
+const SUB_CLS = { rising: "rising", flat_or_falling: "flat", unknown: "unk" };
+let overBank = [];  // the over-bank sub-groups as rendered (province chips open their stations from here)
 const TREND_ARROW = { up: "↗", down: "↘", steady: "→", unsure: "?" };
 function trendLabels(t) {
   if (!t) return "ไม่ทราบแนวโน้ม";
@@ -550,7 +552,7 @@ const fbText = (fb) => fb == null ? "" : fb < 0 ? `เกินตลิ่ง $
 const wIn = (it) => REGIONS[wRegion].test(it) && (!wProv || it.province === wProv);
 const WMAX = 5;
 function wRows(rows) {
-  if (rows.length <= WMAX || rows.some((r) => r.startsWith('<div class="wsubh">'))) return rows.join("");  // sub-groups: all shown
+  if (rows.length <= WMAX || rows.some((r) => r.startsWith('<div class="wsubh'))) return rows.join("");  // sub-groups: all shown
   return rows.slice(0, WMAX).join("") + `<div class="wmore-rows" hidden>${rows.slice(WMAX).join("")}</div><button type="button" class="wmore">+ อีก ${rows.length - WMAX} ›</button>`;
 }
 async function renderWatch() {
@@ -570,11 +572,15 @@ async function renderWatch() {
     if (!items.length) return "";
     let head = "", rows = [];
     if (g.key === "over_bank") {
+      // a coloured pill per trend sub-group and one chip per province (count badge); a chip opens its stations below
+      // (owner 2026-10-04: "use color or symbol … we see a lot of text under subcategories")
       rows = items.flatMap((sub) => {
-        const n = sub.provinces.reduce((a, p) => a + p.gauges.length, 0);
-        return [`<div class="wsubh">${TREND_SUB[sub.sub]} <b>${n}</b></div>`, ...sub.provinces.map((p) => `<div class="wrow wprov" role="button" tabindex="0"><span class="wname">${esc(p.province)}</span><span class="wval"><b>${p.gauges.length}</b> สถานี ›</span></div>
-        <div class="wsub" hidden>${p.gauges.map((it) => gauge(it, `${esc(fbText(it.freeboard_m))} · ${trendLabels(it.trend)}`)).join("")}</div>`)];
+        const n = sub.provinces.reduce((a, p) => a + p.gauges.length, 0), cls = SUB_CLS[sub.sub];
+        return [`<div class="wsubh ${cls}">${TREND_SUB[sub.sub]} <b>${n}</b></div>`,
+          `<div class="wchips">${sub.provinces.map((p, i) => `<button type="button" class="wchip ${cls}" data-sub="${esc(sub.sub)}" data-i="${i}">${esc(p.province)} <b>${p.gauges.length}</b></button>`).join("")}</div>`,
+          `<div class="wsubdetail" data-sub="${esc(sub.sub)}" hidden></div>`];
       });
+      overBank = items;
     } else if (g.key === "may_reach") {
       rows = items.map((it) => gauge(it, `${esc(fbText(it.freeboard_m))} · อาจถึงในอีก ${it.hours} ชม. ${recChip((rec[`bank_${it.hours}`] || {})[it.band], `จะถึงตลิ่ง (กลุ่มโอกาส ${it.band})`)}`));
     } else if (g.key === "upstream") {
@@ -600,8 +606,18 @@ document.addEventListener("click", (e) => {
   if (!box || !box.contains(e.target) || e.target.closest(".conf-badge")) return;
   const more = e.target.closest(".wmore");
   if (more) { more.previousElementSibling.hidden = false; more.remove(); return; }
-  const pr = e.target.closest(".wprov");
-  if (pr) { pr.nextElementSibling.hidden = !pr.nextElementSibling.hidden; return; }
+  const chip = e.target.closest(".wchip");
+  if (chip) {
+    const box = chip.closest(".wgrp").querySelector(`.wsubdetail[data-sub="${chip.dataset.sub}"]`);
+    const was = chip.getAttribute("aria-pressed") === "true";
+    chip.parentElement.querySelectorAll(".wchip").forEach((c) => c.setAttribute("aria-pressed", "false"));
+    if (was) { box.hidden = true; return; }
+    const p = overBank.find((sub) => sub.sub === chip.dataset.sub).provinces[+chip.dataset.i];
+    box.innerHTML = p.gauges.map((it) => `<div class="wrow w2" data-code="${esc(it.code)}" role="button" tabindex="0"><div class="wname">${esc(it.name_th)} <small class="muted">${esc(it.province || "")}</small></div><div class="wmeta">${esc(fbText(it.freeboard_m))} · ${trendLabels(it.trend)}</div></div>`).join("");
+    box.hidden = false;
+    chip.setAttribute("aria-pressed", "true");
+    return;
+  }
   const g = e.target.closest("[data-code]");
   if (g) { showDetail(g.dataset.code); return; }
   const rn = e.target.closest("[data-rain]");

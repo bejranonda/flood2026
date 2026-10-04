@@ -207,3 +207,10 @@ def test_forecast_rows_are_24_48_72_h_and_never_12_h():
     # owner 2026-10-04: "Can we remove trend 12 hr from stations, it is too much now … 24, 48, 72 hr"
     assert "[24, 48, 72]" in APP and "[12, 24, 48]" not in CODE and "ในอีก 12 ชม." not in CODE
     assert "trendRows(s, [s.change24 ? 24 : 12])" not in APP
+
+
+def test_over_bank_subgroups_are_coloured_pills_with_province_chips():
+    # owner 2026-10-04: "For subcategories, can we use color or symbol to make it easy to read. Currently, we see a lot
+    # of text under subcategories" → coloured sub-group pill + province chips with a count badge
+    w = APP.split("async function renderWatch()")[1].split("\n}\n")[0]
+    assert 'class="wsubh ${' in w and 'class="wchip ${' in w and "สถานี ›" not in w.split('g.key === "over_bank"')[1].split("} else if")[0]
