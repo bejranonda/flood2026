@@ -128,6 +128,60 @@ path (D-080: one forecaster; check C15).
 - Continuing a measured trend (archived runs 26 Sep – 3 Oct, ~6,000 cases per horizon): 24 h straight line 12.6 / 19.5 /
   32.8 cm mean error at 12/24/48 h; the served model 12.5 / 18.5 / 31.5; the `recent` rule 10.4 / 16.3 / 29.2.
 
+### 5a. Theory and formulas
+
+Notation: y(t) the hourly level (m MSL) at a gauge, t₀ the latest hour, h the horizon in hours, ŷ(t₀+h) the median
+forecast, ε the forecast error y − ŷ.
+
+- **Harmonic tide** (`fit_tide`): η(t) = a₀ + Σₖ [aₖ cos(ωₖ t) + bₖ sin(ωₖ t)] for the constituents K1, O1, M2, S2, M4, MS4
+  (speeds 15.04, 13.94, 28.98, 30.00, 57.97, 58.98 °/h), least squares on history before the backtest window. Methods add
+  the tide *change* η(t₀+h) − η(t₀), never a tide level.
+- **Damped trend** (`trend`, `tide_trend`): ŷ = y₀ + Δη + s·h·e^(−h/48), with s = (ȳ(t₀) − ȳ(t₀−24))/24 the slope of the
+  25 h trailing mean ȳ. The e^(−h/48) damping says "trends fade": at 24 h a trend is continued at 61 %, at 72 h at 22 %.
+- **Recent pace** (`recent`): r = sign(s₂₄)·min(|s₂₄|, |s₆|) when the straight-line slopes over the last 24 h and the
+  last 6 h have the same sign, else r = 0; ŷ = y₀ + Δη + r·h·e^(−h/48). A rise that stopped (s₆ ≈ 0) is not continued.
+- **Network model** (`star`, "space-time AR + rain"): Δy(t, h) = y(t+h) − y(t) is regressed on
+  x(t) = [Δη(t, h), y(t) − y(t−6), y(t) − y(t−24), y(t) − ȳ(t), {u_j(t) − u_j(t−24), u_j(t) − u_j(t−48)} for each
+  upstream gauge j, Q(t), Q(t) − Q(t−24), Q(t) − Q(t−48) for the C.13 dam release, R_near(t, h) + R_far(t, h)]
+  where R is the forecast rain summed over the horizon (day-1 forecasts for the first 24 h, day-2 beyond, from the
+  hindcast archive in training). Ridge regression: β = argmin ‖Xβ − Δy‖² + λ‖β‖², λ = 1, inputs standardised; one model
+  per gauge and horizon, trained only on rows before the backtest window.
+- **Error bands** (split-conformal style): for the chosen method, the empirical quantiles q₀.₀₅ … q₀.₉₅ of the backtest
+  errors ε at that horizon are added to the live median: [ŷ + q₀.₂₅, ŷ + q₀.₇₅] is the 50 % range the rows print,
+  [ŷ + q₀.₀₅, ŷ + q₀.₉₅] the 90 % band the chart shades. Between backtested horizons the quantiles are interpolated.
+- **Skill**: skill = 1 − RMSE_method / RMSE_persistence on the same backtest rows; served if > 0.10.
+- **Bank chance**: over horizons 1…H, if max ŷ ≥ bank → ">50%", else if max (ŷ + q₀.₇₅) ≥ bank → "25–50%", else if
+  max (ŷ + q₀.₉₅) ≥ bank → "5–25%", else "<5%".
+- **Measured change** (`qc.observed24`): ordinary least squares over the last 24 h (≥ 6 readings spanning ≥ 20 h):
+  change = slope × 24 h; R² < 0.5 with a residual wiggle ≥ 5 cm → "ขึ้นลงสลับกัน".
+- **Upstream learning**: for candidate gauges u in the same basin within 250 km, the lag L ∈ [1, 48] h maximising the
+  correlation of 24 h changes corr(Δ₂₄y(t), Δ₂₄u(t−L)) over ≥ 180 days; keep up to 2 with corr ≥ 0.5 and L > 0.
+
+### 5b. Which models are applied (backtests of 2026-10-04, gauges with a model)
+
+| Horizon | star | recent | tide / tide_trend / trend | persistence (nothing beat it by 10 %) | medium confidence |
+|---|---|---|---|---|---|
+| 12 h | 408 | 92 | 18 | 457 | 218 |
+| 24 h | 311 | 81 | 39 | 563 | 112 |
+| 48 h | 332 | 40 | 36 | 557 | 63 |
+| 72 h | 372 | 14 | 30 | 549 | 70 |
+
+The rows show 24 / 48 / 72 h (owner 2026-10-04: no 12 h row). The network model carries the long horizons: rain and
+upstream water take a day or more to arrive, which a gauge's own history cannot know.
+
+### 5c. Hard cases (real gauges, backtest RMSE in cm, 2026-10-04)
+
+| Gauge | Where | 24 h: served (RMSE vs no change) | 72 h | Why it is hard |
+|---|---|---|---|---|
+| CPY015 สะพานกรุงเทพ | Chao Phraya, Bangkok | star 12.7 vs 22.3 | star 23.0 vs 55.3 | tide (±1 m) on top of the river flood; the dam release (C.13) and upstream gauges make it one of the best-forecast gauges |
+| N.67 | Nan, Nakhon Sawan | star 15.8 vs 34.0 | star 66.9 vs 91.5 | big flood wave from Sirikit and the Nan; upstream gauges ~1 day ahead help at 24 h, less at 72 h |
+| C.67 สะพานหัวเวียง | Chao Phraya, Sena (Ayutthaya) | star 11.1 vs 19.3 | star 39.4 vs 54.9 | 2.7 m over its listed bank: the forecast is good, the bank value is in question (KI-272) |
+| Kgt.19A บ้านท่าบุญมี | Khlong Tha Bun Mi, Chon Buri | no change 20.6 (star 21.6) | no change 38.2 | jumps of ~70 cm in 6 h then a plateau (gate or local inflow): no input explains them, so no method beats "no change"; it caused the text-vs-chart case (KI-270) |
+| STU003 มะนัง | Khlong La-ngu, Satun | star 76.1 vs 85.6 | no change 102.7 | flash floods of 1–1.5 m within hours after heavy rain; daily rain cannot time them — hourly rain is the missing input |
+| WL.SSB.08 | Khlong Saen Saep, Bangkok (BMA) | no change 25.1 | star 24.8 vs 28.8 | pumped and gated polder canal; hidden when erratic (KI-237); levels follow pump operations, not hydrology |
+| P.1 สะพานนวรัฐ | Ping, Chiang Mai | no change 23.6 (star 21.6) | no change 28.8 | star is better but by less than 10 %, so the gate keeps "no change": the app would rather say "? ไม่แน่ชัด" than claim skill it does not have |
+| X.44 บ้านหาดใหญ่ใน | Khlong U-Taphao, Hat Yai | star 20.8 vs 24.9 | no change 28.9 | rain-driven, fast; star helps a day ahead, not three |
+
 ## 6. Derived signals
 
 - **Bank chance** (`forecast.bank_chance`): the max over horizons of the 50/75/95 % quantiles against the bank →
