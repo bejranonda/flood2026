@@ -21,6 +21,9 @@ in many possibilities"). One browser session, views compared at the same moment:
   C14 (v0.20.0, D-072) the แม่น้ำ tab: every river loads, downstream first, no BMA gauge, 24 h row where a forecast exists.
   C15 (v0.20.7) text = graph: each 12/24/48 h row prints the model's 50 % range that the chart draws at that horizon
      (owner 2026-10-03, Kgt.19A: "Why trend and model forecast in the chart are different?").
+  C18 (v0.22.0, D-083) a card whose 24 h line says "เพิ่มขึ้น" while the recent pace is not rising says what the last 6 h did;
+  C19 (v0.23.0, D-089) the top-bar ticker is shown, equals /api/situation and is at most 45 min old (the summary rain line
+     of C9/C11 is gone: heavy rain now reaches the top bar through the ticker).
   C16 (v0.21.0, D-079) the map draws every gauge with data < 24 h; C17 (v0.21.0, D-077) the จับตา tab agrees with the
      list's station data (each gauge once, over-bank rows critical, may-reach rows banded, cm to the bank equal).
   C12 (v0.18.6, D-068) the plain line never calls a far or missing gauge "แถวนี้"; on the first pins the one AI button
@@ -263,7 +266,7 @@ with sync_playwright() as p:
     # v0.20.3 overview ("ทุกสาย", the default): each river's "↗ เพิ่มขึ้น N" must equal the rising rows in its own view
     over = pg.evaluate("""() => Object.fromEntries([...document.querySelectorAll('#view-river .rv-sum')].map(e => {
         const n = (re) => { const m = e.innerText.match(re); return m ? +m[1] : 0; };
-        return [e.dataset.river, n(/เพิ่มขึ้นมาก (\\d+)/) + n(/เพิ่มขึ้น (\\d+)/)]; }))""")
+        return [e.dataset.river, n(/น้ำยังขึ้น (\\d+)/)]; }))""")
     if not over:
         note("C14", "overview", "ทุกสาย shows no rivers")
     for rv in [v for v in pg.evaluate("() => [...document.querySelectorAll('#rv-river option')].map(o => o.value)") if v]:
@@ -273,7 +276,7 @@ with sync_playwright() as p:
         # the chain only (direct children); tributaries of the same sub-basin are listed after it, unordered (v0.21.0)
         shown = pg.evaluate("() => [...document.querySelectorAll('#view-river > .prow')].map(r => ({code: r.dataset.code, text: r.innerText, fc: !!r.querySelector('.pfc .chg')}))")
         counts["river_rows"] = counts.get("river_rows", 0) + len(shown)
-        rising = pg.evaluate("() => [...document.querySelectorAll('#view-river .prow .pfc .chg')].filter(c => /เพิ่มขึ้น/.test(c.innerText)).length")
+        rising = pg.evaluate("() => { const by = new Map(stations.map(s => [s.code, s])); return [...document.querySelectorAll('#view-river .prow')].filter(r => by.get(r.dataset.code)?.trend?.group === 'rising').length; }")
         if rv in over and over[rv] != rising:
             note("C14", rv, f"overview says {over[rv]} rising, the river view shows {rising}")
         counts["rivers"] = counts.get("rivers", 0) + 1
@@ -313,7 +316,12 @@ with sync_playwright() as p:
     # critical; may-reach rows have a >= 1 in 10 band; the cm to the bank printed = the station's freeboard
     pg.locator(".tabs [data-tab=watch]").click(); pg.wait_for_selector("#view-watch .wgrp, #view-watch p", timeout=30000)
     pg.wait_for_timeout(1500)
-    pg.evaluate("() => { document.querySelectorAll('#view-watch .wmore').forEach(b => b.click()); document.querySelectorAll('#view-watch .wsub').forEach(d => d.hidden = false); }")
+    pg.evaluate("() => document.querySelectorAll('#view-watch .wmore').forEach(b => b.click())")
+    chip_rows = pg.evaluate("""() => { const out = []; document.querySelectorAll('#view-watch .wchip').forEach(ch => { ch.click();
+        const box = ch.closest('.wgrp').querySelector('.wsubdetail[data-sub="' + ch.dataset.sub + '"]');
+        box.querySelectorAll('[data-code]').forEach(r => out.push(r.dataset.code)); }); return out; }""")
+    if len(chip_rows) != len(set(chip_rows)):
+        note("C17", "watch chips", "a gauge appears under two province chips")
     c17 = pg.evaluate(r"""() => { const by = new Map(stations.map(s => [s.code, s])); const out = { rows: 0, issues: [] }; const seen = new Set();
         document.querySelectorAll('#view-watch .wgrp').forEach(g => { const title = g.querySelector('.wgrp-h b').textContent;
           g.querySelectorAll('[data-code]').forEach(r => { out.rows++; const c = r.dataset.code, s = by.get(c), t = r.innerText;
@@ -328,27 +336,25 @@ with sync_playwright() as p:
     counts["watch_rows"] = c17["rows"]
     for code, msg in c17["issues"]:
         note("C17", f"watch {code}", msg)
-    # C9: the summary rain line of every region chip = /api/rain by_region (TMD word of the wettest forecast point)
+    # C19 (v0.23.0, D-089): the top-bar ticker is shown, equals /api/situation and is at most 45 min old; C18 (D-083):
+    # a card whose 24 h line says "เพิ่มขึ้น" while its recent pace is not rising says what the last 6 h did
     open_home(pg)
-    rainreg = json.loads(pg.evaluate("async () => JSON.stringify((await (await fetch('/api/rain')).json()).by_region)"))
-    bands = [(0.1, "ไม่มีฝน"), (10.0, "ฝนเล็กน้อย"), (35.0, "ฝนปานกลาง"), (90.0, "ฝนหนัก"), (1e9, "ฝนหนักมาก")]
-    word = lambda mm: next(l for i, (mx, l) in enumerate(bands) if (mm < mx if i == 0 else mm <= mx))
-    for reg in ("bkk", "metro", "up", "north", "northeast", "east", "west", "south", "all"):
-        if pg.locator(f'#regions .pick-region option[value="{reg}"]').count() == 0:
-            continue
-        pg.locator("#regions .pick-region").select_option(reg); pg.wait_for_timeout(500)
-        line = pg.evaluate("() => document.querySelector('#summary .sumrain')?.innerText || ''")
-        r = rainreg.get(reg) or {}
-        fc, mm = r.get("forecast_mm24"), (r.get("measured") or {}).get("rain_24h")
-        heavy = (fc is not None and fc >= 35.1) or (mm is not None and float(mm) >= 35.1)
-        # C9 (v0.18.9, owner "Only when heavy"): a rain line exactly when the region expects or measured heavy rain
-        if heavy != bool(line):
-            note("C9", f"summary {reg}", f"rain line {'missing' if heavy else 'shown'}: '{line[:60]}' (API fc {fc} mm, measured {mm} mm)")
-        if heavy and fc is not None and fc >= 35.1 and word(fc) not in line.split("ที่ผ่านมา")[0]:
-            note("C9", f"summary {reg}", f"rain line '{line[:60]}' vs API {fc} mm ({word(fc)})")
-        # C11: the strip's rain is one line, never the panel's row grid (owner 2026-10-02: "too much space again")
-        if pg.locator("#summary .rain-rows, #summary .tr-rows").count():
-            note("C11", f"summary {reg}", "summary rain uses the multi-row layout")
+    sit = json.loads(pg.evaluate("async () => JSON.stringify(await (await fetch('/api/situation')).json())"))
+    shown = pg.evaluate("() => document.querySelector('#summary .ticker .tk-more')?.innerText || ''")
+    import datetime as _dt
+    age = (_dt.datetime.now(_dt.timezone.utc) - _dt.datetime.fromisoformat(sit["at"])).total_seconds() / 60 if sit.get("at") else None
+    if not sit.get("text") or sit["text"] not in shown:
+        note("C19", "ticker", f"ticker missing or not the API text ({shown[:60]!r})")
+    elif age is None or age > 45:
+        note("C19", "ticker", f"ticker is {age} min old")
+    counts["ticker_ai"] = bool(sit.get("ai"))
+    c18 = pg.evaluate(r"""() => { const by = new Map(stations.map(s => [s.code, s])); const bad = [];
+        document.querySelectorAll('#list li.item').forEach(li => { const s = by.get(li.dataset.code); const o = li.querySelector('.pf-obs');
+          if (!s || !o) return; const t = o.innerText;
+          if (/ที่ผ่านมา:\s*เพิ่มขึ้น/.test(t) && s.trend && s.trend.measured !== 'up' && !t.includes('6 ชม. ล่าสุด')) bad.push([s.code, t]); });
+        return bad; }""")
+    for code, t in c18:
+        note("C18", f"card {code}", f"24 h rise without the last-6-h note: {t[:60]}")
     b.close()
     for w, h in ((360, 740), (390, 844), (768, 1024), (1440, 900)):  # C5 viewport sweep
         b = p.chromium.launch(args=["--no-sandbox"])
@@ -373,7 +379,7 @@ with sync_playwright() as p:
             if v:
                 check_text(f"{w}px {path}", v)
         b.close()
-summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C14", "C15", "C16", "C17")}}
+summary = {**counts, "issues": len(issues), "by_check": {k: sum(1 for i in issues if i["check"] == k) for k in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C14", "C15", "C16", "C17", "C18", "C19")}}
 print(json.dumps(summary, ensure_ascii=False))
 for i in issues[:40]:
     print(i["check"], "|", i["where"], "|", i["msg"])
