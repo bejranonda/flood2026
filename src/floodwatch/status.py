@@ -61,13 +61,14 @@ def trend(s: dict) -> dict | None:
 
 
 def lean(ch: dict | None, obs: dict | None) -> str | None:
-    """"up" | "down" for a "? ไม่แน่ชัด" row whose gauge has a measured pace (owner 2026-10-04: "Lean the rows by the trend").
-    The same measured rule as the trend groups, so a row never leans against its group; a sure row never leans."""
+    """"up" | "down" for a "? ไม่แน่ชัด" row whose measured pace and chart line go the same way (owner 2026-10-04: "Lean the
+    rows by the trend"; D-091). The same measured rule as the trend groups, so a row never leans against its group, and
+    never against the chart's dashed line; a sure row never leans."""
     if forecast_label(ch) != "unsure":
         return None
     m = measured_label(obs)
-    # only where the chart's dashed line (the model median) moves >= 1 cm the same way (owner 2026-10-04, BKK017/T.13:
-    # "↘ น่าจะลดลง" beside a rising or flat line); backtest: right 81.5/78.4/78.9 % vs 75 % for the pace alone
+    # only where the chart's dashed line (the model median) visibly moves >= 3 cm the same way (owner 2026-10-04,
+    # BKK017/T.13: "↘ น่าจะลดลง" beside a rising or flat line); backtest: right 82.9/80.3/82.3 % vs 75 % for the pace alone
     med = (ch or {}).get("median")
     if m == "up" and med is not None and med >= LEAN_MEDIAN_M:
         return "up"
