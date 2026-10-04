@@ -94,8 +94,8 @@ SELECT s.code, s.in_focus, s.name_th, s.name_en, s.lat, s.lon, s.bank_msl, s.gro
        f.payload->>'trend12' AS trend12, (f.payload->>'delta12_median')::float AS delta12,
        f.payload->'recovery' AS recovery, f.issue_time AS forecast_time, q.raw_time, q.raw_flag, h.first_time,
        (f.payload->>'level_now')::float AS fc_now, f.payload->'path'->11->'q' AS q12, f.payload->'path'->23->'q' AS q24,
-       f.payload->'path'->47->'q' AS q48,
-       f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'skill'->'48' AS sk48,
+       f.payload->'path'->47->'q' AS q48, f.payload->'path'->71->'q' AS q72,
+       f.payload->'skill'->'12' AS sk12, f.payload->'skill'->'24' AS sk24, f.payload->'skill'->'48' AS sk48, f.payload->'skill'->'72' AS sk72,
        f.payload->'outlook24' AS outlook24,
        f.payload->'outlook48' AS outlook48,
        p.prev_time, p.prev_level,
@@ -192,9 +192,10 @@ def _change_fields(r: dict, status: str) -> dict:
     """Rise/fall, how much and how sure at +12 h and +24 h, from the stored forecast (D-047). Nothing for a gauge
     whose data are too old to judge; a peak window only where a tide model makes the path vary (outlook24)."""
     if status == "unknown" or r.get("fc_now") is None:
-        return {"change12": None, "change24": None, "change48": None, "peak_h": None}
+        return {"change12": None, "change24": None, "change48": None, "change72": None, "peak_h": None}
     o = r.get("outlook24") or {}
     c48 = change_summary(r.get("q48"), r["fc_now"], r.get("sk48"))
+    c72 = change_summary(r.get("q72"), r["fc_now"], r.get("sk72"))  # owner 2026-10-04: 24/48/72 h rows, not 12 h
     # 48 h everywhere a forecast exists (owner 2026-09-27, amends D-050). `proven` (medium confidence) is kept
     # for API users only: since D-056 the UI shows a direction whenever a real model beat "no change" and ignores it.
     raw = {12: change_summary(r.get("q12"), r["fc_now"], r.get("sk12")),
@@ -204,6 +205,7 @@ def _change_fields(r: dict, status: str) -> dict:
     # own path, the same the chart draws. The measured-trend override beside it (D-060, 2026-09-28) is gone; its
     # recent-pace rule is a method of the model (forecast.recent_rate) and is served where its backtest wins.
     return {"change12": raw[12], "change24": raw[24], "change48": raw[48],
+            "change72": None if not c72 else {**c72, "proven": c72["confidence"] == "medium"},
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 
@@ -240,10 +242,10 @@ def _station_row(r: dict) -> dict:
     notes = []
     if r["code"] in DATUM_SUSPECT:  # values not m MSL (KI-210): hide the level, keep the station
         notes.append("datum_suspect")
-        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None)
+        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None, q72=None)
     elif r.get("erratic"):  # jumps back and forth (pumps at the sensor, or a faulty sensor), or stuck at one value
         notes.append("stuck" if (r["erratic"] or {}).get("kind") == "stuck" else "erratic")  # KI-237, KI-241
-        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None, fc_now=None)
+        r.update(level_msl=None, trend12=None, delta12=None, recovery=None, q12=None, q24=None, q48=None, q72=None, fc_now=None)
     if notes:  # datum_suspect / erratic: no measured change either
         r["observed24"] = None
     status, pct = classify_status(r["level_msl"], r["bank_msl"], r["ground_msl"])

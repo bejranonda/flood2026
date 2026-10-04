@@ -201,3 +201,9 @@ def test_the_measured_line_says_when_the_last_6_h_changed_course():
     # the line now says what the last 6 h did whenever it differs, so card and group tell one story (D-083)
     ob = APP.split("const obsLine = (s) => {")[1].split("\n};\n")[0]
     assert "6 ชม. ล่าสุด" in ob and "s.trend" in ob
+
+
+def test_forecast_rows_are_24_48_72_h_and_never_12_h():
+    # owner 2026-10-04: "Can we remove trend 12 hr from stations, it is too much now … 24, 48, 72 hr"
+    assert "[24, 48, 72]" in APP and "[12, 24, 48]" not in CODE and "ในอีก 12 ชม." not in CODE
+    assert "trendRows(s, [s.change24 ? 24 : 12])" not in APP

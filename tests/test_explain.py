@@ -56,11 +56,11 @@ def test_plain_line_without_any_gauge_says_so():
 
 
 def test_a_longer_horizon_is_never_surer_than_a_shorter_one():
-    # the rows' rule (D-060, trendRow): after "? ไม่แน่ชัด" at 12 h, 24 h cannot read "ทรงตัว"; a proven direction still shows
+    # the rows' rule (D-060, trendRow): the chain starts at 24 h since the 12 h row is gone (owner 2026-10-04: "remove
+    # trend 12 hr"), so a hidden 12 h "?" no longer colours the 24 h words; a proven direction still shows
     unclear = _ch("falling", "fall", -0.19, 0.18, method="persistence")
     steady = _ch("steady", "steady", -0.01, 0.01, method="persistence")
-    p = explain.plain(_out(ch12=unclear, ch24=steady))
-    assert "ทรงตัว" not in p and "เปลี่ยนไม่มาก" in p
+    assert "น้ำน่าจะทรงตัว" in explain.plain(_out(ch12=unclear, ch24=steady))
     assert "น้ำน่าจะทรงตัว" in explain.plain(_out(ch12=steady, ch24=steady))
     assert "น้ำน่าจะลดลงเล็กน้อย" in explain.plain(_out(ch12=unclear, ch24=FALLING))
 

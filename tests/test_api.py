@@ -353,3 +353,12 @@ def test_the_rain_line_knows_where_the_wettest_forecast_is():
     pp = {"g_19.0_99.0": {"เชียงใหม่"}, "g_15.0_100.0": {"นครสวรรค์", "ชัยนาท"}}
     out = api.rain_by_region(pts, [], {"g_19.0_99.0": "north", "g_15.0_100.0": "up"}, pp)
     assert out["all"]["forecast_where"] == "ชัยนาท" and out["north"]["forecast_where"] == "เชียงใหม่"
+
+
+def test_rows_reach_72_h_with_the_48_h_rules():
+    # owner 2026-10-04: "remove trend 12 hr … think about longer term like 24, 48, 72 hr"; 72 h: star wins at 372
+    # gauges, medium confidence at 70 (48 h: 63), so it gets the 48 h rules (direction only where proven)
+    row = {"fc_now": 1.0, "q12": None, "q24": None, "q48": None, "q72": [0.9, 1.0, 1.1, 1.2, 1.3],
+           "sk72": {"method": "star", "skill_vs_persistence": 0.4, "coverage90_backtest": 0.9}, "outlook24": None}
+    c = api._change_fields(row, "normal")["change72"]
+    assert c is not None and c["proven"] is True and c["median"] == 0.1

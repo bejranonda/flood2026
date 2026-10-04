@@ -117,10 +117,10 @@ function trendRow(ch, hours, unsure = false) {
   return { html, unsure: unsure || (!dirn && !steady) };
 }
 function trendRows(s, hours) {
-  // Every view walks 12 → 24 → 48 h, printing only `hours`, so a list showing only 24 h says what the sheet says
-  // (VLGE20: list "→ ทรงตัว", sheet "? ไม่แน่ชัด" after its 12 h "?", consistency check C1).
+  // Every view walks 24 → 48 → 72 h (owner 2026-10-04: no 12 h row), printing only `hours`, so a list showing only 24 h
+  // says what the sheet says; a longer horizon is never surer than a shorter one (consistency checks C1, C3).
   let unsure = false;
-  const rows = [12, 24, 48].filter((h) => h <= Math.max(...hours)).map((h) => {
+  const rows = [24, 48, 72].filter((h) => h <= Math.max(...hours)).map((h) => {
     const r = trendRow(s[`change${h}`], h, unsure); unsure = r.unsure; return hours.includes(h) ? r.html : ""; }).filter(Boolean).join("");
   return rows ? `<div class="tr-rows">${rows}</div>` : "";
 }
@@ -226,9 +226,8 @@ const observedText = (s) => {
   const c = Math.round(s.change_m * 100), h = s.change_hours >= 1.5 ? `${Math.round(s.change_hours)} ชม.` : "1 ชม.";
   return Math.abs(c) <= 2 ? `➖ ทรงตัวใน ${h}ที่ผ่านมา` : c > 0 ? `↗️ สูงขึ้น ${c} ซม. ใน ${h}ที่ผ่านมา` : `↘️ ลดลง ${-c} ซม. ใน ${h}ที่ผ่านมา`;
 };
-const trendLine = (s) => hasForecast(s)
-  ? `${TREND[s.trend12]}${s.delta12_median != null && s.trend12 !== "steady" ? ` ${cm(s.delta12_median)} ในอีก 12 ชม.` : ""}`
-  : observedText(s) || (isNew(s) ? `🆕 สถานีใหม่ เริ่มเก็บข้อมูล ${new Date(s.history_since).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" })}` : TREND.unknown);
+// a card without a 24 h row says what was measured (no 12 h line any more, owner 2026-10-04)
+const trendLine = (s) => observedText(s) || (isNew(s) ? `🆕 สถานีใหม่ เริ่มเก็บข้อมูล ${new Date(s.history_since).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" })}` : TREND.unknown);
 const STREET_MIN = 3;       // street-flood reports within 1 km worth showing on a gauge
 const streetAge = () => streetSrc?.last_update_age_min != null && streetSrc.last_update_age_min > 60
   ? ` (ข้อมูล Traffy ล่าสุด ${fmtAge(streetSrc.last_update_age_min)})` : "";
@@ -271,7 +270,7 @@ function renderSummary(st) {
   const f = st.focus, n = st.network;
   const mine = stations.filter(inRegion);  // D-064: the counts follow the region chip, like the list and the map
   const cnt = (k) => mine.filter((s) => s.status === k).length;
-  const tr = (k) => mine.filter((s) => s.trend12 === k).length;
+  const tg = (k) => mine.filter((s) => s.trend?.group === k).length;
   const chips = ["critical", "warning", "watch", "normal", "unknown"].map((k) =>
     `<button class="chip" data-status="${k}" aria-pressed="${statusFilter === k}" title="แสดงเฉพาะ${esc(STATUS[k].long)}">
       <span class="dot" style="background:${STATUS[k].color}"></span>${esc(STATUS[k].th)} <b>${cnt(k)}</b></button>`).join("");
@@ -301,7 +300,7 @@ function renderSummary(st) {
     <div class="chips">${chips}</div>${staleLine}
     ${rainSummary(rain)}
     <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
-    <p class="sumline">${esc(TREND.rising)} <b>${tr("rising")}</b> · ${esc(TREND.falling)} <b>${tr("falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`} (คาดการณ์อีก 12 ชม.)</p>
+    <p class="sumline">⬆ น้ำยังขึ้น <b>${tg("rising")}</b> · → ทรงตัวหรือลดลง <b>${tg("flat_or_falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`}</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั่วประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
@@ -324,7 +323,7 @@ function itemHTML(s, extra = "") {
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}${hasRiverView(s) ? ` · 〰️ ${esc(riverOf(s))}` : ""}</span><span class="fb">${esc(levelText(s))}</span></div>
-    ${(s.change24 || s.change12) ? `${trendRows(s, [s.change24 ? 24 : 12])}${obsLine(s)}
+    ${s.change24 ? `${trendRows(s, [24])}${obsLine(s)}
     <div class="meta">ข้อมูลล่าสุด ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`
       : `${obsLine(s)}<div class="meta">${esc(trendLine(s))} · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`}${(s.street_reports_6h || 0) >= STREET_MIN
         ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
@@ -855,7 +854,7 @@ function chartSVG(obs, fc, bank, crit = null) {
     ${band.length ? `<path d="${area(0, 4)}" fill="#1565c0" opacity=".12"/><path d="${area(1, 3)}" fill="#1565c0" opacity=".22"/>` : ""}
     ${bankLine}${crit != null ? `<line x1="${P}" x2="${W - 6}" y1="${y(crit)}" y2="${y(crit)}" stroke="#e46c0a" stroke-dasharray="2 3"/><text x="${P + 4}" y="${y(crit) - 4}" font-size="11" fill="#e46c0a">เกณฑ์ กทม. ${crit.toFixed(2)}</text>` : ""}<path d="${line}" fill="none" stroke="#0d3b66" stroke-width="1.6"/>
     ${med ? `<path d="${med}" fill="none" stroke="#1565c0" stroke-width="1.6" stroke-dasharray="4 3"/>` : ""}
-    ${(fc?.path || []).filter((p) => p.q && [12, 24, 48].includes(p.h)).map((p) => `<circle class="fc-pt" r="0" cx="${x(t0 + p.h * 3600e3).toFixed(1)}" cy="${y(p.q[2]).toFixed(1)}" data-h="${p.h}" data-lo="${Math.round((p.q[1] - fc.level_now) * 100)}" data-hi="${Math.round((p.q[3] - fc.level_now) * 100)}"/>`).join("")}
+    ${(fc?.path || []).filter((p) => p.q && [24, 48, 72].includes(p.h)).map((p) => `<circle class="fc-pt" r="0" cx="${x(t0 + p.h * 3600e3).toFixed(1)}" cy="${y(p.q[2]).toFixed(1)}" data-h="${p.h}" data-lo="${Math.round((p.q[1] - fc.level_now) * 100)}" data-hi="${Math.round((p.q[3] - fc.level_now) * 100)}"/>`).join("")}
     ${dayTicks(tmin, tmax, x, H)}
     <line x1="${x(t0)}" x2="${x(t0)}" y1="8" y2="${H - 20}" stroke="#555" stroke-width=".8"/>
     <text x="${x(t0)}" y="9" font-size="10" text-anchor="middle" fill="#333" font-weight="600">ตอนนี้</text></svg>
@@ -1016,7 +1015,7 @@ async function showDetail(code) {
         : `${esc(st.long)}${s.freeboard_m != null ? ` · <span class="nowrap">${esc(freeboardText(s.freeboard_m) + ydayText(s))}</span>` : ""}`}</p>
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
-      ${trendRows(s, [12, 24, 48]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [12, 24, 48])}
+      ${trendRows(s, [24, 48, 72]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [24, 48, 72])}
         ${changeLines(s)}${upstreamLine(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
@@ -1162,7 +1161,7 @@ function pointHTML(d, src, place = "") {
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
   // 24/48 h rows; a gauge with only a 12 h forecast (short history) shows that row instead of nothing (KI-239)
-  const trendBody = (x) => `${trendRows(x, [24, 48]) || trendRows(x, [12])}${changeLines(x)}${upstreamLine(x)}`;
+  const trendBody = (x) => `${trendRows(x, [24, 48, 72])}${changeLines(x)}${upstreamLine(x)}`;
   const noTrendLine = near && near.station && main !== near
     // what we know about it (its measured 24 h change, the rows' words) instead of jargon; the why behind an ⓘ
     // (owner 2026-10-02: "ห่าง 1.5 กม." + the block "can be improved")

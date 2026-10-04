@@ -123,7 +123,7 @@ def _facts(out: dict) -> dict:
     usable = a.get("confidence") in ("low", "medium")
     far = bool(lead) and (bool(lead.get("far")) or not usable)
     rows, unsure = {}, False
-    for h in (12, 24, 48):
+    for h in (24, 48, 72):  # the rows the app shows (owner 2026-10-04: no 12 h); "?" carries forward like trendRows
         rows[h], unsure = _row(st.get(f"change{h}"), unsure)
     if st.get("status_basis") == "bma_thresholds" and (st.get("over_bma_critical_m") or 0) > 0:
         level = f"เกินเกณฑ์ของ กทม. {abs(round(st['over_bma_critical_m'] * 100))} ซม."
