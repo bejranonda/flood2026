@@ -79,7 +79,12 @@ def build(stations: list[dict], rain_by_prov: dict[str, float], records: dict | 
                  "gauges": sorted(v, key=lambda i: i["freeboard_m"] if i["freeboard_m"] is not None else 0)}
                 for p, v in sorted(prov.items(), key=lambda x: (-len(x[1]), x[0]))]})
     groups["over_bank"] = subs
-    groups["may_reach"].sort(key=lambda i: (BANDS.index(i["band"]), i["hours"],
+    # may reach the bank: น้ำยังขึ้น first (owner 2026-10-04: steady gauges inside the band read as "water is coming"),
+    # then ทรงตัวหรือลดลง (near the bank, touching it by small ups and downs), then ไม่ทราบแนวโน้ม
+    subs_order = ("rising", "flat_or_falling", "unknown")
+    for i in groups["may_reach"]:
+        i["sub"] = (i.get("trend") or {}).get("group") or "unknown"
+    groups["may_reach"].sort(key=lambda i: (subs_order.index(i["sub"]), BANDS.index(i["band"]), i["hours"],
                                             i["freeboard_m"] if i["freeboard_m"] is not None else 9e9))
     groups["upstream"].sort(key=lambda i: -i["up"]["rise_cm"])
     groups["fast_rise"].sort(key=lambda i: -i["rise_cm"])

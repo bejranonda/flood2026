@@ -11,7 +11,8 @@ def st(code, status, prov, group=None, stale=False):
 STATIONS = [st("A", "critical", "พระนครศรีอยุธยา", "rising"), st("B", "critical", "พระนครศรีอยุธยา", "rising"),
             st("C", "critical", "ปราจีนบุรี", "flat_or_falling"), st("D", "warning", "นนทบุรี"), st("E", "normal", "ตรัง"),
             st("F", "critical", "ตาก", "rising", stale=True)]
-RISKS = {"groups": [{"key": "may_reach", "items": [{"code": "X", "province": "นนทบุรี"}, {"code": "Y", "province": "นครปฐม"}]},
+RISKS = {"groups": [{"key": "may_reach", "items": [{"code": "X", "province": "นนทบุรี", "sub": "rising"},
+                                                   {"code": "Y", "province": "นครปฐม", "sub": "rising"}]},
                     {"key": "upstream", "items": [{"code": "Z", "province": "สระแก้ว"}]}]}
 RAIN = {"all": {"forecast_mm24": 52.0, "forecast_where": "น่าน",
                 "measured": {"name_th": "บ้านโนนเขวา", "province": "ขอนแก่น", "rain_24h": 93.0}}}
@@ -21,7 +22,7 @@ def test_facts_count_fresh_gauges_and_name_the_places():
     f = situation.facts(STATIONS, RISKS, RAIN)
     assert f["over"] == {"n": 3, "rising": 2, "provinces": 2, "rising_top": [["พระนครศรีอยุธยา", 2]]}
     assert f["near"] == 1 and f["below"] == 1
-    assert f["may_reach"] == {"n": 2, "top": ["นนทบุรี", "นครปฐม"]} and f["upstream"] == {"n": 1, "top": ["สระแก้ว"]}
+    assert f["may_reach"] == {"n": 2, "top": ["นนทบุรี", "นครปฐม"], "near_steady": 0} and f["upstream"] == {"n": 1, "top": ["สระแก้ว"]}
     assert f["rain_measured"] == {"mm": 93, "place": "บ้านโนนเขวา", "province": "ขอนแก่น"}
     assert f["rain_forecast"] == {"mm": 52, "province": "น่าน"}
 
@@ -43,12 +44,14 @@ def test_an_ai_retelling_may_not_add_numbers_places_or_verdicts():
 
 def test_the_ticker_uses_the_ai_text_only_when_it_passes_and_otherwise_the_rules(monkeypatch):
     f = situation.facts(STATIONS, RISKS, RAIN)
-    monkeypatch.setattr(situation, "_ai", lambda msgs: "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา")
+    monkeypatch.setattr(situation, "_ai", lambda msgs: "1) ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา")
     out = situation.compose(f)
-    assert out["ai"] is True and out["text"].startswith("ตอนนี้") and out["rule"] == situation.rule_text(f) and out["rejected"] == []
-    monkeypatch.setattr(situation, "_ai", lambda msgs: "พื้นที่อื่นปลอดภัยทั้งหมด")
+    assert out["ai"] is True and out["items"] == [{"icon": "🔴", "text": "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา"}]
+    assert out["text"] == "🔴 ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา" and out["rule"] == situation.rule_text(f) and out["rejected"] == []
+    monkeypatch.setattr(situation, "_ai", lambda msgs: "1) พื้นที่อื่นปลอดภัยทั้งหมด")
     out = situation.compose(f)
     assert out["ai"] is False and out["text"] == situation.rule_text(f) and len(out["rejected"]) == 2  # tried twice
+    assert [i["icon"] for i in out["items"]] == [i["icon"] for i in situation.items(f)]
 
 
 def test_the_ticker_is_rewritten_every_30_min_in_the_collector_loop():
@@ -63,3 +66,95 @@ def test_everyday_words_that_are_province_names_are_not_new_places():
     ok = "ตอนนี้มีน้ำล้นตลิ่งและยังขึ้น 2 แห่งที่อยุธยา ฝนตกหนักสุด 93 มม. ที่ขอนแก่น ภาพรวมไม่เปลี่ยนมากเลย"
     assert situation.check(ok, f) == []
     assert "new place" in situation.check(ok + " ที่จังหวัดเลยด้วย", f)
+
+
+MAY = {"groups": [{"key": "may_reach", "items": [
+    {"code": "K1", "province": "กรุงเทพมหานคร", "sub": "flat_or_falling"}, {"code": "K2", "province": "กรุงเทพมหานคร", "sub": "flat_or_falling"},
+    {"code": "S1", "province": "สมุทรปราการ", "sub": "rising"}, {"code": "S2", "province": "สมุทรปราการ", "sub": "rising"},
+    {"code": "P1", "province": "เพชรบุรี", "sub": "rising"}]}]}
+
+
+def test_may_reach_names_only_provinces_where_the_water_is_rising():
+    # owner 2026-10-04: "ควรจับตาพื้นที่กรุงเทพฯ … ที่น้ำอาจถึงตลิ่งในอีก 24–48 ชม." while no Bangkok gauge was rising (all steady
+    # just under the bank): steady near-bank gauges are counted apart and never name a province
+    f = situation.facts(STATIONS, MAY, RAIN)
+    assert f["may_reach"] == {"n": 3, "top": ["สมุทรปราการ", "เพชรบุรี"], "near_steady": 2}
+    text = situation.rule_text(f)
+    assert "อาจถึงตลิ่ง" in text and "สมุทรปราการ" in text and "กรุงเทพ" not in text.split("อาจถึงตลิ่ง")[1].split("·")[0]
+
+
+BKK = [st("B1", "critical", "กรุงเทพมหานคร", "flat_or_falling"), st("B2", "critical", "กรุงเทพมหานคร", "flat_or_falling"),
+       st("B3", "warning", "กรุงเทพมหานคร", "rising"), st("B4", "normal", "กรุงเทพมหานคร")]
+
+
+def test_bangkok_gets_its_own_line_and_says_when_nothing_is_rising_toward_the_bank():
+    f = situation.facts(STATIONS + BKK, MAY, RAIN)
+    assert f["bkk"] == {"over": 2, "over_rising": 0, "may_reach_rising": 0, "near": 1}
+    line = [p for p in situation.rule_text(f).split(" · ") if "กรุงเทพฯ" in p][0]
+    assert "ล้นตลิ่ง 2 จุด" in line and "ทรงตัวหรือลดลง" in line and "ยังไม่มีจุดที่น้ำขึ้นจนอาจถึงตลิ่ง" in line
+    assert "ใกล้ตลิ่ง/คลองเต็ม 1 จุด" in line  # the top bar's own words
+
+
+def test_dam_release_and_the_flow_at_nakhon_sawan_with_their_24_h_change():
+    # what the news leads with (Thai PBS 2026-10-03: the C.13 release, the flow at C.2); ours from RID discharge readings
+    flows = {"C.13": {"q": 2500.0, "q24": 2510.0}, "C.2": {"q": 2101.0, "q24": 2290.0}}
+    f = situation.facts(STATIONS, RISKS, RAIN, flows=flows)
+    assert f["flows"] == [{"code": "C.2", "label": "น้ำเหนือที่นครสวรรค์", "q": 2101, "change": -189},
+                          {"code": "C.13", "label": "เขื่อนเจ้าพระยาระบาย", "q": 2500, "change": -10}]
+    text = situation.rule_text(f)
+    assert "น้ำเหนือที่นครสวรรค์ 2,101 ลบ.ม./วินาที ลดลงจากเมื่อวาน 189" in text
+    assert "เขื่อนเจ้าพระยาระบาย 2,500 ลบ.ม./วินาที ทรงตัว" in text
+
+
+def test_counts_compare_with_yesterday_when_a_ticker_from_about_24_h_ago_exists():
+    f = situation.facts(STATIONS, RISKS, RAIN, prev={"over": {"n": 1}})
+    assert "ล้นตลิ่งรวม 3 สถานีใน 2 จังหวัด (เมื่อวาน 1)" in situation.rule_text(f)
+    assert "เมื่อวาน" not in situation.rule_text(situation.facts(STATIONS, RISKS, RAIN))
+
+
+def test_numbers_match_with_or_without_thousands_commas_and_no_new_conditions():
+    flows = {"C.13": {"q": 2500.0, "q24": 2510.0}}
+    f = situation.facts(STATIONS, RISKS, RAIN, flows=flows)
+    assert situation.check("เขื่อนเจ้าพระยาระบายน้ำ 2500 ลบ.ม./วินาที ทรงตัว ส่วนฝนหนักสุด 93 มม. ที่ขอนแก่น", f) == []
+    assert "speculation" in situation.check("ฝนหนักสุด 93 มม. ที่ขอนแก่น หากฝนตกต่อเนื่องน้ำอาจขึ้นเร็ว", f)
+
+
+def test_previous_ticker_is_the_one_closest_to_24_h_ago():
+    import datetime as dt
+    now = dt.datetime(2026, 10, 5, 12, tzinfo=dt.timezone.utc)
+    hist = [{"at": (now - dt.timedelta(hours=h)).isoformat(), "over": {"n": h}} for h in (1, 12, 23, 25, 40)]
+    assert situation.yesterday(hist, now)["over"]["n"] == 23
+    assert situation.yesterday([{"at": (now - dt.timedelta(hours=10)).isoformat(), "over": {"n": 3}}], now) is None
+
+
+def test_a_province_that_is_also_a_word_is_a_place_in_our_own_text():
+    # the rule text says "เช่น พิษณุโลก เลย" (the province Loei); the AI writing "จ.เลย" adds no new place
+    risks_ = {"groups": [{"key": "fast_rise", "items": [{"code": "L", "province": "เลย"}]}]}
+    f = situation.facts(STATIONS, risks_, RAIN)
+    assert "new place" not in situation.check("น้ำขึ้นเร็วที่ จ.เลย ส่วนฝนหนักสุด 93 มม. ที่ขอนแก่น", f)
+
+
+def test_the_ticker_is_a_list_of_short_items_each_with_its_own_symbol():
+    # owner 2026-10-04: "very long text, try to use symbols or anything to see the separation of phrase"
+    f = situation.facts(STATIONS, RISKS, RAIN, flows={"C.13": {"q": 2500.0, "q24": 2500.0}})
+    items = situation.items(f)
+    assert [i["topic"] for i in items][:2] == ["over_rising", "over"]
+    assert all(i["icon"] and i["text"] and not i["text"][0] in "🔴🟠🌊🟡🌧☁🔵🏙🏞📊" for i in items)
+    assert situation.rule_text(f) == " · ".join(f"{i['icon']} {i['text']}" for i in items)
+
+
+def test_an_ai_answer_is_read_as_numbered_items_and_keeps_our_symbols():
+    f = situation.facts(STATIONS, RISKS, RAIN)
+    rule = situation.items(f)
+    ai = "1) ตอนนี้น้ำล้นตลิ่งและยังขึ้น 2 สถานีที่พระนครศรีอยุธยา\n3) ขณะที่นนทบุรีกับนครปฐมอาจถึงตลิ่งในอีก 24–48 ชม.\nพูดเกินมาหนึ่งบรรทัด"
+    got = situation.parse_items(ai, rule)
+    assert [g["icon"] for g in got] == [rule[0]["icon"], rule[2]["icon"]] and got[1]["text"].startswith("ขณะที่")
+    assert situation.check_items(got, rule) == []
+
+
+def test_each_ai_item_may_only_use_the_numbers_and_places_of_its_own_fact():
+    f = situation.facts(STATIONS, RISKS, RAIN)
+    rule = situation.items(f)
+    moved = situation.parse_items("1) น้ำล้นตลิ่งและยังขึ้น 2 สถานีที่ขอนแก่น", rule)  # Khon Kaen belongs to the rain item
+    assert "new place" in situation.check_items(moved, rule)[0]
+    assert situation.parse_items("ไม่มีเลขข้อเลย", rule) == []

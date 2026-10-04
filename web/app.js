@@ -280,10 +280,16 @@ function renderSummary(st) {
   // One running line for all of Thailand (owner 2026-10-04): urgent first, then what to watch, rain and the overview;
   // written by the worker every 30 min (rules gather the facts, AI retells them after a check; D-089)
   const sit = situationNow;
-  const tk = sit?.text ? `<div class="ticker" role="button" tabindex="0" aria-expanded="false" aria-label="สรุปสถานการณ์น้ำทั่วประเทศ">
-      <span class="tk-icon" aria-hidden="true">📢</span><div class="tk-view"><div class="tk-track" style="--tk-s:${Math.max(25, Math.round(sit.text.length * 0.22))}s">
-        <span>${esc(sit.text)}</span><span aria-hidden="true">${esc(sit.text)}</span></div></div>
-      <div class="tk-more">${esc(sit.text)}<p class="muted">${sit.ai ? "✨ เรียบเรียงโดย AI จากข้อมูลในแอป" : "สรุปจากข้อมูลในแอป"} · อัปเดต ${esc(fmtTime(sit.at))} · <a href="#" class="tk-watch">ดูแท็บจับตา ›</a></p></div></div>` : "";
+  // short items, each with its topic symbol, a divider between them (owner 2026-10-04: "very long text, try to use
+  // symbols or anything to see the separation of phrase"); tapping opens them as a list, one per line
+  const its = sit?.items?.length ? sit.items : (sit?.text ? [{ icon: "", text: sit.text }] : []);
+  const run = its.map((i) => `<span class="tk-item">${i.icon ? `<span class="tk-ic">${esc(i.icon)}</span>` : ""}${esc(i.text)}</span>`).join('<span class="tk-sep" aria-hidden="true">◆</span>');
+  const len = its.reduce((a, i) => a + i.text.length + 4, 0);
+  const tk = its.length ? `<div class="ticker" role="button" tabindex="0" aria-expanded="false" aria-label="สรุปสถานการณ์น้ำทั่วประเทศ">
+      <span class="tk-icon" aria-hidden="true">📢</span><div class="tk-view"><div class="tk-track" style="--tk-s:${Math.max(25, Math.round(len * 0.24))}s">
+        <span class="tk-run">${run}<span class="tk-sep" aria-hidden="true">◆</span></span><span class="tk-run" aria-hidden="true">${run}<span class="tk-sep">◆</span></span></div></div>
+      <div class="tk-more"><ul class="tk-list">${its.map((i) => `<li>${i.icon ? `<span class="tk-ic">${esc(i.icon)}</span>` : ""}${esc(i.text)}</li>`).join("")}</ul>
+        <p class="muted">${sit.ai ? "✨ เรียบเรียงโดย AI จากข้อมูลในแอป" : "สรุปจากข้อมูลในแอป"} · อัปเดต ${esc(fmtTime(sit.at))} · <a href="#" class="tk-watch">ดูแท็บจับตา ›</a></p></div></div>` : "";
   let open = false;
   try { open = localStorage.getItem("sumOpen") === "1"; } catch { /* private mode */ }
   document.getElementById("summary").innerHTML = `<details class="sumbox"${open ? " open" : ""}><summary class="summini" aria-label="สรุปจำนวนสถานีทั่วประเทศ">
@@ -527,7 +533,7 @@ const MIN_REC_N = 30;
 const WATCH_TIP = "ไม่ใช่ประกาศเตือนภัยทางการ โปรดติดตามประกาศจาก ปภ. กรมชลประทาน และหน่วยงานในพื้นที่ · รวมจากระดับน้ำที่วัดได้ การคาดการณ์ของแอป และฝนคาดการณ์ · \"6 ใน 10\" = ใน 30 วันที่ผ่านมา เมื่อแอปคาดแบบนี้ เกิดจริงราว 6 ใน 10 ครั้ง";
 const WATCH_GROUPS = {
   over_bank: { t: "🔴 ล้นตลิ่งแล้ว", tip: "ระดับน้ำสูงกว่าตลิ่งตอนนี้ (วัดได้จริง) · แตะจังหวัดเพื่อดูสถานี" },
-  may_reach: { t: "🟠 อาจถึงตลิ่ง", tip: "ยังต่ำกว่าตลิ่ง แต่การคาดการณ์มีโอกาสถึงตลิ่งในอีก 24 หรือ 48 ชม." },
+  may_reach: { t: "🟠 อาจถึงตลิ่ง", tip: "ยังต่ำกว่าตลิ่ง แต่การคาดการณ์มีโอกาสถึงตลิ่งในอีก 24 หรือ 48 ชม. · ⬆ น้ำยังขึ้น = น้ำกำลังเพิ่มเข้าหาตลิ่ง · → ทรงตัวหรือลดลง = อยู่ใกล้ตลิ่งอยู่แล้ว อาจแตะตลิ่งได้จากการขึ้นลงเล็กน้อย" },
   upstream: { t: "🟠 น้ำเหนือกำลังมา", tip: "สถานีต้นน้ำที่เคยส่งน้ำมาถึงที่นี่ เพิ่มขึ้น 30 ซม. ขึ้นไปใน 24 ชม. ที่ผ่านมา · เวลาเดินทางเรียนรู้จากข้อมูลย้อนหลัง" },
   fast_rise: { t: "🟡 น้ำขึ้นเร็ว", tip: "คาดว่าจะเพิ่มขึ้น 20 ซม. ขึ้นไปในอีก 24 ชม." },
   rain: { t: "🌧 ฝนหนักคาดการณ์", tip: "จังหวัดที่คาดว่าฝนรวม 35 มม. ขึ้นไปในอีก 24 ชม. (Open-Meteo) · แตะเพื่อดูสถานีในจังหวัด" },
@@ -580,7 +586,13 @@ async function renderWatch() {
       });
       overBank = items;
     } else if (g.key === "may_reach") {
-      rows = items.map((it) => gauge(it, `${esc(fbText(it.freeboard_m))} · อาจถึงในอีก ${it.hours} ชม. ${recChip((rec[`bank_${it.hours}`] || {})[it.band], `จะถึงตลิ่ง (กลุ่มโอกาส ${it.band})`)}`));
+      // the same trend pills as over the bank, น้ำยังขึ้น first (owner 2026-10-04: steady gauges just under the bank read
+      // as "water is coming"); each pill keeps its own "+ อีก" list
+      const row = (it) => gauge(it, `${esc(fbText(it.freeboard_m))} · อาจถึงในอีก ${it.hours} ชม. ${recChip((rec[`bank_${it.hours}`] || {})[it.band], `จะถึงตลิ่ง (กลุ่มโอกาส ${it.band})`)}`);
+      rows = ["rising", "flat_or_falling", "unknown"].flatMap((sub) => {
+        const mine = items.filter((it) => (it.sub || "unknown") === sub);
+        return mine.length ? [`<div class="wsubh ${SUB_CLS[sub]}">${TREND_SUB[sub]} <b>${mine.length}</b></div>`, wRows(mine.map(row))] : [];
+      });
     } else if (g.key === "upstream") {
       head = recChip(rec.upstream, "น้ำจากต้นน้ำจะทำให้ระดับน้ำเพิ่มขึ้น 10 ซม. ขึ้นไป");
       rows = items.map((it) => gauge(it, `ต้นน้ำ ${esc(it.up.name_th)} +${it.up.rise_cm} ซม. ใน 24 ชม. ที่ผ่านมา · มักถึงที่นี่ในราว ${it.up.lag_h} ชม.`));

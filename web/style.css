@@ -455,16 +455,25 @@ a { color: var(--accent); }
 .ticker { display: flex; align-items: flex-start; gap: 6px; margin: 6px 0 2px; padding: 6px 10px; border-radius: 10px; background: #f0f6ff; border: 1px solid #d6e4fb; cursor: pointer; overflow: hidden; }
 .ticker .tk-icon { flex: 0 0 auto; }
 .ticker .tk-view { overflow: hidden; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
-.ticker .tk-track { display: inline-flex; gap: 3em; animation: tk var(--tk-s, 40s) linear infinite; }
+.ticker .tk-track { display: inline-flex; gap: 0; animation: tk var(--tk-s, 40s) linear infinite; }
+/* v0.25.0: items with their symbol and a divider (owner: "use symbols … to see the separation of phrase") */
+.ticker .tk-run { display: inline-flex; align-items: baseline; }
+.ticker .tk-item { white-space: nowrap; }
+.ticker .tk-ic { margin-right: .3em; }
+.ticker .tk-sep { color: #8aa6d1; font-size: .8em; margin: 0 1.1em; }
+.ticker .tk-list { list-style: none; margin: 0 0 4px; padding: 0; }
+.ticker .tk-list li { padding: 3px 0; border-bottom: 1px dashed #d6e4fb; }
+.ticker .tk-list li:last-child { border-bottom: 0; }
 .ticker:hover .tk-track, .ticker:focus .tk-track { animation-play-state: paused; }
 .ticker .tk-more { display: none; white-space: normal; font-size: 14px; }
 .ticker.open .tk-view { display: none; }
 .ticker.open .tk-more { display: block; }
-@keyframes tk { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 1.5em)); } }
+@keyframes tk { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) {
   .ticker .tk-track { animation: none; }
   .ticker .tk-view { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .ticker .tk-track span[aria-hidden] { display: none; }
+  .ticker .tk-track .tk-run[aria-hidden] { display: none; }
+  .ticker .tk-run, .ticker .tk-item { white-space: normal; display: inline; }
 }
 @media (max-width: 699px) {
   .summary .summini { gap: 4px; }

@@ -46,6 +46,16 @@ def test_may_reach_uses_only_the_two_upper_bands_and_says_which_window():
     assert [(i["code"], i["band"], i["hours"]) for i in items] == [("B", ">50%", 48), ("A", "25-50%", 24)]
 
 
+def test_may_reach_puts_rising_gauges_first_and_marks_each_with_its_trend():
+    # owner 2026-10-04: the ticker said "ควรจับตา กรุงเทพฯ … ที่น้ำอาจถึงตลิ่งใน 24–48 ชม." but no Bangkok gauge was rising:
+    # they sat steady 6–19 cm below the bank, inside the band. Each item says which trend group it is in (status.trend)
+    up, flat = {"group": "rising"}, {"group": "flat_or_falling"}
+    st = [g("A", bank_chance24=">50%", trend=flat, freeboard_m=0.06), g("B", bank_chance24="25-50%", trend=up),
+          g("C", bank_chance48=">50%", trend=None)]
+    items = risks.build(st, {}, None)["groups"][0]["items"]
+    assert [(i["code"], i["sub"]) for i in items] == [("B", "rising"), ("A", "flat_or_falling"), ("C", "unknown")]
+
+
 def test_upstream_needs_a_fresh_strong_rise_upstream_and_a_gauge_at_watch_or_warning():
     up = g("U", observed24={"change_cm": 45, "level": "strong_rise"})
     st = [up, g("W", "watch", upstream=[{"code": "U", "lag_h": 20}]),

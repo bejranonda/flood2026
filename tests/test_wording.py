@@ -216,3 +216,19 @@ def test_unsure_rows_lean_with_their_record_and_the_past_comes_first():
     tr = APP.split("function trendRow(")[1].split("\n}\n")[0]
     assert "ch.lean" in tr and "น่าจะเพิ่มขึ้น" in tr and "↗ น่าจะขึ้น\"" not in tr and "น่าจะลดลง" in tr and "lean_rec" in tr
     assert "${obsLine(s)}${trendRows(s, [24])}" in APP and "${changeLines(s)}${trendRows(s, [24, 48, 72])}" in APP
+
+
+def test_may_reach_shows_the_same_trend_pills_as_over_bank_rising_first():
+    # owner 2026-10-04: steady gauges under the bank read as "water is coming"; the group now says which is which
+    rw = APP.split("async function renderWatch(")[1].split("\n}\n")[0]
+    may = rw.split('g.key === "may_reach"')[1].split("} else if")[0]
+    assert "it.sub" in may and "TREND_SUB" in may and "wsubh" in may
+    assert "น้ำยังขึ้น" in APP.split("const TREND_SUB")[1].split("\n")[0]
+
+
+def test_the_ticker_shows_items_with_their_symbols_and_a_divider_and_opens_as_a_list():
+    # owner 2026-10-04: "very long text, try to use symbols or anything to see the separation of phrase"
+    rs = APP.split("function renderSummary(")[1].split("\n}\n")[0]
+    assert "sit.items" in rs and "tk-sep" in rs and "tk-list" in rs
+    css = (ROOT / "web" / "style.css").read_text()
+    assert ".tk-sep" in css and ".tk-list" in css

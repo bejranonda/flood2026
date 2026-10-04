@@ -577,12 +577,12 @@ def risks_api():
 
 @app.get("/api/situation")
 def situation_api():
-    """The top-bar ticker for all of Thailand, rewritten every 30 min by the worker (D-089): `text` (AI retelling that
-    passed the check, or the rule text), `ai`, `at`."""
+    """The top-bar ticker for all of Thailand, rewritten every 30 min by the worker (D-089): `items` [{icon, text}]
+    (AI retelling that passed the check, or the rule items), `text` (the same in one line), `ai`, `at`."""
     def build():
         with db.connect() as c:
             v = db.get_state(c, "situation") or {}
-        return {k: v.get(k) for k in ("text", "ai", "at")}
+        return {k: v.get(k) for k in ("items", "text", "ai", "at")}
     return _json(_memo(("situation",), build, ttl=60))
 
 
