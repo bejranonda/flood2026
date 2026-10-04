@@ -165,6 +165,39 @@ CREATE TABLE IF NOT EXISTS dwr_obs (
     PRIMARY KEY (code, obs_time)
 );
 
+-- Google Flood Hub (D-087): virtual gauges with Google's thresholds, every flood status issued, daily forecasts.
+CREATE TABLE IF NOT EXISTS gfh_gauge (
+    gauge_id         text PRIMARY KEY,
+    lat              double precision,
+    lon              double precision,
+    source           text,
+    quality_verified boolean,
+    has_model        boolean,
+    warning          double precision,
+    danger           double precision,
+    extreme          double precision,
+    unit             text,
+    updated_at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS gfh_status (
+    gauge_id     text NOT NULL,
+    issued_time  timestamptz NOT NULL,
+    severity     text,
+    trend        text,
+    range_start  timestamptz,
+    range_end    timestamptz,
+    inundation   text,
+    PRIMARY KEY (gauge_id, issued_time)
+);
+CREATE TABLE IF NOT EXISTS gfh_forecast (
+    gauge_id     text NOT NULL,
+    issued_time  timestamptz NOT NULL,
+    start_time   timestamptz NOT NULL,
+    end_time     timestamptz,
+    value        double precision NOT NULL,
+    PRIMARY KEY (gauge_id, issued_time, start_time)
+);
+
 -- Small key/value store for collector bookkeeping (e.g. which stations were backfilled).
 CREATE TABLE IF NOT EXISTS collector_state (
     key         text PRIMARY KEY,

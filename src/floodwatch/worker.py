@@ -33,6 +33,7 @@ TASKS = [
     ("openmeteo_fine", 3600),
     ("hii_geo", 7 * 24 * 3600),  # HII basin + main-river map files: basin22, river and river system per gauge (v0.17)  # Bangkok region at the model's ~8 km grid, for pins and region lines (Q42, v0.16.4)  # their rain history: a year for 8 new cells per run, then 4 days daily
     ("bma_history", 600),  # BMA canal history from HII: backfill 5 gauges per run, then a daily 3-day refresh (D-054)  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
+    ("google_floodhub", 6 * 3600),  # Google Flood Hub, Thailand: statuses, thresholds, forecasts (D-087, not shown yet)
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),
     ("retention", 24 * 3600),  # HII-network readings older than 400 days, rain-forecast issues older than 3 days (D-064)

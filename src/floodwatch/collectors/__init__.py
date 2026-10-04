@@ -617,9 +617,70 @@ def dwr_ews() -> dt.datetime | None:
     return max((o["obs_time"] for o in obs), default=None)
 
 
+GFH = "https://floodforecasting.googleapis.com/v1"
+
+
+def _gfh(method: str, path: str, body: dict | None = None, params: list | None = None) -> dict:
+    """One Flood Hub call. The key travels only in the X-Goog-Api-Key header (never in a URL, which is archived and
+    logged); responses carry no key and are archived like every source."""
+    url = f"{GFH}/{path}" + (("?" + urllib.parse.urlencode(params)) if params else "")
+    r = fetch(url, method=method, data=json.dumps(body) if body is not None else None,
+              headers={"X-Goog-Api-Key": settings.google_flood_api_key, "Content-Type": "application/json"}, retries=2)
+    archive.store("google_floodhub", url, r.status, r.body)
+    if r.status != 200:
+        raise RuntimeError(f"HTTP {r.status}")
+    return json.loads(r.body)
+
+
+def _gfh_pages(path: str, key: str) -> list:
+    out, tok = [], None
+    while True:
+        d = _gfh("POST", path, {"regionCode": "TH", "pageSize": 1000, **({"pageToken": tok} if tok else {})})
+        out += d.get(key) or []
+        tok = d.get("nextPageToken")
+        if not tok:
+            return out
+
+
+def google_floodhub() -> dt.datetime | None:
+    """Google Flood Hub for Thailand (D-087: collected and validated, not shown yet): virtual gauges, latest flood status
+    (history kept), thresholds and the latest daily discharge forecast per gauge."""
+    if not settings.google_flood_api_key:
+        return None
+    gauges = parsing.parse_gfh_gauges(_gfh_pages("gauges:searchGaugesByArea", "gauges"))
+    status = parsing.parse_gfh_status(_gfh_pages("floodStatus:searchLatestFloodStatusByArea", "floodStatuses"))
+    ids = [g["gauge_id"] for g in gauges if g["has_model"]]
+    models, fcs = [], []
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for i in range(0, len(ids), 20):
+        chunk = ids[i:i + 20]
+        models += parsing.parse_gfh_models(_gfh("GET", "gaugeModels:batchGet", params=[("names", f"gaugeModels/{g}") for g in chunk]).get("gaugeModels"))
+        fcs += parsing.parse_gfh_forecasts(_gfh("GET", "gauges:queryGaugeForecasts",
+                                                params=[("gaugeIds", g) for g in chunk] + [("issuedTimeStart", since)]))
+    th = {m["gauge_id"]: m for m in models}
+    with db.connect() as c, c.cursor() as cur:
+        cur.executemany("""INSERT INTO gfh_gauge (gauge_id, lat, lon, source, quality_verified, has_model, warning, danger, extreme, unit)
+                           VALUES (%(gauge_id)s, %(lat)s, %(lon)s, %(source)s, %(quality_verified)s, %(has_model)s, %(warning)s,
+                                   %(danger)s, %(extreme)s, %(unit)s)
+                           ON CONFLICT (gauge_id) DO UPDATE SET lat=EXCLUDED.lat, lon=EXCLUDED.lon, quality_verified=EXCLUDED.quality_verified,
+                               has_model=EXCLUDED.has_model, warning=COALESCE(EXCLUDED.warning, gfh_gauge.warning),
+                               danger=COALESCE(EXCLUDED.danger, gfh_gauge.danger), extreme=COALESCE(EXCLUDED.extreme, gfh_gauge.extreme),
+                               unit=COALESCE(EXCLUDED.unit, gfh_gauge.unit), updated_at=now()""",
+                        [{**g, **{k: (th.get(g["gauge_id"]) or {}).get(k) for k in ("warning", "danger", "extreme", "unit")}} for g in gauges])
+        cur.executemany("""INSERT INTO gfh_status (gauge_id, issued_time, severity, trend, range_start, range_end, inundation)
+                           VALUES (%(gauge_id)s, %(issued_time)s, %(severity)s, %(trend)s, %(range_start)s, %(range_end)s, %(inundation)s)
+                           ON CONFLICT DO NOTHING""", status)
+        cur.executemany("""INSERT INTO gfh_forecast (gauge_id, issued_time, start_time, end_time, value)
+                           VALUES (%(gauge_id)s, %(issued_time)s, %(start_time)s, %(end_time)s, %(value)s) ON CONFLICT DO NOTHING""", fcs)
+        c.commit()
+    log.info("google_floodhub: %d gauges, %d statuses (%d not NO_FLOODING), %d forecast steps", len(gauges), len(status),
+             sum(1 for s in status if s["severity"] != "NO_FLOODING"), len(fcs))
+    return max((s["issued_time"] for s in status), default=None)
+
+
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
                   "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
                   "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells,
-                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "dwr_ews": dwr_ews}[source])
+                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "dwr_ews": dwr_ews, "google_floodhub": google_floodhub}[source])

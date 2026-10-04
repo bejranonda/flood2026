@@ -340,3 +340,55 @@ def parse_dwr_stations(payload: list) -> tuple[list[dict], list[dict]]:
         if lv is not None and t is not None:
             obs.append({"code": r["stn"], "obs_time": t, "level": lv})
     return stations, obs
+
+
+# --- Google Flood Hub (Flood Forecasting API v1, D-087) ----------------------------------------------------------------
+def _gtime(s: str | None) -> dt.datetime | None:
+    """RFC 3339 UTC ("2026-10-04T08:24:32.363885Z")."""
+    if not s:
+        return None
+    return dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+
+def parse_gfh_gauges(gauges: list) -> list[dict]:
+    """gauges:searchGaugesByArea → one row per gauge (HYBAS virtual gauges in Thailand, 2026-10-04)."""
+    return [{"gauge_id": g["gaugeId"], "lat": (g.get("location") or {}).get("latitude"), "lon": (g.get("location") or {}).get("longitude"),
+             "source": g.get("source"), "quality_verified": bool(g.get("qualityVerified")), "has_model": bool(g.get("hasModel"))}
+            for g in gauges or [] if g.get("gaugeId")]
+
+
+def parse_gfh_status(statuses: list) -> list[dict]:
+    """floodStatus:searchLatestFloodStatusByArea → severity, trend and the forecast window per gauge and issue."""
+    out = []
+    for s in statuses or []:
+        if not s.get("gaugeId") or not s.get("issuedTime"):
+            continue
+        rng = s.get("forecastTimeRange") or {}
+        out.append({"gauge_id": s["gaugeId"], "issued_time": _gtime(s["issuedTime"]), "severity": s.get("severity"),
+                    "trend": s.get("forecastTrend"), "range_start": _gtime(rng.get("start")), "range_end": _gtime(rng.get("end")),
+                    "inundation": (s.get("inundationMapSet") or {}).get("inundationMapType")})
+    return out
+
+
+def parse_gfh_models(models: list) -> list[dict]:
+    """gaugeModels:batchGet → Google's warning / danger / extreme-danger thresholds (m³/s for HYBAS gauges)."""
+    out = []
+    for m in models or []:
+        t = m.get("thresholds") or {}
+        out.append({"gauge_id": m.get("gaugeId"), "warning": t.get("warningLevel"), "danger": t.get("dangerLevel"),
+                    "extreme": t.get("extremeDangerLevel"), "unit": m.get("gaugeValueUnit")})
+    return [m for m in out if m["gauge_id"]]
+
+
+def parse_gfh_forecasts(payload: dict) -> list[dict]:
+    """gauges:queryGaugeForecasts → one row per gauge, issue and daily step (value in the gauge's unit)."""
+    out = []
+    for gid, v in ((payload or {}).get("forecasts") or {}).items():
+        for f in v.get("forecasts") or []:
+            it = _gtime(f.get("issuedTime"))
+            for r in f.get("forecastRanges") or []:
+                if r.get("value") is None:
+                    continue
+                out.append({"gauge_id": gid, "issued_time": it, "start_time": _gtime(r.get("forecastStartTime")),
+                            "end_time": _gtime(r.get("forecastEndTime")), "value": float(r["value"])})
+    return out

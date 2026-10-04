@@ -52,6 +52,7 @@ services:
       WEATHERNEXT_PROJECT: ${WEATHERNEXT_PROJECT:-}
       WEATHERNEXT_DATASET: ${WEATHERNEXT_DATASET:-}
       EWDS_API_KEY: ${EWDS_API_KEY:-}
+      GOOGLE_FLOOD_API_KEY: ${GOOGLE_FLOOD_API_KEY:-}   # Google Flood Hub (D-087): header only, worker only
     volumes:
       - ./data/raw_archive:/data/raw_archive
       - ./certs:/certs:ro
