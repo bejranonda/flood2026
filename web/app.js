@@ -255,7 +255,9 @@ function rainSummary(bkkRain) {
   const r = rainRegions?.[region];
   const fc = r?.forecast_mm24 ?? (region === "bkk" ? bkkRain : null), m = r?.measured;
   const mm24 = m ? Number(m.rain_24h) : null;
-  const fcHeavy = fc != null && fc >= SUMMARY_RAIN_MIN_MM, mHeavy = mm24 != null && mm24 >= SUMMARY_RAIN_MIN_MM;
+  // a picked province hears only about its own rain (2026-10-04: Trang picked, the line named Khon Kaen)
+  const here = (p) => !prov || p === prov;
+  const fcHeavy = fc != null && fc >= SUMMARY_RAIN_MIN_MM && here(r?.forecast_where), mHeavy = mm24 != null && mm24 >= SUMMARY_RAIN_MIN_MM && here(m?.province);
   if (!fcHeavy && !mHeavy) return "";
   const tip = [mHeavy ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : "",
     fcHeavy ? `คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดใน${REGIONS[region].th}` : ""].filter(Boolean).join(" · ");

@@ -190,6 +190,7 @@ def test_top_bar_folds_names_the_rain_place_and_raises_one_urgent_line():
     # "Can we notify what is also emergency" → one line only when gauges are over the bank and still rising (D-086)
     rs = APP.split("function rainSummary(")[1].split("\n}\n")[0]
     assert "ฝนมากสุด" in rs and "ที่ ${" in rs and "forecast_where" in rs and "ทั่วประเทศ: " not in rs
+    assert "const here = (p) => !prov || p === prov" in rs  # a picked province hears only its own rain
     sm = APP.split("function renderSummary(")[1].split("\n}\n")[0]
     assert "ล้นตลิ่งและน้ำยังขึ้น" in sm and 'setTab("watch")' in sm and '"sumOpen"' in sm
     assert 'class="desk-notice"' in INDEX
