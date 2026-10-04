@@ -105,3 +105,16 @@ def test_the_schema_step_gives_up_quickly_when_a_lock_is_held(monkeypatch):
     monkeypatch.setattr(db, "connect", contextlib.contextmanager(lambda: (yield Conn())))
     db.init_schema()
     assert seen[0].startswith("SET LOCAL lock_timeout") and seen[-1] == "COMMIT"
+
+
+def test_a_long_interval_task_is_due_from_its_last_success_not_from_the_restart():
+    # 2026-10-04: google_floodhub (6 h) last ran 10:40 UTC; the worker restarted every 1-2 h (deploys) and the task never
+    # came due again — the schedule restarted from "now" each time
+    import datetime as dt
+    from floodwatch import worker
+    now = dt.datetime(2026, 10, 4, 21, 40, tzinfo=dt.timezone.utc).timestamp()
+    eleven_h_ago = dt.datetime(2026, 10, 4, 10, 40, tzinfo=dt.timezone.utc)
+    assert worker.first_due(6 * 3600, eleven_h_ago, now) == now + 60  # overdue: soon, not in 6 h
+    one_h_ago = dt.datetime(2026, 10, 4, 20, 40, tzinfo=dt.timezone.utc)
+    assert worker.first_due(6 * 3600, one_h_ago, now) == one_h_ago.timestamp() + 6 * 3600  # 5 h from now
+    assert worker.first_due(6 * 3600, None, now) == now + 60  # never ran

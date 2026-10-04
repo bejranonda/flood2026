@@ -84,6 +84,24 @@ def backoff_factor(failures: int, cap: int = 6) -> int:
     return 1 if failures < 3 else min(cap, 2 ** (failures - 2))
 
 
+def first_due(interval: int, last_success: dt.datetime | None, now: float) -> float:
+    """When a task that did not run at start is next due: one interval after its last success, at least 60 s from now.
+    The schedule used to restart from "now" on every restart, and a 6 h task (google_floodhub) never came due while the
+    worker restarted every hour or two (deploys, 2026-10-04)."""
+    if last_success is None:
+        return now + 60
+    return max(now + 60, last_success.timestamp() + interval)
+
+
+def last_successes(names: list[str]) -> dict:
+    try:
+        with db.connect() as c:
+            return {r["source"]: r["last_success"] for r in c.execute(
+                "SELECT source, last_success FROM source_health WHERE source = ANY(%s)", (names,)).fetchall()}
+    except Exception:
+        return {}
+
+
 def failures_of(name: str) -> int:
     try:
         with db.connect() as c:
@@ -188,7 +206,10 @@ def main(role: str = "collector") -> None:
     for name in first:
         run_task(name)
     active = [(n, i) for n, i in tasks_for(role) if n != "bma_dds" or settings.thai_egress_proxy]
-    next_run = {name: time.time() + interval for name, interval in active}
+    start, last = time.time(), last_successes([n for n, _ in active])
+    # a task that just ran (first-run list) waits its interval; any other is due from its last success (first_due)
+    next_run = {name: start + interval if name in first else first_due(interval, last.get(name), start)
+                for name, interval in active}
     while True:
         now = time.time()
         for name, interval in active:

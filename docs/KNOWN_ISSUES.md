@@ -767,3 +767,9 @@ Owner: "ควรจับตาพื้นที่กรุงเทพฯ �
 
 ### KI-287 — 72 h likely ranges are too confident in a falling river · 🟡 open (Q54)
 Served bands over 30 days (research/2026-10-04_band_coverage_live.log): the 50 % band held 51 / 48 / 44 % and the 90 % band 88 / 86 / 80 % at 24 / 48 / 72 h; misses mostly below the band (water fell more than forecast). Shorter error windows and trend-dependent bands make it worse; widening 48/72 h bands until they hold is honest but adds "?" rows — owner decision.
+
+### KI-288 — A 6 h task never came due while the worker restarted every hour or two · 🟢 fixed v0.25.2
+Post-release validation 2026-10-04 21:40 UTC: `google_floodhub` last succeeded at 10:40 UTC. The worker set `next_run = start + interval` for every task, so each restart (deploys at 16:49, 19:5x, 20:xx, 21:11, 21:37) pushed a 6 h task out again. Fix: `worker.first_due` — a task that is not in the first-run list is due one interval after its last success (source_health), at least 60 s after start.
+
+### KI-289 — Thai egress (OpenVPN sidecar) cannot connect · 🔴 open (owner)
+2026-10-04: `vpn` logs "TLS key negotiation failed to occur within 60 seconds … TLS handshake failed", container restart count 402. Sources behind the egress fail: `bma_dds` (last success 08:39 UTC), `dwr_ews` (17:15 UTC, 5 failures, backing off). BMA canal levels still arrive through the flood69 relay (`bma_klong`). Needs the owner's VPN server/credentials (OWNER_ACTIONS EGRESS); no change in code.

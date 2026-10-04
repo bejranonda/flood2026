@@ -2,6 +2,14 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.25.2 — 2026-10-04
+- **Long-interval tasks no longer starve on restarts.** Post-release validation found Google Flood Hub last collected at
+  10:40 UTC: every worker restart reset the schedule to "now + interval", and with deploys every hour or two a 6 h task
+  never came due. A task that does not run at start is now due one interval after its last success (KI-288).
+- **Thai egress down (owner):** the OpenVPN sidecar fails its TLS handshake (402 restarts); BMA DDS (last 08:39 UTC) and
+  DWR village posts (last 17:15 UTC) wait for it; BMA canal levels still arrive through the relay (KI-289, OWNER_ACTIONS
+  EGRESS).
+
 ## v0.25.1 — 2026-10-04
 - **A forecast stays a forecast in the ticker.** Post-release check: GLM wrote "ตอนนี้มีน้ำขึ้นเร็วอยู่ 43 สถานี" for the
   fast-rise group, which is a forecast (≥ 20 cm in the next 24 h). The rule item now says "คาดว่าน้ำจะขึ้นเร็ว (20 ซม.
