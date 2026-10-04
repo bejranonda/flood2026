@@ -70,13 +70,14 @@ def check_rows(where, rows):
     for h, chip, rng in rows:
         counts["rows"] += 1
         n = num(rng)
-        if n and ("ลดลง" in chip and max(n) > 0 or "เพิ่มขึ้น" in chip and min(n) < 0):
+        lean = "น่าจะ" in chip  # v0.24.0: a "?" row leaning by the measured trend keeps the model's two-sided range (D-091)
+        if n and not lean and ("ลดลง" in chip and max(n) > 0 or "เพิ่มขึ้น" in chip and min(n) < 0):
             note("C2", where, f"{h} {chip} {rng}")
         if "ทรงตัว" in chip and n and max(abs(x) for x in n) > 5:
             note("C2", where, f"{h} {chip} {rng} (wider than ±5)")
         if "ทรงตัว" in chip and unsure:
             note("C3", where, f"{h} {chip} after a '?' row")
-        unsure = unsure or "?" in chip
+        unsure = unsure or "?" in chip or lean
 
 
 def check_text(where, v):

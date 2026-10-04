@@ -5,6 +5,7 @@ for heavy rain (satellite removed 2026-10-04, D-084). Evidence for every thresho
 from __future__ import annotations
 
 import datetime as dt
+import math
 
 import numpy as np
 
@@ -163,6 +164,46 @@ def upstream_record(pairs: list[tuple[str, str, int]], series: dict, step: int =
 
 # One run per gauge per 6 h; the database reduces each path to the numbers the records need (whole paths for 30 days
 # did not fit the forecaster's 1 GB: killed, 2026-10-03).
+def _pace(ser: dict, t0, hours: int):
+    import datetime as _dt
+    pts = [(-k, ser[t0 - _dt.timedelta(hours=k)]) for k in range(hours + 1) if (t0 - _dt.timedelta(hours=k)) in ser]
+    if len(pts) < max(4, hours * 0.6):
+        return None
+    x = np.array([p[0] for p in pts], float)
+    return float(np.polyfit(x, np.array([p[1] for p in pts], float), 1)[0])  # m/h
+
+
+def lean_record(runs: list[dict], hourly: dict) -> dict:
+    """How often a "? ไม่แน่ชัด" row leaned by the measured pace (status.lean: the smaller of the 24 h and 6 h pace, none
+    when they disagree, at least 2 cm a day) went that way h hours later (strict sign). runs: {code, issue_time, now,
+    path: [{h, q, method}]}; hourly: {code: {hour: level}}."""
+    acc: dict = {}
+    for r in runs:
+        ser, t0 = hourly.get(r["code"]) or {}, r["issue_time"].replace(minute=0, second=0, microsecond=0)
+        if r.get("now") is None:
+            continue
+        r24, r6 = _pace(ser, t0, 24), _pace(ser, t0, 6)
+        if r24 is None or r6 is None or r24 == 0 or r6 == 0 or (r24 > 0) != (r6 > 0):
+            continue
+        rate = math.copysign(min(abs(r24), abs(r6)), r24)
+        if abs(rate * 24) < 0.02:
+            continue
+        for p in r.get("path") or []:
+            if not p or not p.get("q") or p.get("h") not in (24, 48, 72):
+                continue
+            q = p["q"]; lo, med, hi = q[1] - r["now"], q[2] - r["now"], q[3] - r["now"]
+            half = (hi - lo) / 2
+            d = "steady" if abs(med) <= max(0.02, half) else ("up" if med > 0 else "down")
+            proven = d != "steady" and p.get("method") not in (None, "persistence") and ((lo > 0) if d == "up" else (hi < 0))
+            if proven or max(abs(lo), abs(hi)) <= 0.05:
+                continue  # the row was not "? ไม่แน่ชัด"
+            y = ser.get(t0 + dt.timedelta(hours=p["h"]))
+            if y is None:
+                continue
+            acc.setdefault(str(p["h"]), []).append((y - r["now"] > 0) if rate > 0 else (y - r["now"] < 0))
+    return {h: _rate(v) for h, v in acc.items()}
+
+
 RUNS_SQL = """
 WITH pick AS (
   SELECT DISTINCT ON (code, date_trunc('day', issue_time), extract(hour from issue_time)::int / 6) id
@@ -178,6 +219,11 @@ FROM forecast_run f JOIN pick USING (id), LATERAL (
          max((e->'q'->>4)::float) FILTER (WHERE (e->>'h')::int <= 48) AS b4,
          max((e->'q'->>2)::float) FILTER (WHERE (e->>'h')::int = 24) AS m24
   FROM jsonb_array_elements(f.payload->'path') e) x"""
+LEAN_SQL = """SELECT f.code, f.issue_time, (f.payload->>'level_now')::float AS now,
+    f.payload->'path'->23 AS p24, f.payload->'path'->47 AS p48, f.payload->'path'->71 AS p72
+  FROM forecast_run f JOIN (SELECT DISTINCT ON (code, date_trunc('day', issue_time), extract(hour from issue_time)::int / 6) id
+    FROM forecast_run WHERE issue_time > %(since)s AND issue_time < now() - interval '24 hours'
+    ORDER BY code, date_trunc('day', issue_time), extract(hour from issue_time)::int / 6, issue_time) pick USING (id)"""
 
 HOURLY_SQL = """SELECT code, date_trunc('hour', obs_time) AS t, max(level_msl) AS hi, avg(level_msl) AS mean
     FROM observation WHERE obs_time > %(since)s AND level_msl IS NOT NULL AND quality_flag='ok' GROUP BY 1, 2"""
@@ -216,7 +262,11 @@ def compute_records(c) -> dict:
             if 0 <= k < n_h:
                 a[k] = v
         series[code] = a
-    rec = {"bank_24": bank_record(r24, hi, banks, 24), "bank_48": bank_record(r48, hi, banks, 48),
+    by_hour = {code: dict(v) for code, v in mean.items()}
+    lean_runs = [{"code": r["code"], "issue_time": r["issue_time"], "now": r["now"], "path": [r["p24"], r["p48"], r["p72"]]}
+                 for r in c.execute(LEAN_SQL, {"since": since}).fetchall()]
+    rec = {"lean": lean_record(lean_runs, by_hour),
+           "bank_24": bank_record(r24, hi, banks, 24), "bank_48": bank_record(r48, hi, banks, 48),
            "upstream": upstream_record(pairs, series), "fast_rise": rise_record(rise, mean),
            "window_days": WINDOW_DAYS, "computed_at": now.isoformat()}
     db.set_state(c, "risk_record", rec)

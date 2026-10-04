@@ -472,3 +472,8 @@ a { color: var(--accent); }
   .summary .summini .chip { padding: 3px 8px; font-size: 13px; min-height: 30px; }
 }
 .summary .summini .nat { align-self: center; font-size: 13px; margin-right: 2px; }
+/* v0.24.0: a leaning "? ไม่แน่ชัด" row (D-091): lighter than a proven direction, dashed like "?" */
+.chg.chg-lean { background: #fff; border: 1.5px dashed; font-weight: 600; }
+.chg.chg-lean.up { color: #b45309; border-color: #e0a15a; }
+.chg.chg-lean.down { color: #2f6ba0; border-color: #8bb3d6; }
+.chg.chg-lean .lean-rec { font-weight: 500; color: #4b5563; margin-left: 2px; }

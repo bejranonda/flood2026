@@ -356,3 +356,14 @@ def test_retellings_open_with_the_water_in_one_neutral_voice_without_good_news_f
     assert "filler" in " ".join(explain.check("เดี๋ยวเล่าให้ฟังนะ น้ำยังต่ำกว่าตลิ่ง ช่วงที่ผ่านมาน้ำลดลง", rule))
     assert explain.check("น้ำยังต่ำกว่าตลิ่ง ช่วงที่ผ่านมาน้ำลดลงนะ", rule) == []
     assert "เริ่มสูง หมายถึง" in explain.SYSTEM and "สถานีวัดน้ำ" in explain.SYSTEM
+
+
+def test_a_leaning_row_is_told_as_a_likely_direction_without_an_amount():
+    # owner 2026-10-04: "Lean the rows by the trend": the panel shows "↗ น่าจะขึ้น"; the words say the same, from the
+    # measured trend, and still say the amount is not certain
+    lean = {**_ch("steady", "steady", -0.05, 0.12, method="persistence"), "lean": "up", "lean_rec": {"n": 120, "hit": 0.64}}
+    out = _out(ch24=lean, obs=("rise", 8, 24))
+    p = explain.plain(out)
+    assert "น่าจะเพิ่มขึ้น" in p and "ไม่แน่ชัด" in p
+    lines = " ".join(explain.answer("simple", out))
+    assert "น่าจะเพิ่มขึ้นตามแนวโน้มที่วัดได้" in lines and "6 ใน 10" in lines

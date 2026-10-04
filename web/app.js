@@ -106,12 +106,18 @@ const narrow = (ch) => !!ch.likely && !ch.wide && Math.max(Math.abs(ch.likely[0]
 function trendRow(ch, hours, unsure = false) {
   if (!ch) return { html: "", unsure };
   const dirn = directional(ch), steady = !dirn && !unsure && narrow(ch), c = CHANGE[ch.level] || CHANGE.steady;
+  // "? ไม่แน่ชัด" leans by the measured pace when there is one (owner 2026-10-04: "Lean the rows by the trend", D-091):
+  // the word leans, with its own record; the numbers stay the model's range, the band the chart draws
+  const lean = !dirn && !steady && ch.lean ? ch.lean : null;
+  const rec = lean && ch.lean_rec && ch.lean_rec.n >= MIN_REC_N ? ` <small class="lean-rec">${ch.lean_rec.hit < 0.05 ? "< 1" : Math.round(ch.lean_rec.hit * 10)} ใน 10</small>` : "";
   const chip = dirn ? `<span class="chg" style="background:${c.color}">${c.icon} ${esc(c.th)}</span>`
     : steady ? `<span class="chg" style="background:${CHANGE.steady.color}">→ ${esc(CHANGE.steady.th)}</span>`
+    : lean ? `<span class="chg chg-lean ${lean}">${lean === "up" ? "↗ น่าจะขึ้น" : "↘ น่าจะลดลง"}${rec}</span>`
     : `<span class="chg chg-unproven">? ไม่แน่ชัด</span>`;
   // one forecaster (v0.20.7): every row is the model's own path, the band the chart draws; the ⓘ names the method
   const how = ch.method === "recent" ? " · วิธี: ต่อแนวโน้มล่าสุด (ความเร็วช่วงหลังสุด ชะลอลงตามเวลา)" : "";
-  const tip = dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}${how}` : steady ? STEADY_TIP : UNPROVEN_TIP;
+  const tip = dirn ? `${CONF_TH[ch.confidence] || ""}: ${CONF_WHY[ch.confidence] || ""}${how}` : steady ? STEADY_TIP
+    : lean ? `ทิศทางจากแนวโน้มที่วัดได้ล่าสุด เพราะแบบจำลองยังไม่มั่นใจ · ตัวเลขคือช่วงที่แบบจำลองคาด (แถบในกราฟ)${ch.lean_rec && ch.lean_rec.n >= MIN_REC_N ? ` · 30 วันที่ผ่านมา เป็นไปตามทิศทางนี้ ${Math.round(ch.lean_rec.hit * 10)} ใน 10 ครั้ง (จาก ${ch.lean_rec.n} ครั้ง)` : ""}` : UNPROVEN_TIP;
   const cls = dirn ? `conf-${esc(ch.confidence)}` : "conf-low";
   const html = `<span class="tr-h">อีก ${hours} ชม.</span>${chip}<span class="tr-r">${esc(rangeText(ch))}</span><button type="button" class="conf-badge ${cls}" title="${esc(tip)}" aria-label="ความมั่นใจของการคาดการณ์">ⓘ</button>`;
   return { html, unsure: unsure || (!dirn && !steady) };
@@ -315,7 +321,7 @@ function itemHTML(s, extra = "") {
     <div class="row"><span class="name">${esc(s.name_th)} <span class="muted">${esc(s.code)}</span></span>
       <span class="badge b-${esc(s.status)}">${esc(st.th)}</span></div>
     <div class="row"><span class="meta">${esc(s.amphoe || s.river || "")} ${esc(s.province || "")}${s.agency === "BMA" ? " · ข้อมูล กทม." : ""}${hasRiverView(s) ? ` · 〰️ ${esc(riverOf(s))}` : ""}</span><span class="fb">${esc(levelText(s))}</span></div>
-    ${s.change24 ? `${trendRows(s, [24])}${obsLine(s)}
+    ${s.change24 ? `${obsLine(s)}${trendRows(s, [24])}
     <div class="meta">ข้อมูลล่าสุด ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`
       : `${obsLine(s)}<div class="meta">${esc(trendLine(s))} · ${esc(fmtAge(s.age_min))}${s.stale ? " ⚠️ ข้อมูลเก่า" : ""}</div>`}${(s.street_reports_6h || 0) >= STREET_MIN
         ? `<div class="meta street">🚗 ถนนรอบ ๆ (1 กม.) มีรายงานน้ำท่วม ${s.street_reports_6h} เรื่องใน 6 ชม.${esc(streetAge())}</div>` : ""}${notesText(s) ? `<div class="meta note">ℹ️ ${esc(notesText(s))}</div>` : ""}${extra}</li>`;
@@ -1023,8 +1029,8 @@ async function showDetail(code) {
         : `${esc(st.long)}${s.freeboard_m != null ? ` · <span class="nowrap">${esc(freeboardText(s.freeboard_m) + ydayText(s))}</span>` : ""}`}</p>
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
-      ${trendRows(s, [24, 48, 72]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${trendRows(s, [24, 48, 72])}
-        ${changeLines(s)}${upstreamLine(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
+      ${trendRows(s, [24, 48, 72]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${changeLines(s)}${trendRows(s, [24, 48, 72])}
+        ${upstreamLine(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
       ${bmaNote(s).box}
       ${(() => { const t = notesText({ ...s, notes: (s.notes || []).filter((n) => n !== "erratic" && n !== "stuck") }); return t ? `<div class="warnbox">${esc(t)}</div>` : ""; })()}
@@ -1169,7 +1175,7 @@ function pointHTML(d, src, place = "") {
   const near = d.nearest_canal, withTrend = d.nearest_canal_trend;
   const main = near && near.station && (near.station.change24 || near.station.change12) ? near : withTrend;
   // 24/48 h rows; a gauge with only a 12 h forecast (short history) shows that row instead of nothing (KI-239)
-  const trendBody = (x) => `${trendRows(x, [24, 48, 72])}${changeLines(x)}${upstreamLine(x)}`;
+  const trendBody = (x) => `${changeLines(x)}${trendRows(x, [24, 48, 72])}${upstreamLine(x)}`;  // the past, then the future
   const noTrendLine = near && near.station && main !== near
     // what we know about it (its measured 24 h change, the rows' words) instead of jargon; the why behind an ⓘ
     // (owner 2026-10-02: "ห่าง 1.5 กม." + the block "can be improved")

@@ -57,3 +57,12 @@ def trend(s: dict) -> dict | None:
     if me is None:
         return None
     return {"group": "rising" if me == "up" else "flat_or_falling", "forecast": fc, "measured": me, "basis": "measured"}
+
+
+def lean(ch: dict | None, obs: dict | None) -> str | None:
+    """"up" | "down" for a "? ไม่แน่ชัด" row whose gauge has a measured pace (owner 2026-10-04: "Lean the rows by the trend").
+    The same measured rule as the trend groups, so a row never leans against its group; a sure row never leans."""
+    if forecast_label(ch) != "unsure":
+        return None
+    m = measured_label(obs)
+    return m if m in ("up", "down") else None

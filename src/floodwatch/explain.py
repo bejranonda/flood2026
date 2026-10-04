@@ -68,7 +68,8 @@ def _row(ch: dict | None, unsure: bool) -> tuple[dict | None, bool]:
     printed = ("ช่วงกว้างเกินไป" if ch.get("wide") or not lk else f"ราว {_signed(lk[0])} ซม." if _signed(lk[0]) == _signed(lk[1])
                else f"{_signed(lk[0])} ถึง {_signed(lk[1])} ซม.")
     word = LEVEL_TH.get(ch.get("level")) if kind == "dir" else "ทรงตัว" if kind == "steady" else None
-    return ({"kind": kind, "word": word, "likely": lk, "wide": bool(ch.get("wide")), "printed": printed, "r90": ch.get("range90")},
+    return ({"kind": kind, "word": word, "likely": lk, "wide": bool(ch.get("wide")), "printed": printed, "r90": ch.get("range90"),
+             "lean": ch.get("lean") if kind == "unclear" else None, "lean_rec": ch.get("lean_rec")},
             unsure or kind == "unclear")
 
 
@@ -168,7 +169,11 @@ def _bank(f: dict) -> dict | None:
 
 
 def _possible(r: dict) -> tuple[str, str]:
-    """An unclear row ("? ไม่แน่ชัด") as what is possible, never a direction (D-060): (story clause, plain clause)."""
+    """An unclear row ("? ไม่แน่ชัด") as what is possible (D-060): (story clause, plain clause). A row that leans by the
+    measured pace (D-091) says the likely direction and that the amount is not certain, as the panel's chip does."""
+    if r.get("lean"):
+        w = "เพิ่มขึ้น" if r["lean"] == "up" else "ลดลง"
+        return f"วันข้างหน้าน้ำน่าจะ{w}ตามแนวโน้มที่วัดได้ แต่ยังไม่แน่ชัดว่าเท่าไร", f"น้ำน่าจะ{w}แต่ยังไม่แน่ชัดว่าเท่าไร"
     lk = r["likely"]
     if r["wide"] or not lk:
         return "วันข้างหน้ายังไม่ชัดว่าน้ำจะขึ้นหรือลง", "ยังไม่ชัดว่าน้ำจะขึ้นหรือลง"
@@ -252,6 +257,11 @@ def _story(f: dict) -> list[str]:
             lines.append(f"🔮 อีก {h} ชม.: น่าจะ{r['word']}{f' ราว {amt}' if amt else ''}")
         elif r["kind"] == "steady":
             lines.append(f"🔮 อีก {h} ชม.: น่าจะทรงตัว (เปลี่ยนไม่เกิน 5 ซม.)")
+        elif r.get("lean"):
+            rec = r.get("lean_rec") or {}
+            said = f" (ในอดีตเป็นแบบนี้ราว {round(rec['hit'] * 10)} ใน 10 ครั้ง)" if (rec.get("n") or 0) >= 30 and rec.get("hit") is not None else ""
+            w = "เพิ่มขึ้น" if r["lean"] == "up" else "ลดลง"
+            lines.append(f"🔮 อีก {h} ชม.: น่าจะ{w}ตามแนวโน้มที่วัดได้{said} แต่ยังไม่แน่ชัดว่าเท่าไร (ระหว่าง{_span(r['likely'], r['wide'])})")
         else:
             # "? ไม่แน่ชัด": the direction is not proven. A range on both sides of zero is "up or down"; a one-sided one
             # (+1 to +64 cm) is only "not certain" (validation 2026-10-02: "ขึ้นหรือลง … เพิ่มขึ้น 1–64 ซม." read as nonsense)

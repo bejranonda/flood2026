@@ -41,3 +41,11 @@ def test_no_trend_without_data_or_when_stale():
 
 def test_the_12_h_row_is_used_when_there_is_no_24_h_row():
     assert g(None, OBS_DOWN, ch12=UP)["group"] == "rising"
+
+
+# --- v0.24.0: a "? ไม่แน่ชัด" row leans by the measured pace (owner 2026-10-04: "Lean the rows by the trend") ----------
+def test_an_unsure_row_leans_by_the_measured_pace_and_a_sure_row_never_does():
+    assert status.lean(UNSURE, OBS_UP) == "up" and status.lean(UNSURE, OBS_DOWN) == "down"
+    assert status.lean(UNSURE, OBS_STOPPED) is None          # the last 6 h stopped: no lean (same rule as the groups)
+    assert status.lean(UP, OBS_DOWN) is None and status.lean(STEADY, OBS_UP) is None
+    assert status.lean(UNSURE, None) is None and status.lean(None, OBS_UP) is None

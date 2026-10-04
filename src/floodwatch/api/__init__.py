@@ -188,6 +188,16 @@ def _observed_change(r: dict) -> dict:
     return {"change_m": round(lvl - prev, 2), "change_hours": round((t - tp).total_seconds() / 3600, 1)}
 
 
+def _risk_record() -> dict:
+    def build():
+        try:
+            with db.connect() as c:
+                return db.get_state(c, "risk_record") or {}
+        except Exception:
+            return {}
+    return _memo(("risk_record",), build, ttl=600)
+
+
 def _change_fields(r: dict, status: str) -> dict:
     """Rise/fall, how much and how sure at +12 h and +24 h, from the stored forecast (D-047). Nothing for a gauge
     whose data are too old to judge; a peak window only where a tide model makes the path vary (outlook24)."""
@@ -204,8 +214,16 @@ def _change_fields(r: dict, status: str) -> dict:
     # One forecaster (owner 2026-10-03: "I thought the trend were calculated by the model"): the rows are the model's
     # own path, the same the chart draws. The measured-trend override beside it (D-060, 2026-09-28) is gone; its
     # recent-pace rule is a method of the model (forecast.recent_rate) and is served where its backtest wins.
-    return {"change12": raw[12], "change24": raw[24], "change48": raw[48],
-            "change72": None if not c72 else {**c72, "proven": c72["confidence"] == "medium"},
+    rows = {h: raw.get(h) for h in (12, 24, 48)}
+    rows[72] = None if not c72 else {**c72, "proven": c72["confidence"] == "medium"}
+    # a "? ไม่แน่ชัด" row leans by the measured pace, with its own track record (owner 2026-10-04, D-091); the numbers
+    # stay the model's range, which the chart draws
+    rec = (_risk_record().get("lean") or {})
+    for h, ch in rows.items():
+        ln = trend_rule.lean(ch, r.get("observed24"))
+        if ln:
+            rows[h] = {**ch, "lean": ln, "lean_rec": rec.get(str(h))}
+    return {"change12": rows[12], "change24": rows[24], "change48": rows[48], "change72": rows[72],
             # A peak 1-2 h out means "highest now, falling after": saying "สูงสุดราว …" there would mislead.
             "peak_h": o.get("peak_h") if (o.get("varies") and (o.get("peak_h") or 0) >= 3) else None}
 

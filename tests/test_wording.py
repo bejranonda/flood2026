@@ -208,3 +208,11 @@ def test_top_bar_is_the_national_overview_and_one_ticker():
     assert "ทั่วประเทศ" in sm and "const nat = stations" in sm and "mine.filter((s) => s.status === k)" not in sm
     assert "rainSummary(" not in sm and "ล้นตลิ่งและน้ำยังขึ้น" not in sm
     assert 'class="ticker' in sm and "/api/situation" in APP and "prefers-reduced-motion" in (ROOT / "web" / "style.css").read_text(encoding="utf-8")
+
+
+def test_unsure_rows_lean_with_their_record_and_the_past_comes_first():
+    # owner 2026-10-04: "Lean the rows by the trend" and "move 24 ชม. ที่ผ่านมา … before 24 hr prediction … the last and then
+    # the future"; the word leans, the numbers stay the model's range (= the chart band)
+    tr = APP.split("function trendRow(")[1].split("\n}\n")[0]
+    assert "ch.lean" in tr and "น่าจะขึ้น" in tr and "น่าจะลดลง" in tr and "lean_rec" in tr
+    assert "${obsLine(s)}${trendRows(s, [24])}" in APP and "${changeLines(s)}${trendRows(s, [24, 48, 72])}" in APP

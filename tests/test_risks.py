@@ -111,3 +111,14 @@ def test_chip_text_is_counts_out_of_ten_and_needs_30_cases():
     assert risks.chip_text({"n": 132, "hit": 0.614}) == "6 ใน 10"
     assert risks.chip_text({"n": 345, "hit": 0.035}) == "< 1 ใน 10"
     assert risks.chip_text({"n": 12, "hit": 0.9}) is None and risks.chip_text(None) is None
+
+
+def test_lean_record_counts_how_often_an_unsure_row_went_the_measured_way():
+    # runs whose 24 h row is unsure (persistence, wide range); the gauge rose 1 cm/h for 24 h before issue
+    path = [{"h": h, "q": [0.8, 0.9, 1.0, 1.1, 1.2], "method": "persistence"} for h in range(1, 73)]
+    hours = [T0 + k * H for k in range(-30, 80)]
+    up = {t: 1.0 + 0.01 * (t - T0).total_seconds() / 3600 for t in hours}          # keeps rising: hit
+    flat_after = {t: (1.0 + 0.01 * min(0, (t - T0).total_seconds() / 3600)) for t in hours}  # rose, then stays: miss
+    runs = [{"code": "A", "issue_time": T0, "now": 1.0, "path": path}, {"code": "B", "issue_time": T0, "now": 1.0, "path": path}]
+    rec = risks.lean_record(runs, {"A": up, "B": flat_after})
+    assert rec["24"] == {"n": 2, "hit": 0.5}
