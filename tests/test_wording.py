@@ -232,3 +232,12 @@ def test_the_ticker_shows_items_with_their_symbols_and_a_divider_and_opens_as_a_
     assert "sit.items" in rs and "tk-sep" in rs and "tk-list" in rs
     css = (ROOT / "web" / "style.css").read_text()
     assert ".tk-sep" in css and ".tk-list" in css
+
+
+def test_the_ai_summary_button_is_on_station_sheets_and_the_watch_tab():
+    # owner 2026-10-04: "เพิ่ม ✨ ให้ AI สรุปให้ฟังง่าย ๆ … ที่จุด Stations … และที่ tab ⚠️ จับตา" — AI on request only (D-068)
+    sd = APP.split("async function showDetail(")[1].split("\nasync function share(")[0]
+    assert "askHTML()" in sd and "/api/explain_station?code=" in sd and "bindAskUrl(" in sd
+    rw = APP.split("async function renderWatch(")[1].split("\n}\n")[0]
+    assert "askHTML()" in rw and "/api/explain_watch?region=" in rw and "bindAskUrl(" in rw
+    assert "function bindAskUrl(" in APP

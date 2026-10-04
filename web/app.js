@@ -612,7 +612,9 @@ async function renderWatch() {
   }).join("");
   const area = wProv || REGIONS[wRegion].th;
   box.innerHTML = `${whereRow(wRegion, wProv, "-w")}<p class="whead muted">24–48 ชม. ข้างหน้า · อัปเดต ${esc(fmtTime(risks.generated))} ${infoBtn(WATCH_TIP, "เกี่ยวกับแท็บจับตา")}</p>
-    ${groups || `<p class="muted">ไม่พบความเสี่ยงใน${esc(area)} ✓</p>`}`;
+    ${groups ? `<div class="ask-box">${askHTML()}</div>` : ""}${groups || `<p class="muted">ไม่พบความเสี่ยงใน${esc(area)} ✓</p>`}`;
+  // ✨ the overview and the most critical gauges for what the tab shows (owner 2026-10-04)
+  if (groups) bindAskUrl(box, `/api/explain_watch?region=${encodeURIComponent(wRegion)}&prov=${encodeURIComponent(wProv)}&q=simple`);
 }
 document.addEventListener("click", (e) => {
   const box = document.getElementById("view-watch");
@@ -1044,6 +1046,7 @@ async function showDetail(code) {
         : `${esc(st.long)}${s.freeboard_m != null ? ` · <span class="nowrap">${esc(freeboardText(s.freeboard_m) + ydayText(s))}</span>` : ""}`}</p>
       ${bmaNote(s).line}
       <p class="obs-time-row"><span>ข้อมูล ${esc(fmtTime(s.obs_time))} (${esc(fmtAge(s.age_min))})</span> <button type="button" class="msl-btn" title="${esc(`ระดับน้ำจริง: ${s.level_msl?.toFixed(2) ?? "-"} ${unit} · ตลิ่ง: ${s.bank_msl?.toFixed(2) ?? "ไม่ทราบ"} ${unit}${bma ? " · ข้อมูลสำนักการระบายน้ำ กทม. ผ่านเว็บ flood69 (พรรคประชาชน) และประวัติย้อนหลังจาก สสน. · ระดับอ้างอิงของ กทม. อาจต่างจากสถานี สสน. ใกล้กัน 30–60 ซม." : ""}`)}" aria-label="ระดับน้ำและที่มาข้อมูล">${bma ? "ข้อมูล กทม. ⓘ" : "ม.รทก. ⓘ"}</button>${s.stale ? ` <span class="warn-pill">ข้อมูลเก่า แหล่งข้อมูลอาจขัดข้องชั่วคราว</span>` : ""}</p>
+      ${erratic ? "" : `<div class="ask-box">${askHTML()}</div>`}
       ${trendRows(s, [24, 48, 72]) ? `<div class="sheet-trend"><div class="pf-h">แนวโน้มที่สถานีนี้</div>${changeLines(s)}${trendRows(s, [24, 48, 72])}
         ${upstreamLine(s)}${outlookRows(fc, s)}</div>` : erratic ? `<div class="warnbox">${esc(NOTE[hid])}</div>` : obsLine(s) || `<p class="muted">${esc(observedText(s) || TREND.unknown)}</p>`}
       ${streetNote(s)}${newGaugeNote(s, fc)}${chartSVG(d.observations, fc, s.bank_msl, s.bma_critical_msl)}
@@ -1055,6 +1058,7 @@ async function showDetail(code) {
       ${feedbackForm(s.code)}`;
     box.querySelector(".close").addEventListener("click", closeDetail);
     box.querySelector(".share").addEventListener("click", () => share(s));
+    if (!erratic) bindAskUrl(box, `/api/explain_station?code=${encodeURIComponent(s.code)}&q=simple`);
     bindFeedback(box.querySelector(".feedback"));
     if (s.lat && map) map.setView([s.lat, s.lon], 11);
     sheet.scrollTop = 0;
@@ -1120,6 +1124,10 @@ async function fillStory(card, url, isOpen) {
   }
 }
 function bindAsk(box, lat, lon) {
+  bindAskUrl(box, `/api/explain?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&q=simple`);
+}
+// one ✨ button for a pin, a station sheet and the จับตา tab (owner 2026-10-04): the same story card, its own URL
+function bindAskUrl(box, url) {
   const btn = box.querySelector(".ai-btn"), card = box.querySelector(".story");
   if (!btn || !card) return;
   const body = card.querySelector(".story-body"), open = () => btn.getAttribute("aria-expanded") === "true";
@@ -1132,7 +1140,7 @@ function bindAsk(box, lat, lon) {
       return;  // a second tap closes it
     }
     body.innerHTML = `<p class="story-text shimmer">กำลังสรุปให้…</p>`;
-    fillStory(card, `/api/explain?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&q=simple`, open);
+    fillStory(card, url, open);
   });
 }
 

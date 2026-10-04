@@ -559,10 +559,8 @@ def rain_by_province(points: list[dict], pp: dict[str, set]) -> dict[str, float]
     return out
 
 
-@app.get("/api/risks")
-def risks_api():
-    """The "⚠️ จับตา" tab: the next 24-48 h risks in six groups with their track records (D-077). Built from the same
-    station rows as the list, so a gauge reads the same in both."""
+def _risks_data() -> dict:
+    """The "⚠️ จับตา" snapshot (5 min): the tab and its ✨ summary read the same groups."""
     def build():
         _station_rows(True)
         items = _stations_data("all")["stations"]
@@ -572,7 +570,65 @@ def risks_api():
             rec = db.get_state(c, "risk_record") or {}
         out = risks.build(items, rain_by_province(rd["points"], pp), rec)
         return {**out, "generated": dt.datetime.now(dt.timezone.utc).isoformat()}
-    return _json(_memo(("risks",), build, ttl=300))
+    return _memo(("risks",), build, ttl=300)
+
+
+@app.get("/api/risks")
+def risks_api():
+    """The "⚠️ จับตา" tab: the next 24-48 h risks in six groups with their track records (D-077). Built from the same
+    station rows as the list, so a gauge reads the same in both."""
+    return _json(_risks_data())
+
+
+def _station_by_code(code: str) -> dict | None:
+    """One station row as the sheet shows it (the shared rows, D-083 trend included), or None."""
+    rows = [r for r in _station_rows(True) if r["code"] == code]
+    return _station_row(rows[0]) if rows else None
+
+
+RAIN_NEXT24_SQL = """SELECT sum(precip_mm) AS mm FROM weather_forecast WHERE point=%s
+                     AND issue_time=(SELECT max(issue_time) FROM weather_forecast WHERE point=%s)
+                     AND valid_time BETWEEN now() AND now() + interval '24 hours'"""
+
+
+@app.get("/api/explain_station")
+def explain_station(code: str = Query(..., max_length=40), q: str = Query("simple"), part: str = Query("lines")):
+    """✨ on a station sheet (owner 2026-10-04: "เพิ่ม ✨ ให้ AI สรุปให้ฟังง่าย ๆ … ที่จุด Stations … รวมข้อมูลน้ำฝนไปด้วย"):
+    part=lines: the rule story and lines about the station, its rain that fell nearby and the forecast; part=gist:
+    GLM's retelling, only if explain.check passes (else null). AI only on request (D-068)."""
+    if q != "simple" or part not in ("lines", "gist"):
+        raise HTTPException(status_code=400, detail="unknown question")
+    s = _station_by_code(code)
+    if s is None:
+        raise HTTPException(404, "unknown station")
+    measured, nxt = None, None
+    if s.get("lat") is not None and s.get("lon") is not None:
+        with db.connect() as c:
+            rain_rows = c.execute(RAIN_OBS_SQL).fetchall()
+            pt = rain_cells.rain_point_at(s["lat"], s["lon"], _fine_ids())
+            mm = c.execute(RAIN_NEXT24_SQL, (pt, pt)).fetchone()["mm"]
+        measured = point.measured_rain(s["lat"], s["lon"], rain_rows, dt.datetime.now(dt.timezone.utc))
+        nxt = None if mm is None else round(mm, 1)
+    lines, story = explain.station(s, measured, nxt)
+    if part == "gist":
+        return _json({"q": q, "gist": explain.gist(q, lines, story)})
+    return _json({"q": q, "question": explain.QUESTIONS[q], "story": story, "lines": lines,
+                  "ai": os.environ.get("AI_EXPLAIN", "1") == "1" and ai.available()})
+
+
+@app.get("/api/explain_watch")
+def explain_watch(region: str = Query("all", max_length=12), prov: str = Query("", max_length=40),
+                  q: str = Query("simple"), part: str = Query("lines")):
+    """✨ on the ⚠️ จับตา tab (owner 2026-10-04: "อธิบายสถานการณ์ภาพรวม และเน้นจุดที่วิกฤติ"): the tab's own groups for its
+    region and province, the most critical gauges first; part=gist as on the pin and the sheet."""
+    if q != "simple" or part not in ("lines", "gist") or (region != "all" and region not in regions.REGION_TH):
+        raise HTTPException(status_code=400, detail="unknown question")
+    area = prov or ("ทั่วประเทศ" if region == "all" else regions.REGION_TH[region])
+    lines, story = explain.watch(risks.only(_risks_data(), region, prov), area)
+    if part == "gist":
+        return _json({"q": q, "gist": explain.gist(q, lines, story)})
+    return _json({"q": q, "question": explain.QUESTIONS[q], "story": story, "lines": lines,
+                  "ai": os.environ.get("AI_EXPLAIN", "1") == "1" and ai.available()})
 
 
 @app.get("/api/situation")
@@ -862,9 +918,7 @@ def _point_out(lat: float, lon: float) -> dict:
                AND lat BETWEEN %(lat0)s AND %(lat1)s AND lon BETWEEN %(lon0)s AND %(lon1)s GROUP BY 1""", box).fetchall()}
         rain_rows = c.execute(RAIN_OBS_SQL).fetchall()
         pt = rain_cells.rain_point_at(lat, lon, _fine_ids())  # ~8 km point (Bangkok region), Bangkok point, or 0.5° cell
-        rain = c.execute("""SELECT sum(precip_mm) AS mm FROM weather_forecast WHERE point=%s
-                            AND issue_time=(SELECT max(issue_time) FROM weather_forecast WHERE point=%s)
-                            AND valid_time BETWEEN now() AND now() + interval '24 hours'""", (pt, pt)).fetchone()["mm"]
+        rain = c.execute(RAIN_NEXT24_SQL, (pt, pt)).fetchone()["mm"]
     measured = point.measured_rain(lat, lon, rain_rows, dt.datetime.now(dt.timezone.utc))
     out = point.assess(lat, lon, rows, traffy, depths, None if rain is None else round(rain, 1), measured)
     out["rain_point"] = pt

@@ -425,6 +425,97 @@ def narrative(q: str, out: dict) -> str:
     return " ".join(p for p in parts if p)
 
 
+# --- ✨ on a station sheet and on the ⚠️ จับตา tab (owner 2026-10-04) -------------------------------------------------
+def _word_of(s: dict) -> str:
+    r = s.get("river") or ""
+    return "แม่น้ำ" if "แม่น้ำ" in r else "คลอง" if "คลอง" in r else "ลำน้ำ"
+
+
+def station(s: dict, rain_measured: dict | None, rain_next24: float | None) -> tuple[list[str], str]:
+    """The story and lines for one station sheet (owner 2026-10-04: "เพิ่ม ✨ … ที่จุด Stations … รวมข้อมูลน้ำฝนไปด้วย"):
+    the station itself is the subject (never "แถวนี้"), the same rows as the sheet, the rain that fell nearby and the
+    forecast. A stale station tells no "now" (D-024)."""
+    name = s.get("name_th") or s["code"]
+    head = f"📍 สถานีวัดน้ำ{name}" + (f" ({s['river']})" if s.get("river") else "") + (f" จ.{s['province']}" if s.get("province") else "")
+    if s.get("stale"):
+        hrs = max(1, round((s.get("age_min") or 0) / 60))
+        return ([head, f"⏳ ข้อมูลล่าสุดเมื่อราว {hrs} ชม. ก่อน จึงไม่ใช้บอกสถานการณ์ตอนนี้"],
+                f"ข้อมูลล่าสุดของสถานีวัดน้ำ{name}เก่าเกิน 3 ชม. จึงยังเล่าสถานการณ์ตอนนี้ไม่ได้ ลองกลับมาดูใหม่เมื่อข้อมูลอัปเดต")
+    W = _word_of(s)
+    out = {"word": W, "nearest_canal": {"station": s, "distance_km": 0.0, "far": False},
+           "area": {"category": s.get("status"), "confidence": "medium"}, "rain_measured": rain_measured or {},
+           "rain_next24_mm": rain_next24, "evidence": {"traffy_flood_reports_1km_6h": s.get("street_reports_6h") or 0},
+           "forecast": {}}
+    f = _facts(out)
+    lines = [head] + [line.replace("น้ำที่นั่น", "น้ำที่สถานี") for line in _story(f)[1:]]
+    m = rain_measured or {}
+    if m.get("rain_24h") is not None:
+        mm = float(m["rain_24h"])
+        where = f" ที่สถานีวัดฝน{m['name_th']} ห่าง {_km(m.get('distance_km'))} กม." if m.get("name_th") else ""
+        lines.append(f"🌧️ 24 ชม. ที่ผ่านมา: {_rain_word(mm)} {round(mm)} มม.{where}")
+    if rain_next24 is not None:
+        w = _rain_word(rain_next24)
+        lines.append("☁️ อีก 24 ชม.: ไม่น่าจะมีฝน" if w == "ไม่มีฝน" else f"☁️ อีก 24 ชม.: คาดว่ามี{w} ราว {round(rain_next24)} มม.")
+    lvl = _easy_level(f)
+    first = f"น้ำที่สถานีวัดน้ำ{name}{EASY_STATE.get(s.get('status'), 'ยังบอกสถานะไม่ได้')}" + (f" ({lvl})" if lvl else "")
+    trend, rain = _easy_trend(f), _easy_rain(f, after_trend=True)
+    todo = (f"ใครอยู่ริม{W}ใกล้สถานีนี้ ควรติดตามประกาศของอำเภอหรือเขตอย่างใกล้ชิด" if s.get("status") == "critical"
+            else f"ถ้าฝนตกหนัก ใครอยู่ริม{W}ใกล้สถานีนี้ให้กลับมาดูอีกครั้ง" if s.get("status") == "warning" else "")
+    parts = [first, f"{trend} และ{rain}" if trend and rain else trend or rain, todo]
+    return lines, " ".join(p for p in parts if p)
+
+
+def watch(out: dict, area: str) -> tuple[list[str], str]:
+    """The ⚠️ จับตา tab in a few sentences (owner 2026-10-04: "อธิบายสถานการณ์ภาพรวม และเน้นจุดที่วิกฤติ"): the most
+    critical gauges first (over the bank and still rising, the highest above the bank first), then what may reach the
+    bank, upstream water, fast rises and heavy rain. `out` is risks.only(build(...)) for the tab's region/province."""
+    g = {x["key"]: x["items"] for x in out.get("groups") or []}
+    subs = {sub["sub"]: [gg for p in sub["provinces"] for gg in p["gauges"]] for sub in g.get("over_bank", [])}
+    rising, flat = subs.get("rising", []), subs.get("flat_or_falling", [])
+    n_over = sum(len(v) for v in subs.values())
+    n_prov = len({gg.get("province") for v in subs.values() for gg in v})
+    fb = lambda x: x["freeboard_m"] if x.get("freeboard_m") is not None else 0.0
+    crit = sorted(rising, key=fb)[:3]
+    may = g.get("may_reach", [])
+    may_up = [i for i in may if i.get("sub") == "rising"]
+    up, fast, rain = g.get("upstream", []), g.get("fast_rise", []), g.get("rain", [])
+    nm = lambda x: f"{x['name_th']} ({x['province']})" if x.get("province") else x["name_th"]
+    lines = []
+    if n_over:
+        lines.append(f"🔴 ล้นตลิ่งแล้ว {n_over} สถานี ใน {n_prov} จังหวัด · น้ำยังขึ้น {len(rising)} · ทรงตัวหรือลดลง {len(flat)}")
+    if crit:
+        lines.append("❗ จุดที่ควรจับตาที่สุด (ล้นตลิ่งและน้ำยังขึ้น): "
+                     + " · ".join(f"{nm(c)} สูงกว่าตลิ่ง {-round(fb(c) * 100)} ซม." for c in crit))
+    if may_up:
+        lines.append(f"🟠 น้ำยังขึ้นและอาจถึงตลิ่งใน 24–48 ชม. {len(may_up)} สถานี: "
+                     + " · ".join(f"{nm(i)} ต่ำกว่าตลิ่ง {round(fb(i) * 100)} ซม." for i in may_up[:3]))
+    if len(may) > len(may_up):
+        lines.append(f"↔️ อีก {len(may) - len(may_up)} สถานีอยู่ใกล้ตลิ่งแต่ทรงตัวหรือลดลง")
+    if up:
+        lines.append(f"🌊 น้ำเหนือกำลังมา {len(up)} สถานี เช่น "
+                     + " · ".join(f"{nm(i)} ต้นน้ำขึ้น {i['up']['rise_cm']} ซม." for i in up[:3]))
+    if fast:
+        lines.append(f"🟡 คาดว่าน้ำขึ้นเร็ว (20 ซม. ขึ้นไปใน 24 ชม.) {len(fast)} สถานี เช่น " + " · ".join(nm(i) for i in fast[:3]))
+    if rain:
+        lines.append("🌧 ฝนหนักคาดการณ์ใน 24 ชม.: " + " · ".join(f"{r['province']} ราว {round(r['mm24'])} มม." for r in rain[:3]))
+    if not lines:
+        return [f"✅ ไม่พบจุดเสี่ยงใน{area}ในอีก 24–48 ชม. ข้างหน้า"], f"ตอนนี้ยังไม่พบจุดเสี่ยงใน{area}ในอีก 24–48 ชม. ข้างหน้า"
+    parts = [f"ตอนนี้{area}มีน้ำล้นตลิ่ง {n_over} สถานี" + (" ส่วนใหญ่ทรงตัวหรือลดลงแล้ว" if len(flat) > len(rising) else "")
+             if n_over else f"ตอนนี้{area}ยังไม่มีสถานีที่น้ำล้นตลิ่ง"]
+    if crit:
+        more = f" รวมถึง{crit[1]['name_th']}" if len(crit) > 1 else ""
+        parts.append(f"จุดที่ควรจับตาที่สุดคือ{nm(crit[0])}ที่น้ำล้นตลิ่งและยังขึ้นอยู่{more}")
+    if may_up:
+        parts.append(f"อีก {len(may_up)} สถานีน้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน เช่น{nm(may_up[0])}")
+    if up:
+        parts.append(f"น้ำเหนือกำลังมาที่{nm(up[0])}")
+    if fast and not crit and not may_up:
+        parts.append(f"น้ำอาจขึ้นเร็วที่{nm(fast[0])}")
+    if rain:
+        parts.append(f"ส่วนฝนหนักคาดว่าจะตกแถว{rain[0]['province']}")
+    return lines, " ".join(parts)
+
+
 # --- the checker: an AI gist may only say what the lines say ---------------------------------------------------------
 _NUM = re.compile(r"[0-9๐-๙]+(?:[.,][0-9๐-๙]+)?")
 # directions as people write them ("น้ำจะขึ้น", "ลดลง"); "ขึ้นหรือลง"/"ขึ้นลงสลับ" is not a direction

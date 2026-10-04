@@ -486,3 +486,5 @@ a { color: var(--accent); }
 .chg.chg-lean.up { color: #b45309; border-color: #e0a15a; }
 .chg.chg-lean.down { color: #2f6ba0; border-color: #8bb3d6; }
 .chg.chg-lean .lean-rec { font-weight: 500; color: #4b5563; margin-left: 2px; }
+/* v0.25.0: ✨ on station sheets and the จับตา tab (owner 2026-10-04) */
+.ask-box { margin: 8px 0 10px; }

@@ -94,6 +94,27 @@ def build(stations: list[dict], rain_by_prov: dict[str, float], records: dict | 
             "records": records or {}}
 
 
+def _in(item: dict, region: str, prov: str) -> bool:
+    """The tab's filter (app.js REGIONS + wIn): a region ("metro" holds Bangkok too) and an optional province."""
+    r = item.get("region")
+    ok = region in ("", "all") or r == region or (region == "metro" and r == "bkk")
+    return ok and (not prov or item.get("province") == prov)
+
+
+def only(out: dict, region: str = "all", prov: str = "") -> dict:
+    """build()'s output narrowed to what the ⚠️ จับตา tab shows for a region and province (the AI summary reads this)."""
+    groups = []
+    for g in out.get("groups") or []:
+        if g["key"] == "over_bank":
+            items = [{**sub, "provinces": [p for p in sub["provinces"] if _in(p, region, prov)]} for sub in g["items"]]
+            items = [sub for sub in items if sub["provinces"]]
+        else:
+            items = [i for i in g["items"] if _in(i, region, prov)]
+        if items:
+            groups.append({**g, "items": items})
+    return {**out, "groups": groups}
+
+
 # --- track records (D-077): how often each forecast-based group came true, from our own archive -------------------
 MIN_N = 30          # fewer cases: no chip (one week and one flood behind the first records, 2026-10-03)
 WINDOW_DAYS = 30
