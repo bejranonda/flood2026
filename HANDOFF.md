@@ -10,6 +10,11 @@
 | Site | **v0.22.0** (version in the header badge and footer). **v0.22.0: AI summary UX overhaul (instant 0s narrative, background GLM retelling, Web Speech voice readout, bank hedge checker fix, negative cache 120s), two-dimension status, top bar fold, 297 tests.** Earlier: v0.20.5 GISTDA layer probe; v0.20.4 where-row ภาค/จังหวัด; v0.20.1 แม่น้ำ views for 62 waterways; v0.19.0 satellite line; v0.18.x plain line & AI explain on request (D-068); v0.16 nationwide parity (D-064) |
 | API | `/api/health`, `/stations`, `/stations/{code}`, `/near`, `/stats`, `/rivers` (62 river views: regions, provinces, gauge codes), `/profile?river=` (one river, upstream first), **`/point`**, **`/summary`** (template), **`/explain`** (deterministic narrative + background GLM retelling), `/reports`, `/rain`, `POST /feedback` (instant `urgent` flag), `/feedback/summary`, **`/reverse`** (district line, D-051); docs at `/api/docs` ([ARCHITECTURE §1.1](docs/ARCHITECTURE.md)) |
 
+## 3i. Session 2026-10-04 13:45– UTC: IN PROGRESS — ticker, 24/48/72 h rows, จับตา chips, dam releases, MODELS.md detail (v0.23.0)
+- **Live by 14:10 UTC (v0.23.0):** forecast rows 24/48/72 h, no 12 h (72 h: star wins at 372 gauges, medium confidence 70); จับตา over-bank sub-groups as coloured pills + province chips; top bar = national counts (words, filter the list) + **one running ticker** for all of Thailand (`situation.py`, worker every 30 min: rules gather facts, GLM retells ≤ 250 chars, accepted only with no new number/place/verdict, one retry, else the rule text; `/api/situation`); rain line and urgent line folded into the ticker. Phone top area 277 px (was 382), desktop 163 px. 302 tests.
+- The §3h session's AI-summary UX (uncommitted in the tree) was tested (294 pass) and committed as `713ca59`.
+- **Still to do:** dam releases beyond the Chao Phraya (research + backtest), MODELS.md theory/examples/method table, AI-summary review notes, live checks (C14 update, C17 chips, C18 trend rule, C19 ticker, C9/C11 rain line gone), docs, tag.
+
 ## 3h. Session 2026-10-04 11:30–13:45 UTC: AI summary UX overhaul — 0s instant narrative, natural Thai retelling, 🔊 voice readout, checker hedging (v0.22.0)
 | Owner request | Result | Where |
 |---|---|---|
