@@ -776,3 +776,6 @@ Post-release validation 2026-10-04 21:40 UTC: `google_floodhub` last succeeded a
 
 ### KI-290 — Track records said "30 days" but forecast runs were kept 14 days · 🟢 fixed v0.25.2
 Post-release validation 2026-10-04: `risks.WINDOW_DAYS = 30` (the "N ใน 10" chips and their ⓘ say "30 วันที่ผ่านมา") while `retention.FC_KEEP_DAYS = 14`; the archive began 2026-09-26, so from ~10 Oct the records would silently cover 14 days. Found when the unstarved retention task (KI-288) thinned 115,820 runs (the designed thinning, nothing past 14 days existed yet). Fix: `FC_KEEP_DAYS = 31` (~0.5 GB, 29 GB free) and a test that keeps it above `WINDOW_DAYS`.
+
+### KI-291 — Live check C4 sometimes sees a list line twice behind an open sheet (URTU07) · 🟡 open, intermittent
+2026-10-04: the C4 check reported "line printed twice: เมืองสมุทรสาคร สมุทรสาคร · 〰️ แม่น้ำท่าจีน" for `#s=URTU07` (14:5x UTC at 1440 px, before the v0.25 work; 22:2x UTC at 768 px). Not reproduced in the sheet itself (6 tries at 768/1440 px: only the legitimate "⬆ เพิ่มขึ้นมาก" on two rows). The line has the list-card format, so the likely cause is a short-lived double render of the list behind the sheet (the sheet's `refreshListItems` → `renderList` racing the periodic refresh). Next: log the list's item count per code during the C4 capture.
