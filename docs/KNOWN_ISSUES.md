@@ -734,3 +734,6 @@ Live review of 12 pins (2026-10-04): 10 passed the check, but texts opened with 
 
 ### KI-280 — The first AI ticker sounded alarmed and over-generalised · 🟢 fixed v0.23.0
 Live trials 2026-10-04: "เร่งด่วน:", "ด่วน!" openings; "11 สถานี ในพระนครศรีอยุธยา ฉะเชิงเทรา และพิษณุโลก" while those provinces held 8 of the 11 rising gauges. Prompt: calm, ≤ 250 characters, examples said as examples; facts carry "เช่น" when the top provinces do not hold them all; the check rejects "ด่วน".
+
+### KI-281 — Most forecast rows said "? ไม่แน่ชัด" although the chart showed a trend · 🟢 mitigated v0.24.0
+Owner (CPY010, HDA009, WL.BBR.02 screenshots): 63 / 79 / 83 % of 24 / 48 / 72 h rows were "?" because the served model ("no change" at 355 gauges) or a range across zero cannot say how much, though the direction was often clear. D-091 leans those rows by the measured trend with its record (75 %). Residual: a lean word and a model range can point different ways (Q51); pumped canals whose last 6 h contradict the 24 h stay "?" (WL.BBR.02).

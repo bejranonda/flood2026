@@ -2,6 +2,19 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.24.0 — 2026-10-04
+- **"? ไม่แน่ชัด" rows lean by the measured trend, with their own track record (owner: "Why many stations say ? ไม่แน่ชัด, even we
+  can see the trend from graphs" → "Lean the rows by the trend").** 63 / 79 / 83 % of the 24 / 48 / 72 h rows were "?": the model
+  ("no change" at 355 gauges, or a likely range across zero) cannot say *how much*. On those rows the measured direction held
+  70–72 % (research/2026-10-04_unsure_rows.py); the lean rule (the trend groups' measured pace: 24 h, cut back when the last
+  6 h stopped) held 75.5 / 75.4 / 76.4 % over 30 days (n 4,736 / 4,060 / 2,661). A "?" row now reads "↗ น่าจะขึ้น" or
+  "↘ น่าจะลดลง" in a dashed chip with "8 ใน 10"; the numbers stay the model's range, the band the chart draws; the ⓘ says
+  where each part comes from. No measured pace (or the last 6 h disagree, e.g. pumped canals) → still "?". Live: 276 of the
+  24 h rows lean (83 up, 193 down). The stories say "น่าจะเพิ่มขึ้นตามแนวโน้มที่วัดได้ แต่ยังไม่แน่ชัดว่าเท่าไร" (D-091).
+- **The past comes before the future (owner: "move 24 ชม. ที่ผ่านมา to locate before 24 hr prediction … the last and then the
+  future").** In list cards, sheets and pin panels the measured line now leads the forecast rows.
+- Live check C2/C3 read a leaning chip as "not proven" (its range may cross zero by design).
+
 ## v0.23.0 — 2026-10-04
 - **One running ticker for all of Thailand in the top bar (owner: "concentrate the all information of Thailand … into a
   single running scrolling text … periodically update, like every 30 minutes … let AI prepare it into simple, attractive

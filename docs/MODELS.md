@@ -190,6 +190,9 @@ upstream water take a day or more to arrive, which a gauge's own history cannot 
 - **Trend group** (`status.trend`, D-083): the 24 h row when sure (proven ↗/↘, or "→ ทรงตัว"), else the measured recent
   pace (`recent` rule; ≥ +2 cm per 24 h = up) → **น้ำยังขึ้น** / **ทรงตัวหรือลดลง**; None when stale. Two labels shown
   ("วัดได้ ↗ · คาด ?"). One field on every station row, read by every view.
+- **Lean of an unsure row** (`status.lean`, D-091): a "? ไม่แน่ชัด" row (no proven direction, range wider than ±5 cm)
+  takes the measured pace's direction (the trend-group rule) when there is one, shown as "↗ น่าจะขึ้น / ↘ น่าจะลดลง" with
+  its 30-day record (75–76 % at 24/48/72 h); the numbers stay the model's range. The amount stays uncertain (30–50 cm errors).
 - **จับตา groups** (`risks.build`, D-077): over the bank (split by trend group) → may reach the bank (band ≥ "25–50%" in
   24 or 48 h) → water from upstream (learned upstream gauge, lag 3–48 h, fitted 24 h rise ≥ 30 cm, gauge at
   watch/warning) → fast rise (24 h median ≥ +20 cm); heavy rain per province (≥ 35.1 mm in 24 h). A gauge appears once.

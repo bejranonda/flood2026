@@ -225,6 +225,10 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Test an input before adopting it:** dam releases sounded useful and gave no gain (D-090).
 - **Prefer a calm voice:** no "good news", no sirens; one neutral voice without ค่ะ/ครับ (KI-279).
 
+### 6c-2. Lesson from the "? ไม่แน่ชัด" rows (D-091, KI-281)
+- **Answer the question people ask.** Residents ask "which way?" first; a row that only knows "how much is uncertain" should still say the direction it has evidence for, with that evidence's record, and keep the uncertainty in the numbers.
+- **Past, then future** in every trend block.
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Zero-wait two-stage UX (v0.22.0):** Tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" immediately renders the deterministic rule-written story (`r.story`, ~40 ms) so visitors never face a blank 5–7 s shimmer. In the background, GLM retells the story in warm, natural spoken Thai (`&part=gist`); when verified, the card seamlessly updates with the polished retelling and badge. If GLM times out or is rejected, the rule story remains in place without error.

@@ -577,6 +577,12 @@
   - New `.env` keys (empty in git): `GFM_EMAIL`, `GFM_PASSWORD`, `GOOGLE_APPLICATION_CREDENTIALS`, `WEATHERNEXT_PROJECT`, `WEATHERNEXT_DATASET`, `EWDS_API_KEY` — worker only, never the web app; `owner_status.py` checks each with one request and prints no value.
 - **Revisit:** satellite UI if users outside Bangkok ask what the fields look like; WeatherNext after its backtest (owner step WNEXT: subscribe to the listing).
 
+### D-091 — A "? ไม่แน่ชัด" row leans by the measured trend; the numbers stay the model's
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "Why many stations say ? ไม่แน่ชัด, even we can see the trend from graphs. Could we think about average trend in long term" → chose "Lean the rows by the trend" over my recommended "measured trend + one forecast line"; window "24 h as now", and "move 24 ชม. ที่ผ่านมา … before 24 hr prediction")
+- **Evidence:** research/2026-10-04_unsure_rows.py — on "?" rows with a real change, direction right: measured 24 h trend 70 / 71 / 72 %, 3-day trend 67 / 66 / 63 %, model median 69 / 61 / 57 % at 24 / 48 / 72 h; amount errors 30–50 cm either way. Daily lean record (strict sign, 30 days): 75.5 / 75.4 / 76.4 %.
+- **Decision:** `status.lean` (forecast label "unsure" + measured label up/down, the trend groups' rule) on each 24/48/72 h row, `lean_rec` from `risk_record.lean`; UI dashed chip "↗ น่าจะขึ้น / ↘ น่าจะลดลง" + "N ใน 10" (≥ 30 cases); the numbers remain the model's 50 % range (= chart band); stories say it the same way. The measured line precedes the rows everywhere.
+- **Trade-off stated to the owner:** the word can lean one way while the range (and a tide peak line) leans the other (HDA009: "↘ น่าจะลดลง", −5 to +15 cm); the ⓘ names both sources (Q51).
+
 ### D-090 — Large-dam releases are not a forecast input (tested); rule curves noted for a future จับตา signal
 - **Date:** 2026-10-04 · **Status:** accepted (owner: "consider การปล่อยน้ำเขื่อน more than เจ้าพระยา, to improve the forecasting models in the other regions")
 - **Evidence:** research/2026-10-04_dam_release_backtest.md — 50 dams, 100 gauges in their HII sub-basins, release lagged 1 day as `star` input: error −0.5 / −0.9 / −0.9 % at 24 / 48 / 72 h, median 0, > 5 % better at 1–3 gauges.

@@ -311,3 +311,4 @@ UX principles established through visitor testing during the 2026 flood season:
 - **AI summary sample (12 pins):** rule story ~0.5 s, AI retelling 5–8.5 s, 10 of 12 accepted; 2 timed out at 8 s.
 - **Google Flood Hub, Thailand:** 103 HYBAS virtual gauges, all quality-verified, each with thresholds in m³/s; one status per gauge per daily issue (~08:24 UTC); forecasts 9 days; 71 of 103 have one of our gauges within 15 km.
 - **Large dams:** HII lists 50 with sub-basin ids; daily release history and upper/lower rule curves per year (`dam_yearly_graph`). Releases as model inputs: no gain (D-090).
+- **"? ไม่แน่ชัด" rows (2026-10-04):** 63 / 79 / 83 % of 24 / 48 / 72 h rows; 355 of the 569 unsure 24 h rows were "no change" models. On unsure rows the measured direction held 70–72 % (3-day trend 63–67 %, model median 57–69 %); the lean rule 75–76 % over 30 days. Live after D-091: 276 leaning 24 h rows (83 up, 193 down).

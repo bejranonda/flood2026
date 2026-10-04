@@ -9,6 +9,7 @@
 | # | Question | Why it matters | Priority |
 |---|---|---|---|
 | **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
+| **Q51** | **Lean word vs model range (D-091):** where they point different ways (HDA009: "↘ น่าจะลดลง", −5 to +15 cm), show the range only on tap, or let the lean shift the shown range? | A quick reader may see a contradiction; the record supports the word (75 %), the model the numbers | 2 |
 | **Q49** | **Google Flood Hub after 1–2 weeks (D-087):** show a "Google คาด 3–9 วัน" line where it agreed with our gauges, or keep it as a back-office cross-check? | It adds lead time and 31 river points without our gauges, but missed 7 over-bank places in the first snapshot | 2 |
 | **Q50** | **A จับตา group for dams above their upper rule curve (D-090)?** Same HII call; "a release increase is likely" | Operations decide the lower rivers; this is the closest public signal we have | 2 |
 | **Q46** | **DWR posts after 2–4 weeks of archive (D-081):** show them beyond the trend-only layer (e.g. in pin panels where no gauge is within 10 km), and test them as upstream inputs? | 362 fresh posts, mostly where our gauges are thin; quality unknown until our own history exists | 2 |
