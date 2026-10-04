@@ -707,3 +707,15 @@ The D-037 switch "แสดงสถานีที่ยังคาดกา�
 
 ### KI-274 — The river tab was a dead end for thin provinces and split tributaries from their river · 🟢 fixed v0.21.0
 Owner (ชลบุรี: "ทุกสาย (0)" and a pointer elsewhere; Trang: คลองนางน้อย under "ลำน้ำอื่น" and its text touching the blue bar). 13 provinces showed nothing; 426 of 840 non-BMA gauges were in no view. D-082: tributaries by HII sub-basin (170 placed), the rest listed per province; 12 px between the province bar and the text, no bar where every row is in the province.
+
+### KI-275 — AI checker rejected natural Thai bank hedges, 30-min failure lockout, and blank shimmer UX · 🟢 fixed v0.22.0
+Found 2026-10-04 validating the AI summary ("✨ ให้ AI สรุปให้ฟังง่าย ๆ") across real Bangkok and provincial stations:
+- **Checker false-positive on `ถึงตลิ่ง`:** `_VERDICTS` regex matched `r"ไม่(?:ขึ้น)?ถึงตลิ่ง"` rigidly. When GLM retold safely hedged rule statements like `"ถ้าเป็นแบบที่ผ่านมา น้ำยังไม่น่าจะถึงตลิ่ง"` with natural phrasing like `"ถ้าเป็นแบบเดิม น้ำน่าจะยังไม่ถึงตลิ่ง"`, `"น้ำคงยังไม่ถึงตลิ่ง"`, or `"น้ำยังขึ้นไม่ถึงตลิ่ง"`, the checker discarded the output as an unhedged safety verdict (`verdict:ไม่ถึงตลิ่ง`).
+  - **Fix:** Hedged prefixes (`(?:ยังไม่น่าจะ|น่าจะยังไม่|คงยังไม่|คงจะไม่|ยังขึ้นไม่|ยังไม่)ถึงตลิ่ง`) are permitted, while an unhedged negative lookbehind blocks absolute guarantees (`น้ำไม่ถึงตลิ่งแน่นอน`). Guarded by unit test `test_hedged_bank_phrasing_is_accepted_when_rule_allows`.
+- **30-minute negative cache lockout:** When GLM timed out (>8s) or got rejected, `_cache` retained `(None, timestamp)` with an 1800s (30m) TTL. A single transient glitch locked out AI summaries for that station for half an hour (`AI ตอบไม่ได้ตอนนี้`).
+  - **Fix:** Reduced negative cache TTL to 120s (2 min), while successful answers remain cached for 6 hours.
+- **Blank shimmer wait time (5–7s UX):** Visitors tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" had to wait for GLM's reasoning API call before seeing anything.
+  - **Fix:** Two-stage rendering: `app.js` renders the deterministic rule story (`r.story`) immediately (<50ms), and smoothly transitions to GLM's warm retelling when available.
+- **Stiff Thai phrasing & repetitive "และ":** `_easy_rain` joined clauses with repeated `"และ"` (`"เพิ่งมีฝนตก... และอีกหนึ่งวันข้างหน้าคาดว่า..."`), and `_bank` printed `"น้ำขึ้นไม่เกิน 0 ซม."` when max rise was ≤ 0 cm.
+  - **Fix:** Template updated to `"ต่อไป..."` and `"น้ำไม่เคยขึ้นเกินระดับนี้"`, and refined system prompt for warm, gentle spoken Thai.
+- **Voice accessibility:** Added "🔊 ฟังเสียง" voice readout button for elderly/vision-impaired users using Web Speech API (`SpeechSynthesisUtterance` with `th-TH`).

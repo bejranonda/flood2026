@@ -383,7 +383,10 @@ a { color: var(--accent); }
 .story { margin: 8px 0 10px; padding: 11px 13px; border-radius: 14px; background: #fff;
   border: 2px solid transparent; background-image: linear-gradient(#fff, #fff), linear-gradient(120deg, #60a5fa, #a78bfa, #f472b6);
   background-origin: border-box; background-clip: padding-box, border-box; }
-.story-h { font-size: 13px; font-weight: 700; color: #6d28d9; margin-bottom: 4px; }
+.story-h { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #6d28d9; margin-bottom: 6px; }
+.story-speak { border: 1px solid #ddd6fe; background: #f5f3ff; color: #6d28d9; border-radius: 999px; padding: 2px 9px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; font-weight: 500; font-family: inherit; }
+.story-speak:hover { background: #ede9fe; }
+.story-speak.speaking { background: #6d28d9; color: #fff; border-color: #6d28d9; }
 .story-text { font-size: 15.5px; line-height: 1.65; color: #1f2937; margin: 0; }
 .story-text.shimmer { color: #9ca3af; animation: shimmer 1.2s ease-in-out infinite; }
 @keyframes shimmer { 50% { opacity: .45; } }

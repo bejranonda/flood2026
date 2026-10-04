@@ -29,7 +29,7 @@ QUESTIONS = {"simple": "สรุปให้ฟังง่าย ๆ", "home":
              "travel": "พรุ่งนี้เดินทางได้ไหม", "prepare": "ควรเตรียมอะไร", "numbers": "ตัวเลขหมายถึงอะไร"}
 DAILY_CAP = 1500          # AI gists per process per day
 CACHE_H = 6               # the key is the answer's lines, so new facts make a new key
-GIST_MAX = 320            # characters: the story card is 3-4 short sentences (a weather app's AI card ~250)
+GIST_MAX = 420            # characters: the story card is 3-4 short sentences (a weather app's AI card ~250)
 STEADY_M = 0.05           # the rows' "ทรงตัว" band (D-060)
 # the rows' own words (web/app.js CHANGE, OBS)
 LEVEL_TH = {"strong_fall": "ลดลงมาก", "fall": "ลดลง", "small_fall": "ลดลงเล็กน้อย", "steady": "ทรงตัว",
@@ -157,7 +157,8 @@ def _bank(f: dict) -> dict | None:
         return None
     h, up = max(ups, key=lambda x: x[1])
     when = "ใน 1–2 วัน" if h == 48 else "ในวันข้างหน้า"
-    line = f"🏞️ ตลิ่ง: เหลืออีกราว {fb} ซม. {when} 9 ใน 10 ครั้งที่ผ่านมาน้ำขึ้นไม่เกิน {max(up, 0)} ซม."
+    past_up = "น้ำไม่เคยขึ้นเกินระดับนี้" if up <= 0 else f"น้ำขึ้นไม่เกิน {up} ซม."
+    line = f"🏞️ ตลิ่ง: เหลืออีกราว {fb} ซม. {when} 9 ใน 10 ครั้งที่ผ่านมา{past_up}"
     if up >= fb:
         return {"risk": "reach", "line": line + " จึงอาจถึงตลิ่งได้",
                 "story": "แต่ถ้าน้ำขึ้นมาก อาจถึงตลิ่งได้", "plain": "แต่อาจถึงตลิ่งได้ถ้าน้ำขึ้นมาก"}  # the cm are in "now"
@@ -374,8 +375,12 @@ def _easy_rain(f: dict, after_trend: bool = False) -> str:
     if f["fell"] in ("ฝนปานกลาง", "ฝนหนัก", "ฝนหนักมาก"):
         parts.append(f"เพิ่งมี{f['fell']}ไปแล้ว")
     if f["fc_rain"]:
-        when = "" if after_trend else "อีกหนึ่งวันข้างหน้า"
-        parts.append(f"{when}ไม่น่าจะมีฝน" if f["fc_rain"] == "ไม่มีฝน" else f"{when}คาดว่ามี{f['fc_rain']}")
+        ahead = "" if after_trend else "อีกหนึ่งวันข้างหน้า"
+        nxt = f"{ahead}ไม่น่าจะมีฝน" if f["fc_rain"] == "ไม่มีฝน" else f"{ahead}คาดว่ามี{f['fc_rain']}"
+        if parts:
+            parts[-1] += f" ต่อไป{nxt}"
+        else:
+            parts.append(nxt)
     if f["street"]:
         parts.append(f"มีคนแจ้งน้ำท่วมถนนใกล้ ๆ {f['street']} เรื่อง")
     return " และ".join(parts)
@@ -418,7 +423,9 @@ _DIRS = {"fall": re.compile(r"ลดลง|น้ำลด|ต่ำลง|จ�
 _STRONG = re.compile(r"(?:ขึ้น|ลง|ลด)\S{0,10}มาก")
 # verdicts; a polite particle after "ไม่ได้" / "รับน้ำได้" is not one ("ยังบอกไม่ได้ค่ะ", "ยังรับน้ำได้ค่ะ")
 _VERDICTS = (r"(?<!ไม่)(?<!รับน้ำ)ได้(?:ครับ|ค่ะ)", r"ไปได้(?!หรือ|ไหม)", r"เดินทางได้(?!หรือ|ไหม)",
-             r"ไม่ต้อง(?:ย้าย|กังวล|ห่วง|เตรียม|ทำอะไร|ระวัง)", "ไม่จำเป็น", "ไม่ท่วม", r"ไม่(?:ขึ้น)?ถึงตลิ่ง",
+             r"ไม่ต้อง(?:ย้าย|กังวล|ห่วง|เตรียม|ทำอะไร|ระวัง)", "ไม่จำเป็น", "ไม่ท่วม",
+             r"(?:ยังไม่น่าจะ|น่าจะยังไม่|คงยังไม่|คงจะไม่|ยังขึ้นไม่|ยังไม่)ถึงตลิ่ง",
+             r"(?<!น่าจะ)(?<!น่าจะยัง)(?<!คง)(?<!คงจะ)(?<!คงยัง)(?<!ยังไม่น่าจะ)(?<!ยังขึ้น)(?<!ยัง)ไม่(?:ขึ้น)?ถึงตลิ่ง",
              r"จะท่วม(?!\S{0,8}(?:หรือ|ไหม))", "ท่วมแน่", "ปลอดภัย", "ปกติ", r"(?<!ไม่ได้)(?<!ไม่)แน่นอน", "รับรอง", "กังวล", "นาที")
 _CANNOT = ("ไม่ได้", "ไม่รู้", "ไม่ทราบ", "ยังไม่มี", "ไม่สามารถ", "ไม่ชัด", "ไม่แน่ชัด", "ไม่มาก")
 
@@ -457,9 +464,11 @@ def check(text: str, rule: str) -> list[str]:
     return issues
 
 
-SYSTEM = ("คุณช่วยเล่าข้อมูลน้ำในแอปให้คนทั่วไปและผู้สูงอายุฟัง เป็นภาษาพูดที่อบอุ่น อ่านง่าย 2–4 ประโยคสั้น ไม่เกิน 70 คำ "
+SYSTEM = ("คุณช่วยเล่าข้อมูลน้ำในแอปให้คนทั่วไปและผู้สูงอายุฟัง เป็นภาษาพูดที่อบอุ่น อ่อนโยน เข้าใจง่าย น่าฟัง 2–4 ประโยคสั้น ไม่เกิน 70 คำ "
           "เล่าตามบทสรุปที่ให้มาเป็นหลัก ใช้ตัวเลขน้อยที่สุด บอกสิ่งที่สำคัญที่สุดก่อน ใช้เฉพาะข้อมูลที่ให้ ห้ามเพิ่มตัวเลขหรือข้อมูลใหม่ ห้ามเปลี่ยนทิศทางของน้ำ "
-          "ถ้าข้อมูลบอกว่าบอกไม่ได้ ไม่รู้ หรือสถานีอยู่ไกล ต้องบอกด้วย ถ้าสถานีอยู่ไกลห้ามเรียกว่าแถวนี้ "
+          "ถ้าข้อมูลบอกว่าบอกไม่ได้ ไม่รู้ หรือสถานีอยู่ไกล ต้องบอกอย่างนุ่มนวล ถ้าสถานีอยู่ไกลห้ามเรียกว่าแถวนี้ "
+          "ใช้ชื่อลำน้ำตามที่ระบุ ห้ามตัดทอนหรือแปลงชื่อสถานที่หรือลำน้ำเป็นคำอื่น "
+          "เรียบเรียงภาษาพูดให้เชื่อมโยงลื่นไหลเป็นธรรมชาติ ไม่ใช้คำว่า 'และ' ซ้ำซ้อน "
           "ห้ามตอบว่าได้หรือไม่ได้แทนผู้ใช้ ห้ามใช้คำว่า ปกติ ปลอดภัย ไม่ท่วม ตอบเป็นภาษาไทยเท่านั้น ไม่ใส่อีโมจิ "
           "ไม่ต้องใส่ครับหรือค่ะ "
           "ตอบเฉพาะข้อความ")
@@ -488,7 +497,7 @@ def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
     now = dt.datetime.now(dt.timezone.utc).timestamp()
     with _lock:
         hit = _cache.get(key)
-        if hit and now - hit[1] < (CACHE_H * 3600 if hit[0] else 1800):  # a failure is retried after 30 min
+        if hit and now - hit[1] < (CACHE_H * 3600 if hit[0] else 120):  # a failure is retried after 2 min (was 30 min)
             return hit[0]
         if _calls_today() >= DAILY_CAP:
             return None

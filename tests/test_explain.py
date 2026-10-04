@@ -334,6 +334,14 @@ def test_bank_certainty_and_harmless_phrases():
     assert not [i for i in explain.check("แอปไม่รู้สภาพถนนทุกเส้น จะเดินทางได้ไหมให้ดูจุดสีม่วงบนแผนที่อีกครั้ง", trav) if i.startswith("verdict")]
 
 
+def test_hedged_bank_phrasing_is_accepted_when_rule_allows():
+    safe_rule = "บทสรุป: ถ้าเป็นแบบที่ผ่านมา น้ำยังไม่น่าจะถึงตลิ่ง และคาดว่ามีฝนเล็กน้อย\n🏞️ ตลิ่ง: เหลืออีกราว 58 ซม."
+    assert not [i for i in explain.check("ถ้าเป็นแบบเดิม น้ำน่าจะยังไม่ถึงตลิ่ง", safe_rule) if i.startswith("verdict")]
+    assert not [i for i in explain.check("น้ำยังไม่น่าจะถึงตลิ่ง", safe_rule) if i.startswith("verdict")]
+    assert [i for i in explain.check("น้ำไม่ถึงตลิ่งแน่นอน", safe_rule) if i.startswith("verdict")]
+    assert [i for i in explain.check("น้ำไม่ขึ้นถึงตลิ่ง", safe_rule) if i.startswith("verdict")]
+
+
 # --- satellite (Q45 yes, D-071): told as seen, in the past, with its distance; silent when nothing was seen ----------
 SAT = {"nearest_m": 300, "cells": 4, "area_rai": 120, "img_from": "2026-09-27", "img_to": "2026-09-29", "source": "GISTDA"}
 

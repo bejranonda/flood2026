@@ -176,6 +176,13 @@ Depth at a location is always shown as a **probability category**, never an exac
 - **Contrast standard:** > 5:1 contrast against both dark-mode tabs (`#202124`) and light-mode tabs (`#dee1e6` / `#ffffff`).
 - **Mobile PWA / Touch:** 180×180 and 192×192 assets use solid background canvases so iOS does not render transparent areas as black.
 
+### 6.4 Plain-language summary & voice accessibility (D-068, v0.22.0)
+- **Problem:** Common residents and elderly citizens often find engineering water levels (m MSL, centimetres to bank, horizon slopes) hard to interpret quickly during emergencies.
+- **Two-stage zero-wait UX:** When a user taps "✨ ให้ AI สรุปให้ฟังง่าย ๆ", the UI immediately displays the deterministic rule story (`explain.narrative`, <50 ms) with numbers neatly folded under "ดูตัวเลข". In the background, GLM retells the facts in gentle, spoken Thai. If the retelling passes `explain.check`, it seamlessly updates the card; otherwise the verified rule story remains.
+- **Safety guardrails:** The AI may never decide safety, travel, or whether a home will flood. Forbidden words include "ปกติ", "ปลอดภัย", "ไม่ท่วม", "ได้ครับ", "ไม่ต้องกังวล". Natural Thai hedging (`ยังไม่น่าจะถึงตลิ่ง`, `น่าจะยังไม่ถึงตลิ่ง`, `คงยังไม่ถึงตลิ่ง`) is permitted when the underlying rule allows it (KI-275), but absolute guarantees (`ไม่ถึงตลิ่งแน่นอน`) are blocked.
+- **Voice readout ("🔊 ฟังเสียง"):** Built-in browser Web Speech API (`SpeechSynthesisUtterance` with `th-TH`) allows elderly, illiterate or busy residents to listen to the explanation hands-free.
+- **Site resilience:** If `AI_EXPLAIN=0` or GLM is offline, the site operates identically using deterministic rules.
+
 ---
 
 ## 7. Sourcing strategy (keyless first, collected on the server)
@@ -191,7 +198,7 @@ Depth at a location is always shown as a **probability category**, never an exac
 | Flood extent | Copernicus GFM (keyless STAC; research only, D-069) | GISTDA 🔑 (key configured in .env) | – |
 | Citizen reports | Traffy public ✅ | Agreement with BMA/NECTEC | – |
 | Feedback note triage | Deterministic keyword rules ✅ | GLM (`glm-5.3-flash` 🔑 in .env) / Workers AI | Instant hotline triggers (1669/1784/191) |
-| Plain-language answers (D-068) | Rule lines (`explain.answer`) ✅ | GLM one-sentence retelling, checked (`explain.check`) | No AI sentence; the lines stand alone |
+| Plain-language answers & voice (D-068, v0.22.0) | Deterministic rule lines (`explain.answer`, instant 0s narrative) ✅ | GLM warm spoken retelling (`explain.check`) + 🔊 Web Speech audio readout | Deterministic rule story shown instantly |
 | Storage & backup | Local VPS disk (`data/raw_archive` + Postgres) ✅ | Nightly local snapshots | R2 disabled by owner choice (D-029) |
 
 ---

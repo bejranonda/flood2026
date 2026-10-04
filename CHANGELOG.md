@@ -2,6 +2,20 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.22.0 — 2026-10-04
+- **AI Summary UX Overhaul ("✨ ให้ AI สรุปให้ฟังง่าย ๆ", D-068, KI-275):**
+  - **Zero-wait two-stage rendering:** Tapping the button renders the deterministic rule narrative (`r.story`, ~40 ms) immediately; background GLM warm retelling replaces text seamlessly when verified. Visitors never face a blank 5–7s shimmer.
+  - **Voice accessibility ("🔊 ฟังเสียง"):** Integrated native Web Speech API (`window.speechSynthesis`, `th-TH`, rate 1.0) in the summary header, allowing elderly, visually impaired, or on-the-move residents to listen to the explanation hands-free.
+  - **Checker false positive fix (KI-275):** `_VERDICTS` regex replaced rigid `r"ไม่(?:ขึ้น)?ถึงตลิ่ง"` with hedged prefixes `(?:ยังไม่น่าจะ|น่าจะยังไม่|คงยังไม่|คงจะไม่|ยังขึ้นไม่|ยังไม่)ถึงตลิ่ง` and unhedged lookbehind. Natural safe hedging like `"ถ้าเป็นแบบเดิม น้ำน่าจะยังไม่ถึงตลิ่ง"` is accepted, while absolute guarantees (`"น้ำไม่ถึงตลิ่งแน่นอน"`) remain strictly rejected.
+  - **Negative cache lockout reduction:** Reduced failure/timeout cache from 1800s (30m) to 120s (2m) so transient API timeouts don't lock residents out.
+  - **Prompt and language refinement:** Instructed GLM to use warm, gentle, polite spoken Thai suitable for common people and the elderly, avoid repetitive `"และ"` chaining, preserve official waterway names, and raised `GIST_MAX = 420` chars. In templates: fixed `"น้ำขึ้นไม่เกิน 0 ซม."` → `"น้ำไม่เคยขึ้นเกินระดับนี้"`, and rain joins with `"ต่อไป"`.
+- **Two-dimension status & top bar fold:**
+  - `status.trend` on every station row ("น้ำยังขึ้น" vs "ทรงตัวหรือลดลง").
+  - Top bar folding (collapsible header, rain line names the station/province).
+  - Sheet rows and chart synchronized to one run snapshot (C15 race fix).
+  - GISTDA layer removed and collector stopped (D-084).
+  - 294 passing tests (`pytest -q`).
+
 ## v0.21.0 — 2026-10-03/04 (includes v0.20.6 and v0.20.7, interim deploys, not tagged)
 - **New tab "⚠️ จับตา": the next 24–48 h risks (owner: "I need another tab to have the list of potential risks according to
   the water level in next 24 or 48 hr … link to the stations or areas … with the confidence").** Six groups, worst

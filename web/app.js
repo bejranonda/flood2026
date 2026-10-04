@@ -1049,18 +1049,44 @@ async function share(s) {
 // shows the rule-written plain line; one tap opens a story card: GLM's retelling when it passes the server's check,
 // else the rule story, with the numbers folded under "ดูตัวเลข". Nothing calls GLM until the button is tapped.
 const askHTML = () => `<button type="button" class="ai-btn" aria-expanded="false">✨ ให้ AI สรุปให้ฟังง่าย ๆ</button>
-  <div class="story" hidden><div class="story-h">✨ สรุปง่าย ๆ</div><div class="story-body" aria-live="polite"></div></div>`;
-async function fillStory(body, url, isOpen) {
+  <div class="story" hidden><div class="story-h"><span>✨ สรุปง่าย ๆ</span><button type="button" class="story-speak" title="ฟังเสียงอ่าน" aria-label="ฟังเสียงสรุป">🔊 ฟังเสียง</button></div><div class="story-body" aria-live="polite"></div></div>`;
+async function fillStory(card, url, isOpen) {
+  const body = card.querySelector(".story-body"), speakBtn = card.querySelector(".story-speak");
   try {
     const r = await getJSON(url);
-    let text = r.story, by = "สรุปจากข้อมูลในแอป (AI ตอบไม่ได้ตอนนี้)";
-    if (r.ai) {  // never wait longer than 7 s for GLM
-      const g = await Promise.race([getJSON(`${url}&part=gist`).catch(() => null), new Promise((ok) => setTimeout(() => ok(null), 7000))]);
-      if (g && g.gist) { text = g.gist; by = "✨ AI เล่าจากข้อมูลในแอป · ตัวเลขอยู่ใน “ดูตัวเลข”"; }
-    }
     if (!isOpen() || !body.isConnected) return;
-    body.innerHTML = `<p class="story-text">${esc(text)}</p><details class="story-more"><summary>ดูตัวเลข</summary>
-      <div class="ask-lines">${r.lines.map((l) => `<p>${esc(l)}</p>`).join("")}</div></details><p class="ask-by">${by}</p>`;
+    let text = r.story, by = r.ai ? "✨ สรุปจากข้อมูลในแอป (กำลังเกลาภาษาพูด…)" : "สรุปจากข้อมูลในแอป";
+    const render = () => {
+      body.innerHTML = `<p class="story-text">${esc(text)}</p><details class="story-more"><summary>ดูตัวเลข</summary>
+        <div class="ask-lines">${r.lines.map((l) => `<p>${esc(l)}</p>`).join("")}</div></details><p class="ask-by">${by}</p>`;
+    };
+    render();
+    if (speakBtn) {
+      speakBtn.onclick = () => {
+        if (!("speechSynthesis" in window)) return;
+        if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); speakBtn.classList.remove("speaking"); return; }
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "th-TH";
+        u.rate = 1.0;
+        u.onend = () => speakBtn.classList.remove("speaking");
+        u.onerror = () => speakBtn.classList.remove("speaking");
+        speakBtn.classList.add("speaking");
+        window.speechSynthesis.speak(u);
+      };
+    }
+    if (r.ai) {  // fetch GLM warm retelling in background without blocking initial render
+      const g = await Promise.race([getJSON(`${url}&part=gist`).catch(() => null), new Promise((ok) => setTimeout(() => ok(null), 7000))]);
+      if (!isOpen() || !body.isConnected) return;
+      if (g && g.gist) {
+        text = g.gist;
+        by = "✨ AI เล่าจากข้อมูลในแอป · ตัวเลขอยู่ใน “ดูตัวเลข”";
+        render();
+      } else {
+        by = "สรุปจากข้อมูลในแอป";
+        const byEl = body.querySelector(".ask-by");
+        if (byEl) byEl.textContent = by;
+      }
+    }
   } catch (_) {
     if (isOpen() && body.isConnected) body.innerHTML = `<p class="muted">ตอนนี้สรุปไม่ได้ ลองแตะอีกครั้ง</p>`;
   }
@@ -1073,9 +1099,12 @@ function bindAsk(box, lat, lon) {
     const now = !open();
     btn.setAttribute("aria-expanded", String(now));
     card.hidden = !now;
-    if (!now) return;  // a second tap closes it
+    if (!now) {
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+      return;  // a second tap closes it
+    }
     body.innerHTML = `<p class="story-text shimmer">กำลังสรุปให้…</p>`;
-    fillStory(body, `/api/explain?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&q=simple`, open);
+    fillStory(card, `/api/explain?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&q=simple`, open);
   });
 }
 
