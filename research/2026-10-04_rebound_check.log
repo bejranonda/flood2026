@@ -1,0 +1,10 @@
+forecast >= +20 cm, after a fall 5-20 cm             method star         n     9 · rose >= 10 cm   67% · kept falling   33% · mean error  30.3 cm
+forecast >= +20 cm, after a fall 5-20 cm             method tide         n     1 · rose >= 10 cm  100% · kept falling    0% · mean error   6.3 cm
+forecast >= +20 cm, after a fall 5-20 cm             method tide_trend   n     3 · rose >= 10 cm    0% · kept falling  100% · mean error  60.3 cm
+forecast >= +20 cm, after a measured fall >= 20 cm   method persistence  n     2 · rose >= 10 cm    0% · kept falling  100% · mean error  70.3 cm
+forecast >= +20 cm, after a measured fall >= 20 cm   method star         n    48 · rose >= 10 cm   65% · kept falling   29% · mean error  71.9 cm
+forecast >= +20 cm, after a measured fall >= 20 cm   method tide_trend   n     4 · rose >= 10 cm    0% · kept falling  100% · mean error 155.5 cm
+forecast >= +20 cm, after steady/rising              method persistence  n     5 · rose >= 10 cm   20% · kept falling   40% · mean error  38.9 cm
+forecast >= +20 cm, after steady/rising              method star         n   148 · rose >= 10 cm   67% · kept falling   18% · mean error  34.5 cm
+forecast >= +20 cm, after steady/rising              method tide         n    21 · rose >= 10 cm   52% · kept falling   10% · mean error  14.9 cm
+forecast >= +20 cm, after steady/rising              method tide_trend   n   194 · rose >= 10 cm   75% · kept falling   11% · mean error  18.8 cm

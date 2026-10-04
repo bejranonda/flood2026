@@ -2,6 +2,16 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.25.1 — 2026-10-04
+- **A forecast stays a forecast in the ticker.** Post-release check: GLM wrote "ตอนนี้มีน้ำขึ้นเร็วอยู่ 43 สถานี" for the
+  fast-rise group, which is a forecast (≥ 20 cm in the next 24 h). The rule item now says "คาดว่าน้ำจะขึ้นเร็ว (20 ซม.
+  ขึ้นไปใน 24 ชม.)" and an AI item must keep the forecast word.
+- **Watched, not changed:** after the release 50 rows forecast a strong rise, 12 at gauges whose water fell strongly
+  (PAS001 −61 cm measured, +59 cm forecast). The old `star` inputs give the same at PAS001/S.3; V12 amplifies it where the
+  level sits far below its 7/30-day means (M.183B, SKG007). Over 30 days such "rebound" forecasts came true 65 % of the
+  time (48 cases, mean error 72 cm; research/2026-10-04_rebound_check.log), so no guard was added; their outcome is
+  checked on 2026-10-05 (HANDOFF §3l).
+
 ## v0.25.0 — 2026-10-04
 - **A better forecast, tested honestly (owner: "Continue to improve the model forecasting performance … not fake the result
   and error or uncertainty").** `star` now also reads how far the level sits from its 7- and 30-day means and its 1/3/72 h

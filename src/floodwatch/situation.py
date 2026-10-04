@@ -126,7 +126,7 @@ def items(f: dict) -> list[dict]:
     if f["upstream"]["n"]:
         add("upstream", "🌊", f"น้ำเหนือกำลังมา {f['upstream']['n']} สถานี {_where(f['upstream'])}")
     if f["fast_rise"]["n"]:
-        add("fast_rise", "🟡", f"น้ำขึ้นเร็ว {f['fast_rise']['n']} สถานี {_where(f['fast_rise'])}")
+        add("fast_rise", "🟡", f"คาดว่าน้ำจะขึ้นเร็ว (20 ซม. ขึ้นไปใน 24 ชม.) {f['fast_rise']['n']} สถานี {_where(f['fast_rise'])}")  # a forecast
     if f["rain_measured"]:
         m = f["rain_measured"]
         add("rain", "🌧️", f"ฝนมากสุด 24 ชม. ที่ผ่านมา {m['mm']} มม. ที่ {m['place']} จ.{m['province']}")
@@ -246,7 +246,9 @@ KEEP = (("ทรงตัวหรือลดลง", ("ทรงตัว", "�
         ("ยังไม่มีจุด", ("ยังไม่มี", "ไม่มีจุด")), ("ลดลงจากเมื่อวาน", ("ลดลง", "ลด")),
         ("เพิ่มขึ้นจากเมื่อวาน", ("เพิ่มขึ้น", "เพิ่ม")), ("วินาที ทรงตัว", ("ทรงตัว", "คงที่")),
         # examples stay examples (SEA-LION, 2026-10-04: "เลย พิษณุโลก และตราด น้ำขึ้นเร็ว" for 30 gauges)
-        ("เช่น", ("เช่น", "ตัวอย่าง", "อาทิ", "อย่างที่")))
+        ("เช่น", ("เช่น", "ตัวอย่าง", "อาทิ", "อย่างที่")),
+        # a forecast stays a forecast (live 2026-10-04: "ตอนนี้มีน้ำขึ้นเร็วอยู่ 43 สถานี")
+        ("คาดว่า", ("คาด", "อาจ", "น่าจะ", "จะขึ้น")))
 # words that make an item sound worse than its fact (Llama 3.3: "ใกล้ตลิ่ง/คลองเต็ม" -> "ใกล้จะล้น")
 ALARM = ("ใกล้จะล้น", "จะล้น", "วิกฤต", "รุนแรง", "อันตราย", "น่าเป็นห่วง", "น่ากังวล", "ระวังภัย")
 # the "✨ ให้ AI สรุป" card's voice (explain.check: one neutral voice, never "good news"), plus GLM's ticker slips

@@ -226,7 +226,7 @@ def test_examples_stay_examples():
     rule = situation.items(f)
     k = [i["topic"] for i in rule].index("fast_rise") + 1
     assert any("เช่น" in x for x in situation.check_items(situation.parse_items(f"{k}) จ.เลย พิษณุโลก และตราด น้ำขึ้นเร็ว", rule), rule))
-    assert situation.check_items(situation.parse_items(f"{k}) น้ำขึ้นเร็ว 7 สถานี เช่น จ.เลย พิษณุโลก ตราด", rule), rule) == []
+    assert situation.check_items(situation.parse_items(f"{k}) คาดว่าน้ำจะขึ้นเร็ว 7 สถานี เช่น จ.เลย พิษณุโลก ตราด", rule), rule) == []
 
 
 def test_unchanged_facts_keep_their_checked_wording_and_only_changed_items_go_to_the_ai(monkeypatch):
@@ -261,3 +261,14 @@ def test_the_summary_cards_tone_rules_apply_to_ticker_items():
         assert any("tone" in x for x in situation.check_items(situation.parse_items(bad, rule), rule)), bad
     ok = situation.parse_items("1) ที่พระนครศรีอยุธยามีน้ำล้นตลิ่ง 2 สถานี และน้ำยังกำลังขึ้นอยู่", rule)
     assert situation.check_items(ok, rule) == []
+
+
+def test_fast_rise_is_told_as_a_forecast_not_as_now():
+    # live 2026-10-04 21:02: "ตอนนี้มีน้ำขึ้นเร็วอยู่ 43 สถานี" — the group is a forecast (>= 20 cm in the next 24 h)
+    risks_ = {"groups": [{"key": "fast_rise", "items": [{"code": "a", "province": "พิษณุโลก"}, {"code": "b", "province": "แพร่"}]}]}
+    rule = situation.items(situation.facts(STATIONS, risks_, RAIN))
+    fr = [i for i in rule if i["topic"] == "fast_rise"][0]
+    assert fr["text"].startswith("คาดว่าน้ำจะขึ้นเร็ว (20 ซม. ขึ้นไปใน 24 ชม.)")
+    k = rule.index(fr) + 1
+    assert any("dropped" in x for x in situation.check_items(situation.parse_items(f"{k}) ตอนนี้มีน้ำขึ้นเร็ว 2 สถานี ที่พิษณุโลก", rule), rule))
+    assert situation.check_items(situation.parse_items(f"{k}) คาดว่าน้ำจะขึ้นเร็ว 2 สถานี ที่พิษณุโลก", rule), rule) == []
