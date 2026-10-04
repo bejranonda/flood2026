@@ -169,3 +169,9 @@ def test_tributaries_appear_with_their_river_not_under_other_waterways():
 def test_no_satellite_cells_anywhere_in_the_app():
     # D-084: GISTDA's cells could mislead (owner 2026-10-04); a future source will get its own design
     assert "ดาวเทียม" not in CODE and "/api/satellite" not in APP and "sat_near_rai" not in APP
+
+
+def test_over_bank_is_split_by_the_one_trend_rule_with_both_labels():
+    # owner 2026-10-04: ล้นตลิ่งแล้ว → "น้ำยังขึ้น" / "ทรงตัวหรือลดลง"; labels "วัดได้ ↗ · คาด ?" (D-083)
+    assert 'rising: "⬆ น้ำยังขึ้น"' in APP and 'flat_or_falling: "→ ทรงตัวหรือลดลง"' in APP
+    assert "function trendLabels(t)" in APP and "`วัดได้ ${" in APP and "`คาด ${" in APP

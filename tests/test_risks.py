@@ -11,7 +11,7 @@ from floodwatch import risks
 def g(code, status="normal", **k):
     base = {"code": code, "name_th": code, "province": "ชัยนาท", "region": "up", "status": status, "stale": False,
             "freeboard_m": 0.5, "bank_chance24": "<5%", "bank_chance48": "<5%", "change24": None, "upstream": None,
-            "observed24": None}
+            "observed24": None, "trend": None}
     return {**base, **k}
 
 
@@ -23,14 +23,21 @@ def test_a_gauge_appears_once_in_its_worst_group():
     st = [g("A", "critical", freeboard_m=-0.2, change24={"level": "strong_rise", "median": 0.3}),
           g("B", "warning", bank_chance24=">50%", change24={"level": "strong_rise", "median": 0.3}),
           g("C", change24={"level": "strong_rise", "median": 0.25})]
-    assert keys(risks.build(st, {}, None)) == {"over_bank": ["ชัยนาท"], "may_reach": ["B"], "fast_rise": ["C"]}
+    out = risks.build(st, {}, None)
+    assert [g["key"] for g in out["groups"]] == ["over_bank", "may_reach", "fast_rise"]
+    assert [i["code"] for i in out["groups"][1]["items"]] == ["B"] and [i["code"] for i in out["groups"][2]["items"]] == ["C"]
 
 
-def test_over_bank_is_grouped_by_province_with_its_gauges():
-    st = [g("A", "critical"), g("B", "critical"), g("C", "critical", province="สิงห์บุรี")]
+def test_over_bank_splits_by_trend_then_province():
+    # owner 2026-10-04: "classify ล้นตลิ่งแล้ว into 2 sub-categories … กำลังเพิ่มขึ้น … คงที่หรือลดลง" (names: น้ำยังขึ้น /
+    # ทรงตัวหรือลดลง); the trend group is the station row's own (status.trend, D-083)
+    up, flat = {"group": "rising"}, {"group": "flat_or_falling"}
+    st = [g("A", "critical", trend=flat), g("B", "critical", trend=up), g("C", "critical", province="สิงห์บุรี", trend=up),
+          g("D", "critical", trend=None)]
     grp = risks.build(st, {}, None)["groups"][0]
     assert grp["key"] == "over_bank"
-    assert [(i["province"], len(i["gauges"])) for i in grp["items"]] == [("ชัยนาท", 2), ("สิงห์บุรี", 1)]
+    assert [(sub["sub"], [(p["province"], len(p["gauges"])) for p in sub["provinces"]]) for sub in grp["items"]] == [
+        ("rising", [("ชัยนาท", 1), ("สิงห์บุรี", 1)]), ("flat_or_falling", [("ชัยนาท", 1)]), ("unknown", [("ชัยนาท", 1)])]
 
 
 def test_may_reach_uses_only_the_two_upper_bands_and_says_which_window():
@@ -54,7 +61,7 @@ def test_upstream_needs_a_fresh_strong_rise_upstream_and_a_gauge_at_watch_or_war
 
 def test_stale_gauges_are_counted_not_listed():
     out = risks.build([g("A", "critical", stale=True), g("B", "critical")], {}, None)
-    assert out["groups"][0]["left_stale"] == 1 and len(out["groups"][0]["items"][0]["gauges"]) == 1
+    assert out["groups"][0]["left_stale"] == 1 and len(out["groups"][0]["items"][0]["provinces"][0]["gauges"]) == 1
 
 
 def test_heavy_rain_provinces_sorted_by_amount():

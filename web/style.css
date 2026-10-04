@@ -417,3 +417,4 @@ a { color: var(--accent); }
 .wrow.w2 { display: block; padding: 7px 4px; }
 .wrow.w2 .wname { white-space: normal; }
 .wrow .wmeta { font-size: 13px; color: #4b5563; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wsubh { margin: 8px 2px 2px; font-size: 14px; font-weight: 600; color: #374151; }

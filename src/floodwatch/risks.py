@@ -64,13 +64,20 @@ def build(stations: list[dict], rain_by_prov: dict[str, float], records: dict | 
         if s.get("stale"):  # old data cannot say what happens next: counted, not listed
             stale[key] += 1
             continue
-        groups[key].append(_item(s, **extra))
-    prov: dict[str, list] = {}
-    for i in groups["over_bank"]:
-        prov.setdefault(i["province"] or "ไม่ทราบจังหวัด", []).append(i)
-    groups["over_bank"] = [{"province": p, "region": regions.region_of(p),
-                            "gauges": sorted(v, key=lambda i: i["freeboard_m"] if i["freeboard_m"] is not None else 0)}
-                           for p, v in sorted(prov.items(), key=lambda x: (-len(x[1]), x[0]))]
+        groups[key].append(_item(s, trend=s.get("trend"), **extra))
+    # over the bank: น้ำยังขึ้น first, then ทรงตัวหรือลดลง, then (if any) ไม่ทราบแนวโน้ม; provinces inside (owner 2026-10-04)
+    subs = []
+    for sub in ("rising", "flat_or_falling", "unknown"):
+        mine = [i for i in groups["over_bank"] if ((i.get("trend") or {}).get("group") or "unknown") == sub]
+        prov: dict[str, list] = {}
+        for i in mine:
+            prov.setdefault(i["province"] or "ไม่ทราบจังหวัด", []).append(i)
+        if prov:
+            subs.append({"sub": sub, "provinces": [
+                {"province": p, "region": regions.region_of(p),
+                 "gauges": sorted(v, key=lambda i: i["freeboard_m"] if i["freeboard_m"] is not None else 0)}
+                for p, v in sorted(prov.items(), key=lambda x: (-len(x[1]), x[0]))]})
+    groups["over_bank"] = subs
     groups["may_reach"].sort(key=lambda i: (BANDS.index(i["band"]), i["hours"],
                                             i["freeboard_m"] if i["freeboard_m"] is not None else 9e9))
     groups["upstream"].sort(key=lambda i: -i["up"]["rise_cm"])

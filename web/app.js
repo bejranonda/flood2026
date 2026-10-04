@@ -500,6 +500,13 @@ const WATCH_GROUPS = {
   fast_rise: { t: "🟡 น้ำขึ้นเร็ว", tip: "คาดว่าจะเพิ่มขึ้น 20 ซม. ขึ้นไปในอีก 24 ชม." },
   rain: { t: "🌧 ฝนหนักคาดการณ์", tip: "จังหวัดที่คาดว่าฝนรวม 35 มม. ขึ้นไปในอีก 24 ชม. (Open-Meteo) · แตะเพื่อดูสถานีในจังหวัด" },
 };
+// The trend group of a station row (status.trend, D-083): "น้ำยังขึ้น" / "ทรงตัวหรือลดลง", with both labels
+const TREND_SUB = { rising: "⬆ น้ำยังขึ้น", flat_or_falling: "→ ทรงตัวหรือลดลง", unknown: "ไม่ทราบแนวโน้ม" };
+const TREND_ARROW = { up: "↗", down: "↘", steady: "→", unsure: "?" };
+function trendLabels(t) {
+  if (!t) return "ไม่ทราบแนวโน้ม";
+  return [t.measured ? `วัดได้ ${TREND_ARROW[t.measured]}` : "", t.forecast ? `คาด ${TREND_ARROW[t.forecast]}` : ""].filter(Boolean).join(" · ");
+}
 function recChip(rec, what) {
   if (!rec || (rec.n || 0) < MIN_REC_N || rec.hit == null) return "";  // MIN_REC_N: no number from a handful of cases
   const t = rec.hit < 0.05 ? "< 1 ใน 10" : `${Math.round(rec.hit * 10)} ใน 10`;
@@ -509,7 +516,7 @@ const fbText = (fb) => fb == null ? "" : fb < 0 ? `เกินตลิ่ง $
 const wIn = (it) => REGIONS[wRegion].test(it) && (!wProv || it.province === wProv);
 const WMAX = 5;
 function wRows(rows) {
-  if (rows.length <= WMAX) return rows.join("");
+  if (rows.length <= WMAX || rows.some((r) => r.startsWith('<div class="wsubh">'))) return rows.join("");  // sub-groups: all shown
   return rows.slice(0, WMAX).join("") + `<div class="wmore-rows" hidden>${rows.slice(WMAX).join("")}</div><button type="button" class="wmore">+ อีก ${rows.length - WMAX} ›</button>`;
 }
 async function renderWatch() {
@@ -522,12 +529,18 @@ async function renderWatch() {
   const gauge = (it, tail) => `<div class="wrow w2" data-code="${esc(it.code)}" role="button" tabindex="0"><div class="wname">${esc(it.name_th)} <small class="muted">${esc(it.province || "")}</small></div><div class="wmeta">${tail}</div></div>`;
   const groups = risks.groups.map((g) => {
     const cfg = WATCH_GROUPS[g.key];
-    const items = g.items.filter(wIn);
+    // over the bank comes as trend sub-groups of provinces (D-083): filter the provinces, drop empty sub-groups
+    const items = g.key === "over_bank"
+      ? g.items.map((sub) => ({ ...sub, provinces: sub.provinces.filter(wIn) })).filter((sub) => sub.provinces.length)
+      : g.items.filter(wIn);
     if (!items.length) return "";
     let head = "", rows = [];
     if (g.key === "over_bank") {
-      rows = items.map((p) => `<div class="wrow wprov" role="button" tabindex="0"><span class="wname">${esc(p.province)}</span><span class="wval"><b>${p.gauges.length}</b> สถานี ›</span></div>
-        <div class="wsub" hidden>${p.gauges.map((it) => gauge(it, esc(fbText(it.freeboard_m)))).join("")}</div>`);
+      rows = items.flatMap((sub) => {
+        const n = sub.provinces.reduce((a, p) => a + p.gauges.length, 0);
+        return [`<div class="wsubh">${TREND_SUB[sub.sub]} <b>${n}</b></div>`, ...sub.provinces.map((p) => `<div class="wrow wprov" role="button" tabindex="0"><span class="wname">${esc(p.province)}</span><span class="wval"><b>${p.gauges.length}</b> สถานี ›</span></div>
+        <div class="wsub" hidden>${p.gauges.map((it) => gauge(it, `${esc(fbText(it.freeboard_m))} · ${trendLabels(it.trend)}`)).join("")}</div>`)];
+      });
     } else if (g.key === "may_reach") {
       rows = items.map((it) => gauge(it, `${esc(fbText(it.freeboard_m))} · อาจถึงในอีก ${it.hours} ชม. ${recChip((rec[`bank_${it.hours}`] || {})[it.band], `จะถึงตลิ่ง (กลุ่มโอกาส ${it.band})`)}`));
     } else if (g.key === "upstream") {
@@ -540,7 +553,7 @@ async function renderWatch() {
       rows = items.map((it) => `<div class="wrow" data-rain="${esc(it.province)}" data-region="${esc(it.region || "all")}" role="button" tabindex="0"><span class="wname">${esc(it.province)}</span><span class="wval">ราว ${Math.round(it.mm24)} มม. ›</span></div>`);
     }
     const old = wRegion === "all" && !wProv && g.left_stale ? ` <small class="muted">· ข้อมูลเก่า ${g.left_stale}</small>` : "";
-    const n = g.key === "over_bank" ? `${items.reduce((a, p) => a + p.gauges.length, 0)} สถานี · ${items.length} จังหวัด`
+    const n = g.key === "over_bank" ? `${items.reduce((a, sub) => a + sub.provinces.reduce((b, p) => b + p.gauges.length, 0), 0)} สถานี · ${new Set(items.flatMap((sub) => sub.provinces.map((p) => p.province))).size} จังหวัด`
       : g.key === "rain" ? `${items.length} จังหวัด` : `${items.length} สถานี`;
     return `<section class="wgrp"><div class="wgrp-h"><b>${cfg.t}</b> <small class="muted">${n}</small>${old} ${head} ${infoBtn(cfg.tip, cfg.t)}</div>${wRows(rows)}</section>`;
   }).join("");
