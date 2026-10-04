@@ -333,3 +333,15 @@ def test_the_sheet_chart_uses_the_same_forecast_run_as_its_rows():
     assert "issue_time = %s" in sql and params == ("KTY", t)
     sql, params = api.forecast_query("KTY", None)
     assert "ORDER BY issue_time DESC" in sql and params == ("KTY",)
+
+
+def test_every_station_row_carries_one_trend_group():
+    # D-083: computed once here, read by every view (list, sheet, river cards, จับตา, top bar)
+    now = dt.datetime.now(dt.timezone.utc)
+    row = {"code": "X2", "name_th": "x", "name_en": None, "lat": 15.0, "lon": 100.0, "bank_msl": 2.0, "ground_msl": None,
+           "agency": "RID", "province": "ชัยนาท", "amphoe": None, "river": None, "level_msl": 2.3, "discharge": None,
+           "situation_level": None, "obs_time": now, "trend12": None, "delta12": None, "recovery": None,
+           "forecast_time": None, "coord_source": None, "coord_precision_km": None,
+           "observed24": {"change_cm": 20, "hours": 24, "level": "strong_rise", "change6_cm": 4.0, "r2": 0.9}}
+    r = api._station_row(row)
+    assert r["trend"] == {"group": "rising", "forecast": None, "measured": "up", "basis": "measured"}

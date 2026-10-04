@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from floodwatch import __version__, ai, db, explain, geocode, point
 from floodwatch.config import DATUM_SUSPECT
 from floodwatch import rain_cells, regions, risks
+from floodwatch import status as trend_rule
 from floodwatch import rivers as rivers_mod
 from floodwatch.forecast import change_summary, classify_status
 
@@ -264,7 +265,7 @@ def _station_row(r: dict) -> dict:
         notes.append("no_location")
     elif r.get("coord_source") == "osm_approx":
         notes.append("approx_location")
-    return {
+    out = {
         "code": r["code"], "name_th": r["name_th"] or r["code"], "name_en": r["name_en"], "lat": r["lat"],
         "region": regions.region_of(r["province"]), "water": point.water_word(r), "in_focus": r.get("in_focus"),
         "upstream": _upstream().get(r["code"]),
@@ -294,6 +295,9 @@ def _station_row(r: dict) -> dict:
         "observed24": r.get("observed24"),
         "history_days": None if r.get("first_time") is None else round(_age_min(r["first_time"]) / 1440, 1),
     }
+    # น้ำยังขึ้น / ทรงตัวหรือลดลง: forecast when sure, else the measured recent change (D-083); one rule, every view
+    out["trend"] = trend_rule.trend(out)
+    return out
 
 
 STREET_HOURS, STREET_KM = 6, 1.0
