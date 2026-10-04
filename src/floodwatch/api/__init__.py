@@ -557,6 +557,17 @@ def risks_api():
     return _json(_memo(("risks",), build, ttl=300))
 
 
+@app.get("/api/situation")
+def situation_api():
+    """The top-bar ticker for all of Thailand, rewritten every 30 min by the worker (D-089): `text` (AI retelling that
+    passed the check, or the rule text), `ai`, `at`."""
+    def build():
+        with db.connect() as c:
+            v = db.get_state(c, "situation") or {}
+        return {k: v.get(k) for k in ("text", "ai", "at")}
+    return _json(_memo(("situation",), build, ttl=60))
+
+
 @app.get("/api/dwr")
 def dwr_layer():
     """DWR early-warning level posts as a trend-only layer (owner 2026-10-03; not m MSL, no bank, no status)."""

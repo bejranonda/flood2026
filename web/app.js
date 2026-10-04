@@ -247,68 +247,60 @@ async function getJSON(url, opts) {
 // heavy"): nothing unless the region expects or measured heavy rain (TMD heavy from 35.1 mm, point.py bands), then ONE
 // line; everyday rain is told where it is about a place (pin panel, station sheet).
 let rainRegions = null;
-const SUMMARY_RAIN_MIN_MM = 35.1;
-function rainSummary(bkkRain) {
-  // Never a region label in front of one amount — it read as that much rain everywhere (owner 2026-10-04): the wettest gauge and the
-  // wettest forecast point, each with its place (D-086). Only when heavy (KI-265).
-  const r = rainRegions?.[region];
-  const fc = r?.forecast_mm24 ?? (region === "bkk" ? bkkRain : null), m = r?.measured;
-  const mm24 = m ? Number(m.rain_24h) : null;
-  // a picked province hears only about its own rain (2026-10-04: Trang picked, the line named Khon Kaen)
-  const here = (p) => !prov || p === prov;
-  const fcHeavy = fc != null && fc >= SUMMARY_RAIN_MIN_MM && here(r?.forecast_where), mHeavy = mm24 != null && mm24 >= SUMMARY_RAIN_MIN_MM && here(m?.province);
-  if (!fcHeavy && !mHeavy) return "";
-  const tip = [mHeavy ? `วัดจริง: สถานีวัดฝน ${m.name_th}${m.province ? ` (${m.province})` : ""} · สสน.` : "",
-    fcHeavy ? `คาดการณ์: Open-Meteo จุดที่ฝนมากที่สุดใน${REGIONS[region].th}` : ""].filter(Boolean).join(" · ");
-  const parts = [mHeavy ? `ฝนมากสุด 24 ชม. ที่ผ่านมา ${rainPill(mm24, false)} ที่ ${esc(m.name_th)}${m.province ? ` จ.${esc(m.province)}` : ""}` : "",
-    fcHeavy ? `คาดมากสุดอีก 24 ชม. ${rainPill(fc)}${r?.forecast_where ? ` แถว จ.${esc(r.forecast_where)}` : ""}` : ""];
-  return `<p class="sumline sumrain">🌧️ ${parts.filter(Boolean).join(" · ")} ${infoBtn(tip, "ที่มาของข้อมูลฝน")}</p>`;
-}
+let situationNow = null;  // /api/situation: the national ticker (D-089)
 let lastStats = null;
 function renderSummary(st) {
   lastStats = st;
   const f = st.focus, n = st.network;
-  const mine = stations.filter(inRegion);  // D-064: the counts follow the region chip, like the list and the map
-  const cnt = (k) => mine.filter((s) => s.status === k).length;
-  const tg = (k) => mine.filter((s) => s.trend?.group === k).length;
+  // The top bar is the national overview (owner 2026-10-04: "Do not need to focus only สถานีในภาคกลาง, but provide only
+  // the overview of the nation"); the where-row still narrows the list, the map and the tabs.
+  const nat = stations;
+  const cnt = (k) => nat.filter((s) => s.status === k).length;
+  const tg = (k) => nat.filter((s) => s.trend?.group === k).length;
   const chips = ["critical", "warning", "watch", "normal", "unknown"].map((k) =>
-    `<button class="chip" data-status="${k}" aria-pressed="${statusFilter === k}" title="แสดงเฉพาะ${esc(STATUS[k].long)}">
+    `<button class="chip" data-status="${k}" aria-pressed="${statusFilter === k}" title="แสดงเฉพาะ${esc(STATUS[k].long)}ในรายการ">
       <span class="dot" style="background:${STATUS[k].color}"></span>${esc(STATUS[k].th)} <b>${cnt(k)}</b></button>`).join("");
   const bar = (x) => `<span class="fresh" aria-hidden="true">
     <span style="width:${(100 * x.h1) / x.total}%;background:#2e9d5b"></span>
     <span style="width:${(100 * (x.h3 - x.h1)) / x.total}%;background:#9ccc65"></span>
     <span style="width:${(100 * (x.h24 - x.h3)) / x.total}%;background:#f4d35e"></span></span>`;
   const pct = (a, b) => Math.round((100 * a) / (b || 1));
-  const rain = st.rain_bkk_next24_mm_max;
   // When a source stops upstream (2026-10-01: all BMA canal readings stuck at 00:10 ICT for hours), the counts above
   // are old values: say so in one line, the why behind an ⓘ.
-  const staleN = mine.filter((s) => s.stale && s.status !== "unknown").length;
-  const staleLast = mine.filter((s) => s.stale && s.obs_time).map((s) => s.obs_time).sort().pop();
-  const staleLine = staleN >= 5 && staleN * 2 >= mine.length
+  const staleN = nat.filter((s) => s.stale && s.status !== "unknown").length;
+  const staleLast = nat.filter((s) => s.stale && s.obs_time).map((s) => s.obs_time).sort().pop();
+  const staleLine = staleN >= 5 && staleN * 2 >= nat.length
     ? `<p class="sumline warn-line">⚠️ ${staleN} สถานีไม่อัปเดตเกิน 3 ชม. (ล่าสุด ${esc(fmtTime(staleLast))}) <button type="button" class="conf-badge conf-low" title="แหล่งข้อมูลหยุดส่งชั่วคราว ตัวเลขเป็นค่าล่าสุดที่ได้รับ ไม่ใช่สถานการณ์ตอนนี้ ระบบจะอัปเดตเองเมื่อข้อมูลกลับมา" aria-label="ทำไมข้อมูลไม่อัปเดต">ⓘ</button></p>` : "";
-  // One urgent line, only when it matters: over the bank and still rising (the trend rule, D-083); never folded away
-  const urgent = mine.filter((s) => s.status === "critical" && !s.stale && s.trend?.group === "rising");
-  const byProv = new Map();
-  urgent.forEach((s) => byProv.set(s.province || "?", (byProv.get(s.province || "?") || 0) + 1));
-  const top = [...byProv.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([p, n]) => `${esc(p)} ${n}`).join(" · ");
-  const urgentLine = urgent.length ? `<button type="button" class="urgent">🔴 ล้นตลิ่งและน้ำยังขึ้น <b>${urgent.length}</b> สถานี (${top}${byProv.size > 3 ? " · …" : ""}) ›</button>` : "";
-  // Folded: one line of counts (owner: "The top bar in desktop mode use much space"); desktop starts folded, phones open
-  let open = window.innerWidth < 900;
-  try { const v = localStorage.getItem("sumOpen"); if (v !== null) open = v === "1"; } catch { /* private mode */ }
-  const mini = ["critical", "warning", "watch", "normal", "unknown"].map((k) => `<span class="dot" style="background:${STATUS[k].color}"></span><b>${cnt(k)}</b>`).join(" ");
-  document.getElementById("summary").innerHTML = `${urgentLine}<details class="sumbox"${open ? " open" : ""}><summary class="summini" aria-label="สรุปจำนวนสถานี">${mini} <span class="muted">สถานี${region === "all" ? "" : `ใน${esc(REGIONS[region].th)}`}</span></summary>
-    <div class="chips">${chips}</div>${staleLine}
-    ${rainSummary(rain)}
-    <details class="sumdetails"><summary>รายละเอียดข้อมูล</summary>
-    <p class="sumline">⬆ น้ำยังขึ้น <b>${tg("rising")}</b> · → ทรงตัวหรือลดลง <b>${tg("flat_or_falling")}</b> สถานี${region === "all" ? "" : ` ใน${esc(REGIONS[region].th)}`}</p>
+  // One running line for all of Thailand (owner 2026-10-04): urgent first, then what to watch, rain and the overview;
+  // written by the worker every 30 min (rules gather the facts, AI retells them after a check; D-089)
+  const sit = situationNow;
+  const tk = sit?.text ? `<div class="ticker" role="button" tabindex="0" aria-expanded="false" aria-label="สรุปสถานการณ์น้ำทั่วประเทศ">
+      <span class="tk-icon" aria-hidden="true">📢</span><div class="tk-view"><div class="tk-track" style="--tk-s:${Math.max(25, Math.round(sit.text.length * 0.22))}s">
+        <span>${esc(sit.text)}</span><span aria-hidden="true">${esc(sit.text)}</span></div></div>
+      <div class="tk-more">${esc(sit.text)}<p class="muted">${sit.ai ? "✨ เรียบเรียงโดย AI จากข้อมูลในแอป" : "สรุปจากข้อมูลในแอป"} · อัปเดต ${esc(fmtTime(sit.at))} · <a href="#" class="tk-watch">ดูแท็บจับตา ›</a></p></div></div>` : "";
+  let open = false;
+  try { open = localStorage.getItem("sumOpen") === "1"; } catch { /* private mode */ }
+  document.getElementById("summary").innerHTML = `<details class="sumbox"${open ? " open" : ""}><summary class="summini" aria-label="สรุปจำนวนสถานีทั่วประเทศ">
+      <span class="muted">ทั่วประเทศ</span><div class="chips">${chips}</div></summary>${staleLine}
+    <details class="sumdetails" open><summary>รายละเอียดข้อมูล</summary>
+    <p class="sumline">⬆ น้ำยังขึ้น <b>${tg("rising")}</b> · → ทรงตัวหรือลดลง <b>${tg("flat_or_falling")}</b> สถานีทั่วประเทศ</p>
     <div class="sumline">📡 ส่งข้อมูลภายใน 1 ชม. <b>${f.h1}</b> · 3 ชม. <b>${f.h3}</b> · 24 ชม. <b>${f.h24}</b> จาก ${f.total} สถานี${bar(f)}
       <details><summary>ทั่วประเทศ</summary> เครือข่าย สสน. ${n.total} สถานี: ภายใน 1 ชม. ${n.h1} (${pct(n.h1, n.total)}%) ·
         3 ชม. ${n.h3} (${pct(n.h3, n.total)}%) · 24 ชม. ${n.h24} (${pct(n.h24, n.total)}%) · เกิน 24 ชม./ไม่มีข้อมูล ${n.older + n.never}
-        · ในพื้นที่ติดตาม ${f.no_coords} สถานีไม่มีพิกัด, ${f.no_bank} สถานีไม่มีระดับตลิ่ง</details></div></details></details>`;
+        · ในพื้นที่ติดตาม ${f.no_coords} สถานีไม่มีพิกัด, ${f.no_bank} สถานีไม่มีระดับตลิ่ง</details></div></details></details>${tk}`;
   const box = document.querySelector("#summary .sumbox");
   box.addEventListener("toggle", () => { try { localStorage.setItem("sumOpen", box.open ? "1" : "0"); } catch { /* private mode */ } setTopH(); });
-  document.querySelector("#summary .urgent")?.addEventListener("click", () => setTab("watch"));
-  document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+  const ticker = document.querySelector("#summary .ticker");
+  if (ticker) {
+    const flip = (e) => {
+      if (e.target.closest(".tk-watch")) { e.preventDefault(); setTab("watch"); return; }
+      const o = ticker.classList.toggle("open"); ticker.setAttribute("aria-expanded", String(o)); setTopH();
+    };
+    ticker.addEventListener("click", flip);
+    ticker.addEventListener("keydown", (e) => { if (e.key === "Enter") flip(e); });
+  }
+  document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", (e) => {
+    e.preventDefault();  // the chips sit in the fold's <summary>: filter the list, do not fold
     statusFilter = statusFilter === b.dataset.status ? null : b.dataset.status;
     document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.status === statusFilter)));
     setTab("list");
@@ -1375,8 +1367,9 @@ function maybeUpdate(v) {
 
 async function load() {
   try {
-    const [d, st, rn] = await Promise.all([getJSON("/api/stations"), getJSON("/api/stats").catch(() => null),
-      getJSON("/api/rain").catch(() => null)]);
+    const [d, st, rn, sit] = await Promise.all([getJSON("/api/stations"), getJSON("/api/stats").catch(() => null),
+      getJSON("/api/rain").catch(() => null), getJSON("/api/situation").catch(() => null)]);
+    situationNow = sit;
     rainRegions = rn?.by_region || null;
     stations = d.stations;
     streetSrc = d.street_source || null;

@@ -33,6 +33,7 @@ TASKS = [
     ("openmeteo_fine", 3600),
     ("hii_geo", 7 * 24 * 3600),  # HII basin + main-river map files: basin22, river and river system per gauge (v0.17)  # Bangkok region at the model's ~8 km grid, for pins and region lines (Q42, v0.16.4)  # their rain history: a year for 8 new cells per run, then 4 days daily
     ("bma_history", 600),  # BMA canal history from HII: backfill 5 gauges per run, then a daily 3-day refresh (D-054)  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
+    ("situation", 1800),  # the national ticker in the top bar: rules + AI retelling after a check (D-089)
     ("google_floodhub", 6 * 3600),  # Google Flood Hub, Thailand: statuses, thresholds, forecasts (D-087, not shown yet)
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),
@@ -52,7 +53,7 @@ FORECASTER_TASKS = [
 # First run order at start: latest values -> history -> weather (rain cells too, or pins wait 3 h for rain).
 FIRST_RUN = {
     "collector": ("hii_waterlevel", "hii_stations", "hii_history", "hii_backfill", "openmeteo", "openmeteo_prev",
-                  "openmeteo_cells", "openmeteo_prev_cells", "openmeteo_fine", "hii_geo", "traffy", "bma_klong", "qc", "hii_rain", "disk"),
+                  "openmeteo_cells", "openmeteo_prev_cells", "openmeteo_fine", "hii_geo", "traffy", "bma_klong", "qc", "hii_rain", "disk", "situation"),
     "forecaster": ("upstream_learn", "forecast", "risk_record", "dwr_ews"),  # upstream_learn only when never learned
 }
 
@@ -127,6 +128,15 @@ def run_task(name: str) -> None:
         except Exception as e:
             log.exception("risk_record failed")
             db.record_health("risk_record", False, error=str(e))
+    elif name == "situation":
+        try:
+            from floodwatch import situation
+            out = situation.run()
+            db.record_health("situation", True)
+            log.info("situation: ai=%s %s", out["ai"], out["rejected"])
+        except Exception as e:
+            log.exception("situation failed")
+            db.record_health("situation", False, error=str(e))
     elif name == "qc":
         try:
             qc.run_all()

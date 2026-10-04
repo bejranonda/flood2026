@@ -47,14 +47,10 @@ def test_no_jargon_for_a_gauge_without_a_forecast():
     assert "ยังไม่มีคาดการณ์ (ยังไม่ผ่านการทดสอบย้อนหลัง)" not in CODE
 
 
-def test_summary_rain_shows_only_heavy_rain_in_one_line():
-    # owner 2026-10-02 (screenshot of the top strip): "it used too much space again!! and it showed specifically for
-    # Bangkok, for what?" -> chose "Only when heavy": no rain in the strip unless the region expects or measured heavy
-    # rain (TMD: heavy from 35.1 mm, the same bands as point.py), then one line, never the 3-row panel layout.
-    m = re.search(r"const SUMMARY_RAIN_MIN_MM = ([\d.]+);", APP)
-    assert m and float(m.group(1)) > point.RAIN_MODERATE_MAX_MM
-    body = APP[APP.index("function rainSummary("):APP.index("let lastStats")]
-    assert "rainRows(" not in body and "SUMMARY_RAIN_MIN_MM" in body
+def test_heavy_rain_reaches_the_top_bar_through_the_ticker_only():
+    # KI-265 (rain only when heavy, one line) now lives in the ticker's facts (situation.HEAVY_MM = 35.1, D-089)
+    from floodwatch import situation
+    assert situation.HEAVY_MM == 35.1 and "SUMMARY_RAIN_MIN_MM" not in CODE
 
 
 def test_river_view_is_one_line_of_pickers_without_river_km_and_stations_carry_a_river_tag():
@@ -185,17 +181,6 @@ def test_the_map_has_one_layer_box_whose_legend_lines_are_switches():
     assert 'localStorage.setItem("layers"' in box and "<summary>ชั้นข้อมูล</summary>" in box
 
 
-def test_top_bar_folds_names_the_rain_place_and_raises_one_urgent_line():
-    # owner 2026-10-04: top bar uses much space → collapsible; "ทั่วประเทศ: … 142 มม." misleads → name the place;
-    # "Can we notify what is also emergency" → one line only when gauges are over the bank and still rising (D-086)
-    rs = APP.split("function rainSummary(")[1].split("\n}\n")[0]
-    assert "ฝนมากสุด" in rs and "ที่ ${" in rs and "forecast_where" in rs and "ทั่วประเทศ: " not in rs
-    assert "const here = (p) => !prov || p === prov" in rs  # a picked province hears only its own rain
-    sm = APP.split("function renderSummary(")[1].split("\n}\n")[0]
-    assert "ล้นตลิ่งและน้ำยังขึ้น" in sm and 'setTab("watch")' in sm and '"sumOpen"' in sm
-    assert 'class="desk-notice"' in INDEX
-
-
 def test_the_measured_line_says_when_the_last_6_h_changed_course():
     # 2026-10-04: 101 gauges read "24 ชม. ที่ผ่านมา: เพิ่มขึ้น" while their group (the recent pace) was "ทรงตัวหรือลดลง";
     # the line now says what the last 6 h did whenever it differs, so card and group tell one story (D-083)
@@ -214,3 +199,12 @@ def test_over_bank_subgroups_are_coloured_pills_with_province_chips():
     # of text under subcategories" → coloured sub-group pill + province chips with a count badge
     w = APP.split("async function renderWatch()")[1].split("\n}\n")[0]
     assert 'class="wsubh ${' in w and 'class="wchip ${' in w and "สถานี ›" not in w.split('g.key === "over_bank"')[1].split("} else if")[0]
+
+
+def test_top_bar_is_the_national_overview_and_one_ticker():
+    # owner 2026-10-04: "Do not need to focus only สถานีในภาคกลาง, but provide only the overview of the nation"; rain
+    # line and urgent line replaced by one running AI ticker for all of Thailand (D-089), refreshed every 30 min
+    sm = APP.split("function renderSummary(")[1].split("\n}\n")[0]
+    assert "ทั่วประเทศ" in sm and "const nat = stations" in sm and "mine.filter((s) => s.status === k)" not in sm
+    assert "rainSummary(" not in sm and "ล้นตลิ่งและน้ำยังขึ้น" not in sm
+    assert 'class="ticker' in sm and "/api/situation" in APP and "prefers-reduced-motion" in (ROOT / "web" / "style.css").read_text(encoding="utf-8")
