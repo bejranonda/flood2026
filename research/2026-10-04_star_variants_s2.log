@@ -1,0 +1,31 @@
+sample 2: gauges with star inputs 189
+
+=== +6 h
+V0 n  183 · star error / no-change (whole window) 0.845 · pipeline error vs no-change on B -17.9% (per-gauge median  +0.0%, mean -10.9%) · served a model  108 (star   88) · held ≥10 % on B   67 · worse on B  22
+V1 n  179 · star error / no-change (whole window) 0.852 · pipeline error vs no-change on B -17.7% (per-gauge median  -0.4%, mean -10.7%) · served a model  112 (star   92) · held ≥10 % on B   66 · worse on B  22
+V2 n  181 · star error / no-change (whole window) 0.819 · pipeline error vs no-change on B -21.7% (per-gauge median  -6.0%, mean -14.0%) · served a model  121 (star  103) · held ≥10 % on B   78 · worse on B  18
+V12 n  179 · star error / no-change (whole window) 0.826 · pipeline error vs no-change on B -21.1% (per-gauge median  -5.2%, mean -13.6%) · served a model  121 (star  105) · held ≥10 % on B   79 · worse on B  16
+
+=== +12 h
+V0 n  182 · star error / no-change (whole window) 0.866 · pipeline error vs no-change on B -15.7% (per-gauge median  +0.0%, mean -10.1%) · served a model  111 (star   90) · held ≥10 % on B   64 · worse on B  28
+V1 n  179 · star error / no-change (whole window) 0.869 · pipeline error vs no-change on B -15.4% (per-gauge median  +0.0%, mean -10.5%) · served a model  116 (star   98) · held ≥10 % on B   70 · worse on B  27
+V2 n  181 · star error / no-change (whole window) 0.848 · pipeline error vs no-change on B -16.6% (per-gauge median  +0.0%, mean -11.5%) · served a model  112 (star   94) · held ≥10 % on B   63 · worse on B  23
+V12 n  179 · star error / no-change (whole window) 0.859 · pipeline error vs no-change on B -16.1% (per-gauge median  -2.0%, mean -11.1%) · served a model  115 (star   97) · held ≥10 % on B   68 · worse on B  24
+
+=== +24 h
+V0 n  182 · star error / no-change (whole window) 0.951 · pipeline error vs no-change on B  -6.6% (per-gauge median  +0.0%, mean  -7.4%) · served a model   87 (star   68) · held ≥10 % on B   49 · worse on B  11
+V1 n  179 · star error / no-change (whole window) 0.963 · pipeline error vs no-change on B  -8.5% (per-gauge median  +0.0%, mean  -7.6%) · served a model   94 (star   74) · held ≥10 % on B   57 · worse on B  16
+V2 n  181 · star error / no-change (whole window) 0.942 · pipeline error vs no-change on B  -6.9% (per-gauge median  +0.0%, mean  -7.0%) · served a model   90 (star   70) · held ≥10 % on B   51 · worse on B  14
+V12 n  179 · star error / no-change (whole window) 0.961 · pipeline error vs no-change on B  -8.6% (per-gauge median  +0.0%, mean  -8.4%) · served a model   98 (star   81) · held ≥10 % on B   65 · worse on B  12
+
+=== +48 h
+V0 n  182 · star error / no-change (whole window) 1.005 · pipeline error vs no-change on B  -5.6% (per-gauge median  +0.0%, mean  -5.6%) · served a model   81 (star   64) · held ≥10 % on B   42 · worse on B  15
+V1 n  179 · star error / no-change (whole window) 1.031 · pipeline error vs no-change on B  -8.3% (per-gauge median  +0.0%, mean  -7.5%) · served a model  101 (star   85) · held ≥10 % on B   66 · worse on B  20
+V2 n  181 · star error / no-change (whole window) 0.998 · pipeline error vs no-change on B  -7.1% (per-gauge median  +0.0%, mean  -5.9%) · served a model   91 (star   76) · held ≥10 % on B   50 · worse on B  17
+V12 n  178 · star error / no-change (whole window) 1.035 · pipeline error vs no-change on B  -8.8% (per-gauge median  +0.0%, mean  -7.6%) · served a model  102 (star   89) · held ≥10 % on B   67 · worse on B  20
+
+=== +72 h
+V0 n  181 · star error / no-change (whole window) 1.040 · pipeline error vs no-change on B  -5.4% (per-gauge median  +0.0%, mean  -5.7%) · served a model   84 (star   77) · held ≥10 % on B   48 · worse on B  10
+V1 n  177 · star error / no-change (whole window) 1.078 · pipeline error vs no-change on B  -9.9% (per-gauge median  +0.0%, mean  -9.1%) · served a model   99 (star   91) · held ≥10 % on B   68 · worse on B  18
+V2 n  180 · star error / no-change (whole window) 1.037 · pipeline error vs no-change on B  -6.6% (per-gauge median  +0.0%, mean  -6.0%) · served a model   88 (star   80) · held ≥10 % on B   53 · worse on B  15
+V12 n  177 · star error / no-change (whole window) 1.082 · pipeline error vs no-change on B -10.1% (per-gauge median  +0.0%, mean  -8.7%) · served a model  102 (star   96) · held ≥10 % on B   68 · worse on B  21

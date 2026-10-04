@@ -156,7 +156,8 @@ def test_evaluate_picks_star_when_upstream_and_rain_drive_the_gauge():
 
 
 def test_star_is_not_made_worse_by_noise_inputs():
-    times, vals = _synthetic(days=60)
+    # 90 days: since STAR_INPUTS 2 the 30-day mean needs 15 days of readings, so star trains only with ~90 days of history
+    times, vals = _synthetic(days=90)
     rng = np.random.default_rng(7)
     base = int(times[0].timestamp() // 3600)
     noise = {"up": [(times, list(rng.normal(0, 1, len(times))))], "q": None,
@@ -287,5 +288,30 @@ def test_a_cached_backtest_without_the_recent_method_is_redone():
     now = dt.datetime(2026, 10, 3, 20, tzinfo=dt.timezone.utc)
     old = {"trained_at": now - dt.timedelta(hours=1), "n_rows": 1000,
            "payload": {"24": {"method": "persistence", "rmse": {"persistence": 0.1, "trend": 0.12}}}}
-    new = {**old, "payload": {"24": {"method": "recent", "rmse": {"persistence": 0.1, "recent": 0.08}}}}
+    new = {**old, "payload": {"24": {"method": "recent", "rmse": {"persistence": 0.1, "recent": 0.08}, "star_inputs": 2}}}
     assert not model_is_fresh(old, 1000, now) and model_is_fresh(new, 1000, now)
+
+
+def test_star_reads_the_7_and_30_day_means_and_the_1_3_72_h_changes():
+    # Q52 step 3 (owner 2026-10-04: "improve the model forecasting performance … not fake the result"): on gauges the
+    # choice never saw, these inputs cut the served error vs "no change" from −5.3…−6.6 % to −8.3…−9.4 % at 24–72 h
+    # (research/2026-10-04_star_variants*.py, _star_selection*.py)
+    times, y, exo = _driven(days=60)
+    t, yy = forecast.hourly_grid(times, y)
+    X = forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 24, forecast.align_exo(t, exo))
+    assert np.allclose(X[:, 4], yy - forecast.trailing_mean(yy, 24 * 7), equal_nan=True)
+    assert np.allclose(X[:, 5], yy - forecast.trailing_mean(yy, 24 * 30), equal_nan=True)
+    for col, k in ((6, 1), (7, 3), (8, 72)):
+        assert np.allclose(X[:, col], forecast._lagdiff(yy, k), equal_nan=True)
+
+
+def test_a_cached_backtest_from_older_star_inputs_is_redone():
+    # the live star must use the inputs its backtest (and so its band) was made with
+    import datetime as dt
+    now = dt.datetime(2026, 10, 4, 18, tzinfo=dt.timezone.utc)
+    row = {"trained_at": now - dt.timedelta(hours=1), "n_rows": 1000,
+           "payload": {"24": {"method": "star", "rmse": {"persistence": 0.1, "recent": 0.09, "star": 0.08}}}}
+    assert not forecast.model_is_fresh(row, 1000, now)
+    row["payload"]["24"]["star_inputs"] = forecast.STAR_INPUTS
+    assert forecast.model_is_fresh(row, 1000, now)
+    assert forecast.evaluate(*forecast.hourly_grid(*_synthetic(days=30)))[24]["star_inputs"] == forecast.STAR_INPUTS

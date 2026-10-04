@@ -1,0 +1,41 @@
+sample 1: gauges with star inputs 183
+
+=== +6 h
+V0 n  180 · star error / no-change (whole window) 0.878 · pipeline error vs no-change on B -22.1% · served a model  102 (star   90) · held ≥10 % on B   74 · worse on B  16
+V1 n  180 · star error / no-change (whole window) 0.887 · pipeline error vs no-change on B -22.2% · served a model  107 (star   96) · held ≥10 % on B   77 · worse on B  17
+V2 n  180 · star error / no-change (whole window) 0.851 · pipeline error vs no-change on B -23.7% · served a model  114 (star  105) · held ≥10 % on B   84 · worse on B  16
+V3 n  180 · star error / no-change (whole window) 0.873 · pipeline error vs no-change on B -22.6% · served a model  100 (star   88) · held ≥10 % on B   74 · worse on B  12
+V4 n  180 · star error / no-change (whole window) 0.901 · pipeline error vs no-change on B -21.5% · served a model  103 (star   91) · held ≥10 % on B   72 · worse on B  21
+V5 n  180 · star error / no-change (whole window) 0.881 · pipeline error vs no-change on B -24.1% · served a model  117 (star  105) · held ≥10 % on B   85 · worse on B  18
+
+=== +12 h
+V0 n  180 · star error / no-change (whole window) 0.875 · pipeline error vs no-change on B -15.2% · served a model  104 (star   90) · held ≥10 % on B   68 · worse on B  22
+V1 n  180 · star error / no-change (whole window) 0.888 · pipeline error vs no-change on B -15.8% · served a model  109 (star   98) · held ≥10 % on B   70 · worse on B  20
+V2 n  180 · star error / no-change (whole window) 0.862 · pipeline error vs no-change on B -16.2% · served a model  108 (star   96) · held ≥10 % on B   72 · worse on B  19
+V3 n  180 · star error / no-change (whole window) 0.876 · pipeline error vs no-change on B -15.7% · served a model  105 (star   88) · held ≥10 % on B   72 · worse on B  18
+V4 n  180 · star error / no-change (whole window) 0.888 · pipeline error vs no-change on B -15.5% · served a model  104 (star   89) · held ≥10 % on B   69 · worse on B  23
+V5 n  180 · star error / no-change (whole window) 0.904 · pipeline error vs no-change on B -16.8% · served a model  111 (star   94) · held ≥10 % on B   70 · worse on B  16
+
+=== +24 h
+V0 n  180 · star error / no-change (whole window) 0.916 · pipeline error vs no-change on B  -8.6% · served a model   99 (star   78) · held ≥10 % on B   61 · worse on B  14
+V1 n  180 · star error / no-change (whole window) 0.926 · pipeline error vs no-change on B -10.9% · served a model  106 (star   90) · held ≥10 % on B   71 · worse on B  11
+V2 n  180 · star error / no-change (whole window) 0.907 · pipeline error vs no-change on B  -9.8% · served a model  103 (star   87) · held ≥10 % on B   66 · worse on B  13
+V3 n  180 · star error / no-change (whole window) 0.917 · pipeline error vs no-change on B  -8.6% · served a model   99 (star   80) · held ≥10 % on B   61 · worse on B  15
+V4 n  180 · star error / no-change (whole window) 0.906 · pipeline error vs no-change on B  -8.7% · served a model  100 (star   85) · held ≥10 % on B   57 · worse on B  19
+V5 n  180 · star error / no-change (whole window) 0.930 · pipeline error vs no-change on B  -9.9% · served a model  100 (star   85) · held ≥10 % on B   65 · worse on B  18
+
+=== +48 h
+V0 n  180 · star error / no-change (whole window) 0.946 · pipeline error vs no-change on B  -7.1% · served a model   86 (star   70) · held ≥10 % on B   51 · worse on B  13
+V1 n  180 · star error / no-change (whole window) 0.957 · pipeline error vs no-change on B -11.6% · served a model  104 (star   88) · held ≥10 % on B   71 · worse on B  13
+V2 n  180 · star error / no-change (whole window) 0.939 · pipeline error vs no-change on B  -8.9% · served a model   94 (star   79) · held ≥10 % on B   58 · worse on B  13
+V3 n  180 · star error / no-change (whole window) 0.947 · pipeline error vs no-change on B  -7.1% · served a model   86 (star   70) · held ≥10 % on B   51 · worse on B  13
+V4 n  180 · star error / no-change (whole window) 0.925 · pipeline error vs no-change on B  -7.1% · served a model   85 (star   73) · held ≥10 % on B   49 · worse on B  10
+V5 n  180 · star error / no-change (whole window) 0.960 · pipeline error vs no-change on B  -9.0% · served a model   94 (star   79) · held ≥10 % on B   65 · worse on B  15
+
+=== +72 h
+V0 n  180 · star error / no-change (whole window) 0.969 · pipeline error vs no-change on B  -6.1% · served a model   83 (star   73) · held ≥10 % on B   43 · worse on B  16
+V1 n  180 · star error / no-change (whole window) 0.983 · pipeline error vs no-change on B -12.1% · served a model  105 (star   97) · held ≥10 % on B   75 · worse on B  15
+V2 n  180 · star error / no-change (whole window) 0.962 · pipeline error vs no-change on B  -7.7% · served a model   89 (star   78) · held ≥10 % on B   58 · worse on B  12
+V3 n  180 · star error / no-change (whole window) 0.970 · pipeline error vs no-change on B  -6.1% · served a model   82 (star   71) · held ≥10 % on B   43 · worse on B  16
+V4 n  180 · star error / no-change (whole window) 0.935 · pipeline error vs no-change on B  -6.3% · served a model   86 (star   76) · held ≥10 % on B   45 · worse on B  15
+V5 n  180 · star error / no-change (whole window) 0.980 · pipeline error vs no-change on B  -8.9% · served a model   89 (star   81) · held ≥10 % on B   62 · worse on B  18

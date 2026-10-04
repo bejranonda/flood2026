@@ -1,0 +1,50 @@
+gauges 191
+
+=== +1 h (choose on first half, score on second)
+today        n  190 · error vs 'no change'  -9.1% · served a model   90 (a combination    0) · held ≥10 % gain on B   65 · worse than no change on B  13
++avg_all     n  190 · error vs 'no change'  -9.1% · served a model   90 (a combination    6) · held ≥10 % gain on B   65 · worse than no change on B  13
++avg_best2   n  190 · error vs 'no change'  -9.2% · served a model   90 (a combination   13) · held ≥10 % gain on B   66 · worse than no change on B  12
++avg_all_p   n  190 · error vs 'no change'  -9.2% · served a model   91 (a combination    3) · held ≥10 % gain on B   65 · worse than no change on B  13
++all combos  n  190 · error vs 'no change'  -9.2% · served a model   91 (a combination   18) · held ≥10 % gain on B   66 · worse than no change on B  12
+
+=== +3 h (choose on first half, score on second)
+today        n  190 · error vs 'no change' -14.9% · served a model   99 (a combination    0) · held ≥10 % gain on B   74 · worse than no change on B  14
++avg_all     n  190 · error vs 'no change' -14.9% · served a model   99 (a combination    4) · held ≥10 % gain on B   74 · worse than no change on B  14
++avg_best2   n  190 · error vs 'no change' -15.1% · served a model  100 (a combination   20) · held ≥10 % gain on B   75 · worse than no change on B  14
++avg_all_p   n  190 · error vs 'no change' -14.9% · served a model  101 (a combination    7) · held ≥10 % gain on B   74 · worse than no change on B  15
++all combos  n  190 · error vs 'no change' -15.2% · served a model  102 (a combination   26) · held ≥10 % gain on B   75 · worse than no change on B  15
+
+=== +6 h (choose on first half, score on second)
+today        n  191 · error vs 'no change' -17.9% · served a model  105 (a combination    0) · held ≥10 % gain on B   76 · worse than no change on B  19
++avg_all     n  191 · error vs 'no change' -18.1% · served a model  105 (a combination    8) · held ≥10 % gain on B   76 · worse than no change on B  19
++avg_best2   n  191 · error vs 'no change' -18.2% · served a model  107 (a combination   23) · held ≥10 % gain on B   77 · worse than no change on B  20
++avg_all_p   n  191 · error vs 'no change' -18.0% · served a model  105 (a combination    5) · held ≥10 % gain on B   76 · worse than no change on B  19
++all combos  n  191 · error vs 'no change' -18.4% · served a model  107 (a combination   28) · held ≥10 % gain on B   77 · worse than no change on B  20
+
+=== +12 h (choose on first half, score on second)
+today        n  191 · error vs 'no change' -15.1% · served a model  102 (a combination    0) · held ≥10 % gain on B   71 · worse than no change on B  15
++avg_all     n  191 · error vs 'no change' -15.0% · served a model  102 (a combination    6) · held ≥10 % gain on B   71 · worse than no change on B  15
++avg_best2   n  191 · error vs 'no change' -15.1% · served a model  103 (a combination   22) · held ≥10 % gain on B   73 · worse than no change on B  16
++avg_all_p   n  191 · error vs 'no change' -15.0% · served a model  102 (a combination    2) · held ≥10 % gain on B   70 · worse than no change on B  15
++all combos  n  191 · error vs 'no change' -15.1% · served a model  103 (a combination   23) · held ≥10 % gain on B   73 · worse than no change on B  16
+
+=== +24 h (choose on first half, score on second)
+today        n  191 · error vs 'no change'  -5.9% · served a model   87 (a combination    0) · held ≥10 % gain on B   52 · worse than no change on B  15
++avg_all     n  191 · error vs 'no change'  -6.3% · served a model   90 (a combination    6) · held ≥10 % gain on B   55 · worse than no change on B  15
++avg_best2   n  191 · error vs 'no change'  -6.6% · served a model   93 (a combination   25) · held ≥10 % gain on B   54 · worse than no change on B  14
++avg_all_p   n  191 · error vs 'no change'  -6.3% · served a model   90 (a combination    4) · held ≥10 % gain on B   55 · worse than no change on B  16
++all combos  n  191 · error vs 'no change'  -6.8% · served a model   95 (a combination   27) · held ≥10 % gain on B   56 · worse than no change on B  14
+
+=== +48 h (choose on first half, score on second)
+today        n  191 · error vs 'no change'  -5.6% · served a model   79 (a combination    0) · held ≥10 % gain on B   46 · worse than no change on B  17
++avg_all     n  191 · error vs 'no change'  -5.7% · served a model   81 (a combination    6) · held ≥10 % gain on B   47 · worse than no change on B  16
++avg_best2   n  191 · error vs 'no change'  -5.8% · served a model   83 (a combination   16) · held ≥10 % gain on B   48 · worse than no change on B  16
++avg_all_p   n  191 · error vs 'no change'  -5.7% · served a model   81 (a combination    4) · held ≥10 % gain on B   47 · worse than no change on B  17
++all combos  n  191 · error vs 'no change'  -6.0% · served a model   85 (a combination   19) · held ≥10 % gain on B   49 · worse than no change on B  15
+
+=== +72 h (choose on first half, score on second)
+today        n  190 · error vs 'no change'  -5.4% · served a model   71 (a combination    0) · held ≥10 % gain on B   40 · worse than no change on B  12
++avg_all     n  190 · error vs 'no change'  -5.5% · served a model   73 (a combination    3) · held ≥10 % gain on B   40 · worse than no change on B  12
++avg_best2   n  190 · error vs 'no change'  -5.5% · served a model   74 (a combination   11) · held ≥10 % gain on B   42 · worse than no change on B  13
++avg_all_p   n  190 · error vs 'no change'  -5.4% · served a model   74 (a combination    5) · held ≥10 % gain on B   40 · worse than no change on B  13
++all combos  n  190 · error vs 'no change'  -5.6% · served a model   77 (a combination   14) · held ≥10 % gain on B   41 · worse than no change on B  14

@@ -16,7 +16,9 @@ import numpy as np
 from floodwatch import db, rain_cells
 
 log = logging.getLogger(__name__)
-VERSION = "star-0.3"  # v0.20.7: "recent" pace joins the ladder (one forecaster; the API override is gone)  # D-052: network space-time AR + rain competes in the backtest
+VERSION = "star-0.4"  # v0.25.0: star reads the 7/30-day means and the 1/3/72 h changes (Q52 step 3)
+STAR_INPUTS = 2  # stamped on every backtest; a cached backtest from older inputs is redone (model_is_fresh)
+# history: star-0.3 = v0.20.7: "recent" pace joins the ladder (one forecaster; the API override is gone)  # D-052: network space-time AR + rain competes in the backtest
 HORIZONS = [1, 3, 6, 12, 24, 48, 72]
 TIDE_SPEEDS = {"K1": 15.0410686, "O1": 13.9430356, "M2": 28.9841042, "S2": 30.0, "M4": 57.9682084,
                "MS4": 58.9841042}
@@ -181,7 +183,10 @@ def _lagdiff(x: np.ndarray, k: int) -> np.ndarray:
 def star_features(t: np.ndarray, y: np.ndarray, eta, ybar: np.ndarray, h: int, ex: dict) -> np.ndarray:
     """Feature rows for predicting y[i+h] - y[i] from what is known at hour i (levels up to i; rain as forecast)."""
     n = len(y)
-    cols = [(eta(t + h) - eta(t)) if eta else np.zeros(n), _lagdiff(y, 6), _lagdiff(y, 24), y - ybar]
+    cols = [(eta(t + h) - eta(t)) if eta else np.zeros(n), _lagdiff(y, 6), _lagdiff(y, 24), y - ybar,
+            # STAR_INPUTS 2 (Q52): where the level sits against its 7- and 30-day means (water returning to its usual
+            # level over days) and the 1/3/72 h changes; all trailing, never the future
+            y - trailing_mean(y, 24 * 7), y - trailing_mean(y, 24 * 30), _lagdiff(y, 1), _lagdiff(y, 3), _lagdiff(y, 72)]
     for u in ex.get("up") or []:
         cols += [_lagdiff(u, 24), _lagdiff(u, 48)]
     if ex.get("q") is not None:
@@ -257,9 +262,9 @@ def continuation(y: np.ndarray, start: int) -> dict:
     return out
 
 
-def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
-    """Rolling-origin backtest on the last EVAL_HOURS (or the last 40 % of a short record). The tide used in the
-    backtest is fitted only on data before the window (no leakage). Returns per-horizon choice, skill, residuals."""
+def _backtest_errors(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> tuple[dict, int]:
+    """Every method's error (actual − forecast) per horizon and issue hour over the backtest window, and the window
+    start. The tide used in the backtest is fitted only on data before the window (no leakage)."""
     n = len(y)
     split = max(int(n * 0.6), n - EVAL_HOURS)
     eta = fit_tide(t[:split], y[:split])
@@ -293,13 +298,25 @@ def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
                 continue  # not enough inputs over the window: compare only the gauge's own methods
             pred = _ridge(X[tr], tg[tr])(X[te])
             errs[h]["star"] = {i: float(tg[i] - p) for i, p in zip(te, pred)}
+    return errs, split
+
+
+def common_rows(errs_h: dict) -> list[int]:
+    """Issue hours every method could forecast, so methods compare on the same rows."""
+    rows = set(errs_h["persistence"])
+    for m in errs_h:
+        rows &= set(errs_h[m])
+    return sorted(rows)
+
+
+def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
+    """Rolling-origin backtest on the last EVAL_HOURS (or the last 40 % of a short record). The tide used in the
+    backtest is fitted only on data before the window (no leakage). Returns per-horizon choice, skill, residuals."""
+    errs, split = _backtest_errors(t, y, ex)
     result = {}
     cont = continuation(y, split)
     for h in HORIZONS:
-        rows = set(errs[h]["persistence"])
-        for m in errs[h]:
-            rows &= set(errs[h][m])  # with star present: only rows every method could forecast
-        rows = sorted(rows)
+        rows = common_rows(errs[h])  # with star present: only rows every method could forecast
         if len(rows) < 30:
             continue
         e = {m: np.array([v[i] for i in rows]) for m, v in errs[h].items()}
@@ -313,7 +330,8 @@ def evaluate(t: np.ndarray, y: np.ndarray, ex: dict | None = None) -> dict:
                      "coverage90_backtest": float(np.mean((res >= np.quantile(res, 0.05)) & (res <= np.quantile(res, 0.95)))),
                      # every method's error quantiles, so the live path can fall back with the right band
                      "q_all": {m: [float(np.quantile(v, q)) for q in QUANTILES] for m, v in e.items() if len(v)},
-                     "cont": cont.get(h)}  # D-060: does a steady measured trend keep its direction here?
+                     "cont": cont.get(h),  # D-060: does a steady measured trend keep its direction here?
+                     "star_inputs": STAR_INPUTS}
     return result
 
 
@@ -352,6 +370,8 @@ def model_is_fresh(row: dict | None, n_rows: int, now: dt.datetime) -> bool:
     sk = row.get("payload")
     if isinstance(sk, dict) and sk and not any("recent" in (v or {}).get("rmse", {}) for v in sk.values()):
         return False  # stored before the "recent" method joined the ladder (v0.20.7): backtest again
+    if isinstance(sk, dict) and sk and any((v or {}).get("star_inputs") != STAR_INPUTS for v in sk.values()):
+        return False  # backtested with older star inputs: its band would not match the live star (v0.25.0)
     return (now - row["trained_at"]).total_seconds() < MODEL_MAX_AGE_H * 3600 and n_rows <= row["n_rows"] * MODEL_MAX_GROWTH
 
 

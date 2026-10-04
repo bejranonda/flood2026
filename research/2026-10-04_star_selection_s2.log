@@ -1,0 +1,41 @@
+sample 2: all gauges 190 (with or without star inputs)
+
+=== +6 h
+V0  S0 gate on A                     n  190 · error vs no-change on B -16.9% (per-gauge mean  -8.8%) · served a model  111 · held ≥10 %   68 · worse  23
+V0  S1 + both halves of A gain > 0   n  190 · error vs no-change on B -16.3% (per-gauge mean  -9.6%) · served a model   96 · held ≥10 %   59 · worse  20
+V0  S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B -16.3% (per-gauge mean  -9.5%) · served a model   91 · held ≥10 %   58 · worse  18
+V12 S0 gate on A                     n  190 · error vs no-change on B -19.9% (per-gauge mean -11.5%) · served a model  127 · held ≥10 %   82 · worse  17
+V12 S1 + both halves of A gain > 0   n  190 · error vs no-change on B -19.5% (per-gauge mean -12.4%) · served a model  114 · held ≥10 %   74 · worse  14
+V12 S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B -19.0% (per-gauge mean -11.9%) · served a model  106 · held ≥10 %   70 · worse  13
+
+=== +12 h
+V0  S0 gate on A                     n  190 · error vs no-change on B -15.2% (per-gauge mean  -8.5%) · served a model  115 · held ≥10 %   66 · worse  29
+V0  S1 + both halves of A gain > 0   n  190 · error vs no-change on B -14.4% (per-gauge mean  -7.7%) · served a model  101 · held ≥10 %   58 · worse  24
+V0  S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B -14.9% (per-gauge mean  -9.8%) · served a model   93 · held ≥10 %   56 · worse  20
+V12 S0 gate on A                     n  190 · error vs no-change on B -15.6% (per-gauge mean  -9.5%) · served a model  121 · held ≥10 %   72 · worse  25
+V12 S1 + both halves of A gain > 0   n  190 · error vs no-change on B -14.6% (per-gauge mean  -8.7%) · served a model  106 · held ≥10 %   64 · worse  22
+V12 S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B -14.6% (per-gauge mean  -9.7%) · served a model  102 · held ≥10 %   61 · worse  21
+
+=== +24 h
+V0  S0 gate on A                     n  190 · error vs no-change on B  -6.6% (per-gauge mean  -7.2%) · served a model   89 · held ≥10 %   51 · worse  11
+V0  S1 + both halves of A gain > 0   n  190 · error vs no-change on B  -5.6% (per-gauge mean  -5.7%) · served a model   71 · held ≥10 %   38 · worse  10
+V0  S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B  -5.5% (per-gauge mean  -5.5%) · served a model   62 · held ≥10 %   37 · worse   9
+V12 S0 gate on A                     n  190 · error vs no-change on B  -8.3% (per-gauge mean  -8.1%) · served a model  101 · held ≥10 %   67 · worse  12
+V12 S1 + both halves of A gain > 0   n  190 · error vs no-change on B  -6.4% (per-gauge mean  -6.4%) · served a model   79 · held ≥10 %   50 · worse  10
+V12 S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B  -6.2% (per-gauge mean  -6.0%) · served a model   70 · held ≥10 %   44 · worse   8
+
+=== +48 h
+V0  S0 gate on A                     n  190 · error vs no-change on B  -5.5% (per-gauge mean  -5.5%) · served a model   83 · held ≥10 %   44 · worse  15
+V0  S1 + both halves of A gain > 0   n  190 · error vs no-change on B  -4.4% (per-gauge mean  -4.7%) · served a model   63 · held ≥10 %   34 · worse  10
+V0  S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B  -4.2% (per-gauge mean  -4.2%) · served a model   57 · held ≥10 %   29 · worse   9
+V12 S0 gate on A                     n  190 · error vs no-change on B  -8.5% (per-gauge mean  -7.3%) · served a model  105 · held ≥10 %   70 · worse  20
+V12 S1 + both halves of A gain > 0   n  190 · error vs no-change on B  -6.1% (per-gauge mean  -5.4%) · served a model   80 · held ≥10 %   52 · worse  17
+V12 S2 + both halves of A gain ≥ 5 % n  190 · error vs no-change on B  -6.0% (per-gauge mean  -5.1%) · served a model   74 · held ≥10 %   48 · worse  15
+
+=== +72 h
+V0  S0 gate on A                     n  189 · error vs no-change on B  -5.3% (per-gauge mean  -5.6%) · served a model   85 · held ≥10 %   49 · worse  10
+V0  S1 + both halves of A gain > 0   n  189 · error vs no-change on B  -4.2% (per-gauge mean  -4.6%) · served a model   63 · held ≥10 %   35 · worse   7
+V0  S2 + both halves of A gain ≥ 5 % n  189 · error vs no-change on B  -4.1% (per-gauge mean  -4.5%) · served a model   56 · held ≥10 %   35 · worse   6
+V12 S0 gate on A                     n  189 · error vs no-change on B  -9.4% (per-gauge mean  -8.2%) · served a model  103 · held ≥10 %   69 · worse  21
+V12 S1 + both halves of A gain > 0   n  189 · error vs no-change on B  -6.2% (per-gauge mean  -5.6%) · served a model   74 · held ≥10 %   47 · worse  17
+V12 S2 + both halves of A gain ≥ 5 % n  189 · error vs no-change on B  -5.5% (per-gauge mean  -5.1%) · served a model   69 · held ≥10 %   43 · worse  17
