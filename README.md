@@ -61,7 +61,8 @@ One server with `docker compose`, published through a Cloudflare Tunnel (no open
 | Open-Meteo | Rain forecast, and rain as it was forecast 1–2 days earlier (for honest backtests): Bangkok points and a 0.5° cell for every other gauge | ✅ live |
 | Traffy Fondue | Street-flood reports around each gauge (counts only) | 🟡 often overloaded; age shown |
 | OpenStreetMap Nominatim | Place search, on request only (queries are never stored) | ✅ live |
-| GISTDA, Copernicus GFM (satellite flood maps), GloFAS, Google WeatherNext | Tested 2026-10-02: satellites are blind among Bangkok's buildings, GloFAS adds nothing to a 3–7 day outlook here, WeatherNext's rain may not be shown publicly (backtest only) | 🔬 research only ([D-069](docs/plan/DECISIONS.md)) |
+| Google WeatherNext 3 (DeepMind) | 64-member AI weather forecasts; subscribed via BigQuery Analytics Hub (`weathernext_3`), live queries verified (D-069, research/backtesting only; real-time rain is never shown or served per terms) | 🔬 connected / research only ([D-069](docs/plan/DECISIONS.md)) |
+| GISTDA, Copernicus GFM (satellite flood maps), GloFAS | Tested 2026-10-02: satellites are blind among Bangkok's buildings, GloFAS adds nothing to a 3–7 day outlook here | 🔬 research only ([D-069](docs/plan/DECISIONS.md)) |
 | Google Flood Hub (Flood Forecasting API) | 103 river points in Thailand: flood status, thresholds, 9-day discharge; collected every 6 h and compared with our gauges | 🔬 validating, not shown ([D-087](docs/plan/DECISIONS.md)) |
 | DWR early-warning posts (กรมทรัพยากรน้ำ) | 455 village level posts; local datum, so shown as measured change only | ✅ trend-only map layer ([D-081](docs/plan/DECISIONS.md)) |
 

@@ -217,7 +217,8 @@ upstream water take a day or more to arrive, which a gauge's own history cannot 
 | Trend in the rows | override beside the model (D-060) | text and chart disagreed (Kgt.19A, 535 rows) | removed; `recent` method in the ladder (D-080) |
 | GloFAS | upper bound with perfect future discharge | 0 of 12 main-river gauges gain ≥ 10 % | rejected (D-069) |
 | Satellite radar (GFM, GISTDA) | flooded cells near pins/gauges | blind in cities; GISTDA cells could mislead; layer emptied before rebuilds | removed from the app (D-084); a future source gets its own design |
-| WeatherNext | 64-member rain ensemble | needs the BigQuery subscription | parked (Q44) |
+| WeatherNext 3 | 64-member rain ensemble | BigQuery linked dataset subscribed & verified live (2026-10-04, KI-283); backtest query ready | parked for backtest (D-069, Q44) |
+
 | Google Flood Hub | 103 virtual points | agrees when it flags (2 of 3 SEVERE over our over-bank gauges), misses 7 over-bank places; 31 points beyond our gauges; 9-day horizon | collected and validated before any display (D-087) |
 | More stations | ablation: 2 / 1 / 0 upstream gauges | 2 upstream gauges cut error 7.6 / 5.4 / 4.2 % (12/24/48 h); no saturation | try 3–4 (Q47); DWR as inputs after ~30 days (Q46) |
 | DWR village posts | quality check | local datum, default 4.00 m alarms, ~11 h history | archive + trend-only layer (D-081) |

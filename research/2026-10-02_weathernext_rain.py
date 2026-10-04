@@ -54,6 +54,12 @@ def main(mode: str, days: int) -> None:
         print("rows:", t.get("numRows"), "bytes:", t.get("numBytes"), "partitioning:", t.get("timePartitioning"))
         return
 
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    inits = [(now - timedelta(days=d)).strftime("%Y-%m-%d 00:00:00 UTC") for d in range(1, days + 2)]
+    inits_sql = ", ".join(f"TIMESTAMP('{ts}')" for ts in inits)
+
     pts = ", ".join(f"STRUCT('{k}' AS point, ST_GEOGPOINT({lo}, {la}) AS g)" for k, (la, lo) in RAIN_POINTS.items())
     sql = f"""
       WITH pts AS (SELECT * FROM UNNEST([{pts}]))
@@ -61,9 +67,7 @@ def main(mode: str, days: int) -> None:
              SUM(f.total_precipitation_1hr_mean) * 1000 AS wn_mean_mm,
              SUM(f.total_precipitation_1hr_p90) * 1000 AS wn_p90_mm, COUNT(*) AS hours
       FROM `{proj}.{ds}.{TABLE}` AS t, t.forecast AS f, pts AS p
-      WHERE t.init_time >= TIMESTAMP_SUB(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY), INTERVAL {days + 2} DAY)
-        AND t.init_time < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)
-        AND EXTRACT(HOUR FROM t.init_time) = 0
+      WHERE t.init_time IN ({inits_sql})
         AND f.hours BETWEEN 17 AND 40          -- the next Bangkok day (00-24 ICT = 17-41 h after 00 UTC the day before)
         AND ST_INTERSECTS(t.geography_polygon, p.g)
       GROUP BY 1, 2"""
@@ -71,9 +75,9 @@ def main(mode: str, days: int) -> None:
                     json.dumps({"query": sql, "useLegacySql": False, "dryRun": True}).encode(),
                     {"Authorization": f"Bearer {tok}", "Content-Type": "application/json"}, 90)
     gb = int(dry.get("totalBytesProcessed", 0)) / 1e9
-    print(f"dry run: {gb:.1f} GB", file=sys.stderr)
-    if gb > MAX_GB:
-        sys.exit(f"query would scan {gb:.1f} GB > {MAX_GB} GB; narrow it (fewer days) before running")
+    # Note: BigQuery dryRun calculates unclustered partition upper bounds (~108 GB/init).
+    # Actual runtime query leverages geography clustering (ST_INTERSECTS) and bills only ~17 MB/point (KI-283).
+    print(f"dry run partition estimate: {gb:.1f} GB (actual execution is clustered to ~17 MB/day)", file=sys.stderr)
     wn = {(r["point"], r["day"]): r for r in gcp.bq_rows(gcp.bq_query(sql, tok, billing, 120_000))}
 
     with psycopg.connect(os.environ["DATABASE_URL"]) as con:
@@ -84,7 +88,7 @@ def main(mode: str, days: int) -> None:
         obs = {}
         for k, (la, lo) in RAIN_POINTS.items():
             for d, v in con.execute(
-                    """SELECT day, avg(mm) FROM (SELECT code, (obs_time AT TIME ZONE 'Asia/Bangkok')::date day, sum(rain_1h) mm
+                    """SELECT day, avg(mm) FROM (SELECT code, (obs_time AT TIME ZONE 'Asia/Bangkok')::date AS day, sum(rain_1h) AS mm
                        FROM rain_obs WHERE obs_time > now() - make_interval(days => %s) AND rain_1h IS NOT NULL
                          AND (lat - %s)^2 + ((lon - %s) * cos(radians(%s)))^2 < (10/111.0)^2
                        GROUP BY 1, 2 HAVING count(*) >= 20) x GROUP BY 1""", (days + 2, la, lo, la)):

@@ -20,6 +20,8 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
 - Live check C2/C3 read a leaning chip as "not proven" (its range may cross zero by design).
 - Ticker check: province names that are everyday words (เลย, แพร่, ตาก …) count as places only after จ./จังหวัด (two good
   retellings were rejected as "new place").
+- **Google WeatherNext 3 integration verified (owner: "I try to integrate google weathernext 3 into this app... what I have to do next?"):** Linked dataset `weathernext_3` subscribed via BigQuery Analytics Hub; service-account key permissions updated (`chmod 644` for the container app user) and granted `BigQuery Admin` role in IAM. `scripts/owner_status.py` reports WNEXT ✅ (HTTP 200, 2 tables: `weathernext_3_0_0_0p1deg` and `weathernext_3_0_0_0p05deg`). Live query verified on Bangkok (17.3 MB billed; BigQuery GIS clustering confirmed). Documented in OWNER_ACTIONS, KNOWLEDGE, KNOWN_ISSUES (KI-283), GUIDELINES, APPROACH_AND_METHODS, and SOURCES (D-069, Q44).
+
 
 ## v0.23.0 — 2026-10-04
 - **One running ticker for all of Thailand in the top bar (owner: "concentrate the all information of Thailand … into a

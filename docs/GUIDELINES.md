@@ -129,7 +129,8 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
 - **Never assume a source's schedule (KI-268):** a layer "rebuilt daily" was rebuilt at different hours, several times a day, cell by cell. Probe a cheap stamp/count and download a finished new version; never on a fixed timer alone.
 - **Shared free allowances (KI-264):** research calls to Open-Meteo share the server's free non-commercial allowance with production rain. Size them (a year only for the cell you need), pause ≥ 10 s between requests, stay ≲ 1,000 weighted calls a day, and check `source_health` for `openmeteo*` after a heavy run.
 - **Keys echoed by sources (KI-262):** some APIs return the caller's key inside response URLs (GISTDA `links`). Strip such fields before storing, logging or printing a response.
-- **Experimental data with restrictive terms (D-069):** WeatherNext real-time rain is never shown or served by our API; past data (≥ 1 h old, CC BY 4.0) may be used for backtests in the worker only. Read a dataset's terms before the first call, and record what may and may not be published.
+- **Experimental data with restrictive terms (D-069):** WeatherNext real-time rain is never shown or served by our API; past data (≥ 1 h old, CC BY 4.0) may be used for backtests in the worker only. In BigQuery, query exact initialization timestamps (`init_time = ...` or `init_time IN (...)`) and use spatial predicates (`ST_INTERSECTS`) to leverage GIS clustering (~17 MB scanned per point) rather than open-ended ranges that trigger multi-TB partition scans (KI-283).
+
 - **What users type is private:** place-search queries are never logged, stored or sent anywhere except the geocoder (D-032). The same goes for error messages that might contain them.
 
 ---
