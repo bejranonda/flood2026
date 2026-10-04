@@ -509,13 +509,13 @@ def watch(out: dict, area: str) -> tuple[list[str], str]:
     trend_word = ("ทั้งหมดทรงตัวหรือลดลง" if flat and not rising else " ส่วนใหญ่ทรงตัวหรือลดลงแล้ว" if len(flat) > len(rising) else "")
     parts = [f"ตอนนี้{area}มีน้ำล้นตลิ่ง {n_over} สถานี" + (f" {trend_word.strip()}" if trend_word else "")
              if n_over else f"ตอนนี้{area}ยังไม่มีสถานีที่น้ำล้นตลิ่ง"]
+    # each group closes its own sentence (live 2026-10-04: GLM merged an over-bank gauge into "…กำลังจะถึงตลิ่ง")
     if crit:
-        more = f" รวมถึง {crit[1]['name_th']}" if len(crit) > 1 else ""
-        parts.append(f"จุดที่ควรจับตาที่สุดคือ {nm(crit[0])} ที่น้ำล้นตลิ่งและยังขึ้นอยู่{more}")
+        more = f" และ {crit[1]['name_th']}" if len(crit) > 1 else ""
+        parts.append(f"จุดที่ควรจับตาที่สุดคือ {nm(crit[0])}{more} ซึ่งน้ำล้นตลิ่งแล้วและยังขึ้นอยู่")
     if may_up:
-        who = f"{some(may_up, 1)}{nm(may_up[0])}"
-        parts.append(f"อีก {len(may_up)} สถานีน้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน {who}" if len(may_up) > 1
-                     else f"อีก 1 สถานีน้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน คือ {nm(may_up[0])}")
+        who = f"{some(may_up, 1)}{nm(may_up[0])}" if len(may_up) > 1 else f"คือ {nm(may_up[0])}"
+        parts.append(f"ส่วนอีก {len(may_up)} สถานีที่ยังไม่ถึงตลิ่ง น้ำยังขึ้นและอาจถึงตลิ่งใน 1–2 วัน {who}")
     if up:
         parts.append(f"น้ำเหนือกำลังมาที่ {nm(up[0])}")
     if fast and not crit and not may_up:
@@ -531,6 +531,7 @@ _NUM = re.compile(r"[0-9๐-๙]+(?:[.,][0-9๐-๙]+)?")
 _DIRS = {"fall": re.compile(r"ลดลง|น้ำลด|ต่ำลง|จะลด"), "rise": re.compile(r"สูงขึ้น|เพิ่มขึ้น|(?:น้ำ|จะ)\S{0,6}ขึ้น(?!หรือ|ลง)"),
          "flat": re.compile(r"ทรงตัว|คงที่")}
 _STRONG = re.compile(r"(?:ขึ้น|ลง|ลด)\S{0,10}มาก")
+_SURER = re.compile(r"(?:กำลังจะ|ใกล้จะ)ถึงตลิ่ง")
 # verdicts; a polite particle after "ไม่ได้" / "รับน้ำได้" is not one ("ยังบอกไม่ได้ค่ะ", "ยังรับน้ำได้ค่ะ")
 _VERDICTS = (r"(?<!ไม่)(?<!รับน้ำ)ได้(?:ครับ|ค่ะ)", r"ไปได้(?!หรือ|ไหม)", r"เดินทางได้(?!หรือ|ไหม)",
              r"ไม่ต้อง(?:ย้าย|กังวล|ห่วง|เตรียม|ทำอะไร|ระวัง)", "ไม่จำเป็น", "ไม่ท่วม",
@@ -562,6 +563,8 @@ def check(text: str, rule: str) -> list[str]:
     if not said_past and (_dirs(t) & _dirs(past)) - _dirs(future):  # validation 2026-10-02: "49 ซม. ที่ผ่านมา" → "จะขึ้นมาก"
         issues.append("past change told as future")
     if not said_past and _STRONG.search(t) and not _STRONG.search(future):
+        issues.append("stronger than the forecast")
+    if _SURER.search(t) and not _SURER.search(rule):  # "อาจถึงตลิ่ง" told as "กำลังจะถึงตลิ่ง" (live 2026-10-04)
         issues.append("stronger than the forecast")
     issues += [f"verdict '{m.group(0)}'" for v in _VERDICTS for m in [re.search(v, t)] if m and not re.search(v, rule)]
     if ("บอกไม่ได้" in rule or "ไม่รู้" in rule) and not any(c in t for c in _CANNOT):

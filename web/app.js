@@ -559,7 +559,7 @@ const fbText = (fb) => fb == null ? "" : fb < 0 ? `เกินตลิ่ง $
 const wIn = (it) => REGIONS[wRegion].test(it) && (!wProv || it.province === wProv);
 const WMAX = 5;
 function wRows(rows) {
-  if (rows.length <= WMAX || rows.some((r) => r.startsWith('<div class="wsubh'))) return rows.join("");  // sub-groups: all shown
+  if (rows.length <= WMAX || rows.some((r) => r.startsWith('<div class="wsubh') || r.startsWith('<div class="wsub">'))) return rows.join("");  // sub-groups: all shown
   return rows.slice(0, WMAX).join("") + `<div class="wmore-rows" hidden>${rows.slice(WMAX).join("")}</div><button type="button" class="wmore">+ อีก ${rows.length - WMAX} ›</button>`;
 }
 async function renderWatch() {
@@ -594,7 +594,7 @@ async function renderWatch() {
       const row = (it) => gauge(it, `${esc(fbText(it.freeboard_m))} · อาจถึงในอีก ${it.hours} ชม. ${recChip((rec[`bank_${it.hours}`] || {})[it.band], `จะถึงตลิ่ง (กลุ่มโอกาส ${it.band})`)}`);
       rows = ["rising", "flat_or_falling", "unknown"].flatMap((sub) => {
         const mine = items.filter((it) => (it.sub || "unknown") === sub);
-        return mine.length ? [`<div class="wsubh ${SUB_CLS[sub]}">${TREND_SUB[sub]} <b>${mine.length}</b></div>`, wRows(mine.map(row))] : [];
+        return mine.length ? [`<div class="wsub"><div class="wsubh ${SUB_CLS[sub]}">${TREND_SUB[sub]} <b>${mine.length}</b></div>${wRows(mine.map(row))}</div>`] : [];
       });
     } else if (g.key === "upstream") {
       head = recChip(rec.upstream, "น้ำจากต้นน้ำจะทำให้ระดับน้ำเพิ่มขึ้น 10 ซม. ขึ้นไป");

@@ -84,3 +84,14 @@ def test_a_gist_that_fails_the_check_is_asked_once_more(monkeypatch):
     monkeypatch.setattr(explain.ai, "run", lambda *a, **k: next(answers))
     explain._cache.clear()
     assert explain.gist("simple", ["✅ ไม่มีจุดที่น้ำล้นตลิ่ง"], "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง") == "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง"
+
+
+def test_the_watch_story_keeps_over_the_bank_and_may_reach_apart():
+    # live 2026-10-04: GLM merged an over-bank gauge into "…อีกไม่กี่สถานีที่น้ำกำลังจะถึงตลิ่ง"; the rule story now closes
+    # each group's sentence, and "กำลังจะ/ใกล้จะถึงตลิ่ง" is stronger than "อาจถึง" (the check rejects it)
+    lines, story = explain.watch(WATCH, "ทั่วประเทศ")
+    assert "สถานีA1 (พระนครศรีอยุธยา) และ สถานีA2 ซึ่งน้ำล้นตลิ่งแล้วและยังขึ้นอยู่" in story
+    assert "ส่วนอีก 1 สถานีที่ยังไม่ถึงตลิ่ง" in story
+    rule = "\n".join(["บทสรุป: " + story] + lines)
+    assert "stronger than the forecast" in explain.check("สถานีM1 น้ำกำลังจะถึงตลิ่งในหนึ่งถึงสองวัน", rule)
+    assert "stronger than the forecast" not in explain.check("สถานีM1 น้ำยังขึ้นและอาจถึงตลิ่งในหนึ่งถึงสองวัน", rule)

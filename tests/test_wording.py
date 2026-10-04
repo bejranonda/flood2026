@@ -241,3 +241,10 @@ def test_the_ai_summary_button_is_on_station_sheets_and_the_watch_tab():
     rw = APP.split("async function renderWatch(")[1].split("\n}\n")[0]
     assert "askHTML()" in rw and "/api/explain_watch?region=" in rw and "bindAskUrl(" in rw
     assert "function bindAskUrl(" in APP
+
+
+def test_each_may_reach_sub_group_is_its_own_block():
+    # 390 px check 2026-10-04: "+ อีก 1 ›" sat on the same line as the next pill
+    rw = APP.split("async function renderWatch(")[1].split("\n}\n")[0]
+    may = rw.split('g.key === "may_reach"')[1].split("} else if")[0]
+    assert '<div class="wsub">' in may

@@ -488,3 +488,4 @@ a { color: var(--accent); }
 .chg.chg-lean .lean-rec { font-weight: 500; color: #4b5563; margin-left: 2px; }
 /* v0.25.0: ✨ on station sheets and the จับตา tab (owner 2026-10-04) */
 .ask-box { margin: 8px 0 10px; }
+.wsub { display: block; margin-bottom: 4px; }
