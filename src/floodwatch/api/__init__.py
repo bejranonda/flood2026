@@ -394,8 +394,7 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
         obs = c.execute(
             """SELECT obs_time, level_msl, discharge FROM observation WHERE code=%s AND quality_flag='ok'
                AND obs_time > now() - make_interval(days => %s) ORDER BY obs_time""", (code, days)).fetchall()
-        fc = c.execute("SELECT payload FROM forecast_run WHERE code=%s ORDER BY issue_time DESC LIMIT 1",
-                       (code,)).fetchone()
+        fc = c.execute(*forecast_query(code, rows[0].get("forecast_time"))).fetchone()
         fb = _feedback_counts(c, code).get(code)
         reps, tage = _street_reports(c), _traffy_age_min(c)
     srow = {**_station_row(rows[0]), "twin": _twins().get(code)}
@@ -408,6 +407,14 @@ def station(code: str, days: int = Query(7, ge=1, le=35)):
     return _json({"station": srow, "feedback7d": fb,
                   "observations": [[_iso(o["obs_time"]), o["level_msl"], o["discharge"]] for o in obs],
                   "forecast": fc["payload"] if fc else None})
+
+
+def forecast_query(code: str, run_time) -> tuple[str, tuple]:
+    """The run the station rows were built from (C15, 2026-10-03: rows from the 60 s snapshot and a chart from a newer
+    run differed for up to a minute); the newest run only when the rows have none."""
+    if run_time is not None:
+        return "SELECT payload FROM forecast_run WHERE code=%s AND issue_time = %s LIMIT 1", (code, run_time)
+    return "SELECT payload FROM forecast_run WHERE code=%s ORDER BY issue_time DESC LIMIT 1", (code,)
 
 
 def _haversine_km(a_lat, a_lon, b_lat, b_lon) -> float:

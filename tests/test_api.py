@@ -324,3 +324,12 @@ def test_rain_by_province_takes_the_wettest_point_serving_each_province():
     pts = [{"point": "c1", "mm24": 40.0}, {"point": "c2", "mm24": 12.0}, {"point": "f9", "mm24": None}]
     pp = {"c1": {"น่าน", "แพร่"}, "c2": {"น่าน"}}
     assert rain_by_province(pts, pp) == {"น่าน": 40.0, "แพร่": 40.0}
+
+
+def test_the_sheet_chart_uses_the_same_forecast_run_as_its_rows():
+    # live check 2026-10-03: rows from the 60 s snapshot, chart from the newest run → differed for up to a minute
+    t = dt.datetime(2026, 10, 4, 9, 2, tzinfo=dt.timezone.utc)
+    sql, params = api.forecast_query("KTY", t)
+    assert "issue_time = %s" in sql and params == ("KTY", t)
+    sql, params = api.forecast_query("KTY", None)
+    assert "ORDER BY issue_time DESC" in sql and params == ("KTY",)
