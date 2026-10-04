@@ -193,3 +193,10 @@ def test_top_bar_folds_names_the_rain_place_and_raises_one_urgent_line():
     sm = APP.split("function renderSummary(")[1].split("\n}\n")[0]
     assert "ล้นตลิ่งและน้ำยังขึ้น" in sm and 'setTab("watch")' in sm and '"sumOpen"' in sm
     assert 'class="desk-notice"' in INDEX
+
+
+def test_the_measured_line_says_when_the_last_6_h_changed_course():
+    # 2026-10-04: 101 gauges read "24 ชม. ที่ผ่านมา: เพิ่มขึ้น" while their group (the recent pace) was "ทรงตัวหรือลดลง";
+    # the line now says what the last 6 h did whenever it differs, so card and group tell one story (D-083)
+    ob = APP.split("const obsLine = (s) => {")[1].split("\n};\n")[0]
+    assert "6 ชม. ล่าสุด" in ob and "s.trend" in ob

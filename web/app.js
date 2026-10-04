@@ -136,7 +136,13 @@ const obsLine = (s) => {
   const o = s.observed24;
   if (!o || !OBS[o.level]) return "";
   const cm = ["steady", "mixed"].includes(o.level) ? (o.level === "steady" ? " (เปลี่ยนไม่ถึง 2 ซม.)" : "") : ` ${Math.abs(o.change_cm)} ซม.`;
-  return `<div class="pf-obs obs-${obsDir(o)}">${o.hours || 24} ชม. ที่ผ่านมา: <b>${esc(OBS[o.level])}</b>${esc(cm)}</div>`;
+  // when the recent pace (status.trend.measured: the last 6 h cut the 24 h pace back) tells another story than the 24 h
+  // word, say what the last 6 h did — it is why the gauge sits in "ทรงตัวหรือลดลง" (or "น้ำยังขึ้น"), D-083
+  const word = { up: "เพิ่มขึ้น", down: "ลดลง", steady: "ทรงตัว" }, m = s.trend?.measured, d = obsDir(o);
+  const differs = m && ((d === "rise" && m !== "up") || (d === "fall" && m !== "down") || (d === "flat" && m !== "steady" && o.level !== "mixed"));
+  const c6 = o.change6_cm != null && m !== "steady" ? ` ${Math.abs(Math.round(o.change6_cm))} ซม.` : "";
+  const recent = differs ? ` · 6 ชม. ล่าสุด: <b>${esc(word[m])}</b>${esc(c6)}` : "";
+  return `<div class="pf-obs obs-${obsDir(o)}">${o.hours || 24} ชม. ที่ผ่านมา: <b>${esc(OBS[o.level])}</b>${esc(cm)}${recent}</div>`;
 };
 // Water from upstream (owner 2026-10-02, basin data): the first upstream gauge, its measured 24 h change in the list's
 // own words (obsLine), and how long its changes usually take to arrive here (learned lag). One line; why behind an ⓘ.
