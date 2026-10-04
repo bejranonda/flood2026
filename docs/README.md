@@ -24,6 +24,7 @@
 | [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md) | Questions for the owner | Asked or answered |
 | [SOURCES.md](SOURCES.md) | Source registry (the brief's Phase 0 format) | A source is tested, changes or fails |
 | [KNOWLEDGE.md](KNOWLEDGE.md) | Domain knowledge, stations, datums, contacts | A fact is learned or corrected |
+| [MODELS.md](MODELS.md) | How the app calculates: formulas, parameters, model choices, hard cases, decisions, data wish-list (Thai summary) | A model, threshold or rule changes |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Pitfalls with status | Something breaks or is worked around |
 | [APPROACH_AND_METHODS.md](APPROACH_AND_METHODS.md) | Methods (= the brief's `docs/METHODS.md`) | A method changes |
 | [GUIDELINES.md](GUIDELINES.md) | Standards | A standard changes |

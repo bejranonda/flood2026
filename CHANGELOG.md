@@ -2,6 +2,31 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.23.0 — 2026-10-04
+- **One running ticker for all of Thailand in the top bar (owner: "concentrate the all information of Thailand … into a
+  single running scrolling text … periodically update, like every 30 minutes … let AI prepare it into simple, attractive
+  and lovely Thai language").** `situation.py`: rules gather the facts (over the bank and still rising with provinces, over
+  the bank in total, may reach the bank in 24–48 h, water from upstream, fast rise, the wettest gauge and forecast, the
+  overview); the worker asks GLM every 30 min for a warm retelling (≤ 250 characters, calm, no "ด่วน", examples said as
+  examples) and shows it only if it adds no number, place or verdict word (one retry), else the rule text. Live trials:
+  9 of 9 accepted after the prompt fix; the first trials read "เร่งด่วน:" and implied 3 provinces held all 11 rising gauges
+  (fixed: "เช่น" in the facts). `/api/situation`; tap the ticker for the full text, who wrote it and when; the text stands
+  still for visitors who prefer reduced motion. It replaces the rain line and the urgent line (D-089).
+- **Top bar = national overview (owner: "Do not need to focus only สถานีในภาคกลาง").** One line "ทั่วประเทศ · ● ล้นตลิ่ง N …"
+  (words and counts, still the list's status filter), then the ticker; phone top area 277 px (was 382), desktop 163 px.
+- **Forecast rows 24 / 48 / 72 h, no 12 h row (owner: "remove trend 12 hr … think about longer term").** 72 h: the network
+  model wins at 372 gauges, medium confidence at 70 (48 h: 63); same rules as 48 h. Summary details count the trend groups.
+- **จับตา readable at a glance (owner: "use color or symbol … a lot of text under subcategories").** Over-bank sub-groups as
+  coloured pills ("⬆ น้ำยังขึ้น" red, "→ ทรงตัวหรือลดลง" grey) with province chips and count badges; a chip opens its stations.
+- **AI summary review (owner: "review using AI in creating ให้ AI สรุปให้ฟังง่าย ๆ"):** 12 live pins → 10 retellings passed,
+  2 timed out at 8 s; fixed what the check let through: "ข่าวดีคือ…" framing, mixed นะคะ/นะ voices, filler openings, "เริ่มสูง"
+  read as "rising", "น้ำในสะพาน…" (prompt + check: tone, filler opening).
+- **Dam releases beyond the Chao Phraya tested: no gain (owner: "consider การปล่อยน้ำเขื่อน more than เจ้าพระยา").** 50 large dams'
+  daily releases (HII `dam_yearly_graph`) as inputs for 100 gauges in their sub-basins: error −0.5 / −0.9 / −0.9 % at
+  24 / 48 / 72 h (median 0). Not adopted (D-090); rule curves found in the same data (research/2026-10-04_dam_release_backtest.md).
+- **MODELS.md:** theory and formulas, which models win per horizon, eight hard-to-forecast gauges with real errors (D-088).
+- Live checks C18 (24 h rise vs recent pace note), C19 (ticker); summary rain checks retired.
+
 ## v0.22.0 — 2026-10-04
 - **AI Summary UX Overhaul ("✨ ให้ AI สรุปให้ฟังง่าย ๆ", D-068, KI-275):**
   - **Zero-wait two-stage rendering:** Tapping the button renders the deterministic rule narrative (`r.story`, ~40 ms) immediately; background GLM warm retelling replaces text seamlessly when verified. Visitors never face a blank 5–7s shimmer.
@@ -15,6 +40,18 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
   - Sheet rows and chart synchronized to one run snapshot (C15 race fix).
   - GISTDA layer removed and collector stopped (D-084).
   - 294 passing tests (`pytest -q`).
+- **จับตา over-bank split** into "น้ำยังขึ้น" / "ทรงตัวหรือลดลง" (owner) with both labels per gauge ("วัดได้ ↗ · คาด ?"); the trend
+  rule (`status.trend`, D-083): the 24 h forecast when sure (↗ ↘ or "→ ทรงตัว"), else the measured recent pace. Live: 132
+  rising, 800 flat or falling, 108 without a trend; over the bank 8 rising, 43 flat.
+- **River cards in two dimensions** (level counts + trend counts) for every river and "ลำน้ำอื่น" alike (owner: "Keep format …
+  consistency"); the measured line adds "6 ชม. ล่าสุด: …" when the last 6 h differ (101 gauges read "เพิ่มขึ้น" over 24 h
+  while their recent pace had stopped).
+- **One map layer box** (owner chose "legend with checkboxes"): every status, rings, DWR posts and Traffy switchable with
+  counts, remembered per browser, folded on phones (D-085).
+- **Google Flood Hub collected and validated, not shown (D-087):** 103 virtual points in Thailand, every 6 h; 3 SEVERE (2
+  where our gauges are over the bank, 1 without a gauge of ours), but NO_FLOODING at 7 places our gauges are over the bank;
+  forecasts 9 days. The key only in the `X-Goog-Api-Key` header, worker only.
+- **docs/MODELS.md** (D-088): how the app calculates, Thai summary, decisions record, data wish-list.
 
 ## v0.21.0 — 2026-10-03/04 (includes v0.20.6 and v0.20.7, interim deploys, not tagged)
 - **New tab "⚠️ จับตา": the next 24–48 h risks (owner: "I need another tab to have the list of potential risks according to

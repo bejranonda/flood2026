@@ -303,3 +303,11 @@ UX principles established through visitor testing during the 2026 flood season:
 - **More stations upstream (ablation, 60 gauges with 2 learned upstream gauges, 45-day backtest):** error 7.6 / 5.4 / 4.2 % lower at 12 / 24 / 48 h with both upstream gauges than with none (one: 4.3 / 2.2 / 1.8 %); 12 of 60 gain > 15 % at 12 h; 10–12 slightly worse. No saturation at 2.
 - **Satellite vs gauges (images 28 Sep – 2 Oct, outside กทม./ปริมณฑล):** ≥ 100 rai flooded within 5 km for 38 % of critical, 35 % warning, 26 % watch, 8 % normal gauges. GISTDA empties its layer before a rebuild (0 features for > 1 h on 2026-10-03 19:44 UTC, KI-269).
 - **Upstream travel times learned (394 pairs with 3–48 h):** median 7 h, 10th–90th percentile 3–19 h.
+
+## 23. Trend groups, ticker, Flood Hub and dams (checked 2026-10-04, production)
+- **Trend groups live (10:32 UTC):** 132 "น้ำยังขึ้น", 800 "ทรงตัวหรือลดลง", 108 none (stale); basis forecast 330, measured 602. Over the bank: 8 rising, 43 flat or falling. 101 gauges had a 24 h measured rise while the last 6 h stopped (KI-277).
+- **Which methods win (backtests 2026-10-04):** at 72 h star 372, persistence 549, tide methods 30, recent 14; medium confidence 70 (48 h: 63).
+- **Ticker trials:** 9 of 9 GLM retellings accepted after the prompt fix (≈ 230–280 characters); before it "เร่งด่วน:" openings and an over-generalised province list.
+- **AI summary sample (12 pins):** rule story ~0.5 s, AI retelling 5–8.5 s, 10 of 12 accepted; 2 timed out at 8 s.
+- **Google Flood Hub, Thailand:** 103 HYBAS virtual gauges, all quality-verified, each with thresholds in m³/s; one status per gauge per daily issue (~08:24 UTC); forecasts 9 days; 71 of 103 have one of our gauges within 15 km.
+- **Large dams:** HII lists 50 with sub-basin ids; daily release history and upper/lower rule curves per year (`dam_yearly_graph`). Releases as model inputs: no gain (D-090).

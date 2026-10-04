@@ -553,6 +553,7 @@
 - **Revisit:** with hourly measured rain (Q43, ~mid-December 2026), or if a gauge network gains gauges right below confluences (the directed rule would then have links to find).
 
 ### D-068 — AI on request only: one button, rules tell the story, GLM may retell it after a check (amends D-022; amended v0.22.0)
+> **Amended 2026-10-04 by D-089:** one scheduled AI text exists — the national ticker (worker, every 30 min, checked); per-place AI stays on request.
 - **Date:** 2026-10-02 · **Status:** accepted (owner: "ลองให้คนทั่วไปใช้ เขาไม่เข้าใจง่ายๆ … อยากให้มีฟังก์ชันการแปลความ เช่น ให้ ai แปลเป็นความเข้าใจง่ายๆ … think more than just translation … be careful about UX … You can use GLM"; "validate and test also the AI assistance, think about the users who are common people"; on v0.18.0: "AI สรุปดูไม่ได้ข้อมูลอะไรเท่าไหร่ … ควรเล่าหรืออธิบายให้ดีกว่านี้ ว่าสถานีที่ใกล้เคียง แต่อยู่ไกล เป็นยังไง"; on v0.18.3 with a weather app's AI card: "I got complicated info … they try to explain easily"; then "AI assistant generated only when requested, single point for that is enough?" → chose one "ask AI" button "to reduce unnecessary AI generated"; on v0.22.0: "review using AI in create ให้ AI สรุปให้ฟังง่าย ๆ , what will you suggest to improve? Test and validate till get the optimal UX ... Try to let AI prepare it into simple, attractive and lovely Thai language which are easy to understand. I need the natural smooth language ... Validate and check the expectation as you are visitors also")
 - **Evidence:** [research/2026-10-02_ai_explain.md](../../research/2026-10-02_ai_explain.md). Free AI answers gave a go-verdict ("พาลูกไปโรงเรียนพรุ่งนี้เช้าได้ไหม" → "ได้ครับ …") and called a canal "ปกติ" where the panel cannot judge; rewording whole rule answers passed a strict check 43 % of the time; retelling a rule-written story passes 91 % (198 answers, 33 places) at a median 4.0 s. glm-5.3-flash always reasons (API 1210): 9–10 s by default, `reasoning_effort: "low"` ~1–5 s.
 - **Decision:**
@@ -575,6 +576,40 @@
   - **WeatherNext: backtest only, past data only (≥ 1 h old = CC BY 4.0).** Its real-time rain (now and future) is **never** shown on the site or served by our API (the terms count recolouring, cropping or re-timing as the raw data; sharing is limited to known recipients). Any forecast that would use it as an input needs a new decision first: Google's "experimental … not approved for real world use" notice on the site and the Japan/South Korea/Indonesia clause. Access only from the worker (`floodwatch.gcp`, stdlib + openssl, read-only service account in git-ignored `certs/`).
   - New `.env` keys (empty in git): `GFM_EMAIL`, `GFM_PASSWORD`, `GOOGLE_APPLICATION_CREDENTIALS`, `WEATHERNEXT_PROJECT`, `WEATHERNEXT_DATASET`, `EWDS_API_KEY` — worker only, never the web app; `owner_status.py` checks each with one request and prints no value.
 - **Revisit:** satellite UI if users outside Bangkok ask what the fields look like; WeatherNext after its backtest (owner step WNEXT: subscribe to the listing).
+
+### D-090 — Large-dam releases are not a forecast input (tested); rule curves noted for a future จับตา signal
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "consider การปล่อยน้ำเขื่อน more than เจ้าพระยา, to improve the forecasting models in the other regions")
+- **Evidence:** research/2026-10-04_dam_release_backtest.md — 50 dams, 100 gauges in their HII sub-basins, release lagged 1 day as `star` input: error −0.5 / −0.9 / −0.9 % at 24 / 48 / 72 h, median 0, > 5 % better at 1–3 gauges.
+- **Decision:** not adopted. Kept: the C.13 Chao Phraya Dam release (D-052). **Next:** a "dam above its upper rule curve" signal (same HII call), hourly or planned releases from RID/EGAT.
+
+### D-089 — One national ticker in the top bar: rules gather the facts, AI retells them every 30 min after a check
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "concentrate the all information of Thailand got from the app into a single running scrolling text … periodically update, like every 30 minutes … let AI prepare it into simple, attractive and lovely Thai"; "Do not need to focus only สถานีในภาคกลาง, but provide only the overview of the nation")
+- **Decision:** `situation.facts/rule_text/check/compose`, worker task `situation` (1800 s): the AI text is shown only with no new number, no new province (short forms mapped), no verdict word (incl. "ด่วน"), ≤ 300 characters; one retry; else the rule text. `/api/situation` {text, ai, at}. The top bar shows national counts (words; still the list's status filter) and the ticker; the rain line and the urgent line are folded into it. Amends D-068 (the ticker is the one scheduled AI text; per-place AI stays on request) and D-086.
+
+### D-088 — docs/MODELS.md is the model and calculation reference (Thai summary + English detail)
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "We would like to understand how we can calculate … like Architecture Decision Report … What kind of data do we need more")
+- **Decision:** one document: concept, data flow, QC, status, ladder with parameters and formulas, which models win, hard cases, derived signals, decisions record, limits, ranked data wish-list. Updated with every model change.
+
+### D-087 — Google Flood Hub: collected and validated before anything is shown
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "Validate first, then a 3–7 day outlook")
+- **Evidence:** 103 HYBAS virtual gauges in Thailand, all quality-verified; snapshot 08:24 UTC: 3 SEVERE (2 with our over-bank gauges within 15 km, 1 without any gauge of ours), 2 ABOVE_NORMAL (near bank / watch), NO_FLOODING at 7 places with our gauges over the bank; 31 points beyond 15 km of any gauge of ours; daily discharge 9 days ahead; thresholds per point.
+- **Decision:** collector `google_floodhub` (worker, 6 h): `gfh_gauge`, `gfh_status` (history kept), `gfh_forecast`; key only in the `X-Goog-Api-Key` header, worker only. Revisit after 1–2 weeks of history (Q49): a "Google คาด 3–9 วัน" line where it agrees with our gauges.
+
+### D-086 — The top bar folds; rows 24 / 48 / 72 h (no 12 h)
+- **Date:** 2026-10-04 · **Status:** accepted (owner: collapsible top bar on all screens; "remove trend 12 hr … think about longer term like 24, 48, 72 hr")
+- **Decision:** the fold keeps national counts and the ticker visible; details and freshness inside. Forecast rows 24/48/72 h in sheets and pins, 24 h in list cards; `change72` with the 48 h rules (direction only where proven; 72 h: star wins at 372 gauges, medium confidence 70). `change12` stays in the API for compatibility.
+
+### D-085 — One map layer box: the legend lines are switches
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "Let the all stations can be show and hide in the list box. Try to simplify the categories" → "One box: legend with checkboxes")
+- **Decision:** five statuses, "ยังไม่มีพยากรณ์" rings, DWR posts and Traffy as checkboxes with counts in one box (bottom right), remembered in the browser, folded on phones; the top-left box and the "ไม่มีพิกัด" line removed; hidden categories never change counts elsewhere.
+
+### D-084 — GISTDA satellite cells removed from every display; collector stopped (supersedes D-071, D-078)
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "The satellite cell-info for flood showed in App is not so correct, and might mislead, please consider to remove from display" → "Hide everywhere and stop the collector"; "we will find the new info from this later to replace GISTDA")
+- **Decision:** pin line, AI sentence, sheet line, map toggle, `/api/satellite`, จับตา group, `sat_summary` and the `gistda_flood` collector removed; `sat_flood` kept empty for a future source, which gets its own validation first.
+
+### D-083 — One trend rule for the whole app: "น้ำยังขึ้น" / "ทรงตัวหรือลดลง"
+- **Date:** 2026-10-04 · **Status:** accepted (owner: "Forecast if sure direction: higher, lower, stable. ไม่แน่ชัด can suggest with measured recent change as fallback … show two labels as summary"; names "น้ำยังขึ้น / ทรงตัวหรือลดลง"; status in two dimensions: level × trend)
+- **Decision:** `status.trend` on every station row (computed once in the API, read by every view): the 24 h row when sure (proven ↗/↘, or "→ ทรงตัว" within ±5 cm), else the measured recent pace (the `recent` rule; ≥ +2 cm per 24 h = up); None when stale. Two labels "วัดได้ ↗ · คาด ?". Used by จับตา (over-bank split, coloured pills and province chips), river cards (level + trend counts, rivers and ลำน้ำอื่น alike), the ticker and the summary details. The measured line says "6 ชม. ล่าสุด: …" when the last 6 h differ from the 24 h word (C18).
 
 ### D-082 — Tributaries join their river by HII sub-basin; the river tab lists every gauge of a picked province
 - **Date:** 2026-10-03 · **Status:** accepted (owner: "You can show in river tab, even this province has only one station … is it the expectation from visitors?" → chose a "ลำน้ำอื่น" section; then "The canals which are under the same basin of river, they should be located in the same as that river … คลองนางน้อย is under basin แม่น้ำตรัง")
@@ -599,6 +634,7 @@
 - **Decision:** draw every gauge whose latest reading is < 24 h old, in its status colour; no tested forecast (`trend12` not rising/falling/steady) → white-filled ring in the status colour; legend "ยังไม่มีพยากรณ์" and "ไม่แสดง N สถานีที่ไม่ส่งข้อมูลเกิน 24 ชม."; the top-left control holds the 🛰 and DWR toggles. The list's "📈 เฉพาะที่คาดการณ์ได้" chip is removed. Live check C16.
 
 ### D-078 — Satellite in the station sheet, on the map (toggle) and per province
+> **Superseded 2026-10-04 by D-084:** removed (cells could mislead; owner).
 - **Date:** 2026-10-03 · **Status:** accepted (owner: "We have now the satellite data. Can we apply the info from satellite?" → sheet line + map layer; layer "Toggle, off by default")
 - **Evidence:** GISTDA cells (images 28 Sep – 2 Oct) vs gauges: ≥ 100 rai flooded within 5 km for 38 % of over-bank, 35 % warning, 26 % watch, 8 % normal gauges outside กทม./ปริมณฑล; no cell in Bangkok. Gauges at "watch" inside ~14,000 rai (Yom at Sukhothai, Nan at Nakhon Sawan) and gauges without a bank (PRC001, ATG021) sit in flooded areas.
 - **Decision:** at each download `sat_summary` = rai within 5 km per gauge (only ≥ 100) and per province; sheet line "🛰 ดาวเทียมเห็นน้ำท่วมรอบสถานี (5 กม.) ราว N ไร่ ⓘ" (dates and limits in the ⓘ; seen only, D-071); map toggle drawing `/api/satellite` squares (0.02° / 0.005° / 0.002° by zoom, coarsened to ≤ 5,000), off by default, on from the จับตา group; จับตา group per province. A download replaces our copy only when complete (KI-269).
@@ -636,6 +672,7 @@
 - **Decision:** river chips (Chao Phraya first, then by gauges; the region chip picks the default for north/northeast/east/west/south); rows from the downstream end up; each fresh gauge with a forecast gets the list's "อีก 24 ชม." row (`trendRows`, D-060); stale or unknown gauges say "ไม่อัปเดต" (D-024); BMA gauges stay in the list and map, never in an HII/RID chain (KI-217). River km by `rivers.chainage` (weekly with the river map, `collector_state.river_km`), ±10 km, never used to interpolate water between gauges (D-019).
 
 ### D-071 — Satellite flooding near a pin: "seen" only, from GISTDA, in the pin panel (Q45)
+> **Superseded 2026-10-04 by D-084:** GISTDA cells removed from every display; collector stopped.
 - **Date:** 2026-10-03 · **Status:** accepted (owner: "Q45 : yes")
 - **Decision:** a factor line "ดาวเทียมเห็นน้ำท่วม<บริเวณจุดนี้|ห่างราว N ม.>" with the flooded area within 1 km (rai) and the image dates, when GISTDA's 7-day layer has flooded cells within 1 km of the pin (images ≤ 10 days old). Nothing when none: never "not flooded" (radar is blind among buildings; research/2026-10-02_satellite_flood.md). Does not change the headline or status (gauges judge channels; this is water on the ground, like street reports). Told in the AI story and its lines too.
 - **Rulings (Claude):** GISTDA only (Thai, more satellites; GFM stays research); 1 km radius (as street reports); the 7-day layer's composite image dates (cells carry no own date; the 1/3-day layers were empty on 2026-10-03); a bulk download (no user location is sent to GISTDA), kept as centre + area + place in `sat_flood`; runs in the forecaster container (~7 min per download). *Amended v0.20.5 (KI-268):* not "every 20 h" but when an hourly probe shows a new, finished layer (or our copy is > 36 h old).

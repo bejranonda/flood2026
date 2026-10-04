@@ -631,6 +631,12 @@ The owner asked for the same experience everywhere. What changed, and the eviden
 - **Tributaries:** HII sub-basin id; a gauge without its own river view joins the view with the most gauges in its sub-basin; listed after the chain (no confluence points).
 - **DWR posts:** separate tables, 30-min archive, measured 24 h change and stuck test (one value ≥ 90 % of ≥ 24 readings) only; never compared with m MSL gauges.
 
+### 19.16 One trend rule, the national ticker, 72 h rows, Flood Hub, dam releases (v0.22.0–v0.23.0, D-083–D-090)
+- **Trend group (`status.trend`):** forecast first when the 24 h row is sure (proven direction or narrow "ทรงตัว"), else the measured recent pace (`recent` rule); one field per station row, read by every view; two labels "วัดได้ · คาด".
+- **National ticker (`situation.py`):** facts by rules from the app's own API; AI retelling every 30 min accepted only if it adds no number, no province (short forms mapped), no verdict and stays ≤ 300 characters; one retry; the rule text otherwise.
+- **Horizons shown:** 24 / 48 / 72 h; 72 h uses the 48 h presentation rules (direction only where a real model proved it).
+- **Outside forecasts:** Google Flood Hub is stored and compared with our gauges (same river point within 15 km) before any display; dam releases as `star` inputs were tested and rejected (no gain, research/2026-10-04_dam_release_backtest.md).
+
 ## 20. Forecasting 48 h ahead and outside forecasts (D-050, 2026-09-27)
 Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../research/2026-09-27_forecast_48h.md).
 - **What is shown:** 12 h and 24 h change per gauge (§4, `change_summary`); a **48 h line only where the 48 h backtest gives "medium"** (7 of 102 gauges on 2026-09-27, all tidal river/estuary). At high gauges with no forecast fall: "ยังไม่เห็นแนวโน้มลดลงใน 24 ชม. ข้างหน้า". Never "stable for 48 h".

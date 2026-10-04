@@ -9,6 +9,8 @@
 | # | Question | Why it matters | Priority |
 |---|---|---|---|
 | **Q28** | **Review of branch `research/nationwide-scope`**: merge the issue #1 fix and the validated plan? Then which step of D-045 first (HII canal feed as primary, BMA road sensors, tide, RID thresholds)? | Nothing from the branch is live until you review (A30) | **1** |
+| **Q49** | **Google Flood Hub after 1–2 weeks (D-087):** show a "Google คาด 3–9 วัน" line where it agreed with our gauges, or keep it as a back-office cross-check? | It adds lead time and 31 river points without our gauges, but missed 7 over-bank places in the first snapshot | 2 |
+| **Q50** | **A จับตา group for dams above their upper rule curve (D-090)?** Same HII call; "a release increase is likely" | Operations decide the lower rivers; this is the closest public signal we have | 2 |
 | **Q46** | **DWR posts after 2–4 weeks of archive (D-081):** show them beyond the trend-only layer (e.g. in pin panels where no gauge is within 10 km), and test them as upstream inputs? | 362 fresh posts, mostly where our gauges are thin; quality unknown until our own history exists | 2 |
 | **Q47** | **Allow 3–4 learned upstream gauges per gauge?** The ablation showed the second upstream gauge adds as much as the first (no saturation at 2) | Cheap gain from stations we already have; needs a backtest of 3–4 | 2 |
 | **Q48** | **Bank values (KI-272):** may we spot-check RID's published bank ("ตลิ่ง") for the 14 red gauges whose HII fields disagree, and correct confirmed ones? | A wrong bank makes a red "ล้นตลิ่ง" or hides one | 1 |

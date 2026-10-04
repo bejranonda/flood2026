@@ -36,20 +36,21 @@ Real-time water levels of canals and rivers across Thailand — 1,000+ gauges fr
 - **Plain words, instant AI helper and voice readout.** Each pin has a plain-language line, and one button opens an instant plain-Thai summary (zero-wait UX: deterministic rule narrative renders immediately; GLM's warm retelling polishes it in the background). Strict safety checks ensure no invented numbers or safety verdicts. Includes a "🔊 ฟังเสียง" voice readout for elderly and visually impaired residents via the Web Speech API. Works completely without AI (`AI_EXPLAIN=0`).
 - **Bad data is hidden, not shown as fact.** Single-reading dropouts are removed; gauges next to pumps or with stuck sensors keep their dot and chart, but not a level or a trend.
 - **Built for a phone during a flood.** Thai first, short panels, place search (ซอย/ถนน/ย่าน), map, **river views for 62 waterways** (every natural river with ≥ 3 gauges): pick ภาค · จังหวัด · แม่น้ำ, see each river from upstream (top) to downstream with every gauge's 24 h forecast, or the "ทุกสาย" overview of a region's rivers; each station links to its river, share links, and a one-tap water report from where you are.
-- **What the satellite saw.** Where GISTDA's radar mapped flooding within 1 km of a place in the last 7 days, the panel says so (only what was seen: radar cannot see water among buildings).
+- **What to watch, at a glance.** The ⚠️ จับตา tab lists the next 24–48 h risks: over the bank (still rising / steady or falling, as coloured pills and province chips), may reach the bank, water coming from upstream, fast rises and heavy rain — each with the app's own track record ("6 ใน 10"). One running line in the top bar sums up all of Thailand every 30 minutes, written from the app's facts and retold in plain Thai by AI only after a check.
+- **Every status in two dimensions.** How full (ล้นตลิ่ง · ใกล้ตลิ่ง · เฝ้าระวัง · ยังรับน้ำได้) and where it is going (น้ำยังขึ้น / ทรงตัวหรือลดลง: the forecast when it is sure, the measured recent change otherwise), the same everywhere; forecasts 24, 48 and 72 h ahead.
 - **Open.** MIT-licensed code and a free, key-less JSON API.
 
 ## How it works
 ```mermaid
 flowchart LR
-  S["HII · BMA canals · RID · Open-Meteo rain · Traffy reports · GISTDA satellite"] --> C["Collectors<br/>(raw archive, every 5–10 min)"]
+  S["HII · BMA canals · RID · Open-Meteo rain · Traffy reports · DWR posts · Google Flood Hub"] --> C["Collectors<br/>(raw archive, every 5–10 min)"]
   C --> DB[("Postgres")]
   DB --> Q["Quality control<br/>dropouts · erratic & stuck gauges · measured trend"]
   Q --> F["Forecasts per gauge<br/>backtested per horizon, conformal ranges"]
   F --> API["FastAPI (JSON)"]
   API --> W["Thai web app<br/>list · map · point check"]
 ```
-One server with `docker compose`, published through a Cloudflare Tunnel (no open ports). Methods: [APPROACH_AND_METHODS](docs/APPROACH_AND_METHODS.md) · design: [ARCHITECTURE](docs/ARCHITECTURE.md).
+One server with `docker compose`, published through a Cloudflare Tunnel (no open ports). Models and formulas: [MODELS](docs/MODELS.md) · methods: [APPROACH_AND_METHODS](docs/APPROACH_AND_METHODS.md) · design: [ARCHITECTURE](docs/ARCHITECTURE.md).
 
 ## Data sources
 | Source | What we use | Status |
@@ -61,6 +62,8 @@ One server with `docker compose`, published through a Cloudflare Tunnel (no open
 | Traffy Fondue | Street-flood reports around each gauge (counts only) | 🟡 often overloaded; age shown |
 | OpenStreetMap Nominatim | Place search, on request only (queries are never stored) | ✅ live |
 | GISTDA, Copernicus GFM (satellite flood maps), GloFAS, Google WeatherNext | Tested 2026-10-02: satellites are blind among Bangkok's buildings, GloFAS adds nothing to a 3–7 day outlook here, WeatherNext's rain may not be shown publicly (backtest only) | 🔬 research only ([D-069](docs/plan/DECISIONS.md)) |
+| Google Flood Hub (Flood Forecasting API) | 103 river points in Thailand: flood status, thresholds, 9-day discharge; collected every 6 h and compared with our gauges | 🔬 validating, not shown ([D-087](docs/plan/DECISIONS.md)) |
+| DWR early-warning posts (กรมทรัพยากรน้ำ) | 455 village level posts; local datum, so shown as measured change only | ✅ trend-only map layer ([D-081](docs/plan/DECISIONS.md)) |
 
 Full registry, including endpoints that were tested and refuted: [SOURCES](docs/SOURCES.md).
 
@@ -109,6 +112,7 @@ Live since 2026-09-26, built during the 2026 flood; current release in the badge
 |---|---|
 | [HANDOFF](HANDOFF.md) | What is live, how to operate it, what to do next |
 | [KNOWLEDGE](docs/KNOWLEDGE.md) | The "three waters", datums, stations, polders, the 2026 event |
+| [MODELS](docs/MODELS.md) | **How the app calculates** (Thai summary + English): formulas, parameters, which models win, hard cases, what we tried and why, data wish-list |
 | [APPROACH_AND_METHODS](docs/APPROACH_AND_METHODS.md) | QC, forecasts, backtests, conformal ranges, point check |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) · [SOURCES](docs/SOURCES.md) | System design · every data source and its test status |
 | [KNOWN_ISSUES](docs/KNOWN_ISSUES.md) · [GUIDELINES](docs/GUIDELINES.md) | Pitfalls with status (KI-IDs) · rules for code, data and UX |
@@ -145,4 +149,4 @@ Live since 2026-09-26, built during the 2026 flood; current release in the badge
 Issues and pull requests are welcome: [open an issue](https://github.com/bejranonda/flood2026/issues). Please read [GUIDELINES](docs/GUIDELINES.md) first (evidence rule, no secrets, short panel text) and run the tests.
 
 ## License and attribution
-Code: [MIT](LICENSE). Data: HII/สสน., RID/กรมชลประทาน, BMA/กทม., TMD, GISTDA, Traffy Fondue, Open-Meteo / Copernicus GloFAS, OpenStreetMap contributors — each under its own terms. Official contacts: กทม. **1555** · ศูนย์ป้องกันน้ำท่วม กทม. **02-248-5115** · ปภ. **1784** · กรมชลประทาน **1460** · [thaiwater.net](https://www.thaiwater.net).
+Code: [MIT](LICENSE). Data: HII/สสน., RID/กรมชลประทาน, BMA/กทม., DWR/กรมทรัพยากรน้ำ, TMD, Traffy Fondue, Google Flood Hub (validation only), Open-Meteo / Copernicus GloFAS, OpenStreetMap contributors — each under its own terms. Official contacts: กทม. **1555** · ศูนย์ป้องกันน้ำท่วม กทม. **02-248-5115** · ปภ. **1784** · กรมชลประทาน **1460** · [thaiwater.net](https://www.thaiwater.net).

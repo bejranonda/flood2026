@@ -719,3 +719,18 @@ Found 2026-10-04 validating the AI summary ("✨ ให้ AI สรุปให
 - **Stiff Thai phrasing & repetitive "และ":** `_easy_rain` joined clauses with repeated `"และ"` (`"เพิ่งมีฝนตก... และอีกหนึ่งวันข้างหน้าคาดว่า..."`), and `_bank` printed `"น้ำขึ้นไม่เกิน 0 ซม."` when max rise was ≤ 0 cm.
   - **Fix:** Template updated to `"ต่อไป..."` and `"น้ำไม่เคยขึ้นเกินระดับนี้"`, and refined system prompt for warm, gentle spoken Thai.
 - **Voice accessibility:** Added "🔊 ฟังเสียง" voice readout button for elderly/vision-impaired users using Web Speech API (`SpeechSynthesisUtterance` with `th-TH`).
+
+### KI-276 — Sheet rows and chart could come from different forecast runs for up to a minute · 🟢 fixed v0.22.0
+Live check 2026-10-03 (C15: 3 rows on WL.KTY.01/WL.BNA.01): the rows came from the 60 s station snapshot, the chart from the newest run. The sheet now loads the run the snapshot used (`api.forecast_query`).
+
+### KI-277 — A card said "เพิ่มขึ้น" while its trend group said "ทรงตัวหรือลดลง" · 🟢 fixed v0.22.0
+2026-10-04, 101 gauges: the 24 h measured word was a rise, the recent pace (the last 6 h stopped or turned, e.g. C.67 +5 cm in 24 h, −0.9 cm in 6 h) put the gauge in "ทรงตัวหรือลดลง". The measured line now adds "6 ชม. ล่าสุด: …" whenever the last 6 h differ (check C18).
+
+### KI-278 — The top-bar rain line read as rain all over the country · 🟢 fixed v0.22.0 / v0.23.0
+Owner: "'🌧️ ทั่วประเทศ: 24 ชม. ที่ผ่านมา ฝนหนักมาก 142 มม.' > I might understand that the heavy rainfall is all over Thailand". v0.22.0 named the gauge and province (and filtered by a picked province: Trang picked showed Khon Kaen); v0.23.0 moved rain into the national ticker (D-089).
+
+### KI-279 — AI summaries: "good news" framing, mixed voices, filler openings, "เริ่มสูง" read as rising · 🟢 fixed v0.23.0
+Live review of 12 pins (2026-10-04): 10 passed the check, but texts opened with "ข่าวดีคือ…", "เดี๋ยวเล่าให้ฟังนะคะ", mixed นะคะ/นะ, said "น้ำในสะพาน…", and one turned the watch-level word "เริ่มสูง" into "เริ่มสูงขึ้น" next to "ลดลงมาก". Prompt defines the words and names stations as stations; the check rejects "ข่าวดี", gendered particles and filler openings (tone, filler opening).
+
+### KI-280 — The first AI ticker sounded alarmed and over-generalised · 🟢 fixed v0.23.0
+Live trials 2026-10-04: "เร่งด่วน:", "ด่วน!" openings; "11 สถานี ในพระนครศรีอยุธยา ฉะเชิงเทรา และพิษณุโลก" while those provinces held 8 of the 11 rising gauges. Prompt: calm, ≤ 250 characters, examples said as examples; facts carry "เช่น" when the top provinces do not hold them all; the check rejects "ด่วน".

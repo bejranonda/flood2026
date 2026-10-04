@@ -14,7 +14,7 @@
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
 | **GLM** | GLM API key (`GLM_API_KEY` in `.env`) for AI feedback triage | ✅ **works** (verified live with `glm-5.3-flash`, D-030) | |
 | **GISTDA** | GISTDA key works for the flood-extent service | ✅ **works** (2026-09-27 10:05 UTC): the key was fine; our endpoint path and key placement were outdated (KI-510). Fixed from the docs link you sent | |
-| **GFLOOD** | Google Flood Forecasting API key (`GOOGLE_FLOOD_API_KEY`) | ⬜ open — you chose to apply (2026-09-27) | 2 |
+| **GFLOOD** | Google Flood Forecasting API key (`GOOGLE_FLOOD_API_KEY`) | ✅ done 2026-10-04 (key in `.env`; collector `google_floodhub`, D-087) | 2 |
 | **WNEXT** | WeatherNext 3: Cloud project + BigQuery listing + read-only service-account key (research only, D-069) | ⬜ **one step left** (2026-10-02 21:00 UTC): key and `.env` work (token ✅; path fixed to `/certs/…`), but the project has no dataset → **subscribe to the WeatherNext 3 listing** (step 2 below, linked dataset `weathernext_3`) | 1 |
 | **GFM** | GFM portal login in `.env` (optional: the maps are keyless) | ✅ **works** (2026-10-02 20:45 UTC, HTTP 200 + token) | |
 | **EWDS** | EWDS token for archived GloFAS forecasts | ✅ **works** (HTTP 200), but **not needed now**: GloFAS failed its upper-bound test (D-069) | |
