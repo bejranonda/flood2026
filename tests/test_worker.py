@@ -86,3 +86,22 @@ def test_gistda_is_gone_from_the_schedule_and_the_collectors():
     from floodwatch import collectors
     assert "gistda_flood" not in dict(worker.FORECASTER_TASKS) and "gistda_flood" not in worker.FIRST_RUN["forecaster"]
     assert not hasattr(collectors, "gistda_flood")
+
+
+def test_the_schema_step_gives_up_quickly_when_a_lock_is_held(monkeypatch):
+    # 2026-10-04 19:15 UTC: a research job held a transaction open; the collector's schema step (ALTER TABLE takes an
+    # exclusive lock even when nothing changes) waited behind it and every page query queued behind the schema step —
+    # the site was down ~12 min. With a lock timeout the step fails fast and the start-up loop retries.
+    import contextlib
+    from floodwatch import db
+    seen = []
+
+    class Conn:
+        def execute(self, sql, *a):
+            seen.append(sql.strip().split("\n")[0][:40])
+        def commit(self):
+            seen.append("COMMIT")
+
+    monkeypatch.setattr(db, "connect", contextlib.contextmanager(lambda: (yield Conn())))
+    db.init_schema()
+    assert seen[0].startswith("SET LOCAL lock_timeout") and seen[-1] == "COMMIT"

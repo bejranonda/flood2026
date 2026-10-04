@@ -6,6 +6,9 @@ the result and error or uncertainty"). The honest protocol of research/2026-10-0
 - the served method (best + the 10 % gate) is chosen on the first half of the window (A) and scored on the second (B);
 - variants are picked on gauge sample 1 and confirmed on the disjoint sample 2 (same seed for every experiment).
 
+Open the database with `floodwatch.db.connect_readonly()` (autocommit, read-only): a long run inside one transaction
+blocked the collector's schema step and took the site down for ~12 min on 2026-10-04 (KI-284).
+
 Mount it read-only and import it from a research script:
   docker compose run --rm --no-deps -T -e PYTHONPATH=/app/src:/research -v "$PWD/src:/app/src:ro" \
       -v "$PWD/research:/research:ro" worker python - ARGS < research/<experiment>.py

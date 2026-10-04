@@ -749,3 +749,11 @@ Owner (T.13, BKK017): "↘ น่าจะลดลง" beside a flat line and b
   The 0.1° global grid (`weathernext_3_0_0_0p1deg`) is partitioned by `init_time` (each hourly initialization is ~56 GB unclustered). Dynamic timestamp expressions like `t.init_time >= TIMESTAMP_SUB(...)` prevent BigQuery from pruning partitions during query planning, causing dry runs to report 4,943+ GB. Specifying exact literal partition timestamps (`t.init_time = TIMESTAMP(...)` or `t.init_time IN (...)`) prunes partition scans down to ~56 GB per initialization.
   Crucially, BigQuery dry runs compute upper bounds on partitions before spatial clustering. At query execution time, BigQuery GIS clustering on `geography` takes effect: querying Bangkok with `ST_INTERSECTS(t.geography_polygon, ST_GEOGPOINT(100.5, 13.75))` scanned only **17.3 MB** (17,347,968 bytes) instead of 56 GB. Rigid dry-run thresholds (e.g. `MAX_GB = 50`) falsely reject queries that actually cost under 20 MB.
 
+### KI-284 — A long research transaction blocked the schema step and took the site down (~12 min) · 🟢 fixed v0.25.0
+2026-10-04 ~19:15–19:27 UTC. A research run (`docker compose run … worker python - < research/2026-10-04_upstream_k.py`) kept one
+read transaction open for its whole run (`db.connect()` is not autocommit). A redeploy restarted the collector, whose start-up
+`init_schema` runs `ALTER TABLE … ADD COLUMN IF NOT EXISTS` — an ACCESS EXCLUSIVE lock even when nothing changes — and waited
+behind the research transaction; every page query then queued behind the waiting ALTER (pg_blocking_pids: app queries →
+schema pid → research pid). /api/health timed out. Recovered when the owner stopped the research container. Fixes:
+`init_schema` sets `lock_timeout = 5s` (fails fast, the start-up loop retries); research scripts use the new
+`db.connect_readonly()` (autocommit, read-only); never redeploy while a research job is running (GUIDELINES §research).

@@ -19,11 +19,26 @@ def connect() -> Iterator[psycopg.Connection]:
         yield conn
 
 
+SCHEMA_LOCK_TIMEOUT_S = 5  # ALTER TABLE takes an exclusive lock even when nothing changes; every query queues behind it
+
+
 def init_schema() -> None:
+    """Apply schema.sql. With a lock timeout: if any session holds a lock (2026-10-04: a research job's open
+    transaction), the step fails within seconds and the start-up loop retries, instead of queueing the site (KI-284)."""
     sql = resources.files("floodwatch.db").joinpath("schema.sql").read_text()
     with connect() as c:
+        c.execute(f"SET LOCAL lock_timeout = '{SCHEMA_LOCK_TIMEOUT_S}s'")
         c.execute(sql)
         c.commit()
+
+
+@contextmanager
+def connect_readonly() -> Iterator[psycopg.Connection]:
+    """For research scripts and one-off checks: autocommit, read-only, so a long run never holds locks between
+    statements (KI-284)."""
+    with psycopg.connect(settings.database_url, row_factory=dict_row, autocommit=True) as conn:
+        conn.execute("SET default_transaction_read_only = on")
+        yield conn
 
 
 def upsert_station(c: psycopg.Connection, s: dict[str, Any]) -> None:

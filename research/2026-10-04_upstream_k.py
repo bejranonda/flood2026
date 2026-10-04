@@ -14,7 +14,7 @@ from floodwatch.forecast import upstream as U
 N, K = int(sys.argv[1]), int(sys.argv[2])
 VARIANTS = {"K2/180d (today)": (2, 180), "K3/180d": (3, 180), "K4/180d": (4, 180), "K2/90d": (2, 90), "K4/90d": (4, 90)}
 sc = H.Score()
-with db.connect() as c:
+with db.connect_readonly() as c:
     chain = F._chainage()
     codes = [x for x in H.sample_codes(c, N * 3, K, "NOT s.in_focus AND s.agency IS DISTINCT FROM 'BMA'") if x not in chain][:N]
     meta = {r["code"]: r for r in c.execute("""SELECT code, COALESCE(basin22, basin) AS basin, lat, lon, in_focus, river_system
