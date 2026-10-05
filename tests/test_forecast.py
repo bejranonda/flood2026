@@ -315,3 +315,13 @@ def test_a_cached_backtest_from_older_star_inputs_is_redone():
     row["payload"]["24"]["star_inputs"] = forecast.STAR_INPUTS
     assert forecast.model_is_fresh(row, 1000, now)
     assert forecast.evaluate(*forecast.hourly_grid(*_synthetic(days=30)))[24]["star_inputs"] == forecast.STAR_INPUTS
+
+
+def test_widen90_scales_only_the_90_band_around_the_median_by_horizon_and_kind():
+    path = [{"h": h, "method": "star" if h > 12 else "persistence", "q": [0.8, 0.9, 1.0, 1.1, 1.2]} for h in (12, 24, 48, 72)]
+    f = {"24": {"model": 1.2, "no change": 1.4}, "48": {"model": 1.5, "no change": 1.5}, "72": {"model": 2.0, "no change": 2.0}}
+    out = forecast.widen90(path, f)
+    by = {p["h"]: p["q"] for p in out}
+    assert by[24] == [0.76, 0.9, 1.0, 1.1, 1.24] and by[72] == [0.6, 0.9, 1.0, 1.1, 1.4]
+    assert by[12] == [0.76, 0.9, 1.0, 1.1, 1.24]  # 12 h: half way from 1.0 to the 24 h "no change" factor 1.4 -> 1.2
+    assert forecast.widen90(path, None) == path

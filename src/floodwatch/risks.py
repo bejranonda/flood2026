@@ -232,6 +232,46 @@ def lean_record(runs: list[dict], hourly: dict) -> dict:
     return {h: _rate(v) for h, v in acc.items()}
 
 
+BAND90_DAYS = 5      # rolling window for the 90 % band factor (research/2026-10-05_band_calibration_rolling.log)
+BAND90_MIN_N = 100
+BAND90_GRID = [round(1.0 + 0.05 * k, 2) for k in range(41)]  # 1.00 … 3.00
+
+
+def band90_factors(runs: list[dict], hourly: dict, now) -> dict:
+    """Q54 (owner 2026-10-05: "Yes"): per horizon and kind (real model / "no change"), the smallest factor (>= 1, a band
+    may widen, never narrow) by which the served 90 % band's offsets around the median must grow so that 9 in 10 of the
+    last BAND90_DAYS days' outcomes fall inside; 1.0 with fewer than BAND90_MIN_N cases. Only outcomes already known
+    (issue time + h <= now). The 50 % band stays as served: daily refitting overshot it (same research)."""
+    acc: dict = {}
+    for r in runs:
+        if r.get("now") is None:
+            continue
+        ser, t0 = hourly.get(r["code"]) or {}, r["issue_time"].replace(minute=0, second=0, microsecond=0)
+        for p in r.get("path") or []:
+            if not p or not p.get("q") or p.get("h") not in (24, 48, 72):
+                continue
+            h = p["h"]
+            if t0 + dt.timedelta(hours=h) > now or t0 < now - dt.timedelta(days=BAND90_DAYS) - dt.timedelta(hours=h):
+                continue
+            y = ser.get(t0 + dt.timedelta(hours=h))
+            if y is None:
+                continue
+            q = p["q"]
+            kind = "no change" if p.get("method") in (None, "persistence") else "model"
+            acc.setdefault((h, kind), []).append((q[0] - q[2], q[4] - q[2], y - q[2]))
+    out: dict = {str(h): {"model": 1.0, "no change": 1.0} for h in (24, 48, 72)}
+    for (h, kind), v in acc.items():
+        if len(v) < BAND90_MIN_N:
+            continue
+        for k in BAND90_GRID:
+            if sum(k * lo - 1e-9 <= a <= k * hi + 1e-9 for lo, hi, a in v) >= 0.9 * len(v):
+                out[str(h)][kind] = k
+                break
+        else:
+            out[str(h)][kind] = BAND90_GRID[-1]
+    return out
+
+
 RUNS_SQL = """
 WITH pick AS (
   SELECT DISTINCT ON (code, date_trunc('day', issue_time), extract(hour from issue_time)::int / 6) id
@@ -293,7 +333,7 @@ def compute_records(c) -> dict:
     by_hour = {code: dict(v) for code, v in mean.items()}
     lean_runs = [{"code": r["code"], "issue_time": r["issue_time"], "now": r["now"], "path": [r["p24"], r["p48"], r["p72"]]}
                  for r in c.execute(LEAN_SQL, {"since": since}).fetchall()]
-    rec = {"lean": lean_record(lean_runs, by_hour),
+    rec = {"lean": lean_record(lean_runs, by_hour), "band90": band90_factors(lean_runs, by_hour, now),
            "bank_24": bank_record(r24, hi, banks, 24), "bank_48": bank_record(r48, hi, banks, 48),
            "upstream": upstream_record(pairs, series), "fast_rise": rise_record(rise, mean),
            "window_days": WINDOW_DAYS, "computed_at": now.isoformat()}

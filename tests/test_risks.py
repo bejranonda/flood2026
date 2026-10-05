@@ -132,3 +132,18 @@ def test_lean_record_counts_how_often_an_unsure_row_went_the_measured_way():
     runs = [{"code": "A", "issue_time": T0, "now": 1.0, "path": path}, {"code": "B", "issue_time": T0, "now": 1.0, "path": path}]
     rec = risks.lean_record(runs, {"A": up, "B": flat_after})
     assert rec["24"] == {"n": 2, "hit": 0.5}
+
+
+def test_band90_factor_is_the_smallest_widening_that_makes_the_90_band_hold_and_never_below_one():
+    # Q54 (owner 2026-10-05: "Yes"): rolling, no future — research/2026-10-05_band_calibration_rolling.log
+    now = T0 + 10 * 24 * H
+    q = [0.9, 0.95, 1.0, 1.05, 1.1]  # 90 % band ±10 cm around the median 1.0
+    def runs(code, n):
+        return [{"code": code, "issue_time": now - (k + 30) * H, "now": 1.0,
+                 "path": [{"h": 24, "q": q, "method": "star"}, None, None]} for k in range(n)]
+    wide = {now - (k + 30) * H + 24 * H: 1.0 + (0.15 if k % 5 == 0 else 0.0) for k in range(150)}  # 20 % land 15 cm out
+    f = risks.band90_factors(runs("A", 150), {"A": wide}, now)
+    assert f["24"]["model"] == 1.5  # the smallest k with 90 % inside: 0.10 × 1.5 = 0.15
+    calm = {t: 1.0 for t in wide}
+    assert risks.band90_factors(runs("A", 150), {"A": calm}, now)["24"]["model"] == 1.0  # never narrows
+    assert risks.band90_factors(runs("A", 40), {"A": wide}, now)["24"]["model"] == 1.0  # too few cases: unchanged

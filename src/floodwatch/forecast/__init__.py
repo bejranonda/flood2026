@@ -376,7 +376,8 @@ def model_is_fresh(row: dict | None, n_rows: int, now: dt.datetime) -> bool:
 
 
 def forecast_station(code: str, times: list[dt.datetime], values: list[float], bank: float | None,
-                     rain_next24: float | None, exo: dict | None = None, ev: dict | None = None) -> dict | None:
+                     rain_next24: float | None, exo: dict | None = None, ev: dict | None = None,
+                     band90: dict | None = None) -> dict | None:
     """The 72 h path for one gauge. `ev`: a cached backtest (forecast_model, D-064); None runs evaluate() here."""
     t, y = hourly_grid(times, values)
     if len(y) == 0:
@@ -426,6 +427,7 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
             path.append({"h": hh, "method": method, "q": [round(p + qi, 3) for qi in q]})
         else:
             path.append({"h": hh, "method": method, "q": None, "p": round(p, 3)})
+    path = widen90(path, band90)  # Q54: the 90 % band holds as stated (daily factor from our own record, D-098)
     med12 = path[11]["q"][2] if path[11]["q"] else None
     trend = "unknown"
     if med12 is not None:
@@ -437,7 +439,33 @@ def forecast_station(code: str, times: list[dt.datetime], values: list[float], b
             "skill": {str(h): v for h, v in ev.items()}, "history_hours": int(np.isfinite(y).sum()),
             "tide_fitted": eta is not None, "outlook24": outlook24(path, bank),
             "outlook48": {"bank_chance": bank_chance(path, bank, 48)},
-            "recovery": recovery(y, ybar, y0, bank, path, rain_next24)}
+            "recovery": recovery(y, ybar, y0, bank, path, rain_next24), "band90": band90}
+
+
+def _k90(hh: int, kind: str, band90: dict) -> float:
+    """The 90 % band factor at hh hours: piecewise linear through 1.0 at 0 h and the 24/48/72 h factors."""
+    pts = [(0, 1.0)] + [(h, float((band90.get(str(h)) or {}).get(kind, 1.0))) for h in (24, 48, 72)]
+    for (h0, k0), (h1, k1) in zip(pts, pts[1:]):
+        if hh <= h1:
+            return k0 + (k1 - k0) * (hh - h0) / (h1 - h0)
+    return pts[-1][1]
+
+
+def widen90(path: list[dict], band90: dict | None) -> list[dict]:
+    """Q54 (D-098): widen the 90 % band (q0, q4) around the median by the daily factor of its horizon and kind; the
+    50 % band (q1-q3, the numbers on the rows) stays as served. None -> unchanged."""
+    if not band90:
+        return path
+    out = []
+    for p in path:
+        if not p.get("q"):
+            out.append(p)
+            continue
+        q = list(p["q"])
+        k = _k90(p["h"], "no change" if p.get("method") in (None, "persistence") else "model", band90)
+        q[0], q[4] = round(q[2] - k * (q[2] - q[0]), 3), round(q[2] + k * (q[4] - q[2]), 3)
+        out.append({**p, "q": q})
+    return out
 
 
 def outlook24(path: list[dict], bank: float | None) -> dict | None:
@@ -632,6 +660,7 @@ def run_all() -> int:
                WHERE w.valid_time BETWEEN now() AND now() + interval '24 hours' GROUP BY w.point""").fetchall()}
         models = {r["code"]: r for r in c.execute("SELECT code, trained_at, n_rows, payload FROM forecast_model").fetchall()}
         erratic = db.get_state(c, "erratic_gauges") or {}
+        band90 = (db.get_state(c, "risk_record") or {}).get("band90")  # Q54: daily 90 % band factors (D-098)
     n = retrained = 0
     from floodwatch.config import DATUM_SUSPECT
     cache: dict = {}
@@ -661,7 +690,8 @@ def run_all() -> int:
         fresh = model_is_fresh(model, len(rows), now)
         try:
             fc = forecast_station(s["code"], [r["obs_time"] for r in rows], [r["level_msl"] for r in rows],
-                                  s["bank_msl"], rain24, exo, ev=ev_from_json(model["payload"]) if fresh else None)
+                                  s["bank_msl"], rain24, exo, ev=ev_from_json(model["payload"]) if fresh else None,
+                                  band90=band90)
         except Exception:
             log.exception("forecast %s failed", s["code"])
             continue

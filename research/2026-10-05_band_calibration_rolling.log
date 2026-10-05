@@ -1,0 +1,24 @@
++24 h model:
+   none: 9 days, |cov−50%|  3.0 pts, |cov−90%|  4.6 pts, 50 % held 48.8%, 90 % held 85.9%, width  18.8 cm
+   W2: 6 days, |cov−50%|  5.3 pts, |cov−90%|  3.0 pts, 50 % held 50.4%, 90 % held 90.7%, width  20.0 cm
+   W3: 6 days, |cov−50%|  5.4 pts, |cov−90%|  3.1 pts, 50 % held 50.5%, 90 % held 91.1%, width  20.0 cm
+   W5: 6 days, |cov−50%|  5.6 pts, |cov−90%|  3.2 pts, 50 % held 50.8%, 90 % held 91.2%, width  20.2 cm
++24 h no change:
+   none: 9 days, |cov−50%|  5.9 pts, |cov−90%|  3.5 pts, 50 % held 48.0%, 90 % held 88.0%, width  19.7 cm
+   W2: 7 days, |cov−50%|  7.9 pts, |cov−90%|  2.9 pts, 50 % held 54.2%, 90 % held 92.3%, width  24.0 cm
+   W3: 7 days, |cov−50%|  8.7 pts, |cov−90%|  2.6 pts, 50 % held 55.0%, 90 % held 92.5%, width  24.9 cm
+   W5: 7 days, |cov−50%|  9.2 pts, |cov−90%|  2.9 pts, 50 % held 55.5%, 90 % held 92.9%, width  25.4 cm
++48 h model:
+   none: 8 days, |cov−50%|  5.6 pts, |cov−90%|  4.6 pts, 50 % held 52.8%, 90 % held 87.6%, width  32.5 cm
+   W3: 4 days, |cov−50%|  2.6 pts, |cov−90%|  1.5 pts, 50 % held 49.9%, 90 % held 90.5%, width  33.7 cm
+   W5: 4 days, |cov−50%|  2.7 pts, |cov−90%|  0.9 pts, 50 % held 48.9%, 90 % held 90.8%, width  32.9 cm
++48 h no change:
+   none: 8 days, |cov−50%| 12.1 pts, |cov−90%|  7.7 pts, 50 % held 40.9%, 90 % held 83.0%, width  29.8 cm
+   W3: 5 days, |cov−50%| 12.8 pts, |cov−90%|  4.3 pts, 50 % held 62.8%, 90 % held 93.9%, width  54.2 cm
+   W5: 5 days, |cov−50%| 14.0 pts, |cov−90%|  5.4 pts, 50 % held 64.0%, 90 % held 95.4%, width  56.3 cm
++72 h model:
+   none: 7 days, |cov−50%|  6.8 pts, |cov−90%|  7.4 pts, 50 % held 52.0%, 90 % held 85.1%, width  46.0 cm
+   W5: 2 days, |cov−50%|  4.3 pts, |cov−90%|  4.1 pts, 50 % held 49.6%, 90 % held 88.5%, width  49.6 cm
++72 h no change:
+   none: 7 days, |cov−50%| 11.8 pts, |cov−90%| 13.7 pts, 50 % held 38.8%, 90 % held 76.3%, width  40.0 cm
+   W5: 3 days, |cov−50%| 13.6 pts, |cov−90%|  3.8 pts, 50 % held 63.6%, 90 % held 93.8%, width  77.2 cm
