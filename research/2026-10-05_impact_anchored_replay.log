@@ -1,0 +1,15 @@
+lags {'B.10': 24, 'B.16': 31, 'B.15': 38, 'PCH001': 36}
+B.10    all n 1047 · anchored model  24.7 cm · keep today's level  12.5 cm
+B.10    big n  105 · anchored model 108.3 cm · keep today's level  24.9 cm
+B.16    all n  835 · anchored model  98.9 cm · keep today's level  13.5 cm
+B.16    big n  318 · anchored model 175.5 cm · keep today's level  13.7 cm
+B.15    all n  691 · anchored model 112.0 cm · keep today's level  32.5 cm
+B.15    big n  390 · anchored model 155.1 cm · keep today's level  34.6 cm
+PCH001  all n  911 · anchored model  89.0 cm · keep today's level  17.2 cm
+PCH001  big n  440 · anchored model 136.4 cm · keep today's level  17.6 cm
+
+learned gain:
+B.10    gain  1.64 cm per m³/s (fit n 1564) all: n 1047 model  12.0 cm vs keep  12.5 cm · big: n 105 model  29.7 cm vs keep  24.9 cm
+B.16    gain  0.26 cm per m³/s (fit n 1176) all: n 835 model  13.4 cm vs keep  13.5 cm · big: n 318 model  14.0 cm vs keep  13.7 cm
+B.15    gain  1.28 cm per m³/s (fit n 1192) all: n 835 model  45.4 cm vs keep  32.9 cm · big: n 430 model  59.2 cm vs keep  34.9 cm
+PCH001  gain  0.74 cm per m³/s (fit n 1248) all: n 1015 model  22.5 cm vs keep  16.9 cm · big: n 509 model  28.1 cm vs keep  17.0 cm

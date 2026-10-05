@@ -39,3 +39,18 @@ ONWR/RID data are loaded the password must be a long passphrase** (OWNER_ACTIONS
 ## Next (when ONWR data arrive)
 Hourly releases and planned releases; เขื่อนเพชร gate operations and canal diversions; verified banks and rating curves;
 channel capacity at Tha Yang, Ban Lat and the city; past events (Aug 2018 spillway overflow) for the replay of extremes.
+
+## Validation result (2026-10-05, honest replay — read before building any screen)
+Ratings and lags fitted on the first 60 % of the year, judged on the last 40 % (`research/2026-10-05_impact_anchored_replay.log`),
+level error vs simply keeping today's level:
+| Method | B.10 ท่ายาง | B.16 บ้านลาด | B.15 / PCH001 เมือง |
+|---|---|---|---|
+| Absolute (mass balance + rating curve) | 44 vs 13 cm | 56 vs 14 cm | 55 vs 33 / 52 vs 17 cm |
+| Anchored to today's level, change passed 1:1 | 25 vs 13 cm (big changes 108 vs 25) | 99 vs 14 cm | 112 vs 33 / 89 vs 17 cm |
+| Anchored, learned pass-through gain | 12.0 vs 12.5 cm (big 29.7 vs 24.9) | 13.4 vs 13.5 cm | 45 vs 33 / 23 vs 17 cm |
+**Finding:** in the past year flow changes at B.18 (≤ 143 m³/s) did not travel down the river — เขื่อนเพชร's operation absorbed
+them; downstream levels followed the diversion, local rain and (in the city) the tide. No model built on our public data beats
+"keep today's level". The steep ratings (B.10 ≈ 4–5 cm per m³/s) turn small flow errors into large level errors. For
+flood-size releases the surplus must pass the diversion dam (the 1:1 assumption becomes physical), but the year holds no such
+event to check it. **What makes the what-if credible:** (1) เขื่อนเพชร gate settings and canal intake flows (hourly/daily);
+(2) past flood events with dam release, downstream levels and flooded areas (e.g. Aug 2018); (3) canal capacity.
