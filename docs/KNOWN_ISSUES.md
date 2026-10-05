@@ -1,6 +1,6 @@
 # KNOWN_ISSUES.md — Limitations, pitfalls and workarounds
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-02
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-05
 > **Audience:** developers, operators, AI agents
 > **Status values:** 🔴 Open · 🟡 Workaround defined · 🟢 Resolved · ℹ️ Inherent (permanent constraint; design around it)
 > Evidence for items marked "probe" is in [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md).
@@ -40,6 +40,30 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-292 | "Rebound" forecasts (+35…+70 cm) right after steep measured falls (PAS001, S.3, M.183B, SKG007) | Forecast | 🟡 watching; interim: all four kept falling |
+| KI-291 | Live check C4 sometimes sees a list line twice behind an open sheet (URTU07) | UX / tests | 🟡 open, intermittent (not reproduced in 6 tries) |
+| KI-290 | Track records said "30 days" but forecast runs were kept 14 days | Ops / data | 🟢 fixed v0.25.2 (`FC_KEEP_DAYS = 31`) |
+| KI-289 | Thai egress (OpenVPN sidecar) flaky: TLS handshake failures, 452 restarts; DWR posts stopped, BMA DDS intermittent | Data access | 🔴 open (owner, OWNER_ACTIONS EGRESS) |
+| KI-288 | A 6 h task (Flood Hub) never came due while the worker restarted every 1–2 h | Ops | 🟢 fixed v0.25.2 (`worker.first_due`) |
+| KI-287 | 72 h likely ranges too confident in a falling river (50 % band held 44 %) | Forecast | 🟡 open (Q54) |
+| KI-286 | Ticker named Bangkok "อาจถึงตลิ่ง" while its gauges were steady under the bank | UX / AI | 🟢 fixed v0.25.0 (D-094) |
+| KI-285 | Research AI calls tripped the visitors' AI breaker (1 h pause) | AI / ops | 🟢 fixed v0.25.0 (`account=False`) |
+| KI-284 | A long research transaction blocked the schema step: site down ~12 min | Ops | 🟢 fixed v0.25.0 (lock timeout, read-only research) |
+| KI-283 | WeatherNext BigQuery: subscription, key file mode; a joined point list scans 56 GB per init | Data access | 🟢 resolved; correction 2026-10-04 (D-096) |
+| KI-282 | A leaning row contradicted the chart's dashed line | UX / forecast | 🟢 fixed v0.24.0 |
+| KI-281 | Most rows said "? ไม่แน่ชัด" although the chart showed a trend | UX / forecast | 🟢 mitigated v0.24.0 (D-091) |
+| KI-280 | The first AI ticker sounded alarmed and over-generalised | AI | 🟢 fixed v0.23.0 |
+| KI-279 | AI summaries: "good news" framing, mixed voices, filler openings | AI | 🟢 fixed v0.23.0 |
+| KI-278 | The top-bar rain line read as rain all over the country | UX | 🟢 fixed v0.22.0 / v0.23.0 |
+| KI-277 | A card said "เพิ่มขึ้น" while its trend group said "ทรงตัวหรือลดลง" | UX | 🟢 fixed v0.22.0 (check C18) |
+| KI-276 | Sheet rows and chart could come from different forecast runs | UX / forecast | 🟢 fixed v0.22.0 |
+| KI-275 | AI checker rejected natural Thai bank hedges; 30-min failure lockout | AI | 🟢 fixed v0.22.0 |
+| KI-274 | The river tab was a dead end for thin provinces and split tributaries | UX | 🟢 fixed v0.21.0 |
+| KI-273 | HII's BMA canal feed is frozen since 2026-09-28 | Data | 🟡 external |
+| KI-272 | HII's bank (`min_bank`) and its left/right bank fields disagree at 254 gauges | Data quality | 🟡 open (Q48) |
+| KI-271 | The map hid gauges at or over the bank | UX | 🟢 fixed v0.21.0 |
+| KI-270 | Two forecasters on one chart: rows from a trend override, chart from the model | Forecast | 🟢 fixed v0.21.0 (D-080) |
+| KI-269 | An empty GISTDA layer replaced our satellite copy | Data | 🟢 fixed v0.21.0 (satellite later removed, D-084) |
 | KI-268 | GISTDA rebuilds its 7-day flood layer at no fixed hour and cell by cell; a time-based download kept stale cells and could catch a half-built layer | Data access | 🟢 fixed v0.20.5 (stamp probe + "steady for an hour" rule) |
 | KI-267 | แม่น้ำ tab: 15 rivers only (29 % of gauges), three rows of chips on a phone, river km jargon in every row, no way from a station to its river | UX | 🟢 fixed v0.20.1 (D-074) |
 | KI-266 | River profile mixed a BMA gauge into the HII/RID Chao Phraya chain and placed it by latitude between the Bang Yo gates | Data quality / UI | 🟢 fixed v0.20.0 (BMA out; km for every river) |
@@ -77,6 +101,7 @@
 | KI-234 | Canal factor: one gauge name bold, the other not; labels ran into long lines | UI | 🟢 fixed v0.11.1 |
 | KI-233 | Trend formats differed by horizon and view; 24 h showed a direction from the "no change" model; "ใกล้ตลิ่ง" 158 cm below the bank | UX / Product | 🟢 fixed v0.11.0 (D-056) |
 | KI-232 | Nearest canal had no forecast (relay-only BMA gauge), so the panel showed no trend at all; summary wording not understood | UX / Product | 🟢 fixed v0.10.2 (D-054 amended) |
+| KI-226 | Mobile UI line wrapping from verbose confidence labels | UX | 🟢 fixed v0.6.5 (D-049) |
 | KI-229 | Canal factor said "ประเมินไม่ได้" at 83 % of Bangkok pins (8 km agreement rule) | UX / Product | 🟢 fixed v0.10.0 (D-054: 39 %) |
 | KI-230 | BMA gauges had no forecast (≈ 28 h of history) | Modelling | 🟢 v0.10.0: 1-year backfill from HII (D-054) |
 | KI-231 | Recovery window printed to the minute over days ("01:12 – 05:12") | UX | 🟢 fixed v0.10.0 (D-055) |
@@ -772,10 +797,13 @@ Served bands over 30 days (research/2026-10-04_band_coverage_live.log): the 50 %
 Post-release validation 2026-10-04 21:40 UTC: `google_floodhub` last succeeded at 10:40 UTC. The worker set `next_run = start + interval` for every task, so each restart (deploys at 16:49, 19:5x, 20:xx, 21:11, 21:37) pushed a 6 h task out again. Fix: `worker.first_due` — a task that is not in the first-run list is due one interval after its last success (source_health), at least 60 s after start.
 
 ### KI-289 — Thai egress (OpenVPN sidecar) cannot connect · 🔴 open (owner)
-2026-10-04: `vpn` logs "TLS key negotiation failed to occur within 60 seconds … TLS handshake failed", container restart count 402. Sources behind the egress fail: `bma_dds` (last success 08:39 UTC), `dwr_ews` (17:15 UTC, 5 failures, backing off). BMA canal levels still arrive through the flood69 relay (`bma_klong`). Needs the owner's VPN server/credentials (OWNER_ACTIONS EGRESS); no change in code.
+2026-10-04: `vpn` logs "TLS key negotiation failed to occur within 60 seconds … TLS handshake failed", container restart count 402. Sources behind the egress fail: `bma_dds` (last success 08:39 UTC), `dwr_ews` (17:15 UTC, 5 failures, backing off). BMA canal levels still arrive through the flood69 relay (`bma_klong`). Needs the owner's VPN server/credentials (OWNER_ACTIONS EGRESS); no change in code. **2026-10-05 05:20 UTC:** intermittent rather than down — 452 restarts, the tunnel came up at times (`bma_dds` succeeded 04:23 UTC), `dwr_ews` still failing (9 in a row, backing off; its calls take ~45 s through the tunnel).
 
 ### KI-290 — Track records said "30 days" but forecast runs were kept 14 days · 🟢 fixed v0.25.2
 Post-release validation 2026-10-04: `risks.WINDOW_DAYS = 30` (the "N ใน 10" chips and their ⓘ say "30 วันที่ผ่านมา") while `retention.FC_KEEP_DAYS = 14`; the archive began 2026-09-26, so from ~10 Oct the records would silently cover 14 days. Found when the unstarved retention task (KI-288) thinned 115,820 runs (the designed thinning, nothing past 14 days existed yet). Fix: `FC_KEEP_DAYS = 31` (~0.5 GB, 29 GB free) and a test that keeps it above `WINDOW_DAYS`.
 
 ### KI-291 — Live check C4 sometimes sees a list line twice behind an open sheet (URTU07) · 🟡 open, intermittent
 2026-10-04: the C4 check reported "line printed twice: เมืองสมุทรสาคร สมุทรสาคร · 〰️ แม่น้ำท่าจีน" for `#s=URTU07` (14:5x UTC at 1440 px, before the v0.25 work; 22:2x UTC at 768 px). Not reproduced in the sheet itself (6 tries at 768/1440 px: only the legitimate "⬆ เพิ่มขึ้นมาก" on two rows). The line has the list-card format, so the likely cause is a short-lived double render of the list behind the sheet (the sheet's `refreshListItems` → `renderList` racing the periodic refresh). Next: log the list's item count per code during the C4 capture.
+
+### KI-292 — "Rebound" forecasts right after a steep measured fall · 🟡 watching (verdict 2026-10-05 ~21:00 UTC)
+After v0.25.0, `star` forecast +35…+70 cm in 24 h at PAS001, S.3 (Pa Sak), M.183B and SKG007 right after measured falls of 7–61 cm in 24 h (the old inputs give the same at PAS001/S.3; V12 amplifies at M.183B/SKG007 where the level sits far below its 7/30-day means). Over 30 days of archive such forecasts came true 65 % of the time (48 cases, mean error 72 cm; research/2026-10-04_rebound_check.log), so no guard was added. **Interim 2026-10-05 05:00 UTC (8 h of 24):** all four kept falling (−1 to −21 cm; SKG007's 8 h forecast was +46 cm). If the 24 h verdict confirms, test a guard ("reverses a strong measured fall without an upstream or rain driver") with the MODELS §5d protocol before shipping it.

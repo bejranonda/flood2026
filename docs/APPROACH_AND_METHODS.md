@@ -1,6 +1,6 @@
 # APPROACH_AND_METHODS.md — Forecasting Approach, Calculations & Models
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-26
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-05 (v0.25.2)
 > **Role:** this is the brief's `docs/METHODS.md`. It explains every method and cites what it relies on.
 > **Built from:** [research/methods_survey.md](../research/methods_survey.md) 🟢, plus the validated parts of [bangkok_flood_calculation_forecasting_engine.md](../research/bangkok_flood_calculation_forecasting_engine.md) 🟠 (the equations only; see [validation §C](../research/VALIDATION_2026-09-26.md)).
 > **Companion docs:** [KNOWLEDGE](KNOWLEDGE.md) · [KNOWN_ISSUES](KNOWN_ISSUES.md) · [GUIDELINES §4](GUIDELINES.md)
@@ -661,3 +661,4 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
 - **Bands:** the served 24 h bands hold as stated, 48/72 h ones are too confident in a falling river (KI-287); trend-dependent or shorter-window bands are less honest; calibration is the owner's choice (Q54).
 - **Ticker (D-094):** facts → items (topic symbol + text) → GLM rewrites each item → `check_item` per fact → fallback per item → cache by fact text; the display is a scrolling list with ◆ dividers, a list when opened.
 - **✨ on stations and จับตา (D-095):** `explain.station` / `explain.watch` write the story and lines; `explain.gist` retells (3 tries, 15 s, polite particles dropped, the stronger-than-forecast and question-to-the-reader checks).
+- **After the release (v0.25.1–v0.25.2):** forecasts stay forecasts in the ticker (the fast-rise item says "คาดว่า…", kept by the item check); periodic tasks are due from their last success (`worker.first_due`); forecast runs are kept 31 days for the 30-day track records; rebound forecasts after steep falls are watched before any guard (KI-292).

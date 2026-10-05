@@ -2,7 +2,7 @@
 
 > **Project:** BKK FloodWatch 2026
 > **Audience:** developers, data scientists, operators, AI agents
-> **Last updated:** 2026-09-26, during the active Bangkok / Chao Phraya flood
+> **Last updated:** 2026-10-05 (§24; first written 2026-09-26, during the active Bangkok / Chao Phraya flood)
 > **Evidence markers:** ✅ confirmed (live data or cited source) · 🟡 from careful research, not re-checked · ⚠️ unverified or indicative, don't hard-code. Evidence for live checks: [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md)
 
 ---
@@ -323,3 +323,4 @@ UX principles established through visitor testing during the 2026 flood season:
 - **WeatherNext 3:** archive reaches at least 2026-04-07 (not 2025-10-04); one literal point ~12 MB per init; a joined point list 56 GB per init; free BigQuery quota exhausted 2026-10-04.
 - **RID discharge:** 290 gauges report discharge hourly; C.13 2,500 m³/s and C.2 2,052–2,101 m³/s on 2026-10-04 (Thai PBS/Amarin reported C.13 2,500 m³/s, 2026-10-03/04).
 - **AI wording:** GLM-5.3-flash retells 9.3/11 ticker items in the ✨ voice (6.8/11 with the first prompt); Workers AI Llama 3.3 70B 11/11, SEA-LION v4 10.2/11, Gemma 3 12B not allowed on the account; one Llama call ≈ 104 neurons. ✨ summaries: retelling shown 9/9 จับตา regions, 11/13 stations after dropping polite particles (13 of 18 rejections were only ครับ/ค่ะ).
+- **Morning check 2026-10-05 05:20 UTC:** v0.25.2 live, newest reading 12 min old; forecast cycles ~1,000 s for 975–981 gauges; Flood Hub collected 03:57 (6 h schedule from its last success, KI-288 fixed); VPN egress intermittent (452 restarts; `bma_dds` OK 04:23, `dwr_ews` failing since 17:15 on 4 Oct). Rebound forecasts at PAS001/S.3/M.183B/SKG007 (+53…+63 cm in 24 h issued 20:57 UTC) — after 7–8 h all four kept falling (−1 to −21 cm) (KI-292).

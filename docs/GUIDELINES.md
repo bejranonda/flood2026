@@ -1,6 +1,6 @@
 # GUIDELINES.md — Engineering, Modelling, Data Ethics & UX Standards
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-27
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-05 (v0.25.2)
 > **Audience:** maintainers, contributors, AI agents (agents: also read [CLAUDE.md](../CLAUDE.md))
 
 ---
@@ -235,6 +235,12 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Improve the forecast honestly (MODELS §5d).** Choose on the first half, score on the second, confirm on a disjoint sample; report the gauges a change makes worse; never narrow a band unless it still holds on unseen hours (trend-dependent bands were narrower and held less often: rejected).
 - **Say only what the group is.** "อาจถึงตลิ่ง" in the ticker names only gauges whose water is rising (KI-286); an example list says "เช่น" only when there are more; a summary closes each group's sentence.
 - **AI wording item by item.** One slip should not throw away good wording: check each item against its own fact, fall back per item, drop polite particles instead of rejecting, and keep the ✨ card's voice everywhere (owner: "as at current ✨ ให้ AI สรุปให้ฟังง่าย ๆ").
+
+### 6c-4. Lessons from validating after the release (v0.25.1–v0.25.2, KI-288–KI-292)
+- **Validate after every release, not only before.** The post-release round found three real problems the tests could not see (a forecast told as "now" in the ticker, a 6 h task starved by restarts, a 14-day retention under 30-day records).
+- **Never commit on a red suite.** Gate the commit on the test result in the same command (`case "$out" in *failed*) …`); one v0.25.2 commit went in with a stale test and needed a follow-up.
+- **Schedules survive restarts.** A periodic task is due from its last success (`worker.first_due`), never from the restart.
+- **Watch surprising forecasts before guarding them.** Check the archive first (rebound forecasts came true 65 % over 30 days), record what to verify and when (KI-292), and test any guard with the honest protocol.
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.

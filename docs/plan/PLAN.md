@@ -1,6 +1,6 @@
 # PLAN.md — Roadmap, phase gates and status
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-09-30 (v0.16.0)
+> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-05 (v0.25.2)
 > **Mode (since 2026-09-26, D-012):** all workstreams run **in parallel**. An interim public MVP is live at **https://flood.autobahn.bot** (main domain since D-017; `flood.bejranonda.com` is an alias). Gates G0–G4 are now quality reviews, not blockers. Current state and next steps: [HANDOFF.md](../../HANDOFF.md).
 > **Brief:** [docs/brief/first_prompt.md](../brief/first_prompt.md) (the "Option 2" prompt plus the updated Phase 1 and Phase 4)
 
@@ -14,10 +14,10 @@
 | **MVP live** (collectors, raw archive, Postgres, baseline forecasts, API, Thai web) | ✅ 2026-09-26, https://flood.autobahn.bot (D-012, D-013, D-017) |
 | Phase 0 — sources | 🟡 HII, Open-Meteo and Traffy in production; BMA needs a Thai egress (D-014); RID C.29A and the Navy tide are still open |
 | Phase 1 — ingestion | 🟡 running: **1,040 gauges nationwide (v0.16), ~310 in the focus area** (HII, RID, all 199 BMA canals every 5 min); 1-year hourly backfill (D-018, D-054); QC for dropouts, erratic and stuck gauges (D-057, KI-241); as-issued forecasts archived (KI-305 resolved). Missing: off-site backup (D-029, KI-511) |
-| Phase 2 — forecasting | 🟡 per gauge and horizon backtest; `star` (rain + upstream + dam) where it beats "no change" (D-052); where no model sees a direction, rows follow the measured 24/48 h trend with historical odds (D-060); continuation backtest: canals ≈ 55 %, rivers ≈ 88 % (KNOWLEDGE §4). Next: L3–L5, polder-aware depth |
-| Phase 3 — web | 🟡 **v0.16.0 live (nationwide parity, D-064); the v0.15 concept is the owner-approved baseline (D-063).** One story per view — headline, rows and list agree, proven on every gauge by `scripts/ux_consistency.py` (D-062); measured 24 h change in finer words (D-058); short panels; Bangkok-first map and river profile. 14 UX rounds ([UX_VALIDATION](../UX_VALIDATION.md)). Next: map tap in crowded areas, polder-aware "near me", alerts (Q7), resident interviews |
+| Phase 2 — forecasting | 🟡 per gauge and horizon backtest with the 10 % gate; `star` (rain + upstream + dam + **7/30-day means and 1/3/72 h changes**, D-092) and **up to 4 learned upstream gauges** (D-093) shipped v0.25.0 under an honest protocol (chosen on the first half, scored on the second, confirmed on a disjoint sample — MODELS §5d): 24 h error vs "no change" on unseen gauges −6.6 → −8.3…−9.1 %. Served ranges: 24 h hold as stated, 72 h too confident (KI-287, Q54); rebound forecasts after steep falls watched (KI-292). Next: Flood Hub input (Q55), WeatherNext backtest (Q53), RID discharge as upstream inputs, L3–L5 |
+| Phase 3 — web | 🟡 **v0.25.2 live**; the v0.15 concept is the owner-approved baseline (D-063). One story per view, proven on every gauge by `scripts/ux_consistency.py` (C1–C20; 0 findings after v0.25.0, 1 intermittent after v0.25.2, KI-291); ⚠️ จับตา tab with trend pills (D-077, D-094); national ticker as items with symbols, GLM checked per item (D-094); ✨ AI summary on pins, station sheets and the จับตา tab (D-068, D-095); 24/48/72 h rows (D-086) |
 | Phase 5 — nationwide ([phase-5](phase-5-nationwide.md)) | 🟡 **v0.16.0: nationwide parity (D-064)** — every HII-network gauge gets a year of history (backfill ~10 h from 2026-09-30 20:25 UTC), QC, the same forecast gate (rain cells + learned upstream) and panels; region chips for the country (default กทม.). Still open: nationwide backtest re-run after the backfill, dams/FFPI/DWR/GISTDA layers, agency notes (Q3) |
-| Phase 4 — ops | 🟡 Cloudflare Tunnel live (no inbound ports); Thai VPN sidecar (D-016); **no external uptime alert yet** — a 4.5 h DB overload on 2026-09-30 went unnoticed (KI-246, OWNER_ACTIONS "UPTIME"); backups off by owner choice (D-029) |
+| Phase 4 — ops | 🟡 Cloudflare Tunnel live (no inbound ports); Thai VPN sidecar (D-016) **intermittent since 2026-10-04 (KI-289, owner)**; schema step with a lock timeout and research on read-only connections after a 12-min outage (KI-284, D-096); tasks due from their last success (KI-288); **no external uptime alert yet** (OWNER_ACTIONS "UPTIME"); backups off by owner choice (D-029) |
 
 ## Phases and gates
 

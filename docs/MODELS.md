@@ -3,7 +3,7 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.25.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52). Numbers come from running code or the cited research files;
+> It describes **v0.25.2** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52). Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -214,6 +214,7 @@ on the unseen half, and how many end up **worse** than "no change" (the cost of 
 | WeatherNext 3 rain (`_weathernext_*.py`) | archive ≥ 180 days (April 2026 on); one literal point costs ~12 MB per run, a join of points scans the whole 56 GB partition; the month's free BigQuery quota ran out before the 60-day test | blocked: owner step (billing or 1 Nov), then backtest (D-069, Q44, Q53) |
 | Bands by measured trend (`_bands_by_trend.py`) | narrower (90 % band 72 → 64 cm at 24 h) but held less often (78 → 75 %) | **rejected** (narrower but less honest) |
 | Shorter error window for bands (`_band_window.py`) | 10/15/30 days widen bands and lower coverage vs 45 days | 45 days stays |
+| Rebound forecasts after a steep measured fall (`_rebound_check.py`) | archive: came true 65 % (48 cases, mean error 72 cm); after v0.25.0 four gauges forecast +35…+70 cm while falling; interim 2026-10-05 (8 h): all four kept falling | watching (KI-292); a guard only after the honest test |
 | Served bands vs reality, 30 days (`_band_coverage_live.py`) | 50 % band held 51 / 48 / 44 % and 90 % band 88 / 86 / 80 % at 24 / 48 / 72 h; misses mostly **below** the band (water fell more than forecast: 32 / 36 / 42 % below vs 17 / 16 / 14 % above) | owner decision: widen 48/72 h bands to hold as stated (Q54) |
 
 **What it means for a visitor.** More gauges carry a real forecast where `star` learned the slow return of a river to its

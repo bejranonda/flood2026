@@ -73,9 +73,12 @@ Full registry, including endpoints that were tested and refuted: [SOURCES](docs/
 | Endpoint | Returns |
 |---|---|
 | `GET /api/point?lat=&lon=` | Outlook for a place: nearest canal, its measured and forecast change, rain, street reports |
-| `GET /api/stations` | All focus gauges with status, bank distance, measured 24 h change and 12/24/48 h trend |
+| `GET /api/stations` | All gauges with status, bank distance, measured 24 h change, 24/48/72 h forecast rows and the trend group |
 | `GET /api/stations/{code}?days=7` | One gauge: history and forecast path |
-| `GET /api/profile` | Chao Phraya profile by river km |
+| `GET /api/rivers` · `GET /api/profile?river=` | The 62 river views · one river from upstream to downstream |
+| `GET /api/risks` | The ⚠️ จับตา groups (over the bank / may reach it, each split by trend; upstream water; fast rise; heavy rain) with track records |
+| `GET /api/situation` | The national ticker: short items `[{icon, text, ai}]`, refreshed every 30 min |
+| `GET /api/explain?lat=&lon=&q=simple` · `/api/explain_station?code=` · `/api/explain_watch?region=&prov=` | The ✨ plain-Thai story and lines (add `&part=gist` for the checked AI retelling, or null) |
 | `GET /api/reports` · `/api/rain` · `/api/health` | Street-report cells · rain outlook · pipeline freshness |
 
 ```bash
@@ -106,7 +109,7 @@ python3 scripts/ux_consistency.py                        # UI consistency proof 
 No data API keys are needed for basic monitoring. Secrets live only in `.env` (git-ignored). Operations, deploys and next steps: [HANDOFF](HANDOFF.md).
 
 ## Project status
-Live since 2026-09-26, built during the 2026 flood; current release in the badge above. v0.16 (2026-09-30) brought every gauge in Thailand to the same history, forecast gate and panels as Bangkok. Next: an external uptime alert, the nationwide backtest once the year of history is in, dam releases for dam-controlled rivers, polder-aware "near me", and alerts for a saved place. Roadmap and decisions: [PLAN](docs/plan/PLAN.md) · [DECISIONS](docs/plan/DECISIONS.md).
+Live since 2026-09-26, built during the 2026 flood; current release in the badge above (**v0.25.2**, 2026-10-04). v0.16 brought every gauge in Thailand to the same history, forecast gate and panels as Bangkok; v0.21–v0.24 added the ⚠️ จับตา tab, one trend rule, the national ticker and the 24/48/72 h rows; **v0.25** improved the forecast under an honest test (`star` reads the 7/30-day means and short/long changes; up to 4 upstream gauges — on gauges the choice never saw, 24 h error vs "no change" −6.6 → −8.3…−9.1 %), turned the ticker into short items with symbols, and put the ✨ AI summary on station sheets and the จับตา tab. Open: the owner's Thai VPN egress (KI-289), widening the 72 h ranges (Q54), Flood Hub as an input (Q55), the WeatherNext backtest (Q53), an external uptime alert. Details: [HANDOFF.md](HANDOFF.md), [docs/MODELS.md](docs/MODELS.md) §5d, [CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation
 | Doc | For |

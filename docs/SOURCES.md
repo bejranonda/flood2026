@@ -2,7 +2,7 @@
 
 > **Project:** BKK FloodWatch 2026. Water-level monitoring and forecasting for Bangkok and the lower Chao Phraya.
 > **Status:** 🟡 Live-probed from the production server in Germany (it is the only host, KI-502) and, for geo-blocked public pages, through the Thai egress: Bangkok sources 2026-09-26, **nationwide sources 2026-09-27 (§2d)**.
-> **Last updated:** 2026-09-27
+> **Last updated:** 2026-10-05 (v0.25.2; §2n)
 > **Evidence:** [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md). Re-run with `python3 research/validation/validate_research_claims.py`.
 > **Seeded from:** [sources_survey.md](../research/sources_survey.md), [keyless_access.md](../research/keyless_access.md), and the validated parts of [bangkok_flood_intelligence_data_sources.md](../research/bangkok_flood_intelligence_data_sources.md) and [API_noKey-1.md](../research/API_noKey-1.md).
 > **Maintained by:** Phase 0 ([plan](plan/phase-0-source-verification.md)). Update this file whenever a source is tested, changes format, or fails.

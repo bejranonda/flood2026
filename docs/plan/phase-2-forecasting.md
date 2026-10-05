@@ -36,6 +36,13 @@ Probabilistic forecasts at +12 h / 1 / 2 / 3 / 7 d, and an estimate of when leve
 - [ ] Depth-at-location module (controlling water body, DEM → MSL, HAND, probability categories, satellite and crowd overrides)
 - [ ] Skill report per station × lead × regime, with maps → **stop for G2**
 
+## Progress (2026-10-04, v0.25.0–v0.25.2)
+- [x] **Honest improvement harness** (`research/q52_harness.py`): `star` trained before the 45-day window; method + gate chosen on the first half, scored on the second; variants confirmed on a disjoint gauge sample (MODELS §5d).
+- [x] `star` V12 inputs (7/30-day means, 1/3/72 h changes) — D-092; up to 4 learned upstream gauges after 90 days — D-093.
+- [x] Rejected with evidence: averaging methods, a stricter selection rule, trend-dependent and shorter-window bands.
+- [x] Served-band check against reality (30 days): 24 h on target; 72 h overconfident (KI-287 → Q54).
+- [ ] Flood Hub forecasts as an input (+0.9 points at 72 h; Q55) · WeatherNext rain backtest (blocked by BigQuery quota; Q53) · RID discharge as upstream inputs · rebound-forecast guard if KI-292 confirms.
+
 ## Exit criteria (G2)
 - For every station and horizon shown: skill vs persistence > 0.1 **and** 90 % coverage of 85–95 % on held-out events (2011, 2017, 2021, 2022, 2024, 2026). Otherwise it's served at a lower level with wider intervals, documented.
 - Forecasts are stored per run with the model version.
