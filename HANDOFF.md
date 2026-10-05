@@ -519,6 +519,12 @@ docker compose exec db psql -U floodwatch -d floodwatch -c "SELECT jsonb_array_l
 | [src/floodwatch/api/](src/floodwatch/api/__init__.py) | FastAPI: stations, stats, profile (river km), **point**, **summary**, feedback (+ instant urgent flag); stale → unknown after 24 h |
 | [src/floodwatch/point.py](src/floodwatch/point.py) | Point check: IDW status category, confidence, warnings. Pure, tested |
 | [src/floodwatch/ai.py](src/floodwatch/ai.py) | Keyword triage, Workers AI client (budget, breaker, strict schema), template summary. Tested |
+| [src/floodwatch/impact.py](src/floodwatch/impact.py) | Impact tab state (D-099/D-100): rating curves, travel times, replay gate, dam notes, the national dams layer, catchment rain context. Tested |
+| [src/floodwatch/scenarios.py](src/floodwatch/scenarios.py) | 7-day release plans by search, seven effects, constraints with the model's error, the ★ rule (D-101). Tested |
+| [src/floodwatch/reservoir.py](src/floodwatch/reservoir.py) | 7-day reservoir outlook: per-dam inflow model gated per horizon, loss term, bands; models in `data/reservoir_models.json` (D-102). Tested |
+| [src/floodwatch/impact_auth.py](src/floodwatch/impact_auth.py) | `/impact` login: constant-time password, signed cookie bound to the password, failed-login limiter. Tested |
+| [web/impact.js](web/impact.js) · [web/impact.css](web/impact.css) | The 💧 ผลกระทบ tab (loaded only on `/impact`): login, dams list with outlooks, the case view in the app's grammar, sheets, ✨ |
+| [scripts/impact_tab_check.py](scripts/impact_tab_check.py) | Browser check of the tab at 390/1366 px: counts, sheets, first-screen characters and long paragraphs; the password via `IMPACT_PW` |
 | [scripts/owner_status.py](scripts/owner_status.py) | Read-only status of owner actions (curl for the challenge, Cloudflare GETs, `.env` key presence, one tiny AI call); never prints secrets |
 | [scripts/build_chainage.py](scripts/build_chainage.py) | River km from HII's centreline → `src/floodwatch/data/chaophraya_chainage.json` |
 | [web/](web/app.js) | Vanilla JS + Leaflet: summary, tabs, search, sheet, share, feedback, river profile. `esc()` on every external string |

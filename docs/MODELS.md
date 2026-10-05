@@ -368,6 +368,13 @@ Window: 43 wet-season days — re-test as the archive grows. KI-301, research/20
 - Impact pilot (D-099): `research/2026-10-05_impact_anchored_replay.py` (absolute, anchored and gain what-ifs against keeping
   today's level) and `research/2026-10-05_impact_release_vs_b18.py` (does B.18 carry the dam's reported release), with logs;
   the live replay is `impact.replay` inside the hourly `impact` task.
+- Reservoirs (D-101, D-102): `research/2026-10-05_kk_inflow_model.py` (Kaeng Krachan: rain model vs persistence, bands,
+  water balance), `2026-10-05_dam_inflow_nationwide.py` (35 RID dams, observed rain), `2026-10-05_q58_operational.py`
+  (17 dams, archived rain *forecasts*, loss term; writes the BUILD_JSON behind `src/floodwatch/data/reservoir_models.json`).
+- Q52 night of 2026-10-05 (two-sample gate): `2026-10-05_dam_release_input.py` (E-DAM), `2026-10-05_star_damping.py`
+  (E-DAMP), `2026-10-05_discharge_forecast.py` (E-Q), `2026-10-05_upstream_flow_input.py` (E-UQ),
+  `2026-10-05_two_years_history.py` (E-2Y), each with its `.log`.
+- The impact tab in a browser: `IMPACT_PW="$(sed -n 's/^IMPACT_PASSWORD=//p' .env)" python3 scripts/impact_tab_check.py`.
 
 ## 11. Impact what-if for a dam release (pilot Kaeng Krachan, `/impact`, D-099)
 
