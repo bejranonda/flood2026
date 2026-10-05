@@ -310,6 +310,15 @@ daily forecasts, a year of archive available); WeatherNext 3 (research only).
 | Gulf tide tables (Navy) | our harmonic fit covers lower reaches | small gain expected |
 | Gate and pump operations | not in any feed we reached | ask BMA/RID (unchanged) |
 
+### 9b. Reservoir inflow nationwide (owner 2026-10-05: "not only the water level … inflow, reservoir and much more")
+Daily inflow for every RID dam (HII) against ERA5 catchment rain (HydroBASINS lev08 upstream basins), fit 2018–2024,
+tested 2025–2026, recursive to 7 days with observed rain (an upper bound): the rain + yesterday's-inflow model beats
+persistence by ≥ 10 % at 7 days for 16 of 35 dams (the large and northern/western reservoirs), is level for 13, and worse
+for 6 (แก่งกระจาน, ทับเสลา, ลำพระเพลิง, บางลาง, ปราณบุรี, ป่าสักชลสิทธิ์). HII's day-of-year average beats persistence at
+7 days for the big dams too. Before any outlook is shown: (1) the same test with archived rain *forecasts* (Open-Meteo's
+historical-forecast or previous-runs APIs) for the operational skill; (2) a loss term where the balance leaks (−1.8 to
+−2.8 ล้าน ลบ.ม./วัน at the biggest reservoirs); (3) the gate per dam, as for gauges (Q58). KI-301, research/2026-10-05_dam_inflow_nationwide.log.
+
 ## 10. How to reproduce
 
 - Tests: `docker compose run --rm --no-deps worker pytest -q` (≈ 290 tests).

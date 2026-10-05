@@ -1,0 +1,71 @@
+ Container floodwatch-worker-run-b51bad0f6c28 Creating 
+ Container floodwatch-worker-run-b51bad0f6c28 Created 
+RID dams with coordinates: 35
+<stdin>:99: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+<stdin>:98: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+ภูมิพล           catchment  24778 km² · mean inflow  16.6 · rain-model vs persistence: 1d   +9 %  3d  +22 %  7d  +26 %  (MAE 7d: model 8.89 · persist 11.94 · clim 11.17) · balance gap -1.79
+อุบลรัตน์        catchment  12297 km² · mean inflow   7.8 · rain-model vs persistence: 1d   +7 %  3d  +15 %  7d  +25 %  (MAE 7d: model 4.74 · persist 6.36 · clim 5.81) · balance gap -1.38
+สิรินธร          catchment   2094 km² · mean inflow   4.5 · rain-model vs persistence: 1d  +11 %  3d  +18 %  7d  +21 %  (MAE 7d: model 3.63 · persist 4.58 · clim 4.02) · balance gap -2.30
+จุฬาภรณ์         catchment   2253 km² · mean inflow   0.5 · rain-model vs persistence: 1d   +1 %  3d   +9 %  7d   -5 %  (MAE 7d: model 0.56 · persist 0.53 · clim 0.42) · balance gap -0.08
+ห้วยหลวง: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ลำนางรอง: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+มูลบน: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+น้ำพุง           catchment    428 km² · mean inflow   0.3 · rain-model vs persistence: 1d   +3 %  3d   -3 %  7d   -8 %  (MAE 7d: model 0.35 · persist 0.32 · clim 0.32) · balance gap -0.09
+ลำแชะ: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ป่าสักชลสิทธิ์: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+สิริกิติ์        catchment  13056 km² · mean inflow  16.0 · rain-model vs persistence: 1d  +10 %  3d  +20 %  7d  +29 %  (MAE 7d: model 10.09 · persist 14.13 · clim 11.12) · balance gap -0.84
+แก่งกระจาน       catchment   1988 km² · mean inflow   2.8 · rain-model vs persistence: 1d  -25 %  3d  -50 %  7d  -97 %  (MAE 7d: model 3.10 · persist 1.57 · clim 1.60) · balance gap -0.15
+ศรีนครินทร์      catchment  10967 km² · mean inflow  14.5 · rain-model vs persistence: 1d  +11 %  3d  +19 %  7d  +18 %  (MAE 7d: model 7.29 · persist 8.90 · clim 7.79) · balance gap -2.84
+วชิราลงกรณ       catchment   5030 km² · mean inflow  16.1 · rain-model vs persistence: 1d  +11 %  3d  +21 %  7d  +29 %  (MAE 7d: model 8.76 · persist 12.37 · clim 11.49) · balance gap -1.07
+ปราณบุรี: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+กระเสียว: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ทับเสลา: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+บางพระ: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+แม่งัดสมบูรณ์ชล  catchment   1396 km² · mean inflow   0.7 · rain-model vs persistence: 1d  +10 %  3d  +24 %  7d  +27 %  (MAE 7d: model 0.58 · persist 0.79 · clim 0.65) · balance gap -0.02
+หนองปลาไหล: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+รัชชประภา        catchment    915 km² · mean inflow   7.1 · rain-model vs persistence: 1d  +16 %  3d  +27 %  7d  +31 %  (MAE 7d: model 3.26 · persist 4.73 · clim 3.79) · balance gap -0.41
+บางลาง           catchment   1909 km² · mean inflow   5.6 · rain-model vs persistence: 1d   -4 %  3d  -14 %  7d  -25 %  (MAE 7d: model 2.94 · persist 2.36 · clim 2.15) · balance gap -0.18
+คลองสียัด: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ขุนด่านปราการชล: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ประแสร์: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+กิ่วลม: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+กิ่วคอหมา: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+แควน้อยบำรุงแดน: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+นฤบดินทรจินดา: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+แม่กวงอุดมธารา: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ลำปาว: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ลำตะคอง: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+ลำพระเพลิง: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+น้ำอูน: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+แม่มอก: failed (TypeError: float() argument must be a string or a real number, not 'Non)
+
+SUMMARY: dams where the rain model beats persistence by ≥ 10 % at 3 days: ['ภูมิพล', 'อุบลรัตน์', 'สิรินธร', 'สิริกิติ์', 'ศรีนครินทร์', 'วชิราลงกรณ', 'แม่งัดสมบูรณ์ชล', 'รัชชประภา'] | at 7 days: ['ภูมิพล', 'อุบลรัตน์', 'สิรินธร', 'สิริกิติ์', 'ศรีนครินทร์', 'วชิราลงกรณ', 'แม่งัดสมบูรณ์ชล', 'รัชชประภา'] | of 12 tested
+climatology beats persistence at 7 days for: ['ภูมิพล', 'อุบลรัตน์', 'สิรินธร', 'จุฬาภรณ์', 'น้ำพุง', 'สิริกิติ์', 'ศรีนครินทร์', 'วชิราลงกรณ', 'แม่งัดสมบูรณ์ชล', 'รัชชประภา', 'บางลาง']
+RID dams with coordinates: 23 (subset of 23)
+<stdin>:125: RuntimeWarning: Mean of empty slice
+ห้วยหลวง         catchment    400 km² · mean inflow   0.5 · rain-model vs persistence: 1d   +8 %  3d  +16 %  7d  +29 %  (MAE 7d: model 0.58 · persist 0.81 · clim nan) · balance gap -0.08
+ลำนางรอง         catchment   1946 km² · mean inflow   0.2 · rain-model vs persistence: 1d   -5 %  3d   -3 %  7d  +12 %  (MAE 7d: model 0.15 · persist 0.17 · clim nan) · balance gap -0.06
+มูลบน            catchment   2471 km² · mean inflow   0.3 · rain-model vs persistence: 1d   -3 %  3d   -1 %  7d  -15 %  (MAE 7d: model 0.27 · persist 0.23 · clim nan) · balance gap -0.06
+ลำแชะ            catchment   2471 km² · mean inflow   0.5 · rain-model vs persistence: 1d   +1 %  3d   -3 %  7d   -1 %  (MAE 7d: model 0.45 · persist 0.44 · clim nan) · balance gap -0.14
+ป่าสักชลสิทธิ์   catchment  11804 km² · mean inflow   5.7 · rain-model vs persistence: 1d  -12 %  3d  -14 %  7d  -11 %  (MAE 7d: model 3.48 · persist 3.13 · clim nan) · balance gap -0.56
+ปราณบุรี         catchment   2410 km² · mean inflow   1.3 · rain-model vs persistence: 1d  -10 %  3d  -11 %  7d  -22 %  (MAE 7d: model 0.99 · persist 0.81 · clim nan) · balance gap -0.08
+กระเสียว         catchment   1462 km² · mean inflow   0.7 · rain-model vs persistence: 1d   +6 %  3d   +9 %  7d   +8 %  (MAE 7d: model 0.56 · persist 0.61 · clim nan) · balance gap -0.13
+ทับเสลา          catchment    683 km² · mean inflow   0.3 · rain-model vs persistence: 1d  -21 %  3d  -38 %  7d -103 %  (MAE 7d: model 0.82 · persist 0.41 · clim nan) · balance gap +0.00
+บางพระ           catchment    439 km² · mean inflow   0.2 · rain-model vs persistence: 1d   +4 %  3d  +12 %  7d   +8 %  (MAE 7d: model 0.20 · persist 0.22 · clim nan) · balance gap +0.00
+หนองปลาไหล       catchment   1701 km² · mean inflow   0.6 · rain-model vs persistence: 1d   -0 %  3d   -9 %  7d  -13 %  (MAE 7d: model 0.61 · persist 0.54 · clim nan) · balance gap -0.19
+คลองสียัด        catchment   1149 km² · mean inflow   0.8 · rain-model vs persistence: 1d   -0 %  3d   -0 %  7d   -4 %  (MAE 7d: model 1.32 · persist 1.27 · clim nan) · balance gap -0.09
+ขุนด่านปราการชล  catchment    899 km² · mean inflow   0.9 · rain-model vs persistence: 1d   +9 %  3d  +21 %  7d  +17 %  (MAE 7d: model 0.67 · persist 0.81 · clim nan) · balance gap -0.04
+ประแสร์          catchment   2140 km² · mean inflow   0.7 · rain-model vs persistence: 1d   -8 %  3d   -2 %  7d   -5 %  (MAE 7d: model 1.02 · persist 0.97 · clim nan) · balance gap -0.17
+กิ่วลม           catchment   2727 km² · mean inflow   1.7 · rain-model vs persistence: 1d   +8 %  3d  +14 %  7d   +7 %  (MAE 7d: model 0.87 · persist 0.93 · clim nan) · balance gap +0.00
+กิ่วคอหมา        catchment   1610 km² · mean inflow   0.8 · rain-model vs persistence: 1d   +8 %  3d  +18 %  7d  +16 %  (MAE 7d: model 0.67 · persist 0.80 · clim nan) · balance gap -0.03
+แควน้อยบำรุงแดน  catchment   4692 km² · mean inflow   3.5 · rain-model vs persistence: 1d   +3 %  3d  +11 %  7d  +24 %  (MAE 7d: model 1.75 · persist 2.30 · clim nan) · balance gap -0.12
+นฤบดินทรจินดา    catchment   2170 km² · mean inflow   0.9 · rain-model vs persistence: 1d   -0 %  3d   -2 %  7d  -14 %  (MAE 7d: model 1.12 · persist 0.99 · clim nan) · balance gap -0.08
+แม่กวงอุดมธารา   catchment   1774 km² · mean inflow   0.5 · rain-model vs persistence: 1d  +16 %  3d  +25 %  7d  +24 %  (MAE 7d: model 0.28 · persist 0.37 · clim nan) · balance gap -0.04
+ลำปาว            catchment   6058 km² · mean inflow   5.5 · rain-model vs persistence: 1d   +5 %  3d  +21 %  7d  +29 %  (MAE 7d: model 3.59 · persist 5.06 · clim nan) · balance gap -1.10
+ลำตะคอง          catchment   1413 km² · mean inflow   0.6 · rain-model vs persistence: 1d   -1 %  3d  +13 %  7d   +7 %  (MAE 7d: model 0.48 · persist 0.52 · clim nan) · balance gap -0.18
+ลำพระเพลิง       catchment   1025 km² · mean inflow   0.5 · rain-model vs persistence: 1d  -35 %  3d  -26 %  7d  -57 %  (MAE 7d: model 0.58 · persist 0.37 · clim nan) · balance gap -0.06
+น้ำอูน           catchment     38 km² · mean inflow   1.1 · rain-model vs persistence: 1d   +9 %  3d  +20 %  7d  +29 %  (MAE 7d: model 0.99 · persist 1.39 · clim nan) · balance gap -0.27
+แม่มอก           catchment   1762 km² · mean inflow   0.5 · rain-model vs persistence: 1d  +11 %  3d  +10 %  7d  -16 %  (MAE 7d: model 0.88 · persist 0.76 · clim nan) · balance gap +0.00
+
+SUMMARY: dams where the rain model beats persistence by ≥ 10 % at 3 days: ['ห้วยหลวง', 'บางพระ', 'ขุนด่านปราการชล', 'กิ่วลม', 'กิ่วคอหมา', 'แควน้อยบำรุงแดน', 'แม่กวงอุดมธารา', 'ลำปาว', 'ลำตะคอง', 'น้ำอูน'] | at 7 days: ['ห้วยหลวง', 'ลำนางรอง', 'ขุนด่านปราการชล', 'กิ่วคอหมา', 'แควน้อยบำรุงแดน', 'แม่กวงอุดมธารา', 'ลำปาว', 'น้ำอูน'] | of 23 tested
+climatology beats persistence at 7 days for: []

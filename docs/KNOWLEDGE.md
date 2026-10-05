@@ -352,4 +352,8 @@ UX principles established through visitor testing during the 2026 flood season:
   highest 159.9 ล้าน ลบ.ม./วัน on 20 Jul 2018; 2019–2025 peaks 12.5–27.9; 2026 to 5 Oct: 39.4 on 29 Sep, 10.3 on 5 Oct.
   Δstorage = inflow − release within −0.15 ล้าน ลบ.ม./วัน (median). Rain does not forecast the inflow better than
   persistence (KI-301). Open-Meteo's 7-day rain over the catchment on 5 Oct: 4–17 mm/day.
+- **Reservoir inflow nationwide (2026-10-05):** catchment areas from HydroBASINS lev08 upstream of each RID dam — ภูมิพล 24,778 km²,
+  สิริกิติ์ 13,056, อุบลรัตน์ 12,297, ป่าสักชลสิทธิ์ 11,804, ศรีนครินทร์ 10,967, ลำปาว 6,058, วชิราลงกรณ 5,030 …; mean daily inflow
+  2018–2026: ภูมิพล 16.6, วชิราลงกรณ 16.1, สิริกิติ์ 16.0, ศรีนครินทร์ 14.5 ล้าน ลบ.ม./วัน. Rain forecasts the inflow of the
+  big reservoirs (16 of 35 dams ≥ 10 % better than persistence at 7 days) but not of the small flashy ones (KI-301).
 
