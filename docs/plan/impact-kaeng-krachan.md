@@ -15,7 +15,7 @@ point downstream, and does it overflow?" — for engineers, with units, data age
 |---|---|---|
 | Dam daily release, storage, inflow | HII `analyst/dam` → `dam_daily`, **RID record (dam id 13)** | 10.8 ล้าน ลบ.ม./วัน ≈ 125 m³/s matches B.18 below the dam (128–142 m³/s, 1–5 Oct). EGAT's record (id 57: 3.04 ≈ 35 m³/s, 58.6 %) looks like the turbines only — shown as a note |
 | River points | our gauges, 1 year hourly: B.18 เขาลูกช้าง (Q, h), B.10 ตลาดท่ายาง (Q, h), B.16 สะพานบ้านลาด (Q, h), B.15 ข้างจวนผู้ว่าฯ (h), PCH001 เมืองเพชรบุรี (HII, h) | PCH003 "ท่ายาง" moves with B.18 (r 0.98, lag 0, same 23–26 m): it sits near the dam, not in Tha Yang town |
-| Travel times from B.18 | 24 h-change cross-correlation | B.10 ~32 h, B.16 ~43 h, B.15 ~45 h, PCH001 ≥ 48 h (r ≈ 0.5: the diversion dam in between) |
+| Travel times from B.18 | 24 h-change cross-correlation | first estimate (all year): B.10 ~32 h, B.16 ~43 h, B.15 ~45 h, PCH001 ≥ 48 h; as built (first 60 % vs whole year): B.10 24–30 h, B.16 31–37 h, B.15 38–43 h, PCH001 36–44 h, r 0.29–0.46 (the diversion dam in between) |
 | Range seen | B.18 max 143 m³/s in the year | anything above is **outside the data** and flagged |
 
 ## Method (pilot)
@@ -54,3 +54,12 @@ them; downstream levels followed the diversion, local rain and (in the city) the
 flood-size releases the surplus must pass the diversion dam (the 1:1 assumption becomes physical), but the year holds no such
 event to check it. **What makes the what-if credible:** (1) เขื่อนเพชร gate settings and canal intake flows (hourly/daily);
 (2) past flood events with dam release, downstream levels and flooded areas (e.g. Aug 2018); (3) canal capacity.
+
+## As built (v0.27.0, 2026-10-05)
+Owner chose **"Board + validation + data request now"** after the replay. `/impact` shows: the dam's RID record against
+HII's rule curve and its yearly maxima since 2018 (`analyst/dam_yearly_graph`), EGAT's record and open doubts as questions;
+the river now; the replay (four methods, rebuilt hourly); the what-if table **off** (HTTP 409) until a method beats keeping
+today's level by ≥ 10 % at B.10 and B.16; the data request with five CSV templates; the method with a live check that
+B.18 carries RID's release (r 0.93 over a year). Security as above plus a strict CSP and `X-Frame-Options: DENY`.
+Numbers and ratings: MODELS §11; facts: KNOWLEDGE §25; doubts: KI-293–KI-297; owner questions: Q56.
+

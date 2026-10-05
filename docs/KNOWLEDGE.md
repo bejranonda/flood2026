@@ -325,4 +325,22 @@ UX principles established through visitor testing during the 2026 flood season:
 - **AI wording:** GLM-5.3-flash retells 9.3/11 ticker items in the ✨ voice (6.8/11 with the first prompt); Workers AI Llama 3.3 70B 11/11, SEA-LION v4 10.2/11, Gemma 3 12B not allowed on the account; one Llama call ≈ 104 neurons. ✨ summaries: retelling shown 9/9 จับตา regions, 11/13 stations after dropping polite particles (13 of 18 rejections were only ครับ/ค่ะ).
 - **Morning check 2026-10-05 05:20 UTC:** v0.25.2 live, newest reading 12 min old; forecast cycles ~1,000 s for 975–981 gauges; Flood Hub collected 03:57 (6 h schedule from its last success, KI-288 fixed); VPN egress intermittent (452 restarts; `bma_dds` OK 04:23, `dwr_ews` failing since 17:15 on 4 Oct). Rebound forecasts at PAS001/S.3/M.183B/SKG007 (+53…+63 cm in 24 h issued 20:57 UTC) — after 7–8 h all four kept falling (−1 to −21 cm) (KI-292).
 - **2026-10-05 decisions and data:** Flood Hub archive backfilled (302,408 daily steps, 103 points, 2025-10-04 → today) and fed to `star` (D-097); daily 90 % band factors from the last 5 days, first values ×1.15/1.20/1.40 (model) and ×1.00/1.25/1.55 ("no change") at 24/48/72 h (D-098); WeatherNext stays on the free quota (after 1 Nov). VPN egress back since 02:13 UTC; DWR's bulk call returns each post's latest reading only (no history), so outages leave gaps.
-- **Phetchaburi River (for the Kaeng Krachan question, 2026-10-05):** our gauges with a year of hourly history — RID B.18 เขาลูกช้าง (below the dam, discharge), B.10 ตลาดท่ายาง (discharge), B.9 บ้านสาระเห็ด, B.3A บ้านสองพี่น้อง, B.16 สะพานบ้านลาด (discharge), B.15 ข้างจวนผู้ว่าฯ (city), B.8A ห้วยผาก (tributary); HII PCH002 แก่งกระจาน (ห้วยแม่ประจันต์), PCH003 ท่ายาง, PCH001 เมืองเพชรบุรี; GLF003 บางตะบูน (coast). Missing: the dam's own release, inflow, storage and planned releases; the Phetchaburi diversion dam's gate operations and canal diversions; verified banks/rating curves; channel capacity at Tha Yang, Ban Lat and the city; past events with flooded areas. Until ONWR/RID data arrive, B.18's discharge is the release proxy.
+- **Phetchaburi River (for the Kaeng Krachan question, 2026-10-05):** our gauges with a year of hourly history — RID B.18 เขาลูกช้าง (below the dam, discharge), B.10 ตลาดท่ายาง (discharge), B.9 บ้านสาระเห็ด, B.3A บ้านสองพี่น้อง, B.16 สะพานบ้านลาด (discharge), B.15 ข้างจวนผู้ว่าฯ (city), B.8A ห้วยผาก (tributary); HII PCH002 แก่งกระจาน (ห้วยแม่ประจันต์), PCH003 ท่ายาง, PCH001 เมืองเพชรบุรี; GLF003 บางตะบูน (coast). Missing: the dam's own release, inflow, storage and planned releases; the Phetchaburi diversion dam's gate operations and canal diversions; verified banks/rating curves; channel capacity at Tha Yang, Ban Lat and the city; past events with flooded areas. Until ONWR/RID data arrive, B.18's discharge is the release proxy. **2026-10-05:** HII serves the dam's daily records and rule curves; B.18 carries RID's reported release (§25).
+
+## 25. Kaeng Krachan and the Phetchaburi River (checked 2026-10-05, production and research logs; D-099)
+- **Two daily records for one dam (HII `analyst/dam`):** RID (dam id 13) and EGAT (dam id 57) disagree — 5 Oct RID released
+  10.80 ล้าน ลบ.ม./วัน (≈ 125 m³/s), storage 725.85 ล้าน ลบ.ม. = 102.23 % of the normal storage 710; EGAT (4 Oct) 3.04 and
+  58.64 % (KI-295). B.18 below the dam carries RID's figure: 366 days, r 0.93, B.18 − release +12.6 m³/s median (+3.5 to
+  +26.9 by month), day-to-day changes line up the same day (r 0.53; next day 0.30)
+  (research/2026-10-05_impact_release_vs_b18.log).
+- **Rule curve and history (HII `analyst/dam_yearly_graph`):** 5 Oct upper / lower rule curve 593.37 / 203.80 ล้าน ลบ.ม.,
+  so the reservoir stood 132 ล้าน ลบ.ม. above the upper curve. Highest daily release per year: 2018 24.36 (21 Aug, ≈ 282
+  m³/s), 2019 8.90, 2020 2.76, 2021 9.13, 2022 4.75, 2023 3.46, 2024 3.89, 2025 3.89, 2026 11.28 (4 Oct, to date). The
+  release since 2 Oct 2026 is the largest since 2018.
+- **The river below:** B.10 ≈ B.18 ~30 h earlier minus ~63 m³/s (the canal diversion at เขื่อนเพชร, ⚠️ unverified);
+  travel times from B.18 (24 h-change correlation): B.10 24–30 h, B.16 31–37 h, B.15 38–43 h, PCH001 36–44 h, r 0.29–0.46.
+  Downstream levels barely follow B.18's changes (pass-through 1.64 cm at B.10, 0.26 cm at B.16 per m³/s), so keeping
+  today's level beats every what-if built from public data (MODELS §11, KI-297).
+- **Gauges:** PCH003 "ท่ายาง" (HII) moves with B.18 and most likely sits near the dam (KI-296). HII serves no river levels
+  for 2018 for B.18, B.10, B.16, B.15 or PCH001; it does for 2024–25 (B.10).
+

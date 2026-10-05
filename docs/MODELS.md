@@ -321,3 +321,62 @@ daily forecasts, a year of archive available); WeatherNext 3 (research only).
   floodhub_input,bands_by_trend,band_window,band_coverage_live,uncertainty_sources,weathernext_probe*,weathernext_rain_v2}.py`
   with their `.log` files. Open the database read-only (`db.connect_readonly()`), never redeploy during a run (KI-284), and
   call AI with `account=False` (KI-285).
+- Impact pilot (D-099): `research/2026-10-05_impact_anchored_replay.py` (absolute, anchored and gain what-ifs against keeping
+  today's level) and `research/2026-10-05_impact_release_vs_b18.py` (does B.18 carry the dam's reported release), with logs;
+  the live replay is `impact.replay` inside the hourly `impact` task.
+
+## 11. Impact what-if for a dam release (pilot Kaeng Krachan, `/impact`, D-099)
+
+**Question (ONWR/RID engineers).** If Kaeng Krachan releases X ล้าน ลบ.ม./วัน and เขื่อนเพชร diverts D m³/s, when and how
+high does the water get at B.18 (เขาลูกช้าง), B.10 (ตลาดท่ายาง), B.16 (สะพานบ้านลาด), B.15 (ข้างจวนผู้ว่าฯ) and PCH001
+(เมืองเพชรบุรี), and does it reach each agency's own bank? 1 ล้าน ลบ.ม./วัน = 11.574 m³/s.
+
+**Model (built, behind the gate).**
+- Flow down the river, a steady release held ≥ 1 day: B.18 = R + (B.18 now − release now); B.10 = max(0, B.18 − D) + local,
+  local = max(0, B.10 now − max(0, B.18 then − D now)); B.16 = B.10 + (B.16 now − B.10 then). Short pulses arrive lower
+  (attenuation not modelled).
+- Level: a rating curve h = h₀ + a·Qᵇ per gauge with flow (least squares in log space over a grid of h₀ below the lowest
+  level); the city gauges (no flow) against B.16's flow at the learned lag. Range = the 10–90 % residuals; "outside the
+  data" when a flow exceeds the highest the year carried (the curve is extrapolated).
+- When: the lag of the best correlation of 24 h changes (0–72 h), window ±20 % (at least ±3 h), plus 2–8 h dam → B.18
+  (assumed; a year of daily data shows a same-day response).
+- Diversion default: the median of B.18 (lag earlier) − B.10 over the last 72 h (63 m³/s on 2026-10-05).
+
+**Ratings fitted on the year (2026-10-05).**
+| Gauge | h₀ (m) | a | b | RMSE (cm) | Q seen (m³/s) |
+|---|---|---|---|---|---|
+| B.18 | 23.13 | 0.061 | 0.78 | 3.4 | 2–143 |
+| B.10 | 5.28 | 0.184 | 0.70 | 2.2 | 2–86 |
+| B.16 | 1.54 | 0.627 | 0.47 | 1.1 | 5–73 |
+| B.15 (B.16's flow) | −0.47 | 0.326 | 0.56 | 28.6 | 5–73 |
+| PCH001 (B.16's flow) | −0.83 | 0.371 | 0.57 | 9.8 | 5–73 |
+
+**Validation (replay, honest protocol).** Ratings, lags and the pass-through gain are fitted on the first 60 % of 370 days
+and judged every 3 h on the last 40 %, B.18's measured flow standing in for the release. Four predictions at each
+point's lag: *keep* today's level; *absolute* (the model above); *anchored* (today's level + rating(q + ΔQ) − rating(q),
+ΔQ the B.18 change on its way); *gain* (today's level + g·ΔQ, g fitted). Mean level error, cm, 2026-10-05:
+| Gauge | keep | absolute | anchored | gain | n |
+|---|---|---|---|---|---|
+| B.10 | 12.5 | 39.4 | 24.9 | **12.0** | 951 |
+| B.16 | **13.6** | 48.1 | 113.6 | 13.7 | 791 |
+| B.15 | **34.1** | 51.7 | 85.2 | 44.8 | 740 |
+| PCH001 | **16.7** | 46.9 | 83.6 | 21.6 | 775 |
+On big changes (|ΔQ| ≥ 15 m³/s) keep wins too (B.10 25.9 vs gain 28.6). **Gate:** a method must beat keep by ≥ 10 % at
+B.10 and B.16 (and on big changes when there are ≥ 30) — not met, so `/whatif` answers 409 and the table stays off. The
+replay is rebuilt hourly.
+
+**Why it fails here.** In the year, flow changes at B.18 (≤ 143 m³/s) barely reached the river below เขื่อนเพชร: the
+learned pass-through is 1.64 cm (B.10) and 0.26 cm (B.16) per m³/s at B.18, travel-time correlation r 0.29–0.46. Most
+likely the diversion dam absorbs them (~63 m³/s to the canals; ⚠️ unverified), so the levels follow the diversion, local
+rain and the tide in the city. The steep ratings (B.10 ≈ 4–5 cm per m³/s) turn small flow errors into large level
+errors. A flood-size release must pass the diversion dam, but the only one since 2018 (24.36 ล้าน ลบ.ม./วัน on
+21 Aug 2018) has no public river record.
+
+**Dam context (shown, not modelled).** RID's daily record against HII's rule curve (5 Oct: storage 725.9, upper curve
+593.4, lower 203.8 ล้าน ลบ.ม.) and against its own history (2019–2025 never released more than 9.13 ล้าน ลบ.ม./วัน; the
+release since 2 Oct is the largest since 2018). B.18 carries RID's release: a year of daily data, r 0.93, +12.6 m³/s
+median, same-day response (EGAT's record does not match, KI-295).
+
+**What would make it credible (asked on the page, Q56):** เขื่อนเพชร gate settings and canal flows; RID's hourly river
+records for Aug–Sep 2018; hourly releases and the rule curve in use; release plans; surveyed banks and channel capacity.
+

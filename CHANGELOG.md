@@ -2,6 +2,21 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.27.0 — 2026-10-05
+- **`/impact`: flood-impact analysis for partner engineers, pilot Kaeng Krachan (owner request; D-099).** A separate page
+  behind one shared password (value only in `.env`): the dam's daily RID record against HII's rule curve (5 Oct: 132 ล้าน
+  ลบ.ม. above the upper curve) and its own history since 2018 (the release since 2 Oct is the largest since 2018); EGAT's
+  differing record and "storage 102 % with no spill reported" asked as questions; the Phetchaburi River now (margin to each
+  agency's own bank, flow, travel time with its correlation, when measured); the replay; the data request to ONWR/RID with
+  CSV templates; the method, with a live check that B.18 carries the reported release (a year: r 0.93).
+- **The what-if release table is built but gated.** Replayed on the last 40 % of the year, no method beats keeping
+  today's level at B.10 and B.16 (B.10 12.5 cm vs 12.0–39.4; B.16 13.6 vs 13.7–113.6), so the table stays off (HTTP 409)
+  until one does by ≥ 10 %; the replay is rebuilt hourly (KI-297).
+- **Security:** constant-time password check, a signed HttpOnly/Secure/SameSite=Strict cookie bound to the password,
+  a failed-login limit, noindex and robots, a strict CSP and `X-Frame-Options: DENY` (KI-293, KI-294).
+- **Data:** `dam_daily` (HII's national daily dam records, every 6 h) and the pilot dam's history since 2018 and rule
+  curves; `owner_status.py` IMPACT row (length only). `pyproject.toml` caught up with `__version__` (was 0.20.5).
+
 ## v0.26.0 — 2026-10-05
 - **Google Flood Hub forecasts feed the model near its points (owner: "Yes" to Q55).** 79 gauges within 10 km of a Flood Hub
   point (non-BMA) read the forecast's relative river-flow change over each horizon, from the latest forecast issued

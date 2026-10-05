@@ -94,7 +94,7 @@
 Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is collected yet (owner: validate first, D-044).
 | Source | Endpoint | Found | Verdict |
 |---|---|---|---|
-| HII dams | `GET https://api-v3.thaiwater.net/api/v1/thaiwater30/analyst/dam` | 50 large dams (all fresh: storage MCM/%, inflow, release, spill, max/normal storage); 862 medium (448 fresh, 317 dated 1970-01-01); 60 small-dam telemetry (52 fresh, with spillway level). **No rule curves** | ✅ national reservoir state; filter stale rows |
+| HII dams | `GET https://api-v3.thaiwater.net/api/v1/thaiwater30/analyst/dam` | 50 large dams (all fresh: storage MCM/%, inflow, release, spill, max/normal storage); 862 medium (448 fresh, 317 dated 1970-01-01); 60 small-dam telemetry (52 fresh, with spillway level). No rule curves here (they are in `dam_yearly_graph`, §2o) | ✅ national reservoir state; filter stale rows |
 | HII BMA road sensors | `GET …/thaiwater30/public/flood_road` | **262 BMA road-flood sensors, 241 fresh**, depth on the road in **cm**, lat/lon, code `FL.xxx.nn` | ✅ Bangkok road-level measurement (never convert to m MSL) |
 | HII BMA canals | `GET …/thaiwater30/public/canal_waterlevel` | 282 BMA canal gauges, 229 fresh; same `WL.xxx.nn` codes and values as the flood69 relay; +73 fresh gauges we lack; 250 with bank/warning/critical | ✅ government channel for BMA canals (KI-218) |
 | HII gates | `GET …/thaiwater30/public/watergate_load` | 2,315 rows, **12 fresh**; most stopped July 2023; no thresholds | ❌ stale nationally |
@@ -194,6 +194,16 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | Google Flood Forecasting API | `POST floodforecasting.googleapis.com/v1/gauges:searchGaugesByArea` `{regionCode:"TH"}`; `floodStatus:searchLatestFloodStatusByArea`; `GET gaugeModels:batchGet?names=gaugeModels/{id}`; `GET gauges:queryGaugeForecasts?gaugeIds=…&issuedTimeStart=…`; key in `X-Goog-Api-Key` | ✅ 200: 103 HYBAS virtual gauges (all `qualityVerified`, `hasModel`); statuses (severity NO_FLOODING / ABOVE_NORMAL / SEVERE, trend, forecast window, inundation map type); thresholds warning / danger / extreme (m³/s); daily discharge ~9 days | ✅ collector `google_floodhub`, validated, not shown (D-087) |
 | HII large dams | `GET api-v3.thaiwater.net/api/v1/thaiwater30/analyst/dam` → `data.dam_daily` | ✅ 50 dams with storage, inflow, release, `dam.sub_basin_id` | reference |
 | HII dam history | `GET …/analyst/dam_yearly_graph?data_type=dam_released&dam_id={id}&year={yyyy}` (from `www.thaiwater.net/dist/js/app.chunk.js`) | ✅ daily values (MCM/day) for the year, plus `upper_rule_curve`, `lower_rule_curve`, bounds, `average_inflow` — **rule curves exist** (SOURCES §2d said none) | tested as input: no gain (D-090) |
+
+### 2o. Kaeng Krachan pilot: dam records, rule curves, river history (probed 2026-10-05 08:00–10:00 UTC; D-099)
+Two probe requests to `dam_yearly_graph` went out without a User-Agent by mistake (an empty shell variable); every other request used the project UA from `config.py`.
+
+| Source | Request | Result | Use |
+|---|---|---|---|
+| HII large dams (daily) | `GET …/thaiwater30/analyst/dam` → `data.dam_daily[]` | ✅ 50 dams; Kaeng Krachan twice: RID `dam.id` 13 (5 Oct: released 10.8 ล้าน ลบ.ม./วัน, storage 725.85 = 102.23 %, spill 0, `dam_level` 0 = not reported) and EGAT `dam.id` 57 (4 Oct: released 3.04, 58.64 %, level 99.36 m) — they disagree (KI-295) | `dam_daily` via `hii_dams` (6 h) |
+| HII dam year | `GET …/analyst/dam_yearly_graph?data_type={dam_released\|dam_storage}&dam_id=13&year={yyyy}` | ✅ daily values for the year (Thai dates, `T00:00:00+07:00`); `upper_rule_curve` / `lower_rule_curve` (366 days listed as 2020, ล้าน ลบ.ม.; 5 Oct 593.37 / 203.80); `normal_bound` 710 (RID's percent = storage / 710: 725.85 / 710 = 102.23 %), `upper_bound` 900, `lower_bound` 65; 2018–2026 served; values equal `analyst/dam` (5 Oct: 10.8 and 725.849) | the pilot dam's history and rule curve (`hii_dam_history`, in `hii_dams`) |
+| HII station history, 2018 | `GET …/public/waterlevel_graph?station_type=tele_waterlevel&station_id={id}&start_date=2018-08-01&end_date=2018-08-31%2023:59` for B.18 (1098952), B.10 (2671), B.16 (505029), B.15 (505030), PCH001 (758) | ⚠️ HTTP 200 with hourly timestamps but **no values** for every gauge | none — the 2018 release (24.36 ล้าน ลบ.ม./วัน on 21 Aug) needs RID's own records (Q56) |
+| HII station history, 2024–25 | same, B.10, Oct 2024 and Jan 2025 | ✅ 635 and 611 hourly values with discharge | a longer replay is possible, but 2019–2025 never released more than 9.13 ล้าน ลบ.ม./วัน |
 
 ## 3. Refuted endpoints — do **not** use
 

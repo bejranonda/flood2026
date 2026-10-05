@@ -9,6 +9,7 @@
 |---|---|---|---|
 | Q18 | `flood.autobahn.bot` challenged non-browser clients | ✅ **done** (owner turned Bot Fight Mode off, verified 17:33 UTC) | |
 | **HYDROBASINS** | Download HydroBASINS (Asia) in a browser and copy it to the server | ✅ **done** 2026-10-02 (owner downloaded the lake version + ONWR's 22 basins; tested: no forecast gain, [research](../research/2026-10-02_catchment_rain.md)) | |
+| **IMPACT** | `/impact` (D-099): give the link and the password to the ONWR/RID engineers privately; **change the password to a long passphrase (≥ 16 characters) before any ONWR/RID data are loaded** | ⬜ open — new 2026-10-05 (pilot password is short: fine for public data only, KI-293) | 1 |
 | **UPTIME** | An external uptime check that alerts you when `/api/health` fails (KI-246: a 4.5 h overload on 2026-09-30 went unnoticed) | ⬜ open — new 2026-09-30 | 1 |
 | **SOCIAL** | Upload `docs/img/social-preview.png` as the GitHub repository social preview (**regenerated 2026-10-03 with the nationwide text, D-073**); optionally add the site to Google Search Console | ⬜ open — new 2026-09-30 | 3 |
 | **RID** | RID gate coordinates for 15 unplaced + 14 approximate stations | ⬜ open | 2 |
@@ -112,6 +113,11 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 ### Optional · keep the host and the public history tidy
 - **Server IP in old commits (KI-214):** 8 commits from earlier today still show it; it is gone from the current files. It is low risk because the site is only reachable through the Cloudflare Tunnel and no web ports are open. Removing it from history means `git filter-repo` plus a force-push, which rewrites history and breaks existing clones and forks. **Only do this if you want it; say so and I will.**
 - **SSH:** 15,754 failed logins in 24 hours (normal scanning). Password login cannot succeed today (root is key-only; no other account has a password), but `PasswordAuthentication yes` is still set. If you want the log noise and the theoretical risk gone: `PasswordAuthentication no` in `/etc/ssh/sshd_config`, `sshd -t && systemctl reload ssh` (keep your current session open while testing a new key login), and `apt install fail2ban`. I did not touch this: it is a shared host and a lockout would be costly.
+
+### IMPACT — the partner page `/impact` (new 2026-10-05, D-099)
+- **Why:** the page is behind one shared password. Your pilot password is short; with only public data on the page that is acceptable, not once ONWR/RID data are loaded (KI-293).
+- **Steps:** (1) On the server, edit `.env`: `IMPACT_PASSWORD=<a long passphrase, ≥ 16 characters>` (never in git, chat logs or public channels). (2) `docker compose up -d app` — every open session ends, because the cookie is bound to the password. (3) Send https://flood.autobahn.bot/impact and the passphrase to the engineers through a private channel (Q56). (4) When their data arrive (the page lists what and has CSV templates), hand them to the session: they go into the database, never into git.
+- **Verify:** `python3 scripts/owner_status.py` → IMPACT ✅ (length only, the value is never printed); the old password is refused at `/impact`.
 
 ### UPTIME — alert when the site fails (new 2026-09-30, KI-246)
 **Why:** on 2026-09-30 the database was saturated from ~01:00 to 05:44 UTC; visitors saw "โหลดข้อมูลไม่สำเร็จ" and nobody was told. The server cannot alert you by itself (no notification channel is configured).

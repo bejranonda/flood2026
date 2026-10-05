@@ -37,6 +37,7 @@ Give residents in any province, and local officials and volunteers, an honest na
 ### 5.4 Forecasts per flood type (Phase 2 methods)
 - [ ] Verify reference events from official reports (Hat Yai 2025, Mekong 2026, Northeast 2017/2019/2022) before using them as labels
 - [ ] F1 regulated rivers: release scenarios once RID/EGAT rule curves are obtained; F5 Mekong: upstream-lag model; F3 flash floods: compare our rain thresholds with DWR/HII products first
+  - 2026-10-05 (D-099): pilot `/impact` for Kaeng Krachan — rule curves and dam history from HII; the release what-if is built and gated (no method beats persistence yet, KI-297); data asked from ONWR/RID (Q56).
 - [ ] Model candidates from the Bangkok experiments ([research 2026-09-27 §8](../../research/2026-09-27_forecast_48h.md)): network STAR + rain first; SSN for values along dendritic rivers; k-NN analogues with GloFAS reanalysis; GTWR for regional rain-response; ST-GNN only as a benchmark on multi-year national data
 - [ ] HII FEWS official forecasts exist for ~66 level and ~87 discharge stations nationally: extend the `hii_fews_forecast` archive and scoring (D-050) before using any of them
 

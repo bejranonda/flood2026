@@ -246,6 +246,16 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - A correction learned in one regime (the flood peak) can be wrong in the next (recession): test it day by day (fit on the past days only, judge the next day), never widen or narrow from a single period; never narrow below the backtest band.
 - Backfill a new input's history **before** its model goes live, or the re-backtest trains on two days and drops the model.
 
+### 6c-6. Lessons from the impact page (D-099, KI-293–KI-297)
+- **Gate decision tools on a replay against persistence.** While the gate is closed, show the evidence and ask for the
+  data that would open it; never show the table "with a warning" — a number on an engineer's screen gets quoted.
+- **Stubbed tests need one real-path test.** Every endpoint test stubbed the configuration, so a missing import gave
+  HTTP 500 on every `/api/impact` call while all tests passed; one test now runs the real function.
+- **Fixed page text carries no live numbers** (they go stale); compute them in the state. A conclusion printed on the
+  page must follow from the numbers beside it (the "same day" phrase appears only when the same-day r beats the next day's).
+- **"Largest since …" only over years fully present** (≥ 300 days); a missing year suppresses the claim.
+- **Probe with the project User-Agent** from `config.py`; check that a shell variable is not empty before using it.
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Zero-wait two-stage UX (v0.22.0):** Tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" immediately renders the deterministic rule-written story (`r.story`, ~40 ms) so visitors never face a blank 5–7 s shimmer. In the background, GLM retells the story in warm, natural spoken Thai (`&part=gist`); when verified, the card seamlessly updates with the polished retelling and badge. If GLM times out or is rejected, the rule story remains in place without error.
@@ -269,6 +279,12 @@ Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGEL
 
 ### 7.1 Security
 - `.env`, `certs/` and `*.pem` are git-ignored. Commit only `.env.example` with placeholders.
+- **Restricted pages (`/impact`, D-099):** the password lives only in `.env`; never write it, or anything that resembles
+  it, in code, tests, docs or commit messages — the repository is public (check the staged diff with `git diff --cached |
+  grep -iw <word>` before committing). Constant-time comparison; a signed HttpOnly, Secure, SameSite=Strict cookie scoped
+  to the API path and bound to the password; a failed-login limit; noindex and robots; a strict CSP without inline
+  script or style, `frame-ancestors 'none'`; every string from outside sources escaped. **Partner data never go in git**:
+  they are loaded into the database only.
 - Services bind to **127.0.0.1**. Public traffic enters only through the Cloudflare Tunnel. No open 80/443.
 - SSH: root login is key-only (`PermitRootLogin without-password`) and every login in practice uses a key; password authentication is still enabled globally, but no account except root has a usable password ([KI-214](KNOWN_ISSUES.md)). Recommended: `PasswordAuthentication no` and `fail2ban` (owner's call on this shared host).
 - **Backups:** R2 off-site backups are kept disabled by owner choice ([D-029](plan/DECISIONS.md)); telemetry archive and database are kept locally on the server disk.
