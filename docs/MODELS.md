@@ -388,3 +388,22 @@ never merged (KI-217); the dam's colour comes from its first record with a posit
 unknown, then by storage %. 2026-10-05: 13 above (ป่าสักชลสิทธิ์ 109.8 %, 957 vs upper curve 465 ล้าน ลบ.ม., releasing
 43.2 ล้าน ลบ.ม./วัน ≈ 500 m³/s; หนองปลาไหล 105.0 %; แก่งกระจาน 102.2 %), 23 between, 3 without a curve (KI-299).
 
+### 11b. 7-day release scenarios (D-101, `scenarios.py`)
+**Reservoir.** Daily water balance S(d) = S(d−1) + I − R(d), inflow I held at today's value; the band = persistence's own
+10–90 % change after h days (all days: ±0.8 at 1 d → −1.3/+1.9 at 7 d; days with inflow ≥ 10: −7/+6 → −16/+5 ล้าน
+ลบ.ม./วัน). HII's inflow closes the balance (median gap −0.15). A rain-driven model lost to persistence (KI-301).
+**River.** `impact.whatif` per day; each gauge sees the release of day d − round(lag/24) (B.18 same day, B.10 one day,
+B.16/B.15/PCH001 two days); local inflow and the diversion held at today's. Unvalidated downstream (D-099) — labelled.
+**Plans.** Hold; constants 0..cap step 0.5; ramps r0→r1 and front-loaded (k = 2, 3, 4 days at r1 then r2) on a 2.0 grid;
+cap = the highest daily release in HII's record (24.36). 2026-10-05: 676 plans, 0.3 s.
+**Effects.** city margin min (B.15, PCH001); worst margin min; overtopping sum (m·point·day); storage peak and days above
+normal (710); first day under the upper curve; day-7 storage (and vs the lower curve); largest day-to-day change of
+release including the step from today.
+**Constraints.** margin_i(d) ≥ MAE_i (the replay's mean error of the mass-balance method at gauge i: B.10 0.39, B.16
+0.48, B.15 0.52, PCH001 0.47 m); S(d) ≤ maximum storage (900); when today's storage is above the upper curve, S(7) ≤
+S(0) (below the lower curve: S(7) ≥ S(0)).
+**★ rule.** Among feasible plans: the earliest day under the upper curve, then the lowest S(7), then the gentlest change.
+None feasible → say so; show the lowering plan with the least overtopping. 2026-10-05 19:00 UTC: 108 feasible, ★ = 17.0
+constant (S(7) 679, worst margin 0.55 m, step 6.2); "hold" best for the city and warning time; 10.5 best for the worst
+point, total and water kept (the smallest release that still lowers the reservoir).
+

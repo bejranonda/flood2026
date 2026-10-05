@@ -264,6 +264,14 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - Static files sit behind Cloudflare's cache: a change needs a new `?v=` (the impact assets carry a content hash; bump
   `app.js` / `style.css` by hand).
 
+### 6c-8. Lessons from the release scenarios (D-101, KI-301, KI-302)
+- **A recommendation rule must carry the model's error as a constraint**, never as a tiebreaker: "no overtopping" means
+  margin ≥ the model's error at that point. Test the rule on live numbers before anyone sees it.
+- **The first step counts.** A "constant" plan that jumps from today's release is a sudden change for people downstream.
+- **Test every assumption against persistence before it becomes an input** (the rain-driven inflow lost); show what
+  failed as context, and say in the UI which side is tested and which is labelled.
+- **Styles scoped to a view do not reach the app's shared sheet**: content placed in `#sheet` needs its own classes.
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Zero-wait two-stage UX (v0.22.0):** Tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" immediately renders the deterministic rule-written story (`r.story`, ~40 ms) so visitors never face a blank 5–7 s shimmer. In the background, GLM retells the story in warm, natural spoken Thai (`&part=gist`); when verified, the card seamlessly updates with the polished retelling and badge. If GLM times out or is rejected, the rule story remains in place without error.

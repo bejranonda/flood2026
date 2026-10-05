@@ -708,7 +708,10 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
     lines.append("🔴 ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง — ใช้เปรียบเทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์")
     first = f"ตอนนี้อ่าง{name}{pos and ' ' + pos} ระบายวันละ {rel:.1f} และมีน้ำเข้า {inf:.1f} ล้าน ลบ.ม." if rel is not None and inf is not None else f"ตอนนี้อ่าง{name} {pos}"
     if star and opt.get("constraints_met"):
-        second = f"แผนที่เข้าเกณฑ์คือ {plan_words(star)} เพราะ{opt.get('reason', '')}"
+        e = star["effects"]
+        when = (f"กลับใต้เส้นควบคุมในวันที่ {e['under_curve_day']}" if e.get("under_curve_day")
+                else f"ลดอ่างได้มากที่สุด (เหลือ {e['storage_end']:.0f} ล้าน ลบ.ม. ในวันที่ 7)")
+        second = f"แผนที่เข้าเกณฑ์คือ {plan_words(star)}: {when} โดยทุกจุดยังห่างตลิ่งเกินความคลาดเคลื่อนของแบบจำลอง"
     elif star:
         second = f"{opt.get('reason', '')} แผนที่ใกล้เคียงที่สุดคือ{plan_words(star)}"
     else:

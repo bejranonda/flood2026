@@ -94,3 +94,20 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 #view-impact .imp-ask { margin-top: 8px; }
 .imp-svg { width: 100%; height: auto; display: block; margin: 6px 0; }
 
+/* the plan sheet lives in the app's #sheet (outside #view-impact): its own table and legend rules */
+.imp-sheet table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+.imp-sheet th, .imp-sheet td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.imp-sheet th:first-child { text-align: left; }
+.imp-sheet thead th { font-size: 12px; color: var(--muted); font-weight: 600; vertical-align: bottom; }
+.imp-sheet td small { color: var(--muted); }
+.imp-sheet td.imp-neg { color: var(--critical); font-weight: 700; }
+.imp-sheet td.imp-best { background: #e8f5e9; }
+.imp-sheet .imp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.imp-sheet .imp-facts { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); }
+.imp-sheet details > summary { cursor: pointer; font-weight: 600; min-height: 36px; padding-top: 6px; }
+.imp-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+.imp-legend .lg::before { content: ""; display: inline-block; width: 18px; height: 0; border-top: 3px solid; margin-right: 5px; vertical-align: middle; }
+.imp-legend .lg-st::before { border-color: #1565c0; }
+.imp-legend .lg-up::before { border-color: #e46c0a; border-top-style: dashed; }
+.imp-legend .lg-no::before { border-color: #c62828; border-top-style: dotted; }
+

@@ -329,22 +329,31 @@
       (badges ? "<div class=\"imp-badges\">" + badges + "</div>" : "") + (p.feasible ? "" : "<div class=\"imp-small\">ไม่เข้าเกณฑ์</div>") + "</li>";
   }
 
+  const dayShort = (ymd) => (ymd ? new Date(String(ymd).slice(0, 10) + "T12:00:00+07:00").toLocaleDateString("th-TH",
+    { timeZone: "Asia/Bangkok", day: "numeric", month: "short" }) : "–");
+
   function chartSvg(p, cmp) {
-    // storage (mid, band) against the upper rule curve, 7 days; SVG attributes only (no inline styles)
-    const W = 320, H = 110, pad = 24, n = p.storage.length;
-    const vals = [].concat(p.storage, p.storage_low, p.storage_high, cmp.upper, [cmp.normal]);
-    const lo = Math.min(...vals) - 10, hi = Math.max(...vals) + 10;
-    const x = (i) => pad + (i * (W - 2 * pad)) / (n - 1), y = (v) => H - pad - ((v - lo) * (H - 2 * pad)) / (hi - lo);
+    // storage (mid, band) against the upper rule curve and the normal storage, 7 days; SVG attributes only (no inline
+    // styles). The y-range follows the data so a 50-unit fall is visible; ticks at the left, the legend in HTML below.
+    const W = 340, H = 140, L = 46, R = 10, T = 10, B = 22, n = p.storage.length;
+    const vals = [].concat(p.storage, p.storage_low, p.storage_high, cmp.upper);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    if (cmp.normal >= lo - 40 && cmp.normal <= hi + 40) { lo = Math.min(lo, cmp.normal); hi = Math.max(hi, cmp.normal); }
+    lo = Math.floor((lo - 5) / 10) * 10; hi = Math.ceil((hi + 5) / 10) * 10;
+    const x = (i) => L + (i * (W - L - R)) / (n - 1), y = (v) => T + (H - T - B) - ((v - lo) * (H - T - B)) / (hi - lo);
     const line = (arr) => arr.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1)).join(" ");
     const band = line(p.storage_high) + " " + p.storage_low.map((v, i) => x(n - 1 - i).toFixed(1) + "," + y(p.storage_low[n - 1 - i]).toFixed(1)).join(" ");
+    const tick = (v) => "<line x1=\"" + (L - 4) + "\" x2=\"" + (W - R) + "\" y1=\"" + y(v).toFixed(1) + "\" y2=\"" + y(v).toFixed(1) + "\" stroke=\"#e3e7ec\" stroke-width=\"1\"></line>" +
+      "<text x=\"" + (L - 6) + "\" y=\"" + (y(v) + 3.5).toFixed(1) + "\" text-anchor=\"end\" font-size=\"10\" fill=\"#5b6573\">" + num(v, 0) + "</text>";
+    const normal = cmp.normal >= lo && cmp.normal <= hi ? "<line x1=\"" + L + "\" x2=\"" + (W - R) + "\" y1=\"" + y(cmp.normal).toFixed(1) + "\" y2=\"" + y(cmp.normal).toFixed(1) + "\" stroke=\"#c62828\" stroke-width=\"1.2\" stroke-dasharray=\"2 3\"></line>" : "";
+    const days = [0, Math.floor((n - 1) / 2), n - 1].map((i) => "<text x=\"" + x(i).toFixed(1) + "\" y=\"" + (H - 6) + "\" text-anchor=\"" + (i === 0 ? "start" : i === n - 1 ? "end" : "middle") + "\" font-size=\"10\" fill=\"#5b6573\">" + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</text>").join("");
     return "<svg class=\"imp-svg\" viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"ปริมาตรอ่าง 7 วันเทียบเส้นควบคุม\">" +
+      tick(lo) + tick(Math.round((lo + hi) / 20) * 10) + tick(hi) +
       "<polygon points=\"" + band + "\" fill=\"#1565c0\" fill-opacity=\"0.15\"></polygon>" +
-      "<polyline points=\"" + line(cmp.upper) + "\" fill=\"none\" stroke=\"#e46c0a\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></polyline>" +
-      "<line x1=\"" + pad + "\" x2=\"" + (W - pad) + "\" y1=\"" + y(cmp.normal).toFixed(1) + "\" y2=\"" + y(cmp.normal).toFixed(1) + "\" stroke=\"#c62828\" stroke-width=\"1\" stroke-dasharray=\"2 3\"></line>" +
-      "<polyline points=\"" + line(p.storage) + "\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"2.5\"></polyline>" +
-      "<text x=\"" + (W - pad) + "\" y=\"" + (y(cmp.upper[n - 1]) - 4).toFixed(1) + "\" text-anchor=\"end\" font-size=\"10\" fill=\"#e46c0a\">เส้นควบคุมบน</text>" +
-      "<text x=\"" + pad + "\" y=\"" + (y(cmp.normal) - 4).toFixed(1) + "\" font-size=\"10\" fill=\"#c62828\">ปริมาตรปกติ " + num(cmp.normal, 0) + "</text>" +
-      "<text x=\"" + pad + "\" y=\"" + (H - 6) + "\" font-size=\"10\" fill=\"#5b6573\">วันที่ 1</text><text x=\"" + (W - pad) + "\" y=\"" + (H - 6) + "\" text-anchor=\"end\" font-size=\"10\" fill=\"#5b6573\">วันที่ " + n + "</text></svg>";
+      "<polyline points=\"" + line(cmp.upper) + "\" fill=\"none\" stroke=\"#e46c0a\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></polyline>" + normal +
+      "<polyline points=\"" + line(p.storage) + "\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"2.5\"></polyline>" + days + "</svg>" +
+      "<p class=\"imp-legend\"><span class=\"lg lg-st\">ปริมาตรอ่าง (ช่วงน้ำไหลเข้าต่ำ–สูง)</span><span class=\"lg lg-up\">เส้นควบคุมบน</span>" +
+      (normal ? "<span class=\"lg lg-no\">ปริมาตรปกติ " + num(cmp.normal, 0) + "</span>" : "") + "</p>";
   }
 
   function openPlanSheet(cmp, id) {
@@ -352,18 +361,22 @@
     const sheet = document.getElementById("sheet"), box = document.getElementById("detail");
     if (!p || !sheet || !box) return;
     const codes = Object.keys(p.downstream || {});
-    const rows = p.release.map((r, i) => "<tr><th scope=\"row\">" + day(cmp.dates ? cmp.dates[i] : null) + "</th><td>" + num(r, 1) + "</td><td>" + num(p.storage[i], 0) +
-      " <small>(" + num(p.storage_low[i], 0) + "–" + num(p.storage_high[i], 0) + ")</small></td><td" + (p.storage[i] > cmp.upper[i] ? "" : " class=\"imp-best\"") + ">" + num(p.storage[i] - cmp.upper[i], 0) + "</td>" +
-      codes.map((c) => { const m = p.downstream[c][i].margin_m; return "<td" + (m != null && m < 0 ? " class=\"imp-neg\"" : "") + ">" + num(m, 2) + "</td>"; }).join("") + "</tr>").join("");
+    const worstAt = (i) => { let best = null; for (const c of codes) { const m = p.downstream[c][i].margin_m; if (m != null && (best == null || m < best.m)) best = { m, c }; } return best; };
+    const rows = p.release.map((r, i) => { const w = worstAt(i); return "<tr><th scope=\"row\">" + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</th><td>" + num(r, 1) + "</td><td>" + num(p.storage[i], 0) +
+      " <small>(" + num(p.storage_low[i], 0) + "–" + num(p.storage_high[i], 0) + ")</small></td><td" + (p.storage[i] > cmp.upper[i] ? "" : " class=\"imp-best\"") + ">" + (p.storage[i] > cmp.upper[i] ? "+" : "") + num(p.storage[i] - cmp.upper[i], 0) + "</td>" +
+      "<td" + (w && w.m < 0 ? " class=\"imp-neg\"" : "") + ">" + (w ? num(w.m, 2) + " <small>" + esc(w.c) + "</small>" : "–") + "</td></tr>"; }).join("");
+    const perPoint = "<details><summary>ห่างตลิ่งรายจุด (ม.)</summary><div class=\"imp-scroll\"><table><thead><tr><th scope=\"col\">วัน</th>" +
+      codes.map((c) => "<th scope=\"col\">" + esc(c) + "</th>").join("") + "</tr></thead><tbody>" +
+      p.release.map((r, i) => "<tr><th scope=\"row\">" + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</th>" +
+        codes.map((c) => { const m = p.downstream[c][i].margin_m; return "<td" + (m != null && m < 0 ? " class=\"imp-neg\"" : "") + ">" + num(m, 2) + "</td>"; }).join("") + "</tr>").join("") + "</tbody></table></div></details>";
     const e = p.effects;
-    box.innerHTML = "<div class=\"tools\"><button class=\"btn close\" aria-label=\"ปิด\">✕</button></div>" +
+    box.innerHTML = "<div class=\"imp-sheet\"><div class=\"tools\"><button class=\"btn close\" aria-label=\"ปิด\">✕</button></div>" +
       "<h2 id=\"sheet-title\">" + (p.optimal ? "★ " : "") + esc(planWords(p)) + "</h2>" +
       "<p class=\"muted\">" + (p.optimal && cmp.optimal.constraints_met ? "แผนที่เข้าเกณฑ์: " + esc(cmp.optimal.reason) : (p.best_for || []).map((k) => "เหมาะกับ" + EFFECT_TH[k]).join(" · ") || (p.feasible ? "เข้าเกณฑ์" : "ไม่เข้าเกณฑ์")) + "</p>" +
       chartSvg(p, cmp) +
-      "<div class=\"imp-scroll\"><table><thead><tr><th scope=\"col\">วัน</th><th scope=\"col\">ระบาย</th><th scope=\"col\">อ่าง (ช่วง)</th><th scope=\"col\">เทียบเส้นบน</th>" +
-      codes.map((c) => "<th scope=\"col\">" + esc(c) + " ห่างตลิ่ง (ม.)</th>").join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      "<div class=\"imp-scroll\"><table><thead><tr><th scope=\"col\">วัน</th><th scope=\"col\">ระบาย</th><th scope=\"col\">อ่าง (ช่วง)</th><th scope=\"col\">เทียบเส้นบน</th><th scope=\"col\">ห่างตลิ่งต่ำสุด</th></tr></thead><tbody>" + rows + "</tbody></table></div>" + perPoint +
       "<ul class=\"imp-facts\"><li>ล้าน ลบ.ม./วัน · อ่างเป็นค่ากลาง (ช่วง = น้ำไหลเข้าต่ำ–สูง) · เทียบเส้นบน = ปริมาตร − เส้นควบคุมบนของวันนั้น</li>" +
-      "<li>ท้ายน้ำ: ตลิ่งของหน่วยงานผู้วัด · 🔴 ยังไม่ผ่านการทดสอบย้อนหลัง · วันเหนือปริมาตรปกติ " + num(e.days_above_normal, 0) + " · เกินตลิ่งรวม " + num(e.overtop_sum, 2) + "</li></ul>";
+      "<li>ท้ายน้ำ: ตลิ่งของหน่วยงานผู้วัด · 🔴 ยังไม่ผ่านการทดสอบย้อนหลัง · วันเหนือปริมาตรปกติ " + num(e.days_above_normal, 0) + " · เกินตลิ่งรวม " + num(e.overtop_sum, 2) + "</li></ul></div>";
     sheet.hidden = false;
     box.querySelector(".close").addEventListener("click", () => { sheet.hidden = true; });
     box.scrollTop = 0;

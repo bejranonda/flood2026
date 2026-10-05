@@ -686,3 +686,12 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
 - The risk view is a fact sheet: each large dam's storage against the agencies' own rule curve, the release against the
   dam's own history, both agencies side by side. Impact (what happens downstream) stays per case, behind the replay gate.
 
+### 19.21 Decision support that carries its own uncertainty: the 7-day release scenarios (v0.29.0, D-101)
+- Plans are searched, not preset; every plan is judged on the same effects; the ★ plan follows a rule printed on the page.
+- A model's own error is a **constraint**: a plan counts as "not overtopping" only where the margin exceeds the replay
+  error at that gauge. Without it the rule recommended flooding twice (KI-302).
+- Only the reservoir side is tested (water balance); the river side is labelled 🔴 until ONWR's data pass the replay.
+  Inflow assumptions are tested against persistence before use — the rain model failed and is shown as context only.
+- Decision makers see the trade-offs ("เหมาะกับ…" per effect) and a custom plan next to the searched ones; ✨ retells,
+  never decides.
+

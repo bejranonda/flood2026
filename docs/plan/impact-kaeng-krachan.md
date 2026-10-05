@@ -68,3 +68,12 @@ Owner: "similar map and functions to main page but add the risk and impacts as a
 app with one more tab: national dams at risk (rule-curve position, both agencies, release history) and the cases (this
 pilot first, drawn on the map with the real river line). The board above is the case view; the gate is unchanged.
 
+## v0.29.0: 7-day release scenarios (D-101)
+Owner's goals for ONWR: scenarios for the next 7 days, their outcomes, which is best for what, the optimal one and why.
+Built as searched plans judged on seven effects with the model's error as a constraint; the reservoir side tested
+(water balance), the river side labelled; flood coverage = overtopping per reach until ONWR's Shapefiles; no DEM layer
+(GISTDA not reliable enough to validate one). Data the owner requested from ONWR (nothing received yet): (1) 2–3 years of
+daily releases by outlet (normal, spillway, gates, m³/s), inflow, level, storage and the rule curve; (3) เขื่อนเพชร gate
+operations and the canal diversions left/right (water that does not reach the river); (5) flood-coverage Shapefiles by
+release level. Numbers: MODELS §11b; findings: KI-301, KI-302.
+

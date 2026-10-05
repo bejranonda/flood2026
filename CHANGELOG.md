@@ -2,6 +2,18 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.29.0 — 2026-10-05
+- **7-day release scenarios for Kaeng Krachan on the impact tab (owner request; D-101).** Plans are found by search (676
+  constant, ramped and front-loaded releases), each judged on seven effects (city margin, worst point, overtopping,
+  dam safety, return under the rule curve, water kept, warning time); the ★ plan follows a printed rule — the fastest
+  return toward the upper curve among plans whose every gauge stays farther from its bank than the downstream model's
+  own error, within the maximum storage, and not leaving the reservoir higher; "เหมาะกับ…" marks the best plan per
+  effect; a custom day-by-day plan; cards like the station list and the app's bottom sheet with a 7-day table and chart;
+  ✨ retells the comparison. The reservoir side is a tested water balance; the river side is labelled 🔴 unvalidated.
+- **Inflow held at today's value with a regime band** — a rain-driven inflow model lost to persistence at every horizon
+  in the honest test (KI-301); the catchment rain forecast is shown as context. Inflow history stored for the dam.
+- Fixed before release: two rule versions that would have recommended flooding (KI-302).
+
 ## v0.28.1 — 2026-10-05
 - **Fix: OpenStreetMap tiles on `/impact` showed "Access blocked" (403).** The page's `Referrer-Policy: same-origin` sent
   no Referer, which OSM's tile policy requires; now `strict-origin-when-cross-origin` (the origin only, KI-300).

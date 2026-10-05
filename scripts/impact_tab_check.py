@@ -38,6 +38,25 @@ with sync_playwright() as p:
         pg.click('[data-imp="kaeng-krachan"]'); pg.wait_for_selector("#imp-river", timeout=20000)
         r["case_title"] = pg.inner_text(".imp-title")
         pg.screenshot(path=f"{OUT}/tab_{name}_case.png", full_page=False)
+        # the 7-day scenarios (D-101): cards, the ★ plan, a card opens the sheet with 7 day-rows and a chart, custom plan, ✨
+        pg.wait_for_selector("#imp-sc .imp-plan", timeout=30000)
+        r["scenario_cards"] = pg.locator("#imp-sc .imp-plan").count()
+        r["scenario_star"] = pg.locator("#imp-sc .imp-opt").count()
+        r["scenario_label"] = pg.inner_text("#imp-sc .imp-label")[:60]
+        r["scenario_head"] = pg.inner_text("#imp-sc .imp-sc-head")[:160]
+        pg.locator("#imp-sc .imp-plan").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-svg", timeout=8000)
+        r["sheet_rows"] = pg.locator("#detail tbody tr").count()
+        pg.screenshot(path=f"{OUT}/tab_{name}_plan_sheet.png", full_page=False)
+        pg.click("#detail .close"); pg.wait_for_timeout(300)
+        r["sheet_closed"] = pg.evaluate("document.getElementById('sheet').hidden")
+        inputs = pg.locator("#imp-custom input")
+        for i in range(inputs.count()):
+            inputs.nth(i).fill(str(12 + i))
+        pg.click("#imp-custom button"); pg.wait_for_timeout(2500)
+        r["custom_card"] = pg.locator("#imp-sc .imp-plan .imp-pos").count()
+        pg.click("#imp-sc .ai-btn"); pg.wait_for_selector("#imp-sc .story-text:not(.shimmer)", timeout=20000)
+        r["ai_story"] = pg.inner_text("#imp-sc .story-text")[:200]
+        pg.screenshot(path=f"{OUT}/tab_{name}_scenarios.png", full_page=False)
         pg.click("#imp-onmap"); pg.wait_for_timeout(1500)
         r["case_tooltips"] = pg.locator(".imp-tip").count()
         r["river_paths"] = pg.locator(".leaflet-overlay-pane path, .leaflet-impact-pane path").count()

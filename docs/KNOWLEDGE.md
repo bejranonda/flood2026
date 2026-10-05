@@ -347,4 +347,9 @@ UX principles established through visitor testing during the 2026 flood season:
   both ids return the same rule curve). 13 stood above their upper rule curve: ป่าสักชลสิทธิ์ 109.8 % (957 ล้าน ลบ.ม. vs
   upper curve 465; releasing 43.2 ล้าน ลบ.ม./วัน ≈ 500 m³/s), หนองปลาไหล 105.0 %, แก่งกระจาน 102.2 %, นฤบดินทรจินดา 97.3 %,
   กิ่วคอหมา 96.0 %, …; 23 between the curves; ห้วยกุ่ม, ปากมูล, ท่าทุ่งนา have no curve (KI-299).
+- **Kaeng Krachan catchment and inflow (2026-10-05, D-101):** HydroBASINS lev08 gives 6 basins upstream of the dam, 1,988 km²
+  (UP_AREA 2,273 at the dam basin); ERA5 rain there averages 4.8 mm/day (max 90). HII's daily inflow since 2018: the
+  highest 159.9 ล้าน ลบ.ม./วัน on 20 Jul 2018; 2019–2025 peaks 12.5–27.9; 2026 to 5 Oct: 39.4 on 29 Sep, 10.3 on 5 Oct.
+  Δstorage = inflow − release within −0.15 ล้าน ลบ.ม./วัน (median). Rain does not forecast the inflow better than
+  persistence (KI-301). Open-Meteo's 7-day rain over the catchment on 5 Oct: 4–17 mm/day.
 
