@@ -320,6 +320,14 @@ late adds nothing the gauge's own and upstream levels do not carry. Hourly relea
 research/2026-10-05_dam_release_input.log. (The first run served the variant at 0 gauges: the time axis had been read as
 seconds instead of hours and every feature was NaN — a never-served variant is a bug signal, GUIDELINES §6c-8.)
 
+### 5f. Experiment E-DAMP (2026-10-05): damping `star` against a steep opposing 24 h trend — rejected
+KI-292's case (SKG007: +0.55 m forecast after a steep fall, −0.30 m measured) asked whether `star` should be shrunk when
+the measured 24 h trend (≥ 10 cm) opposes its forecast. Three variants (half, fade to zero over 0.5 m of trend, zero),
+honest protocol on two disjoint samples (116 and 118 gauges): all worse at every horizon on both samples — 12 h −19.3 →
+−18.5 / −17.1 / −14.0 %, 24 h −10.7 → −10.3 / −9.2 / −8.8 %, 48 h −10.6 → −9.2 / −7.4 / −6.9 %, 72 h −8.6 → −7.9 / −5.2 /
+−4.4 % (sample 1; sample 2 alike), with 1–3 fewer gauges made worse. Verdict: rebounds are usually right; the 90 % band
+covers the wrong ones. Not adopted. research/2026-10-05_star_damping.log.
+
 ### 9b. Reservoir inflow nationwide (owner 2026-10-05: "not only the water level … inflow, reservoir and much more")
 Daily inflow for every RID dam (HII) against ERA5 catchment rain (HydroBASINS lev08 upstream basins), fit 2018–2024,
 tested 2025–2026, recursive to 7 days with observed rain (an upper bound): the rain + yesterday's-inflow model beats

@@ -1,0 +1,64 @@
+ Container floodwatch-worker-run-dc6d25e31c3b Creating 
+ Container floodwatch-worker-run-dc6d25e31c3b Created 
+… 20
+… 40
+… 60
+… 80
+… 100
+
+=== sample 1: 116 gauges
+
+=== +12 h (chosen on the first half, scored on the second)
+star (today)           n  116 · error vs no-change -19.3% (per-gauge mean -14.4%) · served a model   68 (star   59) · held ≥10 %   52 · worse   6
+star, half when opposing n  116 · error vs no-change -18.5% (per-gauge mean -13.9%) · served a model   63 (star   49) · held ≥10 %   51 · worse   5
+star, fade by trend (0.5 m → 0) n  116 · error vs no-change -17.1% (per-gauge mean -12.9%) · served a model   57 (star   44) · held ≥10 %   44 · worse   5
+star, zero when opposing n  116 · error vs no-change -14.0% (per-gauge mean -10.4%) · served a model   55 (star   33) · held ≥10 %   38 · worse   6
+
+=== +24 h (chosen on the first half, scored on the second)
+star (today)           n  116 · error vs no-change -10.7% (per-gauge mean -10.1%) · served a model   62 (star   48) · held ≥10 %   38 · worse   8
+star, half when opposing n  116 · error vs no-change -10.3% (per-gauge mean  -9.7%) · served a model   57 (star   43) · held ≥10 %   36 · worse   7
+star, fade by trend (0.5 m → 0) n  116 · error vs no-change  -9.2% (per-gauge mean  -8.7%) · served a model   47 (star   33) · held ≥10 %   31 · worse   5
+star, zero when opposing n  116 · error vs no-change  -8.8% (per-gauge mean  -8.3%) · served a model   43 (star   27) · held ≥10 %   30 · worse   5
+
+=== +48 h (chosen on the first half, scored on the second)
+star (today)           n  116 · error vs no-change -10.6% (per-gauge mean -10.1%) · served a model   59 (star   47) · held ≥10 %   43 · worse   6
+star, half when opposing n  116 · error vs no-change  -9.2% (per-gauge mean  -8.8%) · served a model   52 (star   39) · held ≥10 %   33 · worse   5
+star, fade by trend (0.5 m → 0) n  116 · error vs no-change  -7.4% (per-gauge mean  -7.4%) · served a model   44 (star   31) · held ≥10 %   27 · worse   4
+star, zero when opposing n  116 · error vs no-change  -6.9% (per-gauge mean  -6.8%) · served a model   41 (star   26) · held ≥10 %   25 · worse   4
+
+=== +72 h (chosen on the first half, scored on the second)
+star (today)           n  116 · error vs no-change  -8.6% (per-gauge mean  -8.0%) · served a model   48 (star   43) · held ≥10 %   37 · worse   7
+star, half when opposing n  116 · error vs no-change  -7.9% (per-gauge mean  -7.5%) · served a model   47 (star   41) · held ≥10 %   33 · worse   4
+star, fade by trend (0.5 m → 0) n  116 · error vs no-change  -5.2% (per-gauge mean  -5.5%) · served a model   34 (star   28) · held ≥10 %   20 · worse   5
+star, zero when opposing n  116 · error vs no-change  -4.4% (per-gauge mean  -4.6%) · served a model   28 (star   19) · held ≥10 %   17 · worse   5
+… 20
+… 40
+… 60
+… 80
+… 100
+
+=== sample 2: 119 gauges
+
+=== +12 h (chosen on the first half, scored on the second)
+star (today)           n  118 · error vs no-change -18.6% (per-gauge mean -15.0%) · served a model   74 (star   61) · held ≥10 %   56 · worse  11
+star, half when opposing n  118 · error vs no-change -17.7% (per-gauge mean -14.6%) · served a model   68 (star   51) · held ≥10 %   51 · worse  10
+star, fade by trend (0.5 m → 0) n  118 · error vs no-change -17.0% (per-gauge mean -13.8%) · served a model   62 (star   45) · held ≥10 %   46 · worse   9
+star, zero when opposing n  118 · error vs no-change -14.8% (per-gauge mean -12.8%) · served a model   57 (star   39) · held ≥10 %   42 · worse   7
+
+=== +24 h (chosen on the first half, scored on the second)
+star (today)           n  118 · error vs no-change -10.5% (per-gauge mean -11.2%) · served a model   67 (star   50) · held ≥10 %   49 · worse   7
+star, half when opposing n  118 · error vs no-change  -9.6% (per-gauge mean -10.7%) · served a model   60 (star   41) · held ≥10 %   41 · worse   5
+star, fade by trend (0.5 m → 0) n  118 · error vs no-change  -9.0% (per-gauge mean -10.2%) · served a model   54 (star   36) · held ≥10 %   37 · worse   5
+star, zero when opposing n  118 · error vs no-change  -8.8% (per-gauge mean -10.0%) · served a model   52 (star   33) · held ≥10 %   36 · worse   4
+
+=== +48 h (chosen on the first half, scored on the second)
+star (today)           n  118 · error vs no-change -10.1% (per-gauge mean  -9.5%) · served a model   66 (star   53) · held ≥10 %   45 · worse   8
+star, half when opposing n  118 · error vs no-change  -9.3% (per-gauge mean  -8.7%) · served a model   62 (star   46) · held ≥10 %   41 · worse   7
+star, fade by trend (0.5 m → 0) n  118 · error vs no-change  -7.3% (per-gauge mean  -7.1%) · served a model   52 (star   36) · held ≥10 %   31 · worse   6
+star, zero when opposing n  118 · error vs no-change  -7.0% (per-gauge mean  -6.9%) · served a model   50 (star   32) · held ≥10 %   30 · worse   5
+
+=== +72 h (chosen on the first half, scored on the second)
+star (today)           n  118 · error vs no-change  -8.1% (per-gauge mean  -6.5%) · served a model   59 (star   53) · held ≥10 %   41 · worse  11
+star, half when opposing n  118 · error vs no-change  -7.3% (per-gauge mean  -5.9%) · served a model   58 (star   47) · held ≥10 %   37 · worse  10
+star, fade by trend (0.5 m → 0) n  118 · error vs no-change  -5.3% (per-gauge mean  -4.0%) · served a model   46 (star   36) · held ≥10 %   27 · worse   9
+star, zero when opposing n  118 · error vs no-change  -4.9% (per-gauge mean  -3.8%) · served a model   44 (star   32) · held ≥10 %   25 · worse   9

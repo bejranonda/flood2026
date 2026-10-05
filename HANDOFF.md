@@ -37,7 +37,7 @@
 
 | "What can we benefit from … waterrisk.onwr.go.th/map" | probed (project UA, public GETs only): ONWR's keyless tile service has an official ≈ 1.1 km-cell flood warning (24 h, updated today) and forecasts +1…+3 days, observed flooded area per tambon, and a national dashboard; personal-data services (SOS, vulnerable houses) not touched. Overlap: a warning cell within 2 km of 36 % of our over/near-bank gauges vs 4 % of normal ones. Owner: "No nothing yet" — nothing built | SOURCES §2p, Q57 |
 
-**KI-292 verdict (19:30 UTC):** SKG007's `star` rebound (+0.55 m) did not come true (−0.30 m measured); M.183B mild (+0.23 vs +0.10). Next: an honest experiment on damping `star` against a steep opposing trend. `/impact` state rebuilds hourly (worker task `impact`); `hii_dams` every 6 h.
+**KI-292 (19:30–19:40 UTC):** SKG007's `star` rebound (+0.55 m) did not come true (−0.30 m measured); M.183B mild. Damping `star` against an opposing trend tested on two samples — worse at every horizon, rejected (MODELS §5f); no guard. `/impact` state rebuilds hourly (worker task `impact`); `hii_dams` every 6 h.
 
 ## 3n. 2026-10-05 06:00–07:10 UTC: owner's answers → Flood Hub input, calibrated 90 % bands (v0.26.0)
 | Owner request | Result | Where |
