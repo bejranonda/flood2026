@@ -26,6 +26,10 @@ def test_effects_measure_city_worst_total_dam_curve_water_and_warning():
     assert eff["city_margin_min"] == -0.2 and eff["worst_margin_min"] == -0.2 and abs(eff["overtop_sum"] - 0.2) < 1e-9
     assert eff["storage_peak"] == 720 and eff["days_above_normal"] == 2 and eff["under_curve_day"] is None
     assert eff["storage_end"] == 690 and eff["end_vs_lower"] == 490 and eff["ramp_max"] == 2 and eff["release_mean"] > 11.7
+    # the step from today's release counts as warning time too; the model's own error per point is a required margin
+    eff3 = sc.effects(release=[19.0] * 7, storage=[720] * 7, upper=[600] * 7, lower=[200] * 7, normal=710.0,
+                      margins={"B.10": [0.08] * 7, "B.16": [0.9] * 7}, city=("B.15",), today=10.8, margin_req={"B.10": 0.39, "B.16": 0.48})
+    assert abs(eff3["ramp_max"] - 8.2) < 1e-9 and abs(eff3["margin_vs_req_min"] - (0.08 - 0.39)) < 1e-9
     eff2 = sc.effects(release=[10] * 7, storage=[650, 620, 600, 590, 580, 570, 560], upper=[600] * 7, lower=[200] * 7, normal=710.0,
                       margins={"B.15": [1] * 7}, city=("B.15",))
     assert eff2["under_curve_day"] == 3 and eff2["days_above_normal"] == 0
@@ -33,7 +37,8 @@ def test_effects_measure_city_worst_total_dam_curve_water_and_warning():
 
 def _row(i, **e):
     base = {"city_margin_min": 1.0, "worst_margin_min": 1.0, "overtop_sum": 0.0, "storage_peak": 700.0, "days_above_normal": 0,
-            "under_curve_day": 7, "storage_end": 650.0, "end_vs_lower": 400.0, "ramp_max": 0.0, "release_mean": 10.0}
+            "under_curve_day": 7, "storage_end": 650.0, "end_vs_lower": 400.0, "ramp_max": 0.0, "release_mean": 10.0,
+            "margin_vs_req_min": 0.5}
     return {"id": i, "effects": {**base, **e}}
 
 
@@ -53,6 +58,8 @@ def test_best_for_each_effect_and_the_stated_optimal_rule_are_explainable():
                  days_above_normal=3, ramp_max=1.0)]
     feas = sc.feasible(rows, storage0=725.0, upper_today=600.0, max_storage=900.0)
     assert [r["id"] for r in feas] == ["more", "ramp"]  # hold/zero let the reservoir rise; most overtops
+    thin = _row("thin", worst_margin_min=0.08, storage_end=660.0, margin_vs_req_min=-0.31)  # 8 cm margin, model error 39 cm
+    assert "thin" not in [r["id"] for r in sc.feasible(rows + [thin], storage0=725.0, upper_today=600.0, max_storage=900.0)]
     best = sc.best_for(feas)
     assert best["city"] == "ramp" and best["worst"] == "ramp" and best["warning"] == "ramp" and best["water"] in ("more", "ramp")
     opt = sc.optimal(rows, storage0=725.0, upper_today=600.0, normal=710.0, max_storage=900.0)

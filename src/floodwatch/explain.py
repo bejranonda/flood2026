@@ -671,7 +671,8 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
     from floodwatch.scenarios import EFFECT_KEYS, EFFECT_TH
     dam = cmp.get("dam") or {}
     name = f"เขื่อน{dam.get('name_th') or ''}"
-    st0, up0, rel, inf = dam.get("storage_mcm"), (cmp.get("upper") or [None])[0], dam.get("released_mcm"), dam.get("inflow_mcm")
+    rc = dam.get("rule_curve") or {}
+    st0, up0, rel, inf = dam.get("storage_mcm"), rc.get("upper", (cmp.get("upper") or [None])[0]), dam.get("released_mcm"), dam.get("inflow_mcm")
     lines = [f"🏞️ {name} · ข้อมูลรายวัน {dam.get('dam_date') or ''}"]
     pos = ""
     if st0 is not None and up0 is not None:
@@ -707,7 +708,7 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
     lines.append("🔴 ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง — ใช้เปรียบเทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์")
     first = f"ตอนนี้อ่าง{name}{pos and ' ' + pos} ระบายวันละ {rel:.1f} และมีน้ำเข้า {inf:.1f} ล้าน ลบ.ม." if rel is not None and inf is not None else f"ตอนนี้อ่าง{name} {pos}"
     if star and opt.get("constraints_met"):
-        second = f"แผนที่เข้าเกณฑ์คือ{plan_words(star)} เพราะ{opt.get('reason', '')}"
+        second = f"แผนที่เข้าเกณฑ์คือ {plan_words(star)} เพราะ{opt.get('reason', '')}"
     elif star:
         second = f"{opt.get('reason', '')} แผนที่ใกล้เคียงที่สุดคือ{plan_words(star)}"
     else:

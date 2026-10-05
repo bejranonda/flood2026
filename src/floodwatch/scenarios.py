@@ -64,17 +64,21 @@ def candidate_plans(today: float, max_release: float, days: int = DAYS, step: fl
 
 
 def effects(release: list[float], storage: list[float], upper: list[float], lower: list[float], normal: float,
-            margins: dict, city: tuple) -> dict:
-    """The numbers every plan is judged on. Margins: {code: [m to the gauge's own bank per day]}; negative = over it."""
+            margins: dict, city: tuple, today: float | None = None, margin_req: dict | None = None) -> dict:
+    """The numbers every plan is judged on. Margins: {code: [m to the gauge's own bank per day]}; negative = over it.
+    `margin_req` {code: m}: the downstream model's own error per point — a plan is only as safe as its margin above it.
+    `today`: today's release, so the first day's step counts as a change too (warning time)."""
     all_m = [m for ms in margins.values() for m in ms if m is not None]
     city_m = [m for c in city for m in margins.get(c, []) if m is not None]
+    req = [m - (margin_req or {}).get(c, 0.0) for c, ms in margins.items() for m in ms if m is not None]
+    steps = [abs(release[d] - release[d - 1]) for d in range(1, len(release))] + ([abs(release[0] - today)] if today is not None else [])
     above = [d for d, (s, u) in enumerate(zip(storage, upper)) if s <= u]
     return {"city_margin_min": min(city_m) if city_m else None, "worst_margin_min": min(all_m) if all_m else None,
             "overtop_sum": round(sum(max(0.0, -m) for m in all_m), 3), "storage_peak": max(storage),
             "days_above_normal": sum(1 for s in storage if s > normal), "under_curve_day": (above[0] + 1) if above else None,
             "storage_end": storage[-1], "end_vs_lower": round(storage[-1] - lower[-1], 3),
-            "ramp_max": round(max((abs(release[d] - release[d - 1]) for d in range(1, len(release))), default=0.0), 3),
-            "release_mean": round(sum(release) / len(release), 3)}
+            "ramp_max": round(max(steps, default=0.0), 3), "release_mean": round(sum(release) / len(release), 3),
+            "margin_vs_req_min": round(min(req), 3) if req else None}
 
 
 def _key(rows, fn):
@@ -103,6 +107,8 @@ def feasible(rows: list[dict], storage0: float, upper_today: float | None, max_s
         e = r["effects"]
         if e["overtop_sum"] > 0 or (e["worst_margin_min"] is not None and e["worst_margin_min"] < 0):
             continue
+        if e.get("margin_vs_req_min") is not None and e["margin_vs_req_min"] < 0:  # inside the downstream model's own error
+            continue
         if max_storage is not None and e["storage_peak"] > max_storage:
             continue
         if upper_today is not None and storage0 > upper_today and e["storage_end"] > storage0:
@@ -127,17 +133,21 @@ def optimal(rows: list[dict], storage0: float, upper_today: float | None, normal
         w = e(win)
         when = (f"กลับใต้เส้นควบคุมบนในวันที่ {w['under_curve_day']}" if w["under_curve_day"] is not None
                 else f"ลดปริมาตรอ่างได้มากที่สุดโดยยังไม่ถึงเส้นควบคุมบนใน 7 วัน (เหลือ {w['storage_end']:.0f} ล้าน ลบ.ม.)")
-        margin = f" (ห่างตลิ่งต่ำสุด {w['worst_margin_min']:.2f} ม.)" if w["worst_margin_min"] is not None else ""
+        margin = f" (ห่างตลิ่งต่ำสุด {w['worst_margin_min']:.2f} ม. มากกว่าความคลาดเคลื่อนของแบบจำลองท้ายน้ำ)" if w["worst_margin_min"] is not None else ""
         return {"id": win["id"], "constraints_met": True,
-                "reason": f"{when} โดยไม่มีจุดใดเกินตลิ่ง{margin} และเปลี่ยนอัตราระบายวันละไม่เกิน {w['ramp_max']:.1f} ล้าน ลบ.ม."
+                "reason": f"{when} โดยไม่มีจุดใดเกินตลิ่ง{margin} และเปลี่ยนอัตราระบายวันละไม่เกิน {w['ramp_max']:.1f} ล้าน ลบ.ม. (รวมก้าวแรกจากวันนี้)"
                           + (f"; ปริมาตรสูงสุด {w['storage_peak']:.0f} เทียบปริมาตรปกติ {normal:.0f} ล้าน ลบ.ม." if normal else ""),
-                "rule": "แผนที่พาอ่างกลับสู่เส้นควบคุมเร็วที่สุด ในบรรดาแผนที่ไม่มีจุดใดเกินตลิ่ง ไม่เกินความจุสูงสุด และไม่ปล่อยให้อ่างสูงขึ้นอีก"}
+                "rule": RULE}
     lowering = [r for r in rows if e(r)["storage_end"] <= storage0 and (max_storage is None or e(r)["storage_peak"] <= max_storage)] or rows
     win = min(lowering, key=lambda r: (e(r)["overtop_sum"], e(r)["storage_end"], e(r)["ramp_max"]))
     return {"id": win["id"], "constraints_met": False,
             "reason": "ไม่มีแผนใดลดปริมาตรอ่างได้โดยไม่มีจุดใดเกินตลิ่ง — ตลิ่งท้ายน้ำเป็นข้อจำกัดหลัก; แสดงแผนที่ลดอ่างโดยเกินตลิ่งน้อยที่สุดแทน"
                       f" (เกินตลิ่งรวม {e(win)['overtop_sum']:.2f} ม.·จุด·วัน) ⚠️ ระดับท้ายน้ำยังไม่ผ่านการทดสอบ",
-            "rule": "แผนที่พาอ่างกลับสู่เส้นควบคุมเร็วที่สุด ในบรรดาแผนที่ไม่มีจุดใดเกินตลิ่ง ไม่เกินความจุสูงสุด และไม่ปล่อยให้อ่างสูงขึ้นอีก"}
+            "rule": RULE}
+
+
+RULE = ("แผนที่พาอ่างกลับสู่เส้นควบคุมเร็วที่สุด ในบรรดาแผนที่ทุกจุดห่างตลิ่งมากกว่าความคลาดเคลื่อนของแบบจำลองท้ายน้ำ "
+        "ไม่เกินความจุสูงสุด และไม่ปล่อยให้อ่างสูงขึ้นอีก")
 
 
 def daily_downstream(state: dict, release_path: list[float], diversion_cms: float | None = None) -> dict:
@@ -174,6 +184,9 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
     inflow_mid = [max(0.0, inflow_today)] * days
     inflow_lo = [max(0.0, inflow_today + inflow_band(inflow_today, h)[0]) for h in range(1, days + 1)]
     inflow_hi = [max(0.0, inflow_today + inflow_band(inflow_today, h)[1]) for h in range(1, days + 1)]
+    # the downstream model's own error per point (the replay's mean error of the mass-balance method, cm → m)
+    vp = ((state.get("validation") or {}).get("points") or {})
+    margin_req = {c: (v.get("methods") or {}).get("absolute", 0.0) / 100.0 for c, v in vp.items()}
     plans = candidate_plans(today, max_release, days)
     if custom:
         plans.append({"kind": "custom", "release": [round(float(x), 2) for x in custom]})
@@ -185,7 +198,8 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
         rows.append({"id": f"p{i}", "kind": p["kind"], "release": p["release"], "storage": storage,
                      "storage_low": water_balance(storage0, inflow_lo, p["release"]),
                      "storage_high": water_balance(storage0, inflow_hi, p["release"]),
-                     "downstream": down, "effects": effects(p["release"], storage, upper, lower, normal, margins, city)})
+                     "downstream": down, "effects": effects(p["release"], storage, upper, lower, normal, margins, city,
+                                                            today=today, margin_req=margin_req)})
     feas = feasible(rows, storage0, upper[0], max_storage, lower[0])
     best = best_for(feas or rows)  # per-effect bests among the plans a decision maker may consider
     opt = optimal(rows, storage0, upper[0], normal, max_storage, lower[0])
@@ -202,5 +216,7 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
                                      "note": "คงน้ำไหลเข้าวันนี้ ช่วง = ความคลาดเคลื่อนของวิธีนี้เองที่ 1–7 วัน" + (" (ช่วงน้ำไหลเข้ามาก กว้างกว่าปกติมาก)" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else " (ปี 2568–69)") + "; แบบจำลองจากฝนแพ้วิธีนี้ทุกช่วงในการทดสอบ 2026-10-05 จึงไม่ใช้"},
             "upper": upper, "lower": lower, "normal": normal, "max_storage": max_storage, "max_release": max_release,
             "candidates": len(rows), "feasible": len(feas), "best_for": best, "optimal": opt, "plans": show,
-            "constraints": ["ไม่มีจุดใดเกินตลิ่ง (ตลิ่งของหน่วยงานผู้วัด)", "ไม่เกินความจุสูงสุดของอ่าง",
+            "margin_req": margin_req,
+            "constraints": ["ทุกจุดห่างตลิ่ง (ของหน่วยงานผู้วัด) มากกว่าความคลาดเคลื่อนของแบบจำลองท้ายน้ำ: " +
+                            ", ".join(f"{c} ≥ {m:.2f} ม." for c, m in sorted(margin_req.items())), "ไม่เกินความจุสูงสุดของอ่าง",
                             "อ่างต้องไม่สูงขึ้นกว่าวันนี้เมื่ออยู่เหนือเส้นควบคุมบน (หรือไม่ต่ำลงเมื่ออยู่ใต้เส้นล่าง)"]}

@@ -289,7 +289,7 @@
 
   function scenariosHtml(cmp, st) {
     const d = cmp.dam || {}, inf = cmp.inflow || {}, inputs = cmp.inputs || {};
-    const up0 = cmp.upper[0], diff = d.storage_mcm - up0;
+    const up0 = d.rule_curve && d.rule_curve.upper != null ? d.rule_curve.upper : cmp.upper[0], diff = d.storage_mcm - up0;
     const rain = inputs.rain7 && inputs.rain7.mm ? inputs.rain7.mm.reduce((a, b) => a + b, 0) : null;
     const head = "<p class=\"imp-sc-head\">วันนี้ " + num(d.storage_mcm, 0) + " ล้าน ลบ.ม. (" + num(d.storage_pct, 0) + " %) · " +
       (diff >= 0 ? "<b>เหนือเส้นควบคุมบน " + num(diff, 0) + "</b>" : "ต่ำกว่าเส้นควบคุมบน " + num(-diff, 0)) + " · ระบาย " + num(d.released_mcm, 2) +
