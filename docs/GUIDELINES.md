@@ -242,6 +242,10 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Schedules survive restarts.** A periodic task is due from its last success (`worker.first_due`), never from the restart.
 - **Watch surprising forecasts before guarding them.** Check the archive first (rebound forecasts came true 65 % over 30 days), record what to verify and when (KI-292), and test any guard with the honest protocol.
 
+### 6c-5. Calibrate to the current regime (D-098)
+- A correction learned in one regime (the flood peak) can be wrong in the next (recession): test it day by day (fit on the past days only, judge the next day), never widen or narrow from a single period; never narrow below the backtest band.
+- Backfill a new input's history **before** its model goes live, or the re-backtest trains on two days and drops the model.
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Zero-wait two-stage UX (v0.22.0):** Tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" immediately renders the deterministic rule-written story (`r.story`, ~40 ms) so visitors never face a blank 5–7 s shimmer. In the background, GLM retells the story in warm, natural spoken Thai (`&part=gist`); when verified, the card seamlessly updates with the polished retelling and badge. If GLM times out or is rejected, the rule story remains in place without error.

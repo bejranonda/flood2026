@@ -577,6 +577,16 @@
   - New `.env` keys (empty in git): `GFM_EMAIL`, `GFM_PASSWORD`, `GOOGLE_APPLICATION_CREDENTIALS`, `WEATHERNEXT_PROJECT`, `WEATHERNEXT_DATASET`, `EWDS_API_KEY` — worker only, never the web app; `owner_status.py` checks each with one request and prints no value.
 - **Revisit:** satellite UI if users outside Bangkok ask what the fields look like; WeatherNext after its backtest (owner step WNEXT: subscribe to the listing).
 
+### D-098 — The 90 % band is widened daily so it holds as stated; the printed 50 % range stays
+- **Date:** 2026-10-05 · **Status:** accepted (owner: "Yes" to Q54, widen the 48/72 h ranges so they hold as stated)
+- **Evidence:** research/2026-10-05_band_calibration.log — a fixed factor learned in the flood peak over-widened later (50 % bands would hold 64–68 %); research/2026-10-05_band_calibration_rolling.log — a daily factor from the last 5 days (outcomes already known, never below 1) brought the 90 % band closer to 90 % in all six horizon × kind cases (72 h "no change" 76 → 94 %, 48 h model 88 → 91 %), but overshot the 50 % band (48 h "no change" 41 → 63 %).
+- **Decision:** `risks.band90_factors` (daily, in the track records) → `forecast.widen90` scales q0/q4 around the median per horizon and kind (piecewise linear from 1.0 at 0 h); q1–q3 unchanged. First factors (2026-10-05): ×1.15/1.20/1.40 (model), ×1.00/1.25/1.55 ("no change") at 24/48/72 h. Affects the "5–25 %" bank-chance band and the "9 ใน 10 … ไม่เกิน X ซม." lines; the printed ranges do not change.
+
+### D-097 — Google Flood Hub forecasts feed `star` near a Flood Hub point (STAR_INPUTS 3)
+- **Date:** 2026-10-05 · **Status:** accepted (owner: "Yes" to Q55)
+- **Evidence:** research/2026-10-04_floodhub_input.log (75 river gauges ≤ 10 km from a point, honest protocol): 72 h −8.3 → −9.2 %, 48 h −11.2 → −11.4 % (worse 7 → 4), no gain at 12–24 h; the API's year of archive equals what we stored live (320/320).
+- **Decision:** input = log((q(target day)+1)/(q(issue day)+1)) from the latest forecast issued at or before the hour (`gfh_matrix`, `gfh_change`, vectorised), for non-BMA gauges within 10 km (`nearest_gfh`); `google_floodhub_backfill()` stored a year once (302,408 steps, 103 points); the 6-hourly collector keeps it current. Without a fresh forecast the input is missing and the live `star` falls back to the gauge's own methods. Display of Flood Hub itself is still Q49.
+
 ### D-096 — Research never touches live state: read-only connections, a schema lock timeout, AI calls without accounting
 - **Date:** 2026-10-04 · **Status:** accepted (after KI-284 and KI-285)
 - **Decision:** research scripts open the database with `db.connect_readonly()` (autocommit, read-only); the collector's `init_schema` runs with `lock_timeout = 5s` and retries; research calls `ai.run(..., account=False)` (no daily budget, no breaker); BigQuery research uses one literal point per query, literal init times in small batches and a running byte cap (KI-283 correction). Never redeploy during a research run without these.

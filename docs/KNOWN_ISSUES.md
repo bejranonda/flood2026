@@ -43,9 +43,9 @@
 | KI-292 | "Rebound" forecasts (+35…+70 cm) right after steep measured falls (PAS001, S.3, M.183B, SKG007) | Forecast | 🟡 watching; interim: all four kept falling |
 | KI-291 | Live check C4 sometimes sees a list line twice behind an open sheet (URTU07) | UX / tests | 🟡 open, intermittent (not reproduced in 6 tries) |
 | KI-290 | Track records said "30 days" but forecast runs were kept 14 days | Ops / data | 🟢 fixed v0.25.2 (`FC_KEEP_DAYS = 31`) |
-| KI-289 | Thai egress (OpenVPN sidecar) flaky: TLS handshake failures, 452 restarts; DWR posts stopped, BMA DDS intermittent | Data access | 🔴 open (owner, OWNER_ACTIONS EGRESS) |
+| KI-289 | Thai egress (OpenVPN sidecar) flaky: TLS handshake failures, 452 restarts; DWR posts stopped, BMA DDS intermittent | Data access | 🟡 recovered 2026-10-05 02:13 UTC; watch |
 | KI-288 | A 6 h task (Flood Hub) never came due while the worker restarted every 1–2 h | Ops | 🟢 fixed v0.25.2 (`worker.first_due`) |
-| KI-287 | 72 h likely ranges too confident in a falling river (50 % band held 44 %) | Forecast | 🟡 open (Q54) |
+| KI-287 | 72 h likely ranges too confident in a falling river (50 % band held 44 %) | Forecast | 🟢 90 % band widened daily v0.26.0 (D-098) |
 | KI-286 | Ticker named Bangkok "อาจถึงตลิ่ง" while its gauges were steady under the bank | UX / AI | 🟢 fixed v0.25.0 (D-094) |
 | KI-285 | Research AI calls tripped the visitors' AI breaker (1 h pause) | AI / ops | 🟢 fixed v0.25.0 (`account=False`) |
 | KI-284 | A long research transaction blocked the schema step: site down ~12 min | Ops | 🟢 fixed v0.25.0 (lock timeout, read-only research) |
@@ -790,13 +790,13 @@ schema pid → research pid). /api/health timed out. Recovered when the owner st
 ### KI-286 — The ticker named Bangkok "อาจถึงตลิ่ง" while its gauges were steady under the bank · 🟢 fixed v0.25.0
 Owner: "ควรจับตาพื้นที่กรุงเทพฯ สมุทรปราการ และอ่างทอง ที่น้ำอาจถึงตลิ่งในอีก 24–48 ชม." with no Bangkok gauge rising. The five Bangkok gauges in the group sat 6–19 cm under the bank, steady or falling, inside the forecast band (">50%"/"25-50%"). Fix (D-094): may-reach items carry their trend; the ticker counts and names only rising ones; the tab shows the pills.
 
-### KI-287 — 72 h likely ranges are too confident in a falling river · 🟡 open (Q54)
+### KI-287 — 72 h likely ranges are too confident in a falling river · 🟢 90 % band calibrated daily v0.26.0 (D-098); the 50 % band holds on recent data
 Served bands over 30 days (research/2026-10-04_band_coverage_live.log): the 50 % band held 51 / 48 / 44 % and the 90 % band 88 / 86 / 80 % at 24 / 48 / 72 h; misses mostly below the band (water fell more than forecast). Shorter error windows and trend-dependent bands make it worse; widening 48/72 h bands until they hold is honest but adds "?" rows — owner decision.
 
 ### KI-288 — A 6 h task never came due while the worker restarted every hour or two · 🟢 fixed v0.25.2
 Post-release validation 2026-10-04 21:40 UTC: `google_floodhub` last succeeded at 10:40 UTC. The worker set `next_run = start + interval` for every task, so each restart (deploys at 16:49, 19:5x, 20:xx, 21:11, 21:37) pushed a 6 h task out again. Fix: `worker.first_due` — a task that is not in the first-run list is due one interval after its last success (source_health), at least 60 s after start.
 
-### KI-289 — Thai egress (OpenVPN sidecar) cannot connect · 🔴 open (owner)
+### KI-289 — Thai egress (OpenVPN sidecar) cannot connect · 🟡 recovered 2026-10-05 02:13 UTC (watch)
 2026-10-04: `vpn` logs "TLS key negotiation failed to occur within 60 seconds … TLS handshake failed", container restart count 402. Sources behind the egress fail: `bma_dds` (last success 08:39 UTC), `dwr_ews` (17:15 UTC, 5 failures, backing off). BMA canal levels still arrive through the flood69 relay (`bma_klong`). Needs the owner's VPN server/credentials (OWNER_ACTIONS EGRESS); no change in code. **2026-10-05 05:20 UTC:** intermittent rather than down — 452 restarts, the tunnel came up at times (`bma_dds` succeeded 04:23 UTC), `dwr_ews` still failing (9 in a row, backing off; its calls take ~45 s through the tunnel). **06:10 UTC: recovered** — the tunnel has been up since 02:13 UTC ("Initialization Sequence Completed", no TLS errors in the following hours); BMA DDS HTTP 200 in 4.6 s; DWR's 05:16 failure was HTTP 500 from DWR itself, and LoadStation answered 200 (3 MB, 13 s) at 06:05; `dwr_ews` run by hand: 455 posts, 439 readings. The bulk call returns each post's latest reading, so the outage left no readings in 10 of the hours from 4 Oct 17:00 to 5 Oct 06:00 (not recoverable).
 
 ### KI-290 — Track records said "30 days" but forecast runs were kept 14 days · 🟢 fixed v0.25.2

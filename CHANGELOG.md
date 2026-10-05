@@ -2,6 +2,20 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.26.0 — 2026-10-05
+- **Google Flood Hub forecasts feed the model near its points (owner: "Yes" to Q55).** 79 gauges within 10 km of a Flood Hub
+  point (non-BMA) read the forecast's relative river-flow change over each horizon, from the latest forecast issued
+  before that hour; a year of Flood Hub archive (302,408 daily steps, 103 points) was backfilled once and the collector
+  keeps it current. Tested: 72 h −8.3 → −9.2 %, 48 h −11.2 → −11.4 % against "no change" (D-097).
+- **The 90 % ranges hold as stated (owner: "Yes" to Q54).** Each day the 90 % band is widened by the smallest factor that
+  made 9 in 10 of the last 5 days' outcomes fall inside (never narrower than the backtest band); today ×1.15/1.20/1.40
+  (model) and ×1.00/1.25/1.55 ("no change") at 24/48/72 h. The printed 50 % range stays: on recent data it already holds,
+  and widening it daily overshot (D-098, research/2026-10-05_band_calibration*.log).
+- **Served methods after v0.25–v0.26:** "no change" at 24/48/72 h 528/520/512 → 440/406/423 gauges; `star` 302/321/361 →
+  422/456/476 (83 gauges still too young for `star`, about 90 days of history needed).
+- WeatherNext stays on the free BigQuery quota (owner: "Use only free quota"; run after 1 Nov). Thai VPN egress back since
+  02:13 UTC; DWR collection restored (KI-289).
+
 ## v0.25.2 — 2026-10-04
 - **Long-interval tasks no longer starve on restarts.** Post-release validation found Google Flood Hub last collected at
   10:40 UTC: every worker restart reset the schedule to "now + interval", and with deploys every hour or two a 6 h task

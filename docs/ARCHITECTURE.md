@@ -174,6 +174,8 @@ flood2026/
 - `rain_obs` (v0.16.5): hourly rain kept 400 days for the 2,260 gauges within ~10 km of a water gauge (not re-fetchable from HII), 14 days for the other ~2,200; ~211 B per row (name and position repeated on every row) → ~4.6 GB a year. Optimisation if needed: a `rain_gauge` table for the metadata (~half the size).
 - Expected after the nationwide backfill: +~1.3 GB `observation` (733 gauges × ~8,700 hourly rows), then flat: `retention` deletes HII-network readings older than 400 days (never BMA), rain-forecast issues older than 3 days, and thins `forecast_run` (since v0.25.2 thinned runs are kept 31 days for the 30-day track records, KI-290; all runs 2 days, one per 6 h to 14 days: ~0.6 GB at 1,000 gauges). ⚠️ To re-measure one day after the backfill ends (`SELECT pg_size_pretty(pg_database_size('floodwatch'))`).
 
+- `gfh_forecast` (v0.26.0): a year of Flood Hub daily forecasts (302 k rows at backfill, ~800 a day after) — a `star` input (D-097).
+
 ## 9. Backups and restore
 - **Nightly:** `pg_dump` → R2. **Weekly:** Parquet export of the normalised tables → R2. **Continuous:** raw archive replication → R2.
 - **Sizing (measured 2026-09-26):** the raw archive grows **3–5 MB/hour (~100 MB/day)** in steady state, ~45 MB after the first 4 hours (including the one-off backfill); the database directory is 724 MB. A year of raw archive is roughly 35–45 GB. R2 free tier: 10 GB-month, 1 M writes, 10 M reads, free egress; then $0.015/GB-month.

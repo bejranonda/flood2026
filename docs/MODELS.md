@@ -3,7 +3,7 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.25.2** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52). Numbers come from running code or the cited research files;
+> It describes **v0.26.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52). Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -103,7 +103,7 @@ Code: `floodwatch/forecast/__init__.py` (`evaluate`, `_backtest_errors`, `foreca
 | `tide` | η(t₀+h) − η(t₀), harmonic tide fitted by least squares on K1, O1, M2, S2, M4, MS4 | tidal lower reaches |
 | `trend` / `tide_trend` | (tide +) s₂₄·h·e^(−h/48), s₂₄ = 24 h slope of the 25 h trailing mean | slow, steady drains and rises |
 | `recent` | (tide +) r·h·e^(−h/48), r = smaller of the 24 h and 6 h fitted pace, 0 if they disagree | a rise or fall still going; stops when the last 6 h stop (Kgt.19A, D-080) |
-| `star` | ridge regression (λ = 1) per gauge and horizon on: tide change, own 1/3/6/24/72 h change, deviation from the 25 h, 7-day and 30-day trailing means, each upstream gauge's 24/48 h change, C.13 dam release (+24/48 h change), rain forecast over the horizon (day-1 near, day-2 far) | rain, upstream water and dam releases (D-052); the 7/30-day means and 1/3/72 h changes since v0.25.0 (D-092) |
+| `star` | ridge regression (λ = 1) per gauge and horizon on: tide change, own 1/3/6/24/72 h change, deviation from the 25 h, 7-day and 30-day trailing means, each upstream gauge's 24/48 h change, C.13 dam release (+24/48 h change), rain forecast over the horizon (day-1 near, day-2 far), the nearest Flood Hub point's forecast discharge change over the horizon (≤ 10 km, non-BMA) | rain, upstream water and dam releases (D-052); the 7/30-day means and 1/3/72 h changes since v0.25.0 (D-092); Flood Hub since v0.26.0 (D-097) |
 
 - **Horizons:** 1, 3, 6, 12, 24, 48, 72 h (rows show 24/48/72 h). **History:** up to 370 days hourly (`LOOKBACK_DAYS`); a
   gauge needs ≥ 7 days (`MIN_HOURS`); `star` needs ≥ 30 days of complete training rows (`STAR_MIN_TRAIN`); since the 30-day mean joined (v0.25.0) that means
@@ -114,7 +114,9 @@ Code: `floodwatch/forecast/__init__.py` (`evaluate`, `_backtest_errors`, `foreca
 - **Gate:** the best method is served only if its skill over persistence `1 − RMSE/RMSE_persistence` is **> 0.10**
   (`SKILL_GATE`); otherwise persistence. Chosen per gauge **and** per horizon.
 - **Bands:** the 5/25/50/75/95 % empirical quantiles of the chosen method's backtest errors are added to its live
-  prediction (a split-conformal style band); 90 % coverage in the backtest is stored (`coverage90_backtest`).
+  prediction (a split-conformal style band); 90 % coverage in the backtest is stored (`coverage90_backtest`). Since v0.26.0
+  the 90 % band (5–95 %) is widened by a daily factor per horizon and kind from our own last 5 days of outcomes, never below 1
+  (`risks.band90_factors` → `forecast.widen90`, D-098); the printed 50 % range is not changed.
 - **Cached backtests** (`forecast_model`) are reused ~20 h or until history grows 20 %; a backtest stored before a new
   ladder method existed is redone (`model_is_fresh`).
 - **Upstream gauges** (`forecast/upstream.py`): per gauge, up to 4 (`K`, was 2 until v0.25.0, D-093) gauges in the same basin
@@ -210,12 +212,12 @@ on the unseen half, and how many end up **worse** than "no change" (the cost of 
 | V12 confirmed on sample 2 | served error vs "no change" 24/48/72 h: −6.6/−5.5/−5.3 → **−8.3/−8.5/−9.4 %**; gauges keeping ≥ 10 %: 51/44/49 → **67/70/69**; worse than "no change": 12/15/10 → 12/20/21 | **shipped v0.25.0 (D-092)** |
 | Stricter selection (gain on both halves of the choosing period) | removes few failures (72 h: 21 → 17) and loses more gain (−9.4 → −5.5 %) | gate stays 10 % |
 | More upstream gauges (K 2→4, history 180→90 days, `_upstream_k.py`) | picked on sample 1 (24 h −8.0 → −9.5 %); confirmed on sample 2: 12/24/48/72 h −14.8/−6.6/−7.5/−6.9 → −15.9/**−9.1**/−8.6/−8.0 %, gauges keeping ≥ 10 % 53/44/43/36 → 55/47/44/38, worse 13/11/12/15 → 13/12/13/14 | **shipped v0.25.0 (D-093)** |
-| Google Flood Hub forecasts as an input (`_floodhub_input.py`, 75 river gauges ≤ 10 km from a Flood Hub point) | 12/24 h no gain; 48 h −11.2 → −11.4 % (worse 7 → 4); 72 h −8.3 → −9.2 %. Archive verified "as issued" (320/320 values equal to what we stored live) | candidate (Q55): small, adds a live dependency |
+| Google Flood Hub forecasts as an input (`_floodhub_input.py`, 75 river gauges ≤ 10 km from a Flood Hub point) | 12/24 h no gain; 48 h −11.2 → −11.4 % (worse 7 → 4); 72 h −8.3 → −9.2 %. Archive verified "as issued" (320/320 values equal to what we stored live) | **shipped v0.26.0 (D-097)** after the owner's yes |
 | WeatherNext 3 rain (`_weathernext_*.py`) | archive ≥ 180 days (April 2026 on); one literal point costs ~12 MB per run, a join of points scans the whole 56 GB partition; the month's free BigQuery quota ran out before the 60-day test | blocked: owner step (billing or 1 Nov), then backtest (D-069, Q44, Q53) |
 | Bands by measured trend (`_bands_by_trend.py`) | narrower (90 % band 72 → 64 cm at 24 h) but held less often (78 → 75 %) | **rejected** (narrower but less honest) |
 | Shorter error window for bands (`_band_window.py`) | 10/15/30 days widen bands and lower coverage vs 45 days | 45 days stays |
 | Rebound forecasts after a steep measured fall (`_rebound_check.py`) | archive: came true 65 % (48 cases, mean error 72 cm); after v0.25.0 four gauges forecast +35…+70 cm while falling; interim 2026-10-05 (8 h): all four kept falling | watching (KI-292); a guard only after the honest test |
-| Served bands vs reality, 30 days (`_band_coverage_live.py`) | 50 % band held 51 / 48 / 44 % and 90 % band 88 / 86 / 80 % at 24 / 48 / 72 h; misses mostly **below** the band (water fell more than forecast: 32 / 36 / 42 % below vs 17 / 16 / 14 % above) | owner decision: widen 48/72 h bands to hold as stated (Q54) |
+| Served bands vs reality, 30 days (`_band_coverage_live.py`) | 50 % band held 51 / 48 / 44 % and 90 % band 88 / 86 / 80 % at 24 / 48 / 72 h; misses mostly **below** the band (water fell more than forecast: 32 / 36 / 42 % below vs 17 / 16 / 14 % above) | owner's yes (Q54) → daily 90 % band factor shipped v0.26.0 (D-098, `_band_calibration*.log`); the 50 % band stays (refitting overshot it) |
 
 **What it means for a visitor.** More gauges carry a real forecast where `star` learned the slow return of a river to its
 usual level (V1); the 24 h ranges hold as stated; at 72 h the ranges are too confident in a falling river, so we say so
