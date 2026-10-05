@@ -143,3 +143,13 @@ def test_cases_dams_and_one_case_need_the_session_and_answer_from_the_hourly_sta
     with pytest.raises(HTTPException) as e:
         api.impact_case(Req(tok), "no-such-case")
     assert e.value.status_code == 404
+
+
+def test_the_tab_assets_carry_a_content_hash_so_every_change_reaches_browsers_past_the_cdn():
+    import hashlib
+    from pathlib import Path
+    web = Path(api.__file__).resolve().parents[3] / "web"
+    html = api.impact_page(PageReq()).body.decode()
+    for name in ("impact.js", "impact.css"):
+        h = hashlib.sha256((web / name).read_bytes()).hexdigest()[:10]
+        assert f"/static/{name}?v={h}" in html, name

@@ -219,8 +219,9 @@
     for (const p of st.points) {
       if (p.lat == null || p.lon == null) continue;
       const lag = p.code === "B.18" ? "ใต้เขื่อน" : "~" + (p.lag_range ? p.lag_range[0] + "–" + p.lag_range[1] : p.lag_h) + " ชม. จาก B.18";
+      // phones: the code only (the city gauges sit close together); the travel times are in the panel's table
       L.circleMarker([p.lat, p.lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#0d3b66", fillOpacity: 1, pane: "impact" })
-        .bindTooltip(esc(p.code) + " · " + esc(lag), { permanent: true, direction: "right", className: "imp-tip" })
+        .bindTooltip(esc(p.code) + (narrow() ? "" : " · " + esc(lag)), { permanent: true, direction: "right", className: "imp-tip" })
         .addTo(layers.kase);
     }
     layers.kase.addTo(mapRef);
@@ -231,7 +232,9 @@
     const pts = [].concat(...(st.river_line || []), st.points.filter((p) => p.lat != null).map((p) => [p.lat, p.lon]),
       st.dam_latlon ? [st.dam_latlon] : []);
     if (narrow()) setTab("map");
-    setTimeout(() => { if (pts.length) mapRef.fitBounds(L.latLngBounds(pts), { padding: [24, 24] }); }, narrow() ? 120 : 0);
+    // desktop: keep clear of the legend box at the bottom right
+    setTimeout(() => { if (pts.length) mapRef.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [24, 24],
+      paddingBottomRight: [narrow() ? 24 : 300, 24] }); }, narrow() ? 120 : 0);
   }
 
   function damHtml(st) {

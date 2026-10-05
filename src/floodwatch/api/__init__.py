@@ -767,10 +767,22 @@ def impact_page(request: Request):
                                                     **IMPACT_PAGE_HEADERS})
 
 
+def asset_v(name: str) -> str:
+    """A short content hash for a static file's ?v=: any change reaches browsers past Cloudflare's cache at once."""
+    path = WEB_DIR / name
+    key = (name, path.stat().st_mtime_ns)
+    if key not in _ASSET_V:
+        _ASSET_V[key] = hashlib.sha256(path.read_bytes()).hexdigest()[:10]
+    return _ASSET_V[key]
+
+
+_ASSET_V: dict = {}
+
+
 def impact_html(html: str) -> str:
-    """index.html + the impact tab, its view, its stylesheet and script (asset versions follow the release)."""
-    v = __version__
-    edits = [("</head>", f'<meta name="robots" content="noindex, nofollow">\n<link rel="stylesheet" href="/static/impact.css?v={v}">\n</head>'),
+    """index.html + the impact tab, its view, its stylesheet and script (content-hashed asset versions)."""
+    css, js = asset_v("impact.css"), asset_v("impact.js")
+    edits = [("</head>", f'<meta name="robots" content="noindex, nofollow">\n<link rel="stylesheet" href="/static/impact.css?v={css}">\n</head>'),
              ("<body>", '<body data-mode="impact">'),
              ('<button role="tab" data-tab="watch" aria-selected="false">⚠️ จับตา</button>',
               '<button role="tab" data-tab="watch" aria-selected="false">⚠️ จับตา</button>\n'
@@ -781,7 +793,7 @@ def impact_html(html: str) -> str:
         if anchor not in html:  # the main page changed: fail loudly rather than serve half a page
             raise RuntimeError(f"impact mode: anchor missing in index.html: {anchor[:40]}")
         html = html.replace(anchor, repl, 1)
-    html, n = re.subn(r'(<script src="/static/app\.js\?v=\d+"></script>)', rf'\1\n<script src="/static/impact.js?v={v}"></script>', html)
+    html, n = re.subn(r'(<script src="/static/app\.js\?v=\d+"></script>)', rf'\1\n<script src="/static/impact.js?v={js}"></script>', html)
     if n != 1:
         raise RuntimeError("impact mode: app.js script tag not found in index.html")
     return html
