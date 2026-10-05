@@ -111,3 +111,57 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-legend .lg-up::before { border-color: #e46c0a; border-top-style: dashed; }
 .imp-legend .lg-no::before { border-color: #c62828; border-top-style: dotted; }
 
+/* v0.30: the case view in the app's grammar — number chips, one ★ card, one-line rows, a river strip, ℹ️ for the rest */
+#view-impact .imp-chips-num { margin: 4px 0 2px; }
+#view-impact .imp-chips-num .chip b { font-size: 17px; }
+#view-impact .imp-chips-num .chip small { font-size: 12px; }
+#view-impact .dot.imp-m-normal, #view-impact .imp-node.imp-m-normal .dot { background: var(--normal, #2f6fb0); }
+#view-impact .dot.imp-m-watch, #view-impact .imp-node.imp-m-watch .dot { background: var(--watch, #b58900); }
+#view-impact .dot.imp-m-warning, #view-impact .imp-node.imp-m-warning .dot { background: var(--warning, #e46c0a); }
+#view-impact .dot.imp-m-critical, #view-impact .imp-node.imp-m-critical .dot { background: var(--critical, #c62828); }
+#view-impact .dot.imp-m-unknown, #view-impact .imp-node.imp-m-unknown .dot { background: var(--unknown, #8a94a3); }
+#view-impact .imp-block { margin: 10px 0; }
+#view-impact .imp-block h3 { margin: 0 0 6px; }
+#view-impact .conf-badge.imp-red { color: var(--critical); border-color: #f5c2bd; background: #fdecea; font-size: 12px; padding: 1px 8px; border-radius: 10px; }
+#view-impact .item.imp-hero { border-left-color: #f2b705; background: #fffdf3; cursor: pointer; }
+#view-impact .item.imp-hero-warn { border-left-color: var(--critical); background: #fff7f6; }
+#view-impact .imp-hero-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+#view-impact .imp-hero-plan { font-size: 20px; font-weight: 700; margin: 4px 0 2px; }
+#view-impact .imp-hero-facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; margin: 2px 0 4px; }
+#view-impact .imp-rows { padding: 0; margin: 0; }
+#view-impact .item.imp-row { cursor: pointer; display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; padding-right: 28px; position: relative; }
+#view-impact .item.imp-row .meta { font-size: 14px; }
+#view-impact .item.imp-row .imp-badges { margin: 0; }
+#view-impact .item.imp-custom-row { border-left-color: var(--accent); }
+#view-impact .imp-chev { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 20px; }
+#view-impact .imp-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+#view-impact .imp-actions .btn { min-height: 38px; }
+#view-impact .imp-strip { display: flex; align-items: center; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 6px; }
+#view-impact .imp-node { flex: none; font: inherit; display: grid; justify-items: center; gap: 1px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 6px 8px; min-width: 64px; min-height: 56px; cursor: pointer; }
+#view-impact .imp-node .dot { width: 12px; height: 12px; border-radius: 50%; display: block; }
+#view-impact .imp-node-name { font-size: 12px; color: var(--muted); }
+#view-impact .imp-node-m { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#view-impact .imp-node.imp-m-critical .imp-node-m { color: var(--critical); }
+#view-impact .imp-arrow { color: var(--muted); flex: none; }
+#view-impact .imp-onmap { margin: 2px 0 0; min-height: 38px; }
+#view-impact .imp-info { margin: 8px 0 12px; border-top: 1px solid var(--line); padding-top: 4px; }
+#view-impact .imp-info > summary { font-weight: 600; color: var(--muted); font-size: 14px; }
+#view-impact .imp-info-body p { margin: 4px 0 8px; }
+#view-impact .imp-info-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+#view-impact .imp-info-btns .btn { min-height: 36px; font-size: 13px; }
+.imp-sheet .imp-custom { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; align-items: end; }
+.imp-sheet .imp-custom label { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.imp-sheet .imp-custom input { font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; min-height: 42px; width: 100%; }
+.imp-sheet .imp-custom .btn { min-height: 42px; }
+.imp-sheet .imp-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.imp-sheet .imp-kv div { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.imp-sheet .imp-kv span { display: block; color: var(--muted); font-size: 12px; }
+.imp-sheet .imp-kv b { font-size: 19px; }
+.imp-sheet .imp-kv small { display: block; color: var(--muted); font-size: 12px; }
+.imp-sheet .imp-note { background: #fff8e1; border-left: 4px solid #f2b705; border-radius: 4px; padding: 6px 10px; font-size: 13px; margin: 8px 0 0; }
+.imp-sheet .imp-req { padding-left: 22px; margin: 0; }
+.imp-sheet .imp-req li { margin: 8px 0; }
+.imp-sheet .imp-why { display: block; color: var(--muted); font-size: 13px; }
+.imp-sheet h2 { font-size: 19px; margin: 0 0 4px; padding-right: 88px; }
+

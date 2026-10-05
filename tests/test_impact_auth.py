@@ -112,7 +112,12 @@ def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     assert "style=" not in js and "const agency = (a) => esc(" in js  # outside strings escaped; styles by class
     # the scenarios (D-101) reuse the app's own ✨ card and bottom sheet, so engineers meet the patterns residents know
     assert 'id="imp-sc"' in js and "bindAskUrl(sec," in js and "askHTML()" in js and 'getElementById("sheet")' in js
-    assert "ยังไม่ผ่านการทดสอบ" in js and "chartSvg(" in js and 'id=\\"imp-custom\\"' in js
+    assert "ยังไม่ผ่านการทดสอบ" in js and "chartSvg(" in js and "imp-custom" in js
+    # v0.30 (owner: "just click and see … not read so long"): the app's grammar — chips, one ★ card, one-line rows, a river
+    # strip whose nodes open the station's own sheet, ⓘ toasts (.conf-badge) and one ℹ️ collapsible for the rest
+    assert 'class="chips imp-chips-num"' in js and "imp-hero" in js and "imp-row" in js and "imp-strip" in js
+    assert "showDetail(b.dataset.code)" in js and 'class="conf-badge' in js and '<details class="imp-info">' in js
+    assert "whatifHtml" not in js  # the disabled what-if card is gone (the custom plan does the same)
 
 
 def test_the_real_settings_reach_the_impact_endpoints():

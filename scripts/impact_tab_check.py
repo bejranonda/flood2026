@@ -35,25 +35,43 @@ with sync_playwright() as p:
         pg.screenshot(path=f"{OUT}/tab_{name}_popup.png", full_page=False)
         # the case
         pg.click('.tabs [data-tab="impact"]'); pg.wait_for_timeout(500)
-        pg.click('[data-imp="kaeng-krachan"]'); pg.wait_for_selector("#imp-river", timeout=20000)
+        pg.click('[data-imp="kaeng-krachan"]'); pg.wait_for_selector("#imp-sc", timeout=20000)
         r["case_title"] = pg.inner_text(".imp-title")
         pg.screenshot(path=f"{OUT}/tab_{name}_case.png", full_page=False)
-        # the 7-day scenarios (D-101): cards, the ★ plan, a card opens the sheet with 7 day-rows and a chart, custom plan, ✨
-        pg.wait_for_selector("#imp-sc .imp-plan", timeout=30000)
-        r["scenario_cards"] = pg.locator("#imp-sc .imp-plan").count()
-        r["scenario_star"] = pg.locator("#imp-sc .imp-opt").count()
-        r["scenario_label"] = pg.inner_text("#imp-sc .imp-label")[:60]
-        r["scenario_head"] = pg.inner_text("#imp-sc .imp-sc-head")[:160]
-        pg.locator("#imp-sc .imp-plan").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-svg", timeout=8000)
-        r["sheet_rows"] = pg.locator("#detail tbody tr").count()
+        # v0.30 first screen: chips, the ★ hero card, one-line rows, river strip, ℹ️; sheets for everything else
+        pg.wait_for_selector("#imp-sc .imp-hero, #imp-sc .imp-note", timeout=30000)
+        r["chips"] = pg.locator(".imp-chips-num .chip").count()
+        r["hero"] = pg.locator("#imp-sc .imp-hero").count()
+        r["rows"] = pg.locator("#imp-sc .imp-row").count()
+        r["red_pill"] = pg.locator("#imp-sc .imp-red").count()
+        r["river_nodes"] = pg.locator(".imp-strip .imp-node").count()
+        r["first_screen_chars"] = pg.evaluate("document.getElementById('imp-body').innerText.length")
+        r["paragraphs_on_panel"] = pg.evaluate("[...document.querySelectorAll('#imp-body p')].filter(p => p.innerText.length > 160 && !p.closest('details')).length")
+        pg.screenshot(path=f"{OUT}/tab_{name}_case_first.png", full_page=False)
+        # ★ card → plan sheet with 7 day-rows and the chart
+        pg.locator("#imp-sc .imp-hero").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-svg", timeout=8000)
+        r["sheet_rows"] = pg.locator("#detail > .imp-sheet > .imp-scroll tbody tr").count()
         pg.screenshot(path=f"{OUT}/tab_{name}_plan_sheet.png", full_page=False)
         pg.click("#detail .close"); pg.wait_for_timeout(300)
         r["sheet_closed"] = pg.evaluate("document.getElementById('sheet').hidden")
+        # a chip → the dam sheet; a river node → the station's own sheet
+        pg.locator(".imp-chips-num .chip").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-kv", timeout=8000)
+        r["dam_sheet"] = pg.inner_text("#detail h2")[:40]
+        pg.click("#detail .close"); pg.wait_for_timeout(300)
+        pg.locator(".imp-strip .imp-node").nth(1).click(); pg.wait_for_selector("#sheet:not([hidden]) #detail h2", timeout=15000)
+        r["station_sheet"] = pg.inner_text("#detail h2")[:40]
+        pg.click("#detail .close"); pg.wait_for_timeout(300)
+        # custom plan from its sheet → a highlighted row
+        pg.click("#imp-custom-btn"); pg.wait_for_selector("#sheet:not([hidden]) #imp-custom", timeout=8000)
         inputs = pg.locator("#imp-custom input")
         for i in range(inputs.count()):
             inputs.nth(i).fill(str(12 + i))
-        pg.click("#imp-custom button"); pg.wait_for_timeout(2500)
-        r["custom_card"] = pg.locator("#imp-sc .imp-plan .imp-pos").count()
+        pg.click("#imp-custom button"); pg.wait_for_selector("#imp-sc .imp-custom-row", timeout=20000)
+        r["custom_card"] = pg.locator("#imp-sc .imp-custom-row").count()
+        # ℹ️ → a sheet with the replay
+        pg.click(".imp-info summary"); pg.click('[data-info="val"]'); pg.wait_for_selector("#sheet:not([hidden]) #detail table", timeout=8000)
+        r["info_sheet"] = pg.inner_text("#detail h2")[:30]
+        pg.click("#detail .close"); pg.wait_for_timeout(300)
         pg.click("#imp-sc .ai-btn"); pg.wait_for_selector("#imp-sc .story-text:not(.shimmer)", timeout=20000)
         r["ai_story"] = pg.inner_text("#imp-sc .story-text")[:200]
         pg.screenshot(path=f"{OUT}/tab_{name}_scenarios.png", full_page=False)
