@@ -145,3 +145,14 @@ def test_fixed_page_text_carries_no_numbers_that_go_stale():
     # today's values (release 10.8 vs 3.04, the year's highest flow 143) belong in the live state, not in fixed text
     text = " ".join(x["th"] + x["why"] for x in impact.DATA_REQUEST)
     assert not any(v in text for v in ("10.8", "3.04", "143"))
+
+
+def test_dam_notes_raise_what_an_engineer_would_question():
+    rid = {"agency": "RID", "dam_date": "2026-10-05", "released_mcm": 10.8, "storage_pct": 102.23, "spilled_mcm": 0.0}
+    egat = {"agency": "EGAT", "dam_date": "2026-10-04", "released_mcm": 3.04, "storage_pct": 58.64}
+    notes = impact.dam_notes(rid, egat, q18_now=140.0)
+    assert any("กฟผ." in n and "3.04" in n and "140" in n for n in notes)  # the other record, as reported, and why we chose
+    assert any("(4 ต.ค. 69)" in n for n in notes)  # Thai dates, like the rest of the page
+    assert any("เกิน 100 %" in n and "ทางน้ำล้น" in n for n in notes)       # over full but no spill reported: a question
+    assert impact.dam_notes({**rid, "storage_pct": 90.0}, None, 140.0) == []
+    assert impact.dam_notes(None, None, None) == []

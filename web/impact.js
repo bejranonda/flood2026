@@ -79,21 +79,16 @@
   function damHtml(st) {
     const d = st.dam || {};
     if (d.released_mcm == null) return '<section class="card"><h2>เขื่อนแก่งกระจาน</h2><p class="muted">ยังไม่มีข้อมูลเขื่อน</p></section>';
-    const b18 = st.points.find((p) => p.code === "B.18") || {};
     const box = (label, val, d2, unit, sub) => "<div><span>" + label + "</span><b>" + num(val, d2) + "</b> " + unit +
       (sub ? "<small>" + sub + "</small>" : "") + "</div>";
     const cms = (x) => (x == null ? "" : "≈ " + num(toCms(x), 0) + " ลบ.ม./วินาที");
-    const e = d.egat;
     return '<section class="card" id="dam"><h2>เขื่อนแก่งกระจาน <small>' + agency(d.agency) + " · ข้อมูลรายวัน " +
       day(d.dam_date) + "</small></h2><div class=\"kv\">" +
       box("ระบายรวม", d.released_mcm, 2, "ล้าน ลบ.ม./วัน", cms(d.released_mcm)) +
       box("น้ำไหลเข้าอ่าง", d.inflow_mcm, 2, "ล้าน ลบ.ม./วัน", cms(d.inflow_mcm)) +
       box("ปริมาตรอ่าง", d.storage_mcm, 1, "ล้าน ลบ.ม.", d.storage_pct == null ? "" : num(d.storage_pct, 1) + " %") +
       box("ระบายทางน้ำล้น", d.spilled_mcm, 2, "ล้าน ลบ.ม./วัน", "") + "</div>" +
-      (e ? '<p class="note">กฟผ. รายงานเขื่อนเดียวกัน (' + day(e.dam_date) + "): ระบาย " + num(e.released_mcm, 2) +
-        " ล้าน ลบ.ม./วัน, " + num(e.storage_pct, 1) + " % — ไม่ตรงกับกรมชลประทาน หน้านี้ใช้ตัวเลขกรมชลประทาน" +
-        " เพราะใกล้เคียงน้ำที่วัดได้ที่ B.18 ใต้เขื่อน (ล่าสุด " + num(b18.q_now, 0) + " ลบ.ม./วินาที)" +
-        " ⚠️ ขอให้ทั้งสองหน่วยงานยืนยันว่าแต่ละตัวเลขนับอะไร</p>" : "") + "</section>";
+      (st.dam_notes || []).map((n) => '<p class="note">' + esc(n) + "</p>").join("") + "</section>";
   }
 
   function riverHtml(st) {

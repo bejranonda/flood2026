@@ -150,13 +150,39 @@ def whatif(state: dict, release_mcm: float, diversion_cms: float | None = None) 
             "dam": dam, "rows": rows, "assumptions": list(ASSUMPTIONS)}
 
 
+TH_MONTHS = ("ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.")
+
+
+def th_date(ymd: str | None) -> str:
+    """'2026-10-04' → '4 ต.ค. 69' (Buddhist year, as the page shows dates)."""
+    if not ymd:
+        return "–"
+    y, m, d = (int(x) for x in str(ymd)[:10].split("-"))
+    return f"{d} {TH_MONTHS[m - 1]} {(y + 543) % 100:02d}"
+
+
+def dam_notes(rid: dict | None, egat: dict | None, q18_now: float | None) -> list[str]:
+    """What an engineer would question in the dam's daily records — stated as questions, never resolved by us."""
+    notes = []
+    if rid and egat and egat.get("released_mcm") is not None:
+        notes.append(f"กฟผ. รายงานเขื่อนเดียวกัน ({th_date(egat.get('dam_date'))}): ระบาย {egat['released_mcm']:.2f} ล้าน ลบ.ม./วัน"
+                     + (f", {egat['storage_pct']:.1f} %" if egat.get("storage_pct") is not None else "")
+                     + " — ไม่ตรงกับกรมชลประทาน หน้านี้ใช้ตัวเลขกรมชลประทานเพราะใกล้เคียงน้ำที่วัดได้ที่ B.18 ใต้เขื่อน"
+                     + (f" (ล่าสุด {q18_now:.0f} ลบ.ม./วินาที)" if q18_now is not None else "")
+                     + " ⚠️ ขอให้ทั้งสองหน่วยงานยืนยันว่าแต่ละตัวเลขนับอะไร")
+    if rid and (rid.get("storage_pct") or 0) > 100 and not rid.get("spilled_mcm"):
+        notes.append(f"ปริมาตรอ่างเกิน 100 % ({rid['storage_pct']:.1f} %) แต่รายงานระบายทางน้ำล้นเป็น 0"
+                     " — รวมอยู่ในระบายรวมแล้วหรือยังไม่ได้รายงาน? ⚠️ ขอยืนยัน")
+    return notes
+
+
 # --- what we ask ONWR/RID for (owner 2026-10-05: "More requested data will come soon"), with a CSV template each -------
 DATA_REQUEST = [
     {"key": "diversion_dam", "th": "เขื่อนทดน้ำเพชร: การเปิดประตู ระดับน้ำหน้า/ท้ายเขื่อน และปริมาณน้ำที่ผ่านลงแม่น้ำและเข้าคลองฝั่งซ้าย/ขวา (รายชั่วโมงหรือรายวัน)",
      "why": "ผลทดสอบย้อนหลังชี้ว่าระดับน้ำท้ายน้ำขึ้นกับการบริหารเขื่อนเพชร ไม่ใช่การระบายจากแก่งกระจานโดยตรง — ข้อมูลนี้สำคัญที่สุด"},
     {"key": "events", "th": "เหตุการณ์น้ำท่วมในอดีต (เช่น ส.ค. 2561): ปริมาณระบาย ระดับน้ำสูงสุดและเวลาที่แต่ละสถานี และพื้นที่ที่ท่วมจริง",
      "why": "ข้อมูล 1 ปีของเราไม่มีการระบายขนาดใหญ่ (ดูน้ำสูงสุดที่ B.18 ในผลทดสอบย้อนหลัง) จึงตรวจสอบกรณีน้ำมากไม่ได้"},
-    {"key": "dam_release", "th": "เขื่อนแก่งกระจานรายชั่วโมง (หรือรายวัน) ย้อนหลัง 2–3 ปี: ระบายรวม แยกเครื่องกำเนิดไฟฟ้า/ทางระบายน้ำล้น/ประตูระบาย น้ำไหลเข้า ระดับและปริมาตรอ่าง",
+    {"key": "dam_release", "th": "เขื่อนแก่งกระจานรายชั่วโมง (หรือรายวัน) ย้อนหลัง 2–3 ปี: ระบายรวม แยกเครื่องกำเนิดไฟฟ้า/ทางระบายน้ำล้น/ประตูระบาย น้ำไหลเข้า ระดับและปริมาตรอ่าง และเส้นควบคุมระดับน้ำ (rule curve)",
      "why": "ข้อมูลรายวันผ่าน สสน. มีสองชุด (ชป. และ กฟผ.) ที่ไม่ตรงกัน และรายวันหยาบเกินไปสำหรับช่วง 24–72 ชม."},
     {"key": "release_plan", "th": "แผนการระบายล่วงหน้า 1–7 วัน และเวลาที่ประกาศ", "why": "ทำให้คาดผลกระทบล่วงหน้าได้จริง"},
     {"key": "station_reference", "th": "ระดับตลิ่งที่สำรวจแล้ว rating curve และปริมาณน้ำวิกฤต (ความจุลำน้ำ) ที่ท่ายาง บ้านลาด และตัวเมืองเพชรบุรี",
@@ -349,7 +375,9 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
             p["lag_range"] = sorted([lags[p["code"]], lags_cut[p["code"]]])
     lags_cut["h"] = {"B.10": H["B.10"], "B.16": H["B.16"]}
     data_time = max((r[-1]["t"] for r in raw.values() if r), default=None)
+    b18_now = next((p["q_now"] for p in points if p["code"] == "B.18"), None)
     return {"case": case, "title": cfg["title"], "dam": {**(rid or {}), "egat": egat}, "dam_km": cfg["dam_km"],
+            "dam_notes": dam_notes(rid, egat, b18_now),
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
             "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), **replay(q18, q10, q16, city, lags_cut, cut)},
