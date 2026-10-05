@@ -678,6 +678,30 @@ def google_floodhub() -> dt.datetime | None:
     return max((s["issued_time"] for s in status), default=None)
 
 
+def google_floodhub_backfill(days: int = 366) -> int:
+    """Q55 (D-097), once: a year of Flood Hub daily forecasts per point (the API keeps it; equal to what we stored live,
+    320/320), so `star` can be trained with it. Five points per call (a year is ~366 forecasts each); key in the header;
+    responses archived like every call. Returns the steps stored."""
+    if not settings.google_flood_api_key:
+        return 0
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with db.connect() as c:
+        ids = [r["gauge_id"] for r in c.execute("SELECT gauge_id FROM gfh_gauge WHERE has_model ORDER BY gauge_id").fetchall()]
+    n = 0
+    for i in range(0, len(ids), 5):
+        chunk = ids[i:i + 5]
+        fcs = parsing.parse_gfh_forecasts(_gfh("GET", "gauges:queryGaugeForecasts",
+                                               params=[("gaugeIds", g) for g in chunk] + [("issuedTimeStart", since)]))
+        with db.connect() as c, c.cursor() as cur:
+            cur.executemany("""INSERT INTO gfh_forecast (gauge_id, issued_time, start_time, end_time, value)
+                               VALUES (%(gauge_id)s, %(issued_time)s, %(start_time)s, %(end_time)s, %(value)s)
+                               ON CONFLICT DO NOTHING""", fcs)
+            c.commit()
+        n += len(fcs)
+    log.info("google_floodhub_backfill: %d forecast steps for %d points since %s", n, len(ids), since)
+    return n
+
+
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,

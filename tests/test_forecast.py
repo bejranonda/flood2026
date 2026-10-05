@@ -288,7 +288,8 @@ def test_a_cached_backtest_without_the_recent_method_is_redone():
     now = dt.datetime(2026, 10, 3, 20, tzinfo=dt.timezone.utc)
     old = {"trained_at": now - dt.timedelta(hours=1), "n_rows": 1000,
            "payload": {"24": {"method": "persistence", "rmse": {"persistence": 0.1, "trend": 0.12}}}}
-    new = {**old, "payload": {"24": {"method": "recent", "rmse": {"persistence": 0.1, "recent": 0.08}, "star_inputs": 2}}}
+    from floodwatch.forecast import STAR_INPUTS
+    new = {**old, "payload": {"24": {"method": "recent", "rmse": {"persistence": 0.1, "recent": 0.08}, "star_inputs": STAR_INPUTS}}}
     assert not model_is_fresh(old, 1000, now) and model_is_fresh(new, 1000, now)
 
 
@@ -325,3 +326,33 @@ def test_widen90_scales_only_the_90_band_around_the_median_by_horizon_and_kind()
     assert by[24] == [0.76, 0.9, 1.0, 1.1, 1.24] and by[72] == [0.6, 0.9, 1.0, 1.1, 1.4]
     assert by[12] == [0.76, 0.9, 1.0, 1.1, 1.24]  # 12 h: half way from 1.0 to the 24 h "no change" factor 1.4 -> 1.2
     assert forecast.widen90(path, None) == path
+
+
+def test_flood_hub_change_uses_only_forecasts_issued_before_the_hour():
+    # Q55 (owner 2026-10-05: "Yes", D-097): the forecast's relative discharge change from the issue day to the target day,
+    # from the latest Flood Hub forecast issued at or before each hour (research/2026-10-04_floodhub_input.log)
+    import datetime as dt
+    utc = dt.timezone.utc
+    day = lambda d: dt.datetime(2026, 10, 1, tzinfo=utc) + dt.timedelta(days=d)
+    rows = [{"issued_time": day(0) + dt.timedelta(hours=14), "start_time": day(k), "value": 100.0 + 10 * k} for k in range(-2, 6)]
+    rows += [{"issued_time": day(1) + dt.timedelta(hours=14), "start_time": day(1 + k), "value": 300.0} for k in range(-2, 6)]
+    m = forecast.gfh_matrix(rows)
+    t = np.array([day(0).timestamp() / 3600 + 20, day(1).timestamp() / 3600 + 10, day(1).timestamp() / 3600 + 20])
+    x = forecast.gfh_change(t, m, 24)
+    assert abs(x[0] - np.log(111 / 101)) < 1e-9          # 1 Oct 20:00 → the 1 Oct forecast, day 0 → day 1
+    assert abs(x[1] - np.log(121 / 111)) < 1e-9          # 2 Oct 10:00: the 2 Oct forecast (issued 14:00) is not known yet
+    assert abs(x[2]) < 1e-9                              # 2 Oct 20:00 → the 2 Oct forecast (flat 300)
+    assert np.isnan(forecast.gfh_change(np.array([day(0).timestamp() / 3600]), m, 24)[0])  # before any forecast
+
+
+def test_star_reads_flood_hub_only_where_a_point_is_near():
+    times, y, exo = _driven(days=90)
+    t, yy = forecast.hourly_grid(times, y)
+    ex = forecast.align_exo(t, exo)
+    base = forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 24, ex)
+    rows = [{"issued_time": times[i], "start_time": times[i] + forecast.dt.timedelta(days=k), "value": 50.0 + k}
+            for i in range(0, len(times), 24) for k in range(-2, 6)]
+    more = forecast.star_features(t, yy, None, forecast.trailing_mean(yy, 25), 24, {**ex, "gfh": forecast.gfh_matrix(rows)})
+    assert more.shape[1] == base.shape[1] + 1
+    pts = [("g1", 14.00, 100.00), ("g2", 15.0, 100.0)]
+    assert forecast.nearest_gfh(14.05, 100.0, pts) == "g1" and forecast.nearest_gfh(14.2, 100.0, pts) is None  # 10 km

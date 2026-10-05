@@ -17,7 +17,7 @@ from floodwatch import db, rain_cells
 
 log = logging.getLogger(__name__)
 VERSION = "star-0.4"  # v0.25.0: star reads the 7/30-day means and the 1/3/72 h changes (Q52 step 3)
-STAR_INPUTS = 2  # stamped on every backtest; a cached backtest from older inputs is redone (model_is_fresh)
+STAR_INPUTS = 3  # stamped on every backtest; a cached backtest from older inputs is redone (model_is_fresh); 3 = Flood Hub (D-097)
 # history: star-0.3 = v0.20.7: "recent" pace joins the ladder (one forecaster; the API override is gone)  # D-052: network space-time AR + rain competes in the backtest
 HORIZONS = [1, 3, 6, 12, 24, 48, 72]
 TIDE_SPEEDS = {"K1": 15.0410686, "O1": 13.9430356, "M2": 28.9841042, "S2": 30.0, "M4": 57.9682084,
@@ -171,7 +171,64 @@ def align_exo(t: np.ndarray, exo: dict | None) -> dict | None:
     rain = exo.get("rain") or {}
     r1, r2 = rain_arrays(t, rain.get("hind") or {}, rain.get("live") or {})
     return {"up": [_on_grid(t, *u) for u in exo.get("up") or []],
-            "q": None if not exo.get("q") else _on_grid(t, *exo["q"]), "r1": r1, "r2": r2}
+            "q": None if not exo.get("q") else _on_grid(t, *exo["q"]), "r1": r1, "r2": r2, "gfh": exo.get("gfh")}
+
+
+GFH_MAX_KM = 10.0   # a Flood Hub point this close to a gauge feeds its star (D-097, research/2026-10-04_floodhub_input.log)
+GFH_OFFSETS = (-2, 5)  # a Flood Hub forecast covers 2 days before its issue day to 5 days after
+
+
+def gfh_matrix(rows: list[dict]) -> dict | None:
+    """Flood Hub forecasts of one gauge (rows: issued_time, start_time, value) as arrays: issue hours (sorted), issue day
+    and an issues x 8 matrix of daily discharge by day offset −2…+5 (NaN where missing)."""
+    by: dict = {}
+    for r in rows:
+        it = r["issued_time"].timestamp() / 3600.0
+        off = int(r["start_time"].timestamp() // 86400) - int(it // 24)
+        if GFH_OFFSETS[0] <= off <= GFH_OFFSETS[1] and r.get("value") is not None:
+            by.setdefault(it, {})[off] = float(r["value"])
+    if not by:
+        return None
+    issued = np.array(sorted(by))
+    V = np.full((len(issued), GFH_OFFSETS[1] - GFH_OFFSETS[0] + 1), np.nan)
+    for i, it in enumerate(issued):
+        for off, v in by[it].items():
+            V[i, off - GFH_OFFSETS[0]] = v
+    return {"issued": issued, "day0": (issued // 24).astype(int), "V": V}
+
+
+def gfh_change(t: np.ndarray, m: dict | None, h: int) -> np.ndarray:
+    """At each hour: log((q(day of t+h) + 1) / (q(day of t) + 1)) from the latest forecast issued at or before that hour
+    (never a later one); NaN without one or outside its days."""
+    out = np.full(len(t), np.nan)
+    if not m:
+        return out
+    f = np.searchsorted(m["issued"], np.asarray(t, float), side="right") - 1
+    ok = f >= 0
+    fi = np.where(ok, f, 0)
+    d0 = (np.asarray(t, float) // 24).astype(int) - m["day0"][fi] - GFH_OFFSETS[0]
+    d1 = ((np.asarray(t, float) + h) // 24).astype(int) - m["day0"][fi] - GFH_OFFSETS[0]
+    width = m["V"].shape[1]
+    ok &= (d0 >= 0) & (d0 < width) & (d1 >= 0) & (d1 < width)
+    a = m["V"][fi, np.clip(d0, 0, width - 1)]
+    b = m["V"][fi, np.clip(d1, 0, width - 1)]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        out[ok] = np.log((b[ok] + 1.0) / (a[ok] + 1.0))
+    return out
+
+
+def nearest_gfh(lat: float, lon: float, pts: list[tuple], max_km: float = GFH_MAX_KM) -> str | None:
+    """The nearest Flood Hub point within max_km (pts: (gauge_id, lat, lon)), or None."""
+    best = None
+    for gid, la, lo in pts:
+        if la is None or lo is None:
+            continue
+        p = math.pi / 180
+        h = math.sin((la - lat) * p / 2) ** 2 + math.cos(lat * p) * math.cos(la * p) * math.sin((lo - lon) * p / 2) ** 2
+        d = 12742 * math.asin(math.sqrt(h))
+        if d <= max_km and (best is None or d < best[0]):
+            best = (d, gid)
+    return best[1] if best else None
 
 
 def _lagdiff(x: np.ndarray, k: int) -> np.ndarray:
@@ -200,6 +257,8 @@ def star_features(t: np.ndarray, y: np.ndarray, eta, ybar: np.ndarray, h: int, e
     cols.append(near + far)
     # extra inputs known at hour i (e.g. measured daily rain of complete days, Q43); already aligned to `t`
     cols += [np.asarray(x, float) for x in ex.get("extra") or []]
+    if ex.get("gfh"):  # STAR_INPUTS 3 (D-097): the nearest Flood Hub point's forecast discharge change over the horizon
+        cols.append(gfh_change(t, ex["gfh"], h))
     return np.column_stack(cols)
 
 
@@ -605,7 +664,8 @@ def upstream_codes(code: str, chain: dict[str, float], in_focus: bool, learned: 
     return [u[0] for u in learned.get(code, [])]
 
 
-def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict, in_focus: bool = True) -> dict | None:
+def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict, in_focus: bool = True,
+             agency: str | None = None) -> dict | None:
     """Raw inputs for the star model from the database (cached across stations within one run). Rain: the Bangkok
     rain point for focus gauges, the gauge's 0.5° cell elsewhere (D-064)."""
     from floodwatch import rain_cells
@@ -637,7 +697,19 @@ def load_exo(c, code: str, lat: float | None, lon: float | None, cache: dict, in
         cache["learned"] = db.get_state(c, "upstream_learned") or {}
     ups = [level(u) for u in upstream_codes(code, chain, in_focus, cache["learned"])]
     q = level(DAM_CODE, "discharge") if code in chain and chain[code] < DAM_KM else None
-    return {"up": [u for u in ups if u[0]], "q": q if q and q[0] else None, "rain": cache[("rain", pt)]}
+    gfh = None
+    if agency != "BMA":  # D-097: the nearest Flood Hub point within 10 km (BMA canals were not in the test)
+        if "gfh_pts" not in cache:
+            cache["gfh_pts"] = [(r["gauge_id"], r["lat"], r["lon"]) for r in c.execute(
+                "SELECT gauge_id, lat, lon FROM gfh_gauge WHERE has_model AND lat IS NOT NULL").fetchall()]
+        gid = nearest_gfh(lat, lon, cache["gfh_pts"])
+        if gid:
+            if ("gfh", gid) not in cache:
+                cache[("gfh", gid)] = gfh_matrix(c.execute(
+                    """SELECT issued_time, start_time, value FROM gfh_forecast WHERE gauge_id=%s
+                       AND issued_time > now() - make_interval(days => %s)""", (gid, LOOKBACK_DAYS)).fetchall())
+            gfh = cache[("gfh", gid)]
+    return {"up": [u for u in ups if u[0]], "q": q if q and q[0] else None, "rain": cache[("rain", pt)], "gfh": gfh}
 
 
 def run_all() -> int:
@@ -650,7 +722,7 @@ def run_all() -> int:
     now = dt.datetime.now(dt.timezone.utc)
     with db.connect() as c:
         stations = c.execute(
-            """SELECT s.code, s.bank_msl, s.lat, s.lon, s.in_focus, s.basin FROM station s
+            """SELECT s.code, s.bank_msl, s.lat, s.lon, s.in_focus, s.basin, s.agency FROM station s
                WHERE s.code !~ '^TEST' AND EXISTS (SELECT 1 FROM observation o WHERE o.code=s.code
                      AND o.obs_time > now() - interval '12 hours' AND o.level_msl IS NOT NULL)
                ORDER BY s.basin NULLS FIRST, s.code""").fetchall()
@@ -672,14 +744,14 @@ def run_all() -> int:
             continue
         if s["basin"] != basin:  # upstream gauges share the basin: keep only what the next basin can use
             basin = s["basin"]
-            cache = {k: v for k, v in cache.items() if k in ("chain", "learned")}
+            cache = {k: v for k, v in cache.items() if k in ("chain", "learned", "gfh_pts")}
         with db.connect() as c:
             rows = c.execute(
                 """SELECT obs_time, level_msl FROM observation WHERE code=%s AND quality_flag='ok'
                    AND obs_time > now() - make_interval(days => %s) ORDER BY obs_time""", (s["code"], LOOKBACK_DAYS)).fetchall()
         try:
             with db.connect() as c:
-                exo = load_exo(c, s["code"], s["lat"], s["lon"], cache, s["in_focus"])
+                exo = load_exo(c, s["code"], s["lat"], s["lon"], cache, s["in_focus"], s.get("agency"))
         except Exception:
             log.exception("star inputs for %s failed; own methods only", s["code"])
             exo = None
