@@ -205,6 +205,20 @@ Two probe requests to `dam_yearly_graph` went out without a User-Agent by mistak
 | HII station history, 2018 | `GET …/public/waterlevel_graph?station_type=tele_waterlevel&station_id={id}&start_date=2018-08-01&end_date=2018-08-31%2023:59` for B.18 (1098952), B.10 (2671), B.16 (505029), B.15 (505030), PCH001 (758) | ⚠️ HTTP 200 with hourly timestamps but **no values** for every gauge | none — the 2018 release (24.36 ล้าน ลบ.ม./วัน on 21 Aug) needs RID's own records (Q56) |
 | HII station history, 2024–25 | same, B.10, Oct 2024 and Jan 2025 | ✅ 635 and 611 hourly values with discharge | a longer replay is possible, but 2019–2025 never released more than 9.13 ล้าน ลบ.ม./วัน |
 
+### 2p. ONWR water-risk platform `waterrisk.onwr.go.th/map` (probed 2026-10-05 10:00–10:30 UTC, project UA; owner question)
+A Vite/Leaflet app ("Risk Map | แพลตฟอร์มติดตามและรับมือภัยพิบัติ", Google Frontend) that aggregates HII (`waterlevel_load`, `analyst/dam`, `waterquality_load` — the feeds we already use), GISTDA (flood extent 3/7/30 days and repeated-flooding WMS, drought, PM2.5, hotspots) and ONWR's own services. Reproduce: `research/2026-10-05_onwr_waterrisk_probe.py` (+ `.log`). No robots.txt (the path returns the app).
+
+| Source | Request | Result | Use |
+|---|---|---|---|
+| ONWR tile service (FastAPI, public OpenAPI) | `GET https://check-water-map-service-726396821992.asia-southeast3.run.app/layers`; `/tiles/{layer}/tilejson.json` (has `data_updated`); `/tiles/{layer}/{z}/{x}/{y}.pbf` | ✅ keyless; 15 layers: `flood-warn` (updated 2026-10-05 08:28 UTC), `flood-forecast-d0…d3` (2026-10-04 19:05 UTC), `flood-dep-tambon-d0…d3` (**stale**: 2026-09-27, `fc_date` 2026-09-28), `flood-area-poly` (2026-10-03 17:55 UTC), `rain-30min` COG (08:08 UTC), heat index | candidate (Q57) |
+| `flood-warn`, `flood-forecast-dN` | vector tiles, layers `flood_warn`, `nextday01…03` | hexagonal cells ≈ 1.1 km (`id`, `left/top/right/bottom`, `row_index`, `col_index`, `class_risk`); the map's legend: 2 = เฝ้าระวัง, 3 = เสี่ยงสูง; **class 1 has no label** (⚠️ ask ONWR). 2026-10-05: 4,019 warning cells at z6 (class 2: 3,610, class 1: 409, class 3: 0); z6 keeps ~84 % of the cells seen at z8 | an official area-based (land) warning, 24 h and +1…+3 days |
+| `flood-area-poly` | vector tiles, layer `FloodArea_Poly` | observed flooded area per tambon: `TB_IDN`/`AP_IDN`/`PV_IDN`, `F_AREA` (m²), `flood_area` (rai = F_AREA / 1,600), `house`; Thai names garbled at the source (use the codes) | "seen flooded" per tambon |
+| `flood-dep-tambon-dN` | vector tiles | per tambon: `fc_date`, `lead_day`, `tb_id`, names, `level` ("warning"), `max_level`, `dep_count` | stale since 2026-09-27 — ask whether maintained |
+| ONWR API | `GET https://api.waterrisk.onwr.go.th/api/v1/{dashboard,reports/summary,water-quality,refdata/getRegName…}` | ✅ keyless JSON: `dashboard` → `floodUpdatedAt` (15:10 ICT), alerts (flood: 44 provinces at risk, "เฝ้าระวังต่อเนื่อง"), `riskAreas` per province (damage area km²/rai, tambons at risk); `reports/summary` = counts only | national summary |
+| Not used | `lifedee-api-backend…/api/flood/vul-house`, `…/sos/map`, `…/sos/summary` | personal data (vulnerable households, help requests) — **never collected**; a third-party map key embedded in the site's JavaScript is not used or copied | — |
+
+**Overlap with our gauges (2026-10-05 ~10:20 UTC, live statuses):** an ONWR warning cell lies within 2 km of 44 of our 122 gauges over or near the bank (36 %), 13 of 130 "watch" (10 %) and 31 of 713 "normal" (4 %): related but different — ONWR marks land areas at risk, our gauges the river channel.
+
 ## 3. Refuted endpoints — do **not** use
 
 | Endpoint / claim | From | Evidence (2026-09-26) |

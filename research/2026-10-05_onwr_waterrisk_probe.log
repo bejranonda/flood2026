@@ -1,0 +1,21 @@
+tile service layers (GET /layers):
+  rain-30min             cog      Rainfall (30 min)                        data_updated 2026-10-05T08:08:54.087369+00:00
+  flood-dep-tambon-d0    pmtiles  Flood Depth by Tambon +0 day (today)     data_updated 2026-09-27T07:50:10.507458+00:00
+  flood-dep-tambon-d1    pmtiles  Flood Depth by Tambon +1 day             data_updated 2026-09-27T07:50:16.335922+00:00
+  flood-dep-tambon-d2    pmtiles  Flood Depth by Tambon +2 days            data_updated 2026-09-27T07:50:22.433266+00:00
+  flood-dep-tambon-d3    pmtiles  Flood Depth by Tambon +3 days            data_updated 2026-09-27T07:50:27.924792+00:00
+  flood-forecast-d0      pmtiles  Flood Forecast +0 day (today)            data_updated 2026-10-04T19:05:26.498931+00:00
+  flood-forecast-d1      pmtiles  Flood Forecast +1 day                    data_updated 2026-10-04T19:05:31.728080+00:00
+  flood-forecast-d2      pmtiles  Flood Forecast +2 days                   data_updated 2026-10-04T19:05:36.971281+00:00
+  flood-forecast-d3      pmtiles  Flood Forecast +3 days                   data_updated 2026-10-04T19:05:42.213910+00:00
+  heat-index-now         cog      Heat Index (now)                         data_updated 2026-10-05T09:46:54.742052+00:00
+  heat-index-3h          cog      Heat Index (+3 h)                        data_updated 2026-10-05T09:46:48.574105+00:00
+  heat-index-6h          cog      Heat Index (+6 h)                        data_updated 2026-10-05T09:46:40.503930+00:00
+  heat-index-9h          cog      Heat Index (+9 h)                        data_updated 2026-10-05T09:46:34.101933+00:00
+  flood-warn             pmtiles  Flood Warning                            data_updated 2026-10-05T08:28:08.004092+00:00
+  flood-area-poly        pmtiles  Flood Area                               data_updated 2026-10-03T17:55:57.399579+00:00
+dashboard: floodUpdatedAt 2026-10-05T15:10:00+07:00 · flood provincesAtRisk 44 (เฝ้าระวังต่อเนื่อง) · riskAreas rows 75
+flood-warn cells at z6 over Thailand: 4019 {1: 409, 2: 3610} (z6 keeps ~84 % of the cells seen at z8: a collector should read z8+)
+our gauges over/near bank (critical, warning): 122 · ONWR warning cell within 2 km 44 (36 %) · within 5 km 49
+our gauges watch: 130 · ONWR warning cell within 2 km 13 (10 %) · within 5 km 22
+our gauges normal: 713 · ONWR warning cell within 2 km 31 (4 %) · within 5 km 67
