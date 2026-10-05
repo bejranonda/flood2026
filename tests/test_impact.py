@@ -274,3 +274,15 @@ def test_the_case_river_is_drawn_from_hiis_line_as_lat_lon_parts():
                         {"properties": {"STR_NAMT": "แม่น้ำท่าจีน"}, "geometry": {"type": "LineString", "coordinates": [[100.1, 14.0]]}}]}
     assert impact.river_line(geo, "แม่น้ำเพชรบุรี") == [[[12.92, 99.63], [12.95, 99.70]], [[13.1, 99.9]]]
     assert impact.river_line(geo, "แม่น้ำท่าจีน") == [[[14.0, 100.1]]] and impact.river_line(None, "x") == []
+
+
+def test_a_dams_year_also_merges_inflow_and_the_curves_are_looked_up_for_the_days_ahead():
+    from floodwatch import collectors
+    rows = collectors.dam_year_rows(13, "RID", "แก่งกระจาน", {"series": [("2026-10-05", 10.8)]}, {"series": []},
+                                    inflow={"series": [("2026-10-05", 10.33), ("2026-10-06", 9.9)]})
+    by = {r["dam_date"]: r for r in rows}
+    assert by["2026-10-05"]["inflow_mcm"] == 10.33 and by["2026-10-06"]["released_mcm"] is None and len(rows) == 2
+    curves = {"upper": {"10-06": 590.0, "10-07": 588.0, "02-29": 600.0}, "lower": {"10-06": 203.0, "10-07": 202.0, "02-29": 300.0}}
+    ahead = impact.curves_ahead(curves, "2026-10-05", 2)
+    assert ahead == {"upper": [590.0, 588.0], "lower": [203.0, 202.0], "dates": ["2026-10-06", "2026-10-07"]}
+    assert impact.curves_ahead(curves, "2028-02-28", 2)["upper"] == [600.0, None]  # 29 Feb listed, 1 Mar not

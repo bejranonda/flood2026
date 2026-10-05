@@ -733,6 +733,41 @@ def impact_case(request: Request, case_id: str):
     return JSONResponse(_impact_state(impact.state_key(case_id)), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
+@app.get("/api/impact/case/{case_id}/scenarios", include_in_schema=False)
+def impact_scenarios(request: Request, case_id: str, release: str | None = Query(None, max_length=200),
+                     diversion_cms: float | None = Query(None, ge=0, le=2000)):
+    """The 7-day release scenarios (D-101): plans found by search, judged on every effect, ★ by the stated rule; `release`
+    = a custom plan, 7 daily values in ล้าน ลบ.ม./วัน. Downstream numbers are unvalidated and labelled so (D-099)."""
+    _impact_require(request)
+    from floodwatch import impact, scenarios
+    if case_id not in impact.CASES:
+        raise HTTPException(404, "unknown case")
+    st = _impact_state(impact.state_key(case_id))
+    si = st.get("scenario_inputs") or {}
+    c7 = si.get("curves7") or {}
+    if not st.get("points") or not c7.get("upper") or any(v is None for v in c7["upper"] + c7["lower"]) \
+            or (st.get("dam") or {}).get("inflow_mcm") is None or not si.get("normal_mcm"):
+        raise HTTPException(503, "scenario inputs not ready")
+    custom = None
+    if release:
+        try:
+            custom = [float(x) for x in release.split(",")]
+        except ValueError:
+            raise HTTPException(422, "release: 7 numbers, ล้าน ลบ.ม./วัน")
+        if len(custom) != 7 or any(not (0 <= x <= 200) for x in custom):
+            raise HTTPException(422, "release: 7 numbers between 0 and 200")
+
+    def build():
+        return scenarios.compare(st, inflow_today=float(st["dam"]["inflow_mcm"]), upper=c7["upper"], lower=c7["lower"],
+                                 normal=float(si["normal_mcm"]), max_release=float(si["release_cap"]), max_storage=si.get("max_mcm"),
+                                 custom=custom, diversion_cms=diversion_cms)
+    out = _memo(("impact_scenarios", case_id, release or "", diversion_cms, st.get("built_at")), build, ttl=600)
+    return JSONResponse({**out, "dates": c7.get("dates"), "inputs": si, "dam": st.get("dam"), "built_at": st.get("built_at"),
+                         "downstream_validated": bool((st.get("validation") or {}).get("whatif_ready")),
+                         "downstream_note": "ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง (D-099)"},
+                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
 @app.get("/api/impact/kaeng-krachan/whatif", include_in_schema=False)
 def impact_whatif(request: Request, release_mcm: float = Query(..., ge=0, le=200),
                   diversion_cms: float | None = Query(None, ge=0, le=2000)):

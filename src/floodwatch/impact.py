@@ -212,6 +212,41 @@ def release_note(released_mcm: float, ymd: str, years: dict) -> str | None:
                    f" เมื่อ {th_date(years[last][1])})" if last else " (เท่าที่ สสน. มีข้อมูล)") + " — ข้อมูลรายวันจาก สสน."
 
 
+def curves_ahead(curves: dict | None, from_ymd: str | None, days: int = 7) -> dict | None:
+    """HII's upper and lower rule curves for the `days` dates after `from_ymd` (by day of year; None where unlisted)."""
+    import datetime as dt
+    if not curves or not from_ymd:
+        return None
+    d0 = dt.date.fromisoformat(str(from_ymd)[:10])
+    dates = [(d0 + dt.timedelta(days=k)).isoformat() for k in range(1, days + 1)]
+    return {"upper": [(curves.get("upper") or {}).get(d[5:10]) for d in dates],
+            "lower": [(curves.get("lower") or {}).get(d[5:10]) for d in dates], "dates": dates}
+
+
+def catchment_rain7(points: list, fetch=None) -> dict | None:
+    """Open-Meteo's 7-day daily rain at the catchment's sub-basin centroids, area-weighted (mm/day) — shown as context on
+    the scenarios, never used as an input (the rain-driven inflow model lost to persistence, D-101)."""
+    import json
+    import urllib.request
+    from floodwatch.config import settings
+
+    def _fetch(url):
+        req = urllib.request.Request(url, headers={"User-Agent": settings.user_agent})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    fetch = fetch or _fetch
+    total = sum(p[2] for p in points)
+    dates, mm = None, None
+    for lat, lon, km2 in points:
+        d = fetch(f"https://api.open-meteo.com/v1/forecast?latitude={lat:.3f}&longitude={lon:.3f}&daily=precipitation_sum"
+                  f"&forecast_days=7&timezone=Asia%2FBangkok")["daily"]
+        if dates is None:
+            dates, mm = d["time"], [0.0] * len(d["time"])
+        for i, v in enumerate(d["precipitation_sum"]):
+            mm[i] += (v or 0.0) * km2 / total
+    return {"dates": dates, "mm": [round(x, 1) for x in mm], "points": len(points), "source": "Open-Meteo"} if dates else None
+
+
 def dam_position(storage_mcm: float | None, rule: dict | None) -> str | None:
     """Storage against HII's rule curve for the day: 'above' the upper curve, 'below' the lower one, 'between'; None
     without both. A fact from the agencies' own curve — the page never turns it into a verdict."""
@@ -324,6 +359,10 @@ CASES = {
         "dam_ids": {"RID": 13, "EGAT": 57},
         # no hourly dam data: from the dam to B.18 (~21 km) a few hours, an assumption stated on the page
         "dam_to_first_h": [2, 8], "dam_km": 21,
+        # the catchment above the dam: HydroBASINS lev08 basins upstream (6 basins, 1,988 km²; research 2026-10-05) —
+        # the four largest sub-basins' centroids with their areas, for the rain context
+        "catchment_points": [(12.848, 99.288, 565), (13.102, 99.422, 527), (13.078, 99.218, 421), (12.925, 99.4, 267)],
+        "catchment_km2": 1988,
         "points": [{"code": "B.18", "role": "below_dam"}, {"code": "B.10", "role": "after_diversion"},
                    {"code": "B.16", "role": "river"}, {"code": "B.15", "role": "city", "rating_from": "B.16"},
                    {"code": "PCH001", "role": "city", "rating_from": "B.16"}],
@@ -434,7 +473,7 @@ def replay(q18, q10, q16, hcity: dict, lags: dict, cut: int) -> dict:
     return {"points": points, "whatif_ready": bool(beats("B.10") and beats("B.16"))}
 
 
-def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
+def build_state(c, case: str = "kaeng-krachan", now=None, rain7: dict | None = None) -> dict:
     """Everything the page needs, from our database: ratings and lags fitted on the year, today's values, the dam's latest
     records, today's diversion and the replay (validation)."""
     import datetime as dt
@@ -497,6 +536,18 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
                       (cfg["dam_ids"]["RID"],)).fetchall()
     years = {r["y"]: (float(r["mx"]), r["d"]) for r in yrows if r["n"] >= 300}  # complete years only
     rule = rule_curve_on(curves, rid.get("dam_date") if rid else None)
+    dam_meta = c.execute("SELECT normal_mcm, max_mcm FROM dam WHERE dam_id=%s", (cfg["dam_ids"]["RID"],)).fetchone() or {}
+    seen = c.execute("SELECT max(released_mcm) AS m FROM dam_daily WHERE dam_id=%s", (cfg["dam_ids"]["RID"],)).fetchone()["m"]
+    recent = c.execute("""SELECT dam_date::text AS d, inflow_mcm FROM dam_daily WHERE dam_id=%s AND inflow_mcm IS NOT NULL
+                          ORDER BY dam_date DESC LIMIT 7""", (cfg["dam_ids"]["RID"],)).fetchall()
+    import math as _m
+    cap = float(_m.ceil(max(float(seen or 0.0), float((rid or {}).get("released_mcm") or 0.0), 12.0)))
+    scenario_inputs = {"curves7": curves_ahead(curves, rid.get("dam_date") if rid else None),
+                       "normal_mcm": (curves or {}).get("normal") or dam_meta.get("normal_mcm"), "max_mcm": dam_meta.get("max_mcm"),
+                       "release_max_seen": float(seen) if seen is not None else None, "release_cap": cap,
+                       "release_cap_note": "ขอบบนของการค้นหา = การระบายรายวันสูงสุดที่เคยมีในข้อมูล สสน. ⚠️ รอความจุทางระบายจริงจาก สทนช.",
+                       "inflow_recent": [{"date": r["d"], "mcm": float(r["inflow_mcm"])} for r in reversed(recent)],
+                       "rain7": rain7, "catchment_km2": cfg.get("catchment_km2")}
     ict = [(t0 + dt.timedelta(hours=k + 7)).date().isoformat() for k in range(n)]
     sums: dict = {}
     for k in np.flatnonzero(np.isfinite(Q["B.18"])):
@@ -526,7 +577,7 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
             "river_line": river_line(db.get_state(c, "geo_rivers"), cfg["river"]),
             "dam_latlon": next(([r["lat"], r["lon"]] for r in c.execute("SELECT lat, lon FROM dam WHERE dam_id=%s",
                                                                           (cfg["dam_ids"]["RID"],)).fetchall()), None),
-            "release_check": release_vs_flow(rel_daily, b18_daily),
+            "release_check": release_vs_flow(rel_daily, b18_daily), "scenario_inputs": scenario_inputs,
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
             "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), **replay(q18, q10, q16, city, lags_cut, cut)},
@@ -559,9 +610,15 @@ def run() -> dict:
     """Worker task (hourly): rebuild every case's state and the national dams layer (collector_state)."""
     from floodwatch import db
     state = {}
+    import logging
     with db.connect() as c:
         for case in CASES:
-            state = build_state(c, case)
+            rain7 = None
+            try:
+                rain7 = catchment_rain7(CASES[case]["catchment_points"])
+            except Exception:
+                logging.getLogger(__name__).exception("catchment rain context failed")
+            state = build_state(c, case, rain7=rain7)
             db.set_state(c, state_key(case), state)
             c.commit()
         db.set_state(c, "impact_dams", build_dams(c))

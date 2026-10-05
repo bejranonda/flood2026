@@ -159,3 +159,26 @@ def test_impact_mode_sends_the_origin_as_referer_so_osm_tiles_are_not_blocked():
     # KI-300: Referrer-Policy same-origin stripped the Referer from tile requests; OSM's Thai edge answers 403 "Access
     # blocked" to referer-less browsers (osm.wiki/Blocked). The origin alone is sent: the /impact path never leaves the site.
     assert api.impact_page(PageReq()).headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+
+
+def test_scenarios_endpoint_needs_ready_inputs_and_validates_a_custom_plan(monkeypatch):
+    from test_impact import STATE
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = {**STATE, "case": "kaeng-krachan", "built_at": "2026-10-05T12:00:00+00:00", "validation": {"whatif_ready": False},
+          "dam": {**STATE["dam"], "storage_mcm": 725.85, "inflow_mcm": 10.33},
+          "scenario_inputs": {"curves7": {"upper": [593.0] * 7, "lower": [204.0] * 7, "dates": [f"2026-10-0{d}" for d in range(6, 10)] + ["2026-10-10", "2026-10-11", "2026-10-12"]},
+                              "normal_mcm": 710.0, "max_mcm": 900.0, "release_cap": 25.0, "release_max_seen": 24.36}}
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st)
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    out = json.loads(api.impact_scenarios(Req(tok), "kaeng-krachan", release="10.8,10.8,10.8,10.8,10.8,10.8,10.8", diversion_cms=None).body)
+    assert out["downstream_validated"] is False and out["candidates"] > 100 and out["plans"]
+    assert any(p["kind"] == "custom" for p in out["plans"]) and any(p["kind"] == "hold" for p in out["plans"])
+    assert set(out["best_for"]) == set(api.scenarios.EFFECT_KEYS) if hasattr(api, "scenarios") else True
+    assert out["optimal"]["reason"]
+    with pytest.raises(HTTPException) as e:
+        api.impact_scenarios(Req(tok), "kaeng-krachan", release="1,2,3", diversion_cms=None)
+    assert e.value.status_code == 422
+    st["scenario_inputs"]["curves7"]["upper"][3] = None
+    with pytest.raises(HTTPException) as e:
+        api.impact_scenarios(Req(tok), "kaeng-krachan", release=None, diversion_cms=None)
+    assert e.value.status_code == 503

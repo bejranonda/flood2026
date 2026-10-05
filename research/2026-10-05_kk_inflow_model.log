@@ -1,0 +1,46 @@
+HydroBASINS lev08: features 2581 | fields ['HYBAS_ID', 'NEXT_DOWN', 'MAIN_BAS', 'SUB_AREA', 'UP_AREA']
+catchment: 6 basins, 1988 km² (HydroBASINS UP_AREA at the dam basin 2273.3) | rain points (lat, lon, km²): [(12.848, 99.288, 565), (13.102, 99.422, 527), (13.078, 99.218, 421), (12.925, 99.4, 267)]
+ERA5 rain: 3199 days 2018-01-01..2026-10-04, mean 4.8 mm/d, max 90 mm/d
+HII: inflow 3200 days, release 3200, storage 3200, climatology days 366
+water balance (3199 days): Δstorage − (inflow − release): median -0.15, IQR -0.57..+0.22 ล้าน ลบ.ม./วัน; r 0.314 → the balance closes: HII's inflow is consistent with its storage
+
+fit 2018-2024 (n 2550), test 2025-2026 (n 642):
+  coefficients [1, inflow(t-1), √inflow(t-1), rain t, t-1, t-2, t-3, Σ t-4..7]: [-2.348, 0.064, 3.217, -0.006, 0.042, 0.062, -0.014, 0.004]
+  h=1 d: MAE model 0.99 · persistence 0.80 · climatology 1.59 ล้าน ลบ.ม./วัน → -25 % vs persistence; worse on 72 % of days; inflow ≥ 10: model 4.30 vs persistence 4.83 (n 40)
+  h=2 d: MAE model 1.52 · persistence 1.10 · climatology 1.59 ล้าน ลบ.ม./วัน → -38 % vs persistence; worse on 77 % of days; inflow ≥ 10: model 5.99 vs persistence 7.52 (n 40)
+  h=3 d: MAE model 1.95 · persistence 1.29 · climatology 1.59 ล้าน ลบ.ม./วัน → -51 % vs persistence; worse on 79 % of days; inflow ≥ 10: model 6.69 vs persistence 8.65 (n 40)
+  h=5 d: MAE model 2.64 · persistence 1.54 · climatology 1.59 ล้าน ลบ.ม./วัน → -72 % vs persistence; worse on 82 % of days; inflow ≥ 10: model 6.99 vs persistence 9.85 (n 40)
+  h=7 d: MAE model 3.11 · persistence 1.57 · climatology 1.60 ล้าน ลบ.ม./วัน → -98 % vs persistence; worse on 85 % of days; inflow ≥ 10: model 6.93 vs persistence 9.11 (n 40)
+  residual 10–90 % by horizon (for the band): {1: (-0.9, 1.6), 2: (-1.0, 2.4), 3: (-1.0, 3.3), 4: (-1.0, 4.0), 5: (-1.1, 4.6), 6: (-1.1, 5.0), 7: (-1.2, 5.4)}
+  BETA_JSON {"beta": [-2.34781, 0.06427, 3.21688, -0.00579, 0.0421, 0.06238, -0.01393, 0.00422], "band": {"1": [-0.8939, 1.5953876703574807], "2": [-1.01379, 2.43501999493796], "3": [-1.0414999999999999, 3.2828404157086686], "4": [-1.01122, 3.99370665473931], "5": [-1.1112799999999998, 4.586702050774821], "6": [-1.1299000000000001, 5.039670455087036], "7": [-1.17778, 5.406851682874965]}, "points": [[12.848, 99.288, 565], [13.102, 99.422, 527], [13.078, 99.218, 421], [12.925, 99.4, 267]]}
+
+fit 2018-2023 (n 2184), test 2024-2024 (n 366):
+  coefficients [1, inflow(t-1), √inflow(t-1), rain t, t-1, t-2, t-3, Σ t-4..7]: [-2.454, 0.036, 3.34, -0.006, 0.04, 0.067, -0.016, 0.006]
+  h=1 d: MAE model 0.92 · persistence 0.59 · climatology 1.36 ล้าน ลบ.ม./วัน → -54 % vs persistence; worse on 78 % of days; inflow ≥ 10: model 6.52 vs persistence 5.85 (n 9)
+  h=2 d: MAE model 1.42 · persistence 0.82 · climatology 1.36 ล้าน ลบ.ม./วัน → -73 % vs persistence; worse on 81 % of days; inflow ≥ 10: model 8.99 vs persistence 10.04 (n 9)
+  h=3 d: MAE model 1.79 · persistence 0.96 · climatology 1.36 ล้าน ลบ.ม./วัน → -87 % vs persistence; worse on 83 % of days; inflow ≥ 10: model 9.55 vs persistence 11.79 (n 9)
+  h=5 d: MAE model 2.40 · persistence 1.19 · climatology 1.36 ล้าน ลบ.ม./วัน → -103 % vs persistence; worse on 86 % of days; inflow ≥ 10: model 10.04 vs persistence 14.32 (n 9)
+  h=7 d: MAE model 2.82 · persistence 1.32 · climatology 1.36 ล้าน ลบ.ม./วัน → -115 % vs persistence; worse on 86 % of days; inflow ≥ 10: model 9.99 vs persistence 14.28 (n 9)
+
+Note: multi-step skill uses observed rain for the coming days — the ceiling for a rain forecast; operational skill is lower.
+
+persistence band (inflow(t+h) − inflow(t), 2025-2026, 10–90 %):
+  h=1: -0.84 .. +0.96 ล้าน ลบ.ม./วัน (n 641)
+  h=2: -1.18 .. +1.08 ล้าน ลบ.ม./วัน (n 640)
+  h=3: -1.27 .. +1.28 ล้าน ลบ.ม./วัน (n 639)
+  h=4: -1.41 .. +1.43 ล้าน ลบ.ม./วัน (n 638)
+  h=5: -1.65 .. +1.69 ล้าน ลบ.ม./วัน (n 637)
+  h=6: -1.36 .. +1.73 ล้าน ลบ.ม./วัน (n 636)
+  h=7: -1.32 .. +1.85 ล้าน ลบ.ม./วัน (n 635)
+  PERSIST_BAND_JSON {"1": [-0.844, 0.959], "2": [-1.176, 1.083], "3": [-1.265, 1.278], "4": [-1.413, 1.431], "5": [-1.651, 1.686], "6": [-1.357, 1.734], "7": [-1.322, 1.855]}
+  on days with inflow ≥ 10 (n 33): 7-day change 10–90 % -15.1 .. +10.9
+
+high-inflow regime (inflow(t) ≥ 10, all years 2018-2026 for sample size), persistence band by horizon:
+  h=1: -7.3 .. +6.1 (n 184)
+  h=2: -10.3 .. +7.3 (n 183)
+  h=3: -12.0 .. +6.3 (n 182)
+  h=4: -13.7 .. +7.5 (n 181)
+  h=5: -15.4 .. +8.1 (n 180)
+  h=6: -15.5 .. +7.6 (n 179)
+  h=7: -15.9 .. +5.4 (n 178)
+  HIGH_BAND_JSON {"1": [-7.28, 6.07], "2": [-10.25, 7.31], "3": [-12.04, 6.33], "4": [-13.69, 7.51], "5": [-15.4, 8.05], "6": [-15.5, 7.57], "7": [-15.88, 5.41]}
