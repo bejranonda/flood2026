@@ -161,6 +161,32 @@ def th_date(ymd: str | None) -> str:
     return f"{d} {TH_MONTHS[m - 1]} {(y + 543) % 100:02d}"
 
 
+def release_vs_flow(release_mcm: dict, flow_cms: dict, min_days: int = 30) -> dict | None:
+    """Does the first gauge carry the dam's reported release? Daily (Thai dates): the release (ล้าน ลบ.ม./วัน → m³/s)
+    against the gauge's mean flow — r, the median difference (local inflow plus any measurement offset) and how
+    consecutive day-to-day changes line up the same day and the next. None with fewer than `min_days` common days."""
+    import datetime as dt
+    days = sorted(set(release_mcm) & set(flow_cms))
+    if len(days) < min_days:
+        return None
+    a = np.array([mcm_to_cms(release_mcm[d]) for d in days])
+    b = np.array([float(flow_cms[d]) for d in days])
+    when = [dt.date.fromisoformat(d) for d in days]
+    step = [i for i in range(1, len(days)) if (when[i] - when[i - 1]).days == 1]  # consecutive days only
+    da = {i: a[i] - a[i - 1] for i in step}
+    dq = {i: b[i] - b[i - 1] for i in step}
+
+    def corr(x, y):
+        x, y = np.asarray(x, float), np.asarray(y, float)
+        return float(np.corrcoef(x, y)[0, 1]) if len(x) > 10 and np.std(x) > 0 and np.std(y) > 0 else None
+
+    lag1 = [i for i in step if i + 1 in dq]
+    return {"days": len(days), "first": days[0], "last": days[-1], "r": corr(a, b),
+            "median_diff_cms": float(np.median(b - a)),
+            "lag0_r": corr([da[i] for i in step], [dq[i] for i in step]),
+            "lag1_r": corr([da[i] for i in lag1], [dq[i + 1] for i in lag1])}
+
+
 def rule_curve_on(curves: dict | None, ymd: str | None) -> dict | None:
     """The upper and lower rule curves (ล้าน ลบ.ม.) on a date, by day of year; None when the curve does not list that day."""
     if not curves or not ymd:
@@ -402,6 +428,16 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
                       (cfg["dam_ids"]["RID"],)).fetchall()
     years = {r["y"]: (float(r["mx"]), r["d"]) for r in yrows if r["n"] >= 300}  # complete years only
     rule = rule_curve_on(curves, rid.get("dam_date") if rid else None)
+    ict = [(t0 + dt.timedelta(hours=k + 7)).date().isoformat() for k in range(n)]
+    sums: dict = {}
+    for k in np.flatnonzero(np.isfinite(Q["B.18"])):
+        s_ = sums.setdefault(ict[k], [0.0, 0])
+        s_[0] += Q["B.18"][k]
+        s_[1] += 1
+    b18_daily = {d: v[0] / v[1] for d, v in sums.items() if v[1] >= 12}
+    rel_daily = {r["d"]: float(r["released_mcm"]) for r in c.execute(
+        "SELECT dam_date::text AS d, released_mcm FROM dam_daily WHERE dam_id=%s AND released_mcm IS NOT NULL",
+        (cfg["dam_ids"]["RID"],)).fetchall()}
     cut = int(n * 0.6)
     lags_cut = {"B.10": best_lag(q18[:cut], q10[:cut]) or lags["B.10"]}
     lags_cut["B.16"] = max(lags_cut["B.10"], best_lag(q18[:cut], q16[:cut]) or lags["B.16"])
@@ -418,6 +454,7 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
             "dam": {**(rid or {}), "egat": egat, "rule_curve": rule, "normal_mcm": (curves or {}).get("normal"),
                     "yearly_max": [{"year": r["y"], "max_mcm": float(r["mx"]), "date": r["d"], "days": r["n"]} for r in yrows]},
             "dam_km": cfg["dam_km"], "dam_notes": dam_notes(rid, egat, b18_now, rule=rule, years=years),
+            "release_check": release_vs_flow(rel_daily, b18_daily),
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
             "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), **replay(q18, q10, q16, city, lags_cut, cut)},

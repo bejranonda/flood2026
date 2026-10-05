@@ -199,3 +199,15 @@ def test_a_dams_year_merges_release_and_storage_by_date():
     assert by["2026-10-05"]["released_mcm"] == 10.8 and by["2026-10-05"]["storage_mcm"] == 725.849
     assert by["2026-10-04"]["storage_mcm"] is None and by["2026-10-06"]["released_mcm"] is None
     assert all(r["dam_id"] == 13 and r["agency"] == "RID" for r in rows) and len(rows) == 3
+
+
+def test_the_first_gauge_is_checked_against_the_dams_reported_release():
+    import datetime as dt
+    rng = np.random.default_rng(7)
+    days = [(dt.date(2026, 1, 1) + dt.timedelta(days=i)).isoformat() for i in range(120)]
+    rel = {d: 1.0 + 9.0 * abs(np.sin(i / 9.0)) for i, d in enumerate(days)}           # ล้าน ลบ.ม./วัน
+    flow = {d: impact.mcm_to_cms(rel[d]) + 10.0 + rng.normal(0, 1.0) for d in days}  # same day + 10 m³/s local inflow
+    chk = impact.release_vs_flow(rel, flow)
+    assert chk["days"] == 120 and chk["r"] > 0.95 and abs(chk["median_diff_cms"] - 10.0) < 1.0
+    assert chk["lag0_r"] > chk["lag1_r"]                                             # it arrives the same day
+    assert impact.release_vs_flow(dict(list(rel.items())[:10]), flow) is None        # too few days: no claim
