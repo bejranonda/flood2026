@@ -328,6 +328,12 @@ honest protocol on two disjoint samples (116 and 118 gauges): all worse at every
 −4.4 % (sample 1; sample 2 alike), with 1–3 fewer gauges made worse. Verdict: rebounds are usually right; the 90 % band
 covers the wrong ones. Not adopted. research/2026-10-05_star_damping.log.
 
+### 5g. Experiment E-UQ (2026-10-05): upstream *flow* change as a `star` input — rejected
+For gauges whose learned upstream gauges measure discharge (49 and 68 in two samples of 200): log-flow changes over 24
+and 48 h next to the upstream level changes. Sample 1: 12 h −24.9 → −23.1 %, 24 h −12.5 → −14.7 %, 48 h −10.1 → −9.3 %,
+72 h −10.8 → −9.3 %; sample 2 worse at every horizon (24 h −18.1 → −15.8 %, 72 h −12.7 → −8.1 %). Fails the two-sample
+gate (owner 2026-10-05). The level already carries the routing signal. research/2026-10-05_upstream_flow_input.log.
+
 ### 9b. Reservoir inflow nationwide (owner 2026-10-05: "not only the water level … inflow, reservoir and much more")
 Daily inflow for every RID dam (HII) against ERA5 catchment rain (HydroBASINS lev08 upstream basins), fit 2018–2024,
 tested 2025–2026, recursive to 7 days with observed rain (an upper bound): the rain + yesterday's-inflow model beats

@@ -1,0 +1,48 @@
+ Container floodwatch-worker-run-d13e9fcf5b8f Creating 
+ Container floodwatch-worker-run-d13e9fcf5b8f Created 
+… 10
+… 20
+… 30
+… 40
+
+=== sample 1: 49 gauges with a flow-measured upstream gauge (of 200 sampled)
+
+=== +12 h (chosen on the first half, scored on the second)
+star (today)           n   49 · error vs no-change -24.9% (per-gauge mean -25.4%) · served a model   38 (star   31) · held ≥10 %   32 · worse   1
+star + upstream flow   n   49 · error vs no-change -23.1% (per-gauge mean -23.8%) · served a model   37 (star   26) · held ≥10 %   32 · worse   4
+
+=== +24 h (chosen on the first half, scored on the second)
+star (today)           n   49 · error vs no-change -12.5% (per-gauge mean -14.7%) · served a model   27 (star   20) · held ≥10 %   23 · worse   1
+star + upstream flow   n   49 · error vs no-change -14.7% (per-gauge mean -16.7%) · served a model   28 (star   22) · held ≥10 %   24 · worse   0
+
+=== +48 h (chosen on the first half, scored on the second)
+star (today)           n   49 · error vs no-change -10.1% (per-gauge mean -10.9%) · served a model   22 (star   17) · held ≥10 %   18 · worse   2
+star + upstream flow   n   49 · error vs no-change  -9.3% (per-gauge mean -10.3%) · served a model   24 (star   16) · held ≥10 %   17 · worse   2
+
+=== +72 h (chosen on the first half, scored on the second)
+star (today)           n   49 · error vs no-change -10.8% (per-gauge mean  -9.1%) · served a model   21 (star   18) · held ≥10 %   17 · worse   3
+star + upstream flow   n   49 · error vs no-change  -9.3% (per-gauge mean  -7.9%) · served a model   21 (star   16) · held ≥10 %   15 · worse   3
+… 10
+… 20
+… 30
+… 40
+… 50
+… 60
+
+=== sample 2: 68 gauges with a flow-measured upstream gauge (of 200 sampled)
+
+=== +12 h (chosen on the first half, scored on the second)
+star (today)           n   68 · error vs no-change -18.9% (per-gauge mean -19.6%) · served a model   47 (star   42) · held ≥10 %   40 · worse   1
+star + upstream flow   n   68 · error vs no-change -18.2% (per-gauge mean -18.5%) · served a model   47 (star   36) · held ≥10 %   39 · worse   1
+
+=== +24 h (chosen on the first half, scored on the second)
+star (today)           n   68 · error vs no-change -18.1% (per-gauge mean -17.1%) · served a model   42 (star   34) · held ≥10 %   35 · worse   1
+star + upstream flow   n   68 · error vs no-change -15.8% (per-gauge mean -15.5%) · served a model   41 (star   30) · held ≥10 %   35 · worse   3
+
+=== +48 h (chosen on the first half, scored on the second)
+star (today)           n   68 · error vs no-change -14.0% (per-gauge mean -11.6%) · served a model   37 (star   29) · held ≥10 %   29 · worse   3
+star + upstream flow   n   68 · error vs no-change -11.0% (per-gauge mean  -8.8%) · served a model   40 (star   26) · held ≥10 %   29 · worse   6
+
+=== +72 h (chosen on the first half, scored on the second)
+star (today)           n   68 · error vs no-change -12.7% (per-gauge mean  -8.9%) · served a model   34 (star   29) · held ≥10 %   26 · worse   5
+star + upstream flow   n   68 · error vs no-change  -8.1% (per-gauge mean  -5.4%) · served a model   30 (star   22) · held ≥10 %   15 · worse   4

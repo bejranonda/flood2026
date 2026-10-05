@@ -340,7 +340,7 @@
     const hero = star ? heroCard(star, cmp, d) : '<p class="imp-note">' + esc(opt.reason || "ยังไม่มีแผนให้เปรียบเทียบ") + "</p>";
     const rows = '<ul class="list imp-rows">' + others.map(planRow).join("") + "</ul>";
     const actions = '<div class="imp-actions"><button type="button" class="btn" id="imp-custom-btn">➕ กำหนดเอง</button>' +
-      '<button type="button" class="conf-badge" title="' + esc(opt.rule || "") + " · เข้าเกณฑ์ " + num(cmp.feasible, 0) + " จาก " + num(cmp.candidates, 0) + ' แผน · รายละเอียดใน ℹ️ ด้านล่าง">ⓘ เกณฑ์</button></div>' +
+      '<button type="button" class="conf-badge imp-text" title="' + esc(opt.rule || "") + " · เข้าเกณฑ์ " + num(cmp.feasible, 0) + " จาก " + num(cmp.candidates, 0) + ' แผน · รายละเอียดใน ℹ️ ด้านล่าง">ⓘ เกณฑ์</button></div>' +
       (typeof askHTML === "function" ? '<div class="imp-ask">' + askHTML() + "</div>" : "");
     return "<h3>แผนระบาย 7 วันข้างหน้า <small>แตะแผนเพื่อดูรายวัน</small></h3>" + hero + rows + actions;
   }
