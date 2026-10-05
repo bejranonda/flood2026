@@ -82,6 +82,9 @@ services:
       AI_PROVIDER: glm
       GLM_API_KEY: ${GLM_API_KEY:-}
       GLM_MODEL: ${GLM_MODEL:-glm-5.3-flash}
+      # D-099: the /impact page's shared password and session secret (app only; values only in .env)
+      IMPACT_PASSWORD: ${IMPACT_PASSWORD:-}
+      IMPACT_SESSION_SECRET: ${IMPACT_SESSION_SECRET:-}
     ports:
       - "127.0.0.1:3000:3000"   # local only; public traffic comes through the tunnel
     depends_on:

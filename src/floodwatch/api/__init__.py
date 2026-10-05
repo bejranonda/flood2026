@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from floodwatch import __version__, ai, db, explain, geocode, point
 from floodwatch.config import DATUM_SUSPECT
-from floodwatch import rain_cells, regions, risks
+from floodwatch import impact_auth, rain_cells, regions, risks
 from floodwatch import status as trend_rule
 from floodwatch import rivers as rivers_mod
 from floodwatch.forecast import change_summary, classify_status
@@ -642,6 +642,106 @@ def situation_api():
     return _json(_memo(("situation",), build, ttl=60))
 
 
+# --- /impact: impact analysis for partner engineers (pilot Kaeng Krachan; owner 2026-10-05, D-099) --------------------
+_impact_limiter = impact_auth.LoginLimiter()
+
+
+class ImpactLogin(BaseModel):
+    password: str = Field(..., max_length=200)
+
+
+def _impact_conf() -> tuple[str, str]:
+    return settings.impact_password, settings.impact_secret
+
+
+def _impact_require(request: Request) -> None:
+    pw, secret = _impact_conf()
+    if not pw or not secret:
+        raise HTTPException(503, "impact page not set up")
+    if not impact_auth.check_token(request.cookies.get(impact_auth.COOKIE), secret, pw):
+        raise HTTPException(401, "login required")
+
+
+def _impact_state() -> dict:
+    def build():
+        with db.connect() as c:
+            return db.get_state(c, "impact_kaeng_krachan") or {}
+    return _memo(("impact_state",), build, ttl=120)
+
+
+@app.post("/api/impact/login", include_in_schema=False)
+def impact_login(body: ImpactLogin, request: Request):
+    pw, secret = _impact_conf()
+    if not pw or not secret:
+        raise HTTPException(503, "impact page not set up")
+    who = _client_hash(request)
+    if not _impact_limiter.allowed(who):
+        return JSONResponse({"ok": False, "error": "too many tries, wait 15 minutes"}, status_code=429)
+    if not impact_auth.password_ok(body.password, pw):
+        _impact_limiter.fail(who)
+        return JSONResponse({"ok": False}, status_code=401, headers={"Cache-Control": "no-store"})
+    exp = int(time.time()) + impact_auth.SESSION_S
+    resp = JSONResponse({"ok": True, "expires": exp}, headers={"Cache-Control": "no-store"})
+    resp.set_cookie(impact_auth.COOKIE, impact_auth.make_token(secret, pw, exp), max_age=impact_auth.SESSION_S,
+                    httponly=True, secure=True, samesite="strict", path="/api/impact")
+    return resp
+
+
+@app.post("/api/impact/logout", include_in_schema=False)
+def impact_logout():
+    resp = JSONResponse({"ok": True}, headers={"Cache-Control": "no-store"})
+    resp.delete_cookie(impact_auth.COOKIE, path="/api/impact")
+    return resp
+
+
+@app.get("/api/impact/kaeng-krachan", include_in_schema=False)
+def impact_board(request: Request):
+    """The board: the dam now, the river below it now, travel times, the replay (validation) and whether the what-if is
+    credible yet. Login required."""
+    _impact_require(request)
+    return JSONResponse(_impact_state(), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
+@app.get("/api/impact/kaeng-krachan/whatif", include_in_schema=False)
+def impact_whatif(request: Request, release_mcm: float = Query(..., ge=0, le=200),
+                  diversion_cms: float | None = Query(None, ge=0, le=2000)):
+    """The what-if table — only once the replay shows a method that beats keeping today's level (D-099); until then 409
+    and the board says why."""
+    _impact_require(request)
+    st = _impact_state()
+    if not (st.get("validation") or {}).get("whatif_ready"):
+        raise HTTPException(409, "what-if not validated yet")
+    from floodwatch import impact
+    return JSONResponse(impact.whatif(st, release_mcm, diversion_cms), headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/impact/template/{name}", include_in_schema=False)
+def impact_template(request: Request, name: str):
+    """CSV templates for the data we ask ONWR/RID for (login required)."""
+    _impact_require(request)
+    from floodwatch import impact
+    body = impact.template_csv(name) if re.fullmatch(r"[a-z_]{1,40}", name or "") else None
+    if body is None:
+        raise HTTPException(404, "unknown template")
+    return Response("\ufeff" + body, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="kaeng-krachan_{name}.csv"', "Cache-Control": "no-store"})
+
+
+@app.get("/impact", include_in_schema=False)
+def impact_page():
+    """The impact page shell (no data in it: the data come from /api/impact/* after login)."""
+    html = (WEB_DIR / "impact.html").read_text().replace("__VERSION__", f"v{__version__}")
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache", "X-Robots-Tag": "noindex, nofollow", **IMPACT_PAGE_HEADERS})
+
+
+# A password page: never framed by another site (clickjacking), only its own script, fonts from Google Fonts only.
+IMPACT_PAGE_HEADERS = {
+    "X-Frame-Options": "DENY", "Referrer-Policy": "same-origin", "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
+                               "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; "
+                               "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}
+
+
 @app.get("/api/dwr")
 def dwr_layer():
     """DWR early-warning level posts as a trend-only layer (owner 2026-10-03; not m MSL, no bank, no status)."""
@@ -1015,6 +1115,8 @@ Disallow: /api/docs
 Disallow: /api/openapi.json
 Disallow: /api/point
 Disallow: /api/explain
+Disallow: /impact
+Disallow: /api/impact
 Sitemap: https://{host}/sitemap.xml
 """
 SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>

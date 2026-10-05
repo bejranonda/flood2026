@@ -51,6 +51,8 @@ class Settings:
     thai_egress_proxy: str = field(default_factory=lambda: _env("THAI_EGRESS_PROXY"))
     min_free_disk_gb: float = field(default_factory=lambda: float(_env("MIN_FREE_DISK_GB", "2")))
     gistda_api_key: str = field(default_factory=lambda: _env("GISTDA_API_KEY"))
+    impact_password: str = field(default_factory=lambda: _env("IMPACT_PASSWORD"), repr=False)  # /impact (D-099), app only
+    impact_secret: str = field(default_factory=lambda: _env("IMPACT_SESSION_SECRET"), repr=False)
     google_flood_api_key: str = field(default_factory=lambda: _env("GOOGLE_FLOOD_API_KEY"))  # Flood Hub (D-087), worker only
     gistda_api_endpoint: str = field(default_factory=lambda: _env(
         "GISTDA_API_ENDPOINT",

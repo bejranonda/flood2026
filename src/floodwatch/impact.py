@@ -52,8 +52,19 @@ def level_at(r: dict, q: float) -> float:
     return r["h0"] + r["a"] * max(float(q), 0.0) ** r["b"]
 
 
-def best_lag(up, down, max_lag: int = 72, min_pairs: int = 500) -> int | None:
-    """Hours by which `down`'s 24 h change best follows `up`'s (correlation), 0..max_lag; None with too few pairs."""
+def shift(x, k: int):
+    """x moved k hours later, NaN where nothing came before (never wraps the end of the series into its start)."""
+    x = np.asarray(x, float)
+    if k <= 0:
+        return x.copy()
+    o = np.full(len(x), np.nan)
+    o[k:] = x[:-k]
+    return o
+
+
+def lag_fit(up, down, max_lag: int = 72, min_pairs: int = 500) -> tuple[int, float] | None:
+    """(hours, r): the lag at which `down`'s 24 h change best follows `up`'s, 0..max_lag, and that correlation — how
+    strongly the point follows at all; None with too few pairs."""
     def d24(x):
         x = np.asarray(x, float)
         o = np.full(len(x), np.nan)
@@ -69,7 +80,13 @@ def best_lag(up, down, max_lag: int = 72, min_pairs: int = 500) -> int | None:
         r = float(np.corrcoef(x[m], y[m])[0, 1])
         if best is None or r > best[1]:
             best = (lag, r)
-    return None if best is None else best[0]
+    return best
+
+
+def best_lag(up, down, max_lag: int = 72, min_pairs: int = 500) -> int | None:
+    """Hours by which `down`'s 24 h change best follows `up`'s (correlation), 0..max_lag; None with too few pairs."""
+    f = lag_fit(up, down, max_lag, min_pairs)
+    return None if f is None else f[0]
 
 
 def diversion_now(q18, q10, lag: int, hours: int = 72) -> float | None:
@@ -133,6 +150,43 @@ def whatif(state: dict, release_mcm: float, diversion_cms: float | None = None) 
             "dam": dam, "rows": rows, "assumptions": list(ASSUMPTIONS)}
 
 
+# --- what we ask ONWR/RID for (owner 2026-10-05: "More requested data will come soon"), with a CSV template each -------
+DATA_REQUEST = [
+    {"key": "diversion_dam", "th": "เขื่อนทดน้ำเพชร: การเปิดประตู ระดับน้ำหน้า/ท้ายเขื่อน และปริมาณน้ำที่ผ่านลงแม่น้ำและเข้าคลองฝั่งซ้าย/ขวา (รายชั่วโมงหรือรายวัน)",
+     "why": "ผลทดสอบย้อนหลังชี้ว่าระดับน้ำท้ายน้ำขึ้นกับการบริหารเขื่อนเพชร ไม่ใช่การระบายจากแก่งกระจานโดยตรง — ข้อมูลนี้สำคัญที่สุด"},
+    {"key": "events", "th": "เหตุการณ์น้ำท่วมในอดีต (เช่น ส.ค. 2561): ปริมาณระบาย ระดับน้ำสูงสุดและเวลาที่แต่ละสถานี และพื้นที่ที่ท่วมจริง",
+     "why": "ข้อมูล 1 ปีของเราไม่มีการระบายขนาดใหญ่ (สูงสุดที่ B.18 = 143 ลบ.ม./วินาที) จึงตรวจสอบกรณีน้ำมากไม่ได้"},
+    {"key": "dam_release", "th": "เขื่อนแก่งกระจานรายชั่วโมง (หรือรายวัน) ย้อนหลัง 2–3 ปี: ระบายรวม แยกเครื่องกำเนิดไฟฟ้า/ทางระบายน้ำล้น/ประตูระบาย น้ำไหลเข้า ระดับและปริมาตรอ่าง",
+     "why": "ข้อมูลรายวันผ่าน สสน. มีสองชุดที่ไม่ตรงกัน (ชป. 10.8 vs กฟผ. 3.04 ล้าน ลบ.ม./วัน) และหยาบเกินไปสำหรับ 24–72 ชม."},
+    {"key": "release_plan", "th": "แผนการระบายล่วงหน้า 1–7 วัน และเวลาที่ประกาศ", "why": "ทำให้คาดผลกระทบล่วงหน้าได้จริง"},
+    {"key": "station_reference", "th": "ระดับตลิ่งที่สำรวจแล้ว rating curve และปริมาณน้ำวิกฤต (ความจุลำน้ำ) ที่ท่ายาง บ้านลาด และตัวเมืองเพชรบุรี",
+     "why": "ใช้ตรวจสอบตลิ่งและเส้นโค้งที่เราหาจากข้อมูลเอง และใช้เป็นเกณฑ์ล้นตลิ่ง"},
+]
+TEMPLATES = {
+    "dam_release": ["datetime_ict", "release_total_m3s", "release_turbine_m3s", "release_spillway_m3s", "release_gate_m3s",
+                    "inflow_m3s", "reservoir_level_m_msl", "storage_mcm", "note"],
+    "release_plan": ["issued_at_ict", "valid_from_ict", "valid_to_ict", "planned_release_m3s", "note"],
+    "diversion_dam": ["datetime_ict", "upstream_level_m_msl", "downstream_level_m_msl", "gate_opening_m", "flow_to_river_m3s",
+                      "left_canal_m3s", "right_canal_m3s", "note"],
+    "events": ["event_name", "station_code", "start_ict", "end_ict", "peak_release_m3s", "peak_time_ict", "peak_level_m_msl",
+               "flooded_area", "note"],
+    "station_reference": ["station_code", "bank_left_m_msl", "bank_right_m_msl", "critical_flow_m3s", "rating_curve",
+                          "surveyed_date", "note"],
+}
+
+
+def template_csv(name: str) -> str | None:
+    """A CSV template: the header row and one example row marked as an example (times in Thai time, levels in m MSL)."""
+    cols = TEMPLATES.get(name)
+    if not cols:
+        return None
+    example = {"datetime_ict": "2026-10-05 07:00", "issued_at_ict": "2026-10-05 09:00", "valid_from_ict": "2026-10-06 00:00",
+               "valid_to_ict": "2026-10-08 00:00", "start_ict": "2018-08-10 00:00", "end_ict": "2018-08-20 00:00",
+               "peak_time_ict": "2018-08-15 12:00", "station_code": "B.10", "event_name": "ตัวอย่าง: ส.ค. 2561",
+               "surveyed_date": "2025-01-01", "note": "ตัวอย่าง — ลบแถวนี้"}
+    return ",".join(cols) + "\n" + ",".join(example.get(c, "") for c in cols) + "\n"
+
+
 # --- the Kaeng Krachan case: state from the database (rebuilt hourly by the worker) -------------------------------------
 CASES = {
     "kaeng-krachan": {
@@ -152,63 +206,83 @@ def _window(lag: int) -> list[int]:
     return [max(0, int(round(lag * 0.8))) if lag > 15 else max(0, lag - 3), int(round(lag * 1.2)) if lag > 15 else lag + 3]
 
 
-def _last(x, idx: int, hours: int = 6):
+def _last_at(x, idx: int, hours: int = 6) -> tuple[float | None, int | None]:
+    """The latest value at or before hour `idx` within `hours`, and its hour; (None, None) when there is none."""
     for k in range(idx, max(-1, idx - hours), -1):
         if np.isfinite(x[k]):
-            return float(x[k])
-    return None
+            return float(x[k]), k
+    return None, None
+
+
+def _last(x, idx: int, hours: int = 6):
+    return _last_at(x, idx, hours)[0]
+
+
+METHODS = ("keep", "absolute", "anchored", "gain")
+READY_GAIN = 0.10  # a method must beat "keep today's level" by 10 % at ท่ายาง and บ้านลาด before the what-if is shown
 
 
 def replay(q18, q10, q16, hcity: dict, lags: dict, cut: int) -> dict:
-    """Validation (D-099): from hour `cut` on (the last 40 % of the year), B.18's measured flow is the "release" and the
-    model's levels at the learned lags are compared with what was measured — against simply keeping today's level. Rating
-    curves and lags are fitted on the hours before `cut` only (passed in `lags`/fitted here), so the replay is out of sample."""
+    """Validation (D-099): from hour `cut` on (the last 40 %), B.18's measured flow stands in for the release; each method
+    predicts the level at each point at its learned lag and is compared with what was measured and with simply keeping
+    today's level. Ratings, lags and the pass-through gain come from the hours before `cut` only.
+      absolute — mass balance + the point's rating curve;  anchored — today's level + rating(q + ΔQ) − rating(q), ΔQ the
+      B.18 change on its way;  gain — today's level + g·ΔQ, g learned (cm per m³/s at B.18);  keep — today's level.
+    `whatif_ready`: some method beats keep by READY_GAIN at B.10 and B.16 (all cases, and big changes when there are ≥ 30)."""
     n = len(q18)
+    H = dict(lags["h"], **hcity)
     l10, l16 = lags["B.10"], lags["B.16"]
-    r10 = fit_rating(q10[:cut], lags["h"]["B.10"][:cut])
-    r16 = fit_rating(q16[:cut], lags["h"]["B.16"][:cut])
-    rc = {c: fit_rating(np.roll(q16, lags[c] - l16)[:cut], h[:cut]) for c, h in hcity.items()}
-    acc: dict = {}
-
-    def add(code, pred_mid, res, obs, now_level, big):
-        if pred_mid is None or not np.isfinite(obs) or not np.isfinite(now_level):
-            return
-        a = acc.setdefault(code, {"n": 0, "model": 0.0, "keep": 0.0, "inside": 0, "n_big": 0, "model_big": 0.0, "keep_big": 0.0})
-        a["n"] += 1
-        a["model"] += abs(pred_mid - obs)
-        a["keep"] += abs(now_level - obs)
-        a["inside"] += (pred_mid + res[0]) <= obs <= (pred_mid + res[1])
-        if big:
-            a["n_big"] += 1
-            a["model_big"] += abs(pred_mid - obs)
-            a["keep_big"] += abs(now_level - obs)
-
-    for t in range(max(cut, 96), n - max(list(lags[c] for c in hcity) + [l16]) - 1, 3):
+    qsrc = {"B.10": q10, "B.16": q16}
+    for c in hcity:
+        qsrc[c] = shift(q16, lags[c] - l16)
+    lag = {c: lags[c] for c in qsrc}
+    rating = {c: fit_rating(qsrc[c][:cut], H[c][:cut]) for c in qsrc}
+    gain = {}
+    for c in qsrc:  # level change per m³/s of B.18 change, fitted before `cut`
+        t = np.arange(96, max(96, cut - lag[c]), 3)
+        dq, dh = q18[t] - q18[t - lag[c]], H[c][t + lag[c]] - H[c][t]
+        m = np.isfinite(dq) & np.isfinite(dh)
+        gain[c] = float(np.sum(dq[m] * dh[m]) / np.sum(dq[m] ** 2)) if m.sum() > 50 and np.sum(dq[m] ** 2) > 0 else 0.0
+    acc = {c: {k: {"n": 0, "err": dict.fromkeys(METHODS, 0.0)} for k in ("all", "big")} for c in qsrc}
+    for t in range(max(cut, 96), n - max(lag.values()) - 1, 3):
         if not (np.isfinite(q18[t]) and np.isfinite(q10[t]) and np.isfinite(q16[t]) and np.isfinite(q18[t - l10])):
             continue
         D = diversion_now(q18[:t + 1], q10[:t + 1], l10) or 0.0
-        local10 = max(0.0, q10[t] - max(0.0, q18[t - l10] - D))
-        p10 = max(0.0, q18[t] - D) + local10
-        up16 = q10[t - (l16 - l10)] if t - (l16 - l10) >= 0 else np.nan
+        p10 = max(0.0, q18[t] - D) + max(0.0, q10[t] - max(0.0, q18[t - l10] - D))
+        up16 = q10[t - (l16 - l10)]
         if not np.isfinite(up16):
             continue
         p16 = max(0.0, p10 + q16[t] - up16)
-        big = np.isfinite(q18[t - 24]) and abs(q18[t] - q18[t - 24]) >= 15
-        if r10:
-            add("B.10", level_at(r10, p10), r10["res"], lags["h"]["B.10"][t + l10], lags["h"]["B.10"][t], big)
-        if r16:
-            add("B.16", level_at(r16, p16), r16["res"], lags["h"]["B.16"][t + l16], lags["h"]["B.16"][t], big)
-        for c, h in hcity.items():
-            if rc.get(c):
-                add(c, level_at(rc[c], p16), rc[c]["res"], h[t + lags[c]], h[t], big)
-    out = {}
-    for c, a in acc.items():
-        n_ = max(1, a["n"])
-        out[c] = {"n": a["n"], "mae_cm": round(100 * a["model"] / n_, 1), "keep_mae_cm": round(100 * a["keep"] / n_, 1),
-                  "inside_pct": round(100 * a["inside"] / n_), "n_big": a["n_big"],
-                  "mae_big_cm": round(100 * a["model_big"] / a["n_big"], 1) if a["n_big"] else None,
-                  "keep_big_cm": round(100 * a["keep_big"] / a["n_big"], 1) if a["n_big"] else None}
-    return out
+        for c in qsrc:
+            r, obs, hn, qn = rating[c], H[c][t + lag[c]], H[c][t], qsrc[c][t]
+            dq = q18[t] - q18[t - lag[c]]
+            if r is None or not all(np.isfinite(v) for v in (obs, hn, qn, dq)):
+                continue
+            pred = {"keep": hn, "absolute": level_at(r, p10 if c == "B.10" else p16),
+                    "anchored": hn + level_at(r, max(0.0, qn + dq)) - level_at(r, qn), "gain": hn + gain[c] * dq}
+            for k in ("all",) + (("big",) if abs(dq) >= 15 else ()):
+                a = acc[c][k]
+                a["n"] += 1
+                for mth in METHODS:
+                    a["err"][mth] += abs(pred[mth] - obs)
+    points = {}
+    for c, kinds in acc.items():
+        points[c] = {"n": kinds["all"]["n"], "n_big": kinds["big"]["n"], "gain_cm_per_cms": round(100 * gain[c], 2),
+                     "methods": {m: round(float(100 * kinds["all"]["err"][m] / max(1, kinds["all"]["n"])), 1) for m in METHODS},
+                     "methods_big": {m: round(float(100 * kinds["big"]["err"][m] / kinds["big"]["n"]), 1) for m in METHODS}
+                     if kinds["big"]["n"] else None}
+
+    def beats(c: str) -> bool:
+        p = points.get(c)
+        if not p or not p["n"]:
+            return False
+        best = min(p["methods"][m] for m in METHODS if m != "keep")
+        ok = best <= (1 - READY_GAIN) * p["methods"]["keep"]
+        if p["methods_big"] and p["n_big"] >= 30:
+            ok = ok and min(p["methods_big"][m] for m in METHODS if m != "keep") <= (1 - READY_GAIN) * p["methods_big"]["keep"]
+        return ok
+
+    return {"points": points, "whatif_ready": bool(beats("B.10") and beats("B.16"))}
 
 
 def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
@@ -232,26 +306,32 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
         H[code], Q[code] = h, q
     meta = {r["code"]: r for r in c.execute("SELECT code, name_th, agency, bank_msl FROM station WHERE code = ANY(%s)", (codes,)).fetchall()}
     q18, q10, q16 = Q["B.18"], Q["B.10"], Q["B.16"]
-    lags = {"B.18": 0, "B.10": best_lag(q18, q10) or 32}
-    lags["B.16"] = max(lags["B.10"], best_lag(q18, q16) or 43)
+    fits = {"B.10": lag_fit(q18, q10), "B.16": lag_fit(q18, q16)}
+    fits.update({p["code"]: lag_fit(q18, H[p["code"]]) for p in cfg["points"] if p["role"] == "city"})
+    lags = {"B.18": 0, "B.10": fits["B.10"][0] if fits["B.10"] else 32}
+    lags["B.16"] = max(lags["B.10"], fits["B.16"][0] if fits["B.16"] else 43)
     for p in cfg["points"]:
         if p["role"] == "city":
-            lags[p["code"]] = max(lags["B.16"], best_lag(q18, H[p["code"]]) or 48)
+            f = fits[p["code"]]
+            lags[p["code"]] = max(lags["B.16"], f[0] if f else 48)
     idx = n - 1
     points = []
     for p in cfg["points"]:
         code, m = p["code"], meta.get(p["code"]) or {}
         if p["role"] == "city":
-            shift = lags[code] - lags[p["rating_from"]]
-            rating = fit_rating(np.roll(Q[p["rating_from"]], shift)[:n], H[code])
+            rating = fit_rating(shift(Q[p["rating_from"]], lags[code] - lags[p["rating_from"]]), H[code])
         else:
             rating = fit_rating(Q[code], H[code])
         up = {"after_diversion": ("B.18", lags["B.10"]), "river": ("B.10", lags["B.16"] - lags["B.10"])}.get(p["role"])
         dam_lo, dam_hi = cfg["dam_to_first_h"]
         w = _window(lags[code])
+        f = fits.get(code)
+        h_now, h_k = _last_at(H[code], idx)
         points.append({**p, "name_th": m.get("name_th"), "agency": m.get("agency"), "bank": m.get("bank_msl"),
-                       "lag_h": lags[code], "window": [w[0] + dam_lo, w[1] + dam_hi], "rating": rating,
-                       "q_now": _last(Q[code], idx), "h_now": _last(H[code], idx),
+                       "lag_h": lags[code], "lag_r": round(f[1], 2) if f else None,
+                       "window": [w[0] + dam_lo, w[1] + dam_hi], "rating": rating,
+                       "q_now": _last(Q[code], idx), "h_now": h_now,
+                       "h_time": (t0 + dt.timedelta(hours=h_k)).isoformat() if h_k is not None else None,
                        "q_up_lagged": _last(Q[up[0]], idx - up[1]) if up else None})
     dams = {r["dam_id"]: dict(r) for r in c.execute(
         """SELECT DISTINCT ON (dam_id) dam_id, agency, name_th, dam_date::text AS dam_date, storage_mcm, storage_pct, inflow_mcm,
@@ -264,12 +344,16 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
     city = {p["code"]: H[p["code"]] for p in cfg["points"] if p["role"] == "city"}
     for code in city:
         lags_cut[code] = max(lags_cut["B.16"], best_lag(q18[:cut], H[code][:cut]) or lags[code])
+    for p in points:
+        if p["code"] in lags_cut:
+            p["lag_range"] = sorted([lags[p["code"]], lags_cut[p["code"]]])
     lags_cut["h"] = {"B.10": H["B.10"], "B.16": H["B.16"]}
     data_time = max((r[-1]["t"] for r in raw.values() if r), default=None)
     return {"case": case, "title": cfg["title"], "dam": {**(rid or {}), "egat": egat}, "dam_km": cfg["dam_km"],
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
-            "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), "points": replay(q18, q10, q16, city, lags_cut, cut)},
+            "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), **replay(q18, q10, q16, city, lags_cut, cut)},
+            "data_request": DATA_REQUEST,
             "data_time": data_time.isoformat() if data_time else None, "built_at": now.isoformat()}
 
 

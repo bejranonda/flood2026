@@ -90,3 +90,52 @@ def test_travel_time_and_diversion_come_from_the_data():
     q10[30:] = q18[:-30] - 60.0  # B.10 = B.18 30 h earlier minus a 60 m³/s diversion
     assert impact.best_lag(q18, q10, max_lag=72) == 30
     assert abs(impact.diversion_now(q18, q10, lag=30) - 60.0) < 1e-6
+
+
+def _river(follows: bool, seed=5):
+    rng = np.random.default_rng(seed)
+    n = 24 * 200
+    q18 = 100 + 40 * np.sin(np.arange(n) / 90.0) + rng.normal(0, 1, n)
+    q10 = np.full(n, np.nan); q16 = np.full(n, np.nan)
+    if follows:  # B.10 = B.18 30 h earlier minus 60; B.16 = B.10 7 h earlier + 2
+        q10[30:] = q18[:-30] - 60; q16[37:] = q10[30:-7] + 2
+    else:        # the diversion dam holds B.10 steady whatever B.18 does
+        q10[:] = 40 + rng.normal(0, 1, n); q16[:] = 42 + rng.normal(0, 1, n)
+    lvl = lambda q: 1.0 + 0.2 * np.clip(q, 0, None) ** 0.5
+    return q18, q10, q16, {"B.10": lvl(q10), "B.16": lvl(q16)}
+
+
+def test_the_whatif_switches_on_only_when_a_model_beats_keeping_todays_level():
+    for follows, ready in ((True, True), (False, False)):
+        q18, q10, q16, h = _river(follows)
+        cut = int(len(q18) * 0.6)
+        out = impact.replay(q18, q10, q16, {}, {"B.10": 30, "B.16": 37, "h": h}, cut)
+        assert out["whatif_ready"] is ready, (follows, out)
+        assert set(out["points"]["B.10"]["methods"]) == {"keep", "absolute", "anchored", "gain"}
+
+
+def test_shifts_never_wrap_the_end_of_the_year_into_its_start():
+    # np.roll would put the last hours first: future data in a fit meant to use only the past
+    s = impact.shift(np.array([1.0, 2.0, 3.0, 4.0]), 2)
+    assert np.isnan(s[:2]).all() and list(s[2:]) == [1.0, 2.0]
+    assert list(impact.shift(np.array([1.0, 2.0]), 0)) == [1.0, 2.0]
+    import inspect
+    assert "np.roll" not in inspect.getsource(impact)
+
+
+def test_the_lag_comes_with_how_strongly_the_point_follows():
+    rng = np.random.default_rng(3)
+    n = 24 * 120
+    q18 = 100 + np.cumsum(rng.normal(0, 2, n))
+    q10 = np.full(n, np.nan)
+    q10[30:] = q18[:-30] - 60.0
+    lag, r = impact.lag_fit(q18, q10, max_lag=72)
+    assert lag == 30 and r > 0.99
+    noise = rng.normal(0, 1, n)
+    assert impact.lag_fit(q18, noise, max_lag=72)[1] < 0.2  # a point that does not follow says so
+
+
+def test_the_value_shown_now_comes_with_its_hour():
+    x = np.array([1.0, 2.0, np.nan, np.nan])
+    assert impact._last_at(x, 3) == (2.0, 1)
+    assert impact._last_at(np.array([np.nan] * 10), 9) == (None, None)  # nothing in the last 6 hours: say so
