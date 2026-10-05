@@ -2,6 +2,10 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.28.1 — 2026-10-05
+- **Fix: OpenStreetMap tiles on `/impact` showed "Access blocked" (403).** The page's `Referrer-Policy: same-origin` sent
+  no Referer, which OSM's tile policy requires; now `strict-origin-when-cross-origin` (the origin only, KI-300).
+
 ## v0.28.0 — 2026-10-05
 - **`/impact` is now the whole app plus a "💧 ผลกระทบ" tab (owner request; D-100).** Engineers get the same map, list,
   แม่น้ำ, จับตา, point check and ✨ as the public page, and one more tab after login:

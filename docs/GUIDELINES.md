@@ -294,6 +294,7 @@ Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGEL
   to the API path and bound to the password; a failed-login limit; noindex and robots; a strict CSP without inline
   script or style, `frame-ancestors 'none'`; every string from outside sources escaped. **Partner data never go in git**:
   they are loaded into the database only.
+- **Pages that show OpenStreetMap tiles keep a Referer** (`Referrer-Policy: strict-origin-when-cross-origin` or weaker, never `same-origin` / `no-referrer`): OSM blocks referer-less browsers with a 403 tile (KI-300). The origin alone is sent; paths stay private.
 - Services bind to **127.0.0.1**. Public traffic enters only through the Cloudflare Tunnel. No open 80/443.
 - SSH: root login is key-only (`PermitRootLogin without-password`) and every login in practice uses a key; password authentication is still enabled globally, but no account except root has a usable password ([KI-214](KNOWN_ISSUES.md)). Recommended: `PasswordAuthentication no` and `fail2ban` (owner's call on this shared host).
 - **Backups:** R2 off-site backups are kept disabled by owner choice ([D-029](plan/DECISIONS.md)); telemetry archive and database are kept locally on the server disk.
