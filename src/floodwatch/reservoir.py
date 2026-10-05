@@ -3,7 +3,7 @@ D-102). Per dam, a rain-driven inflow model fitted on 2018–2024 (ERA5 catchmen
 for the horizons where it beat persistence by ≥ 10 % in the operational test with archived rain *forecasts*
 (research/2026-10-05_q58_operational.log); elsewhere today's inflow is held. Bands are the tested residuals. Storage
 follows the daily water balance with each dam's monthly loss term (the balance residual) and today's release held.
-Models and their test results live in data/reservoir_models.json, written from the research log — evidence, not tuning.
+Models and their test results live in src/floodwatch/data/reservoir_models.json, written from the research log — evidence, not tuning.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import math
 from pathlib import Path
 
 GATE_PCT = 10.0
-MODELS_FILE = Path(__file__).resolve().parents[2] / "data" / "reservoir_models.json"
+MODELS_FILE = Path(__file__).resolve().parent / "data" / "reservoir_models.json"
 
 
 def load_models() -> dict:

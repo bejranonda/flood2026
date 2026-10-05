@@ -67,3 +67,11 @@ def test_the_dams_layer_carries_each_dams_outlook_when_one_exists():
     layer = impact.dams_layer(meta, latest, {}, {}, outlooks={12: {"days": [{"storage": 9100.0}] * 7, "methods": {"1-3": "model", "4-7": "model"}}})
     assert layer[0]["outlook"]["methods"]["1-3"] == "model" and layer[0]["records"][0]["agency"] == "RID"
     assert impact.dams_layer(meta, latest, {}, {})[0].get("outlook") is None
+
+
+def test_the_tested_models_ship_with_the_package_and_carry_their_evidence():
+    models = R.load_models()
+    assert len(models) >= 15 and 13 in models and models[13]["name_th"] == "แก่งกระจาน"
+    for m in models.values():
+        assert len(m["beta"]) == 8 and set(m["op_gain"]) == {"1", "3", "7"} and set(m["bias"]) == {str(k) for k in range(1, 8)}
+        assert set(m["band_model"]) == set(m["band_persist"]) == {str(k) for k in range(1, 8)} and m["test_days"] >= 30 and "research/" in m["source"]

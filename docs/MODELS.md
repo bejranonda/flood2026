@@ -348,11 +348,11 @@ persistence by ≥ 10 % at 7 days for 16 of 35 dams (the large and northern/west
 for 6 (แก่งกระจาน, ทับเสลา, ลำพระเพลิง, บางลาง, ปราณบุรี, ป่าสักชลสิทธิ์). HII's day-of-year average beats persistence at
 7 days for the big dams too. **Operational test (research/2026-10-05_q58_operational.log):** Open-Meteo's previous-runs archive gives 92 days of
 lead-1…7 rain forecasts (2026-07-06…10-06); leads 3–7 run 35–50 % too wet, so a multiplicative bias per lead is learned on
-the first 46 days and the last 46 are scored. With *forecast* rain the model beats persistence by ≥ 10 % at 3 days for
+the first half and the second half is scored (43 days with inflow, 17 Aug–28 Sep 2026). With *forecast* rain the model beats persistence by ≥ 10 % at 3 days for
 15 of 17 dams and at 7 days for 11; it fails at 3 days for แก่งกระจาน and แม่กวงอุดมธารา and at 7 days for ภูมิพล, กิ่วคอหมา,
 แม่กวงฯ, อุบลรัตน์. The monthly loss term (balance residual) improves the 7-day storage outlook for 13 of 17 dams. Built as
 the dams-list outlook (D-102): the model only at the horizons where it passed, persistence with its band elsewhere.
-Window: 46 wet-season days — re-test as the archive grows. KI-301, research/2026-10-05_dam_inflow_nationwide.log.
+Window: 43 wet-season days — re-test as the archive grows. KI-301, research/2026-10-05_dam_inflow_nationwide.log.
 
 ## 10. How to reproduce
 
