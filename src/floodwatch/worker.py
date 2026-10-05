@@ -35,6 +35,8 @@ TASKS = [
     ("bma_history", 600),  # BMA canal history from HII: backfill 5 gauges per run, then a daily 3-day refresh (D-054)  # rain as forecast 1-2 days earlier: training data for the star model (D-052)  # HII official forecast files, new issue ~daily (D-050)
     ("situation", 1800),  # the national ticker in the top bar: rules + AI retelling after a check (D-089)
     ("google_floodhub", 6 * 3600),  # Google Flood Hub, Thailand: statuses, thresholds, forecasts (D-087, not shown yet)
+    ("hii_dams", 6 * 3600),  # HII large dams, daily (RID/EGAT), for the impact page (D-099)
+    ("impact", 3600),  # the impact page's state (Kaeng Krachan pilot, D-099)
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),
     ("retention", 24 * 3600),  # HII-network readings older than 400 days, rain-forecast issues older than 3 days (D-064)
@@ -146,6 +148,15 @@ def run_task(name: str) -> None:
         except Exception as e:
             log.exception("risk_record failed")
             db.record_health("risk_record", False, error=str(e))
+    elif name == "impact":
+        try:
+            from floodwatch import impact
+            st = impact.run()
+            db.record_health("impact", True)
+            log.info("impact: %s points, diversion %s m³/s", len(st["points"]), st["diversion_default"])
+        except Exception as e:
+            log.exception("impact failed")
+            db.record_health("impact", False, error=str(e))
     elif name == "situation":
         try:
             from floodwatch import situation

@@ -392,3 +392,22 @@ def parse_gfh_forecasts(payload: dict) -> list[dict]:
                 out.append({"gauge_id": gid, "issued_time": it, "start_time": _gtime(r.get("forecastStartTime")),
                             "end_time": _gtime(r.get("forecastEndTime")), "value": float(r["value"])})
     return out
+
+
+def parse_hii_dams(payload: dict) -> list[dict]:
+    """HII analyst/dam → `dam_daily`: one row per large dam and day (RID, EGAT; values in million m³ and m MSL). A level of
+    0 means "not reported". The two Kaeng Krachan records disagree (RID 10.8 vs EGAT 3.04 ล้าน ลบ.ม./วัน on 4-5 Oct 2026);
+    RID's matches the gauge below the dam (D-099)."""
+    out = []
+    for x in ((payload or {}).get("data") or {}).get("dam_daily") or []:
+        dam = x.get("dam") or {}
+        if dam.get("id") is None or not x.get("dam_date"):
+            continue
+        num = lambda k: None if x.get(k) is None else float(x[k])
+        lvl = num("dam_level")
+        out.append({"dam_id": int(dam["id"]),
+                    "agency": (((x.get("agency") or {}).get("agency_shortname")) or {}).get("en"),
+                    "name_th": (dam.get("dam_name") or {}).get("th"), "dam_date": str(x["dam_date"])[:10],
+                    "storage_mcm": num("dam_storage"), "storage_pct": num("dam_storage_percent"), "inflow_mcm": num("dam_inflow"),
+                    "released_mcm": num("dam_released"), "spilled_mcm": num("dam_spilled"), "level_m": lvl if lvl else None})
+    return out

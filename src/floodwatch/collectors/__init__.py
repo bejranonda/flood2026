@@ -702,9 +702,30 @@ def google_floodhub_backfill(days: int = 366) -> int:
     return n
 
 
+HII_ANALYST = "https://api-v3.thaiwater.net/api/v1/thaiwater30/analyst"
+
+
+def hii_dams() -> dt.datetime | None:
+    """HII's large dams, daily (RID and EGAT records: storage, inflow, release, spill), for the impact page (D-099)."""
+    payload, _ = _get_json("hii_dams", f"{HII_ANALYST}/dam")
+    rows = parsing.parse_hii_dams(payload)
+    with db.connect() as c, c.cursor() as cur:
+        cur.executemany("""INSERT INTO dam_daily (dam_id, agency, name_th, dam_date, storage_mcm, storage_pct, inflow_mcm,
+                               released_mcm, spilled_mcm, level_m)
+                           VALUES (%(dam_id)s, %(agency)s, %(name_th)s, %(dam_date)s, %(storage_mcm)s, %(storage_pct)s,
+                                   %(inflow_mcm)s, %(released_mcm)s, %(spilled_mcm)s, %(level_m)s)
+                           ON CONFLICT (dam_id, dam_date) DO UPDATE SET storage_mcm=EXCLUDED.storage_mcm,
+                               storage_pct=EXCLUDED.storage_pct, inflow_mcm=EXCLUDED.inflow_mcm, released_mcm=EXCLUDED.released_mcm,
+                               spilled_mcm=EXCLUDED.spilled_mcm, level_m=EXCLUDED.level_m, fetched_at=now()""", rows)
+        c.commit()
+    log.info("hii_dams: %d dam-days", len(rows))
+    days = [r["dam_date"] for r in rows]
+    return dt.datetime.fromisoformat(max(days)).replace(tzinfo=dt.timezone.utc) if days else None
+
+
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
                   "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
                   "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells,
-                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "dwr_ews": dwr_ews, "google_floodhub": google_floodhub}[source])
+                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "dwr_ews": dwr_ews, "google_floodhub": google_floodhub, "hii_dams": hii_dams}[source])

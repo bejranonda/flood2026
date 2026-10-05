@@ -158,6 +158,22 @@ CREATE TABLE IF NOT EXISTS dwr_station (
     first_seen  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
+-- Large dams, daily (HII analyst/dam; RID and EGAT records), for the impact page (D-099)
+CREATE TABLE IF NOT EXISTS dam_daily (
+    dam_id        integer NOT NULL,
+    agency        text,
+    name_th       text,
+    dam_date      date NOT NULL,
+    storage_mcm   double precision,
+    storage_pct   double precision,
+    inflow_mcm    double precision,
+    released_mcm  double precision,
+    spilled_mcm   double precision,
+    level_m       double precision,
+    fetched_at    timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (dam_id, dam_date)
+);
+
 CREATE TABLE IF NOT EXISTS dwr_obs (
     code      text NOT NULL,
     obs_time  timestamptz NOT NULL,
