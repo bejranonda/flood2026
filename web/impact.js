@@ -480,25 +480,34 @@
     // storage (mid, band) against the upper rule curve and the normal storage, 7 days; SVG attributes only (no inline
     // styles). The y-range follows the data so a 50-unit fall is visible; ticks at the left, the legend in HTML below.
     const W = 340, H = 140, L = 46, R = 10, T = 10, B = 22, n = p.storage.length;
-    const hasUpper = (cmp.upper || []).every((v) => v != null);
-    const vals = [].concat(p.storage, p.storage_low, p.storage_high, hasUpper ? cmp.upper : []);
-    let lo = Math.min(...vals), hi = Math.max(...vals);
-    if (cmp.normal != null && cmp.normal >= lo - 40 && cmp.normal <= hi + 40) { lo = Math.min(lo, cmp.normal); hi = Math.max(hi, cmp.normal); }
+    // the axis follows the storage; a reference line far outside it (Pa Sak's curve 490 below) is named, not drawn —
+    // stretching the axis to it flattened the 7-day path into a line at the top (v0.31 visitor check)
+    const sv = [].concat(p.storage, p.storage_low, p.storage_high);
+    let lo = Math.min(...sv), hi = Math.max(...sv);
+    const span = Math.max(hi - lo, 20);
+    const near = (v) => v != null && v >= lo - span && v <= hi + span;
+    const hasUpper = (cmp.upper || []).length > 0 && cmp.upper.every((v) => v != null);
+    const upperIn = hasUpper && cmp.upper.every(near);
+    const normalIn = cmp.normal != null && near(cmp.normal);
+    if (upperIn) { lo = Math.min(lo, ...cmp.upper); hi = Math.max(hi, ...cmp.upper); }
+    if (normalIn) { lo = Math.min(lo, cmp.normal); hi = Math.max(hi, cmp.normal); }
     lo = Math.floor((lo - 5) / 10) * 10; hi = Math.ceil((hi + 5) / 10) * 10;
     const x = (i) => L + (i * (W - L - R)) / (n - 1), y = (v) => T + (H - T - B) - ((v - lo) * (H - T - B)) / (hi - lo);
     const line = (arr) => arr.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1)).join(" ");
     const band = line(p.storage_high) + " " + p.storage_low.map((v, i) => x(n - 1 - i).toFixed(1) + "," + y(p.storage_low[n - 1 - i]).toFixed(1)).join(" ");
     const tick = (v) => "<line x1=\"" + (L - 4) + "\" x2=\"" + (W - R) + "\" y1=\"" + y(v).toFixed(1) + "\" y2=\"" + y(v).toFixed(1) + "\" stroke=\"#e3e7ec\" stroke-width=\"1\"></line>" +
       "<text x=\"" + (L - 6) + "\" y=\"" + (y(v) + 3.5).toFixed(1) + "\" text-anchor=\"end\" font-size=\"10\" fill=\"#5b6573\">" + num(v, 0) + "</text>";
-    const normal = cmp.normal != null && cmp.normal >= lo && cmp.normal <= hi ? "<line x1=\"" + L + "\" x2=\"" + (W - R) + "\" y1=\"" + y(cmp.normal).toFixed(1) + "\" y2=\"" + y(cmp.normal).toFixed(1) + "\" stroke=\"#c62828\" stroke-width=\"1.2\" stroke-dasharray=\"2 3\"></line>" : "";
+    const normal = normalIn ? "<line x1=\"" + L + "\" x2=\"" + (W - R) + "\" y1=\"" + y(cmp.normal).toFixed(1) + "\" y2=\"" + y(cmp.normal).toFixed(1) + "\" stroke=\"#c62828\" stroke-width=\"1.2\" stroke-dasharray=\"2 3\"></line>" : "";
     const days = [0, Math.floor((n - 1) / 2), n - 1].map((i) => "<text x=\"" + x(i).toFixed(1) + "\" y=\"" + (H - 6) + "\" text-anchor=\"" + (i === 0 ? "start" : i === n - 1 ? "end" : "middle") + "\" font-size=\"10\" fill=\"#5b6573\">" + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</text>").join("");
     return "<svg class=\"imp-svg\" viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"ปริมาตรอ่าง 7 วันเทียบเส้นควบคุม\">" +
       tick(lo) + tick(Math.round((lo + hi) / 20) * 10) + tick(hi) +
       "<polygon points=\"" + band + "\" fill=\"#1565c0\" fill-opacity=\"0.15\"></polygon>" +
-      (hasUpper ? "<polyline points=\"" + line(cmp.upper) + "\" fill=\"none\" stroke=\"#e46c0a\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></polyline>" : "") + normal +
+      (upperIn ? "<polyline points=\"" + line(cmp.upper) + "\" fill=\"none\" stroke=\"#e46c0a\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></polyline>" : "") + normal +
       "<polyline points=\"" + line(p.storage) + "\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"2.5\"></polyline>" + days + "</svg>" +
-      "<p class=\"imp-legend\"><span class=\"lg lg-st\">ปริมาตรอ่าง (ช่วงน้ำไหลเข้าต่ำ–สูง)</span>" + (hasUpper ? "<span class=\"lg lg-up\">เส้นควบคุมบน</span>" : "") +
-      (normal ? "<span class=\"lg lg-no\">ปริมาตรปกติ " + num(cmp.normal, 0) + "</span>" : "") + "</p>";
+      "<p class=\"imp-legend\"><span class=\"lg lg-st\">ปริมาตรอ่าง (ช่วงน้ำไหลเข้าต่ำ–สูง)</span>" +
+      (upperIn ? "<span class=\"lg lg-up\">เส้นควบคุมบน</span>" : hasUpper ? "<span class=\"lg lg-up\">เส้นควบคุมบน " + num(cmp.upper[0], 0) + "–" + num(cmp.upper[cmp.upper.length - 1], 0) +
+        " (นอกกราฟ, " + (cmp.upper[0] < lo ? "ต่ำกว่า" : "สูงกว่า") + ")</span>" : "") +
+      (normal ? "<span class=\"lg lg-no\">ปริมาตรปกติ " + num(cmp.normal, 0) + "</span>" : cmp.normal != null ? "<span class=\"lg lg-no\">ปริมาตรปกติ " + num(cmp.normal, 0) + " (นอกกราฟ)</span>" : "") + "</p>";
   }
 
   function openPlanSheet(cmp, id) {

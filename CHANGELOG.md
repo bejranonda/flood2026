@@ -2,6 +2,18 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.31.0 — 2026-10-05
+- **The dams list reads like the station list (owner: "too much info each card"; D-103).** Dams grouped under headers
+  with ⓘ (เหนือเส้นควบคุมบน · อยู่ระหว่างเส้นควบคุม · ไม่มีเส้นควบคุม); two-line rows — name and a storage-% badge, then
+  "เข้า · ออก · 7 วัน ↘ %"; units and date once in the header. A row or a ◆ on the map opens the dam's sheet (chips, a
+  7-day chart, the daily table folded, the other agency's record, map and case buttons), as a station does. Measured at
+  390 px: row 112 → 62 px, 154 → 49 characters, 5 → 12 dams on the first screen.
+- **A 7-day trend for 38 of 39 dams:** a tested inflow model where one exists (17), else a projection "if today's inflow
+  and release hold" with the dam's own band, marked *; the national back-fill now fetches inflow.
+- **Honest "largest since":** the claim needs enough complete years and names our records (KI-304). Chart axes follow
+  the storage; far reference lines are named, not drawn.
+- Research: two years of training history rejected by the two-sample gate (MODELS §5i).
+
 ## v0.30.0 — 2026-10-05
 - **The impact tab's case view reads like the rest of the app (owner: "just click and see … not read so long"; D-102).**
   Number chips (tap → the dam's sheet), one ★ card with three icon lines and one "why", one-line plan rows with

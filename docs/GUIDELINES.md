@@ -281,7 +281,13 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Reuse the app's components** (`.chips`, `.item`, `.conf-badge`, `#sheet`, `showDetail`) so engineers meet what residents
   know; text badges built on `.conf-badge` need their own pill shape (the circle wraps text vertically).
 - **A forecast on a card says which method made it and how it tested**, per horizon when the method changes with the
-  horizon (the reservoir outlook: model for days 1–3, persistence for 4–7 at some dams).
+  horizon (the reservoir outlook: model for days 1–3, persistence for 4–7 at some dams); a projection that only holds
+  today's values is marked (*) and named "ถ้าเท่าวันนี้".
+- **Lists: two lines a row** (name + one badge; one muted line), the label that every row shares goes in a group header
+  with ⓘ, units and dates once in the header; a row and its map marker open the same sheet. Measure before/after:
+  row height, characters per row, rows on the first phone screen.
+- **Chart axes follow the data being decided on**; a reference line far outside it is named in the legend ("นอกกราฟ"),
+  not drawn — stretching the axis flattens the line that matters.
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.

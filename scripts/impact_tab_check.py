@@ -24,7 +24,7 @@ with sync_playwright() as p:
         pg.wait_for_selector(".imp-dams .item", timeout=20000)
         pg.wait_for_timeout(1500)
         r["dam_cards"] = pg.locator(".imp-dams .item").count()
-        r["summary"] = pg.inner_text(".imp-sum")
+        r["summary"] = pg.inner_text("#imp-body .sumline")
         r["dam_markers"] = pg.locator(".imp-dam-icon").count()
         r["logout_visible"] = pg.is_visible("#imp-logout")
         pg.screenshot(path=f"{OUT}/tab_{name}_dams.png", full_page=False)
@@ -36,6 +36,18 @@ with sync_playwright() as p:
                          "groups": pg.locator("#imp-body .imp-grp").count()}
         pg.screenshot(path=f"{OUT}/tab_{name}_popup.png", full_page=False)
         pg.click("#detail .close"); pg.wait_for_timeout(300)
+        # a ◆ on the map opens the same sheet (desktop only: on phones the map is its own tab)
+        if name == "desk":
+            box = pg.evaluate("""() => { const m = document.querySelector('#map').getBoundingClientRect();
+                const el = [...document.querySelectorAll('.imp-dam-icon')].find(e => { const r = e.getBoundingClientRect();
+                  return r.left > m.left + 30 && r.right < m.right - 320 && r.top > m.top + 30 && r.bottom < m.bottom - 30; });
+                if (!el) return null; const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }""")
+            if box:
+                pg.mouse.click(box[0], box[1]); pg.wait_for_timeout(800)
+                r["marker_opens_sheet"] = pg.evaluate("!document.getElementById('sheet').hidden && !!document.querySelector('#detail .imp-dam-sheet')")
+                pg.click("#detail .close"); pg.wait_for_timeout(300)
+            else:
+                r["marker_opens_sheet"] = "no marker in view"
         # the case
         pg.click('.tabs [data-tab="impact"]'); pg.wait_for_timeout(500)
         pg.click('[data-imp="kaeng-krachan"]'); pg.wait_for_selector("#imp-sc", timeout=20000)
@@ -43,7 +55,7 @@ with sync_playwright() as p:
         pg.screenshot(path=f"{OUT}/tab_{name}_case.png", full_page=False)
         # v0.30 first screen: chips, the ★ hero card, one-line rows, river strip, ℹ️; sheets for everything else
         pg.wait_for_selector("#imp-sc .imp-hero, #imp-sc .imp-note", timeout=30000)
-        r["chips"] = pg.locator(".imp-chips-num .chip").count()
+        r["chips"] = pg.locator("#imp-body .imp-chips-num .chip").count()
         r["hero"] = pg.locator("#imp-sc .imp-hero").count()
         r["rows"] = pg.locator("#imp-sc .imp-row").count()
         r["red_pill"] = pg.locator("#imp-sc .imp-red").count()
@@ -58,7 +70,7 @@ with sync_playwright() as p:
         pg.click("#detail .close"); pg.wait_for_timeout(300)
         r["sheet_closed"] = pg.evaluate("document.getElementById('sheet').hidden")
         # a chip → the dam sheet; a river node → the station's own sheet
-        pg.locator(".imp-chips-num .chip").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-kv", timeout=8000)
+        pg.locator("#imp-body .imp-chips-num .chip").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-kv", timeout=8000)
         r["dam_sheet"] = pg.inner_text("#detail h2")[:40]
         pg.click("#detail .close"); pg.wait_for_timeout(300)
         pg.locator(".imp-strip .imp-node").nth(1).click(); pg.wait_for_selector("#sheet:not([hidden]) #detail h2", timeout=15000)

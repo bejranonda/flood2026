@@ -705,3 +705,9 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
 - The decision panel was rebuilt to the app's grammar after the owner saw a report instead of a tool; the first screen is
   measured (characters, long paragraphs) in the browser check.
 
+### 19.23 Validate as a visitor, in rounds, with numbers (v0.31.0, D-103)
+- The owner's phone screenshot showed cards that read like records. Three rounds, each measured in a browser at 390 px
+  and looked at: v1 the station list's grammar (row height 112 → 62 px, 5 → 12 dams per screen), v2 wording and a trend
+  for every dam, v3 chart axes that follow the data. Each round fixed what the previous screenshot showed, not what was
+  guessed; the check script now carries the measures so later changes are held to them.
+

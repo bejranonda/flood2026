@@ -360,7 +360,7 @@ the first half and the second half is scored (43 days with inflow, 17 Aug–28 S
 15 of 17 dams and at 7 days for 11; it fails at 3 days for แก่งกระจาน and แม่กวงอุดมธารา and at 7 days for ภูมิพล, กิ่วคอหมา,
 แม่กวงฯ, อุบลรัตน์. The monthly loss term (balance residual) improves the 7-day storage outlook for 13 of 17 dams. Built as
 the dams-list outlook (D-102): the model only at the horizons where it passed, persistence with its band elsewhere.
-Window: 43 wet-season days — re-test as the archive grows. KI-301, research/2026-10-05_dam_inflow_nationwide.log.
+Window: 43 wet-season days — re-test as the archive grows. **Dams without a tested model (D-103):** a projection "if today's inflow and release hold" with a band from the dam's own daily inflow changes after 1–7 days (≥ 200 days of history), no loss term — shown with * (38 of 39 dams covered on 2026-10-05). KI-301, research/2026-10-05_dam_inflow_nationwide.log.
 
 ## 10. How to reproduce
 
