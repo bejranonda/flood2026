@@ -247,6 +247,30 @@ def catchment_rain7(points: list, fetch=None) -> dict | None:
     return {"dates": dates, "mm": [round(x, 1) for x in mm], "points": len(points), "source": "Open-Meteo"} if dates else None
 
 
+def catchment_rain14(points: list, fetch=None) -> dict | None:
+    """Open-Meteo daily rain at the catchment's sub-basin centroids, area-weighted: the past 7 days (the model's lagged
+    rain) and the next 7 (its forecast rain, lead = day) — for the reservoir outlook (D-102)."""
+    import json
+    import urllib.request
+    from floodwatch.config import settings
+
+    def _fetch(url):
+        req = urllib.request.Request(url, headers={"User-Agent": settings.user_agent})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    fetch = fetch or _fetch
+    total = sum(p[2] for p in points)
+    dates, mm = None, None
+    for lat, lon, km2 in points:
+        d = fetch(f"https://api.open-meteo.com/v1/forecast?latitude={lat:.3f}&longitude={lon:.3f}&daily=precipitation_sum"
+                  f"&past_days=7&forecast_days=7&timezone=Asia%2FBangkok")["daily"]
+        if dates is None:
+            dates, mm = d["time"], [0.0] * len(d["time"])
+        for i, v in enumerate(d["precipitation_sum"]):
+            mm[i] += (v or 0.0) * km2 / total
+    return {"dates": dates, "mm": [round(x, 2) for x in mm], "points": len(points), "source": "Open-Meteo"} if dates else None
+
+
 def dam_position(storage_mcm: float | None, rule: dict | None) -> str | None:
     """Storage against HII's rule curve for the day: 'above' the upper curve, 'below' the lower one, 'between'; None
     without both. A fact from the agencies' own curve — the page never turns it into a verdict."""
@@ -258,7 +282,8 @@ def dam_position(storage_mcm: float | None, rule: dict | None) -> str | None:
 POSITION_ORDER = {"above": 0, "below": 1, "between": 2, None: 3}
 
 
-def dams_layer(meta: list[dict], latest: dict, curves: dict, years: dict, cases: dict | None = None) -> list[dict]:
+def dams_layer(meta: list[dict], latest: dict, curves: dict, years: dict, cases: dict | None = None,
+               outlooks: dict | None = None) -> list[dict]:
     """One entry per physical dam (records grouped by name; RID first, then EGAT — never merged, KI-217): each record's
     latest daily values, the rule curve on its date, its position and the release note; the dam's position is its
     first record's that has one. Sorted: above the upper curve, below the lower, between, unknown; then by storage %."""
@@ -281,6 +306,7 @@ def dams_layer(meta: list[dict], latest: dict, curves: dict, years: dict, cases:
         pos = next((r["position"] for r in records if r["position"]), None)
         out.append({"name_th": name, "lat": first["lat"], "lon": first["lon"], "normal_mcm": first.get("normal_mcm"),
                     "max_mcm": first.get("max_mcm"), "position": pos, "records": records,
+                    "outlook": next(((outlooks or {}).get(m["dam_id"]) for m in ms if (outlooks or {}).get(m["dam_id"])), None),
                     "case": next(((cases or {}).get(m["dam_id"]) for m in ms if (cases or {}).get(m["dam_id"])), None)})
     return sorted(out, key=lambda d: (POSITION_ORDER[d["position"]], -max((r["storage_pct"] or 0) for r in d["records"])))
 
@@ -602,7 +628,9 @@ def build_dams(c, now=None) -> dict:
             years.setdefault(r["dam_id"], {})[r["y"]] = (float(r["mx"]), r["d"])
     cases = {cfg["dam_ids"]["RID"]: cid for cid, cfg in CASES.items()}
     now = now or dt.datetime.now(dt.timezone.utc)
-    return {"built_at": now.isoformat(), "dams": dams_layer(meta, latest, {k: v for k, v in curves.items() if v}, years, cases),
+    outlooks = {int(k): v for k, v in (db.get_state(c, "reservoir_outlook") or {}).get("dams", {}).items()}
+    return {"built_at": now.isoformat(), "dams": dams_layer(meta, latest, {k: v for k, v in curves.items() if v}, years, cases, outlooks),
+            "outlook_built_at": (db.get_state(c, "reservoir_outlook") or {}).get("built_at"),
             "curves": sum(1 for v in curves.values() if v), "records": len(meta)}
 
 

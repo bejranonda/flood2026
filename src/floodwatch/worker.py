@@ -38,6 +38,7 @@ TASKS = [
     ("hii_dams", 6 * 3600),  # HII large dams, daily (RID/EGAT), for the impact page (D-099)
     ("hii_dams_history", 3600),  # every dam's rule curve and release history, ≤ 10 requests an hour (D-100)
     ("impact", 3600),  # the impact page's state (Kaeng Krachan pilot, D-099)
+    ("reservoir_outlook", 6 * 3600),  # 7-day reservoir outlook for the dams with a tested inflow model (D-102)
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),
     ("retention", 24 * 3600),  # HII-network readings older than 400 days, rain-forecast issues older than 3 days (D-064)
@@ -149,6 +150,15 @@ def run_task(name: str) -> None:
         except Exception as e:
             log.exception("risk_record failed")
             db.record_health("risk_record", False, error=str(e))
+    elif name == "reservoir_outlook":
+        try:
+            from floodwatch import reservoir
+            out = reservoir.run()
+            db.record_health("reservoir_outlook", True)
+            log.info("reservoir_outlook: %d dams", len(out))
+        except Exception as e:
+            log.exception("reservoir_outlook failed")
+            db.record_health("reservoir_outlook", False, error=str(e))
     elif name == "impact":
         try:
             from floodwatch import impact

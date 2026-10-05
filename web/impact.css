@@ -170,3 +170,11 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 #view-impact .conf-badge.imp-red, #view-impact .conf-badge.imp-text { width: auto; height: auto; min-width: 0; border-radius: 10px;
   padding: 2px 8px; white-space: nowrap; font-size: 12px; line-height: 1.4; display: inline-block; }
 #view-impact .conf-badge.imp-text { color: var(--muted); background: var(--bg); border: 1px solid var(--line); }
+
+/* reservoir outlook on the dams list (D-102) */
+#view-impact .imp-outlook { font-size: 14px; margin-top: 4px; }
+.imp-pop-table { border-collapse: collapse; width: 100%; font-size: 12px; margin: 4px 0; }
+.imp-pop-table th, .imp-pop-table td { padding: 2px 4px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.imp-pop-table th:first-child, .imp-pop-table td:first-child { text-align: left; }
+.imp-pop-table td.imp-neg { color: var(--critical); font-weight: 700; }
+

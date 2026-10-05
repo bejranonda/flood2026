@@ -137,12 +137,32 @@
       num(r.released_mcm, 2) + " ล้าน ลบ.ม./วัน" + (r.released_mcm == null ? "" : " (≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วินาที)") + "</span>";
   }
 
+  function outlookLine(o, compact) {
+    if (!o || !o.days || !o.days.length) return "";
+    const last = o.days[6], first = o.days[0];
+    const meth = o.methods && o.methods["1-3"] === "model" ? "แบบจำลองฝน" : "คงน้ำเข้าวันนี้";
+    const trend = last.storage > first.storage + 0.5 ? "↗" : last.storage < first.storage - 0.5 ? "↘" : "→";
+    const curve = last.above_upper === true ? " · ยังเหนือเส้นควบคุม" : last.above_upper === false ? " · ใต้เส้นควบคุม" : "";
+    return '<div class="imp-outlook">📅 7 วัน: อ่าง ' + trend + " " + num(last.storage, 0) + " <small>(" + num(last.storage_lo, 0) + "–" + num(last.storage_hi, 0) + ")</small>" +
+      (compact ? "" : " · ไหลเข้า " + num(first.inflow, 1) + "→" + num(last.inflow, 1)) + curve +
+      ' <button type="button" class="conf-badge" title="น้ำไหลเข้า: ' + meth + (o.methods && o.methods["4-7"] !== o.methods["1-3"] ? " (วันที่ 1–3) แล้ว" + (o.methods["4-7"] === "model" ? "แบบจำลอง" : "คงค่าวันนี้") + " (วันที่ 4–7)" : "") +
+      " · ทดสอบกับฝนคาดการณ์จริง " + esc(o.test && o.test.days) + " วัน: ดีกว่าคงค่าวันนี้ " + num(o.test && o.test.gain_3d, 0) + " % ที่ 3 วัน, " + num(o.test && o.test.gain_7d, 0) + " % ที่ 7 วัน · " + esc(o.note || "") + '">ⓘ</button></div>';
+  }
+
+  function outlookTable(o) {
+    if (!o || !o.days) return "";
+    return '<div class="imp-pop-rec"><b>📅 7 วันข้างหน้า</b> <small>(' + esc(o.note || "") + ')</small><table class="imp-pop-table"><thead><tr><th>วัน</th><th>ไหลเข้า</th><th>อ่าง (ช่วง)</th><th>เส้นบน</th></tr></thead><tbody>' +
+      o.days.map((d) => "<tr><td>" + esc(dayShort(d.date)) + "</td><td>" + num(d.inflow, 1) + (d.method === "model" ? "" : "*") + "</td><td>" + num(d.storage, 0) +
+        " <small>" + num(d.storage_lo, 0) + "–" + num(d.storage_hi, 0) + "</small></td><td" + (d.above_upper ? ' class="imp-neg"' : "") + ">" + num(d.upper, 0) + "</td></tr>").join("") +
+      "</tbody></table><small>* คงค่าวันนี้ (แบบจำลองไม่ผ่านเกณฑ์ที่ช่วงนี้) · ล้าน ลบ.ม.(/วัน) · ฝน 7 วัน " + num(o.rain7_mm, 0) + " มม.</small></div>";
+  }
+
   function damItem(x, i) {
     const pos = POS[x.position];
     const note = x.records.map((r) => r.release_note).filter(Boolean)[0];
     return '<li class="item imp-dam ' + (pos ? pos[1] : "imp-unknown") + '" data-dam="' + i + '" tabindex="0">' +
       '<div class="imp-dam-head"><b>' + damName(x.name_th) + '</b><span class="imp-pos">' + (pos ? pos[0] : "ยังไม่มีเส้นควบคุม") +
-      '</span></div><div class="meta">' + x.records.map(recLine).join("") + "</div>" +
+      '</span></div><div class="meta">' + x.records.map(recLine).join("") + "</div>" + outlookLine(x.outlook, true) +
       (note ? '<div class="imp-small">📌 ' + esc(note.split(" —")[0].split(";")[0]) + "</div>" : "") +
       (x.case ? '<button type="button" class="btn imp-case-btn" data-case="' + esc(x.case) + '">เปิดกรณีวิเคราะห์ ›</button>' : "") + "</li>";
   }
@@ -155,8 +175,8 @@
         (r.rule ? "<br>เส้นควบคุมบน / ล่าง " + num(r.rule.upper, 0) + " / " + num(r.rule.lower, 0) : "") +
         "<br>ระบาย " + num(r.released_mcm, 2) + " ล้าน ลบ.ม./วัน" + (r.released_mcm == null ? "" : " ≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วินาที") +
         (r.inflow_mcm != null ? "<br>ไหลเข้า " + num(r.inflow_mcm, 2) + " ล้าน ลบ.ม./วัน" : "") +
-        (r.release_note ? '<div class="imp-small">' + esc(r.release_note) + "</div>" : "") + "</div>").join("") +
-      '<div class="muted">ที่มา: สสน. (ชป., กฟผ.)</div></div>';
+        (r.release_note ? '<div class="imp-small">' + esc(r.release_note) + "</div>" : "") + "</div>").join("") + outlookTable(x.outlook) +
+      '<div class="muted">ที่มา: สสน. (ชป., กฟผ.) · แนวโน้ม 7 วัน: FloodWatch (D-102)</div></div>';
   }
 
   function drawDams() {
