@@ -319,7 +319,7 @@
       '<div class="imp-strip">' + nodes + "</div>" +
       '<button type="button" class="btn imp-onmap" id="imp-onmap">🗺️ ดูบนแผนที่</button></section>';
     const info = '<details class="imp-info"><summary>ℹ️ วิธีการ ข้อมูล และข้อจำกัด</summary><div class="imp-info-body">' +
-      '<p class="muted">ข้อมูลสาธารณะ (สสน., ชป., กฟผ.) · อ่าง: สมดุลน้ำรายวันที่ตรวจกับข้อมูลจริง · ท้ายน้ำ: rating curve + เวลาเดินทาง 🔴 ยังไม่ผ่านการทดสอบ — ใช้เทียบระหว่างแผน</p>' +
+      '<p class="muted">ข้อมูลสาธารณะ (สสน., ชป., กฟผ.) · อ่าง: สมดุลน้ำรายวันที่ตรวจกับข้อมูลจริง · ท้ายน้ำ: ' + (st && st.river7 ? "ทดสอบย้อนหลัง 7 วันแล้ว 🟠 คลาดเคลื่อนเพิ่มตามวัน" : "rating curve + เวลาเดินทาง 🔴 ยังไม่ผ่านการทดสอบ") + ' — ใช้เทียบระหว่างแผน</p>' +
       '<div class="imp-info-btns">' +
       '<button type="button" class="btn" data-info="val">ผลทดสอบย้อนหลัง</button>' +
       '<button type="button" class="btn" data-info="river">ตารางแม่น้ำ</button>' +
@@ -332,7 +332,7 @@
 
   function openInfo(st, what) {
     const cmp = state.cmp;
-    if (what === "val") openSheet("<h2>ทดสอบย้อนหลัง</h2>" + valHtml(st));
+    if (what === "val") openSheet("<h2>ทดสอบย้อนหลัง</h2>" + river7Html(st) + valHtml(st));
     else if (what === "river") openSheet("<h2>แม่น้ำเพชรบุรีตอนนี้</h2>" + riverHtml(st));
     else if (what === "method") openSheet("<h2>วิธีการและข้อจำกัด</h2>" + methodHtml(st) + (cmp ? scenarioNotes(cmp) : ""));
     else if (what === "req") openSheet("<h2>ข้อมูลที่ต้องการจาก สทนช. / กรมชลประทาน</h2>" + reqHtml(st));
@@ -407,8 +407,22 @@
     }
   }
 
-  const redPill = (cmp) => '<button type="button" class="conf-badge imp-red" title="ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง (ความคลาดเคลื่อน ' +
-    Object.entries(cmp.margin_req || {}).map(([c, m]) => esc(c) + " " + num(m * 100, 0) + " ซม.").join(", ") + ') — ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์">🔴 ท้ายน้ำยังไม่ผ่านการทดสอบ</button>';
+  const cmRange = (v) => (Array.isArray(v) ? num(v[0], 0) + "→" + num(v[v.length - 1], 0) : num(v, 0));
+  function redPill(cmp) {  // the downstream model the plans used: tested per day (E-7D-DOWN) or the untested what-if
+    const ds = cmp.downstream || {};
+    if (ds.method === "hybrid") {
+      const m = ds.mae_cm || {}, k = ds.keep_cm || {};
+      const d1 = Math.max(...Object.values(m).map((v) => v[0] || 0)), d7 = Math.max(...Object.values(m).map((v) => v[v.length - 1] || 0));
+      const tip = "ระดับท้ายน้ำ 7 วัน: B.18 ตาม rating curve เทียบระดับวันนี้ · จุดอื่น = ระดับวันนี้ + การตอบสนองต่อการระบายที่เรียนรู้ (ไม่ติดลบ)" +
+        " · ทดสอบย้อนหลัง " + (ds.window ? day(ds.window[0]) + "–" + day(ds.window[1]) : "") + " (แต่ละเดือนใช้ค่าที่เรียนจากเดือนอื่น)" +
+        " · คลาดเคลื่อนเฉลี่ยวันที่ 1→7 (ซม.): " + Object.keys(m).map((c) => c + " " + cmRange(m[c]) + " (คงระดับวันนี้ " + cmRange(k[c]) + ")").join(", ") +
+        " · แผนต้องห่างตลิ่งมากกว่าค่านี้ในแต่ละวัน — ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์";
+      return '<button type="button" class="conf-badge imp-text" title="' + esc(tip) + '" aria-label="ความคลาดเคลื่อนท้ายน้ำ">🟠 ท้ายน้ำ ±' + num(d1, 0) + "–" + num(d7, 0) + " ซม.</button>";
+    }
+    return '<button type="button" class="conf-badge imp-red" title="ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง (ความคลาดเคลื่อน ' +
+      Object.entries(cmp.margin_req || {}).map(([c, m]) => esc(c) + " " + (Array.isArray(m) ? cmRange(m.map((x) => x * 100)) : num(m * 100, 0)) + " ซม.").join(", ") +
+      ') — ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์">🔴 ท้ายน้ำยังไม่ผ่านการทดสอบ</button>';
+  }
 
   function scenariosHtml(cmp, st) {
     const d = cmp.dam || {};
@@ -462,7 +476,9 @@
       "<li>เข้าเกณฑ์ " + num(cmp.feasible, 0) + " แบบ: " + (cmp.constraints || []).map(esc).join(" · ") + "</li>" +
       "<li>น้ำไหลเข้า: คิดว่าเท่าวันนี้ต่อไป ช่วง 7 วัน " + num(inf.low[6], 1) + "–" + num(inf.high[6], 1) + " ล้าน ลบ.ม./วัน · " + esc(inf.note || "") + "</li>" +
       (rain != null ? "<li>☁️ ฝนคาดการณ์ในลุ่มน้ำเหนือเขื่อน 7 วัน รวม " + num(rain, 0) + " มม. (ดูประกอบ ไม่ได้ใช้คำนวณ)</li>" : "") +
-      "<li>อ่าง: สมดุลน้ำรายวัน (ตรวจกับข้อมูล สสน. 2561–69: มัธยฐานของส่วนต่าง −0.15 ล้าน ลบ.ม./วัน) · ท้ายน้ำ: rating curve + เวลาเดินทางเป็นวัน น้ำท่าระหว่างทางและการผันที่เขื่อนเพชรคงที่</li></ul>";
+      "<li>อ่าง: สมดุลน้ำรายวัน (ตรวจกับข้อมูล สสน. 2561–69: มัธยฐานของส่วนต่าง −0.15 ล้าน ลบ.ม./วัน) · ท้ายน้ำ: " + ((cmp.downstream || {}).method === "hybrid"
+        ? "B.18 ตาม rating curve เทียบระดับวันนี้ จุดอื่น = ระดับวันนี้ + การตอบสนองต่อการระบายที่เรียนรู้ (ไม่ติดลบ) เวลาเดินทางเป็นวัน · ฝนในพื้นที่ท้ายเขื่อนไม่ช่วยในการทดสอบ จึงไม่ใช้"
+        : "rating curve + เวลาเดินทางเป็นวัน น้ำท่าระหว่างทางและการผันที่เขื่อนเพชรคงที่") + "</li></ul>";
   }
 
   function openCustomSheet(st, body, cmp) {
@@ -623,6 +639,20 @@
         " (⚠️ ยังไม่ได้ยืนยัน) ระดับท้ายน้ำจึงขึ้นกับการบริหารเขื่อนเพชร ฝนในพื้นที่ และน้ำขึ้นน้ำลง (ในเมือง)" +
         " มากกว่าการระบายจากแก่งกระจาน การระบายขนาดใหญ่ที่เกินความจุคลองจะต้องผ่านลงแม่น้ำ" +
         " แต่ข้อมูลของเรายังไม่มีเหตุการณ์แบบนั้นให้ตรวจสอบ</p>");
+  }
+
+  function river7Html(st) {  // E-7D-DOWN: the 7-day method the plans use, its hindcast error per point and day
+    const r = st.river7;
+    if (!r || !r.errors) return "";
+    const codes = st.points.map((p) => p.code).filter((c) => r.errors[c]);
+    const cell = (e, k) => num(e.mae_m[k] * 100, 0) + '<small class="muted"> · ' + num(e.keep_mae_m[k] * 100, 0) + "</small>";
+    return "<h3>7 วันข้างหน้า (ใช้ในแผนระบาย)</h3>" +
+      '<p class="muted">B.18 ตาม rating curve เทียบระดับวันนี้ · จุดอื่น = ระดับวันนี้ + การตอบสนองต่อการระบายที่เรียนรู้ (ไม่ติดลบ) · ทดสอบย้อนหลัง ' +
+      day(r.window[0]) + "–" + day(r.window[1]) + " แต่ละเดือนใช้ค่าที่เรียนจากเดือนอื่น · ตัวเลข = คลาดเคลื่อนเฉลี่ย (ซม.) · ตัวเล็ก = คงระดับวันนี้</p>" +
+      '<div class="imp-scroll"><table><thead><tr><th scope="col">สถานี</th>' + [1, 2, 3, 4, 5, 6, 7].map((k) => '<th scope="col">วันที่ ' + k + "</th>").join("") +
+      '<th scope="col">ซม./ลบ.ม.วิ วันที่ 7</th></tr></thead><tbody>' +
+      codes.map((c) => '<tr><th scope="row">' + esc(c) + "</th>" + [0, 1, 2, 3, 4, 5, 6].map((k) => "<td>" + cell(r.errors[c], k) + "</td>").join("") +
+        "<td>" + (c === "B.18" ? "rating" : num((r.gains_cm_per_cms[c] || [])[6], 2)) + "</td></tr>").join("") + "</tbody></table></div>";
   }
 
   function reqHtml(st) {

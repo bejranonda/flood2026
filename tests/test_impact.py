@@ -334,3 +334,61 @@ def test_a_largest_since_claim_needs_enough_years_and_says_whose_records():
     assert "2562–2568" in note and "ข้อมูลในระบบเริ่มปี 2562" in note and "เท่าที่ สสน. มีข้อมูล" not in note
     two_ago = {**seven, 2024: (4.0, "2024-09-01")}  # the last year that released more was 2024: one year since is not news
     assert impact.release_note(3.66, "2026-10-05", two_ago) is None
+
+
+def _river_series(gain_cm_per_cms=0.6, sign=1.0, days=200, seed=3):
+    """Hourly B.18 (on its rating) and B.10 (following the release two days later) under step releases every 15 days."""
+    import datetime as dt
+    rng = np.random.default_rng(seed)
+    t0 = dt.datetime(2025, 12, 31, 17, tzinfo=dt.timezone.utc)  # 00:00 on 1 Jan in Thailand
+    rel, cur = [], 8.0
+    for d in range(days):
+        if d % 15 == 0:
+            cur = float(rng.uniform(2, 20))
+        rel.append(cur)
+    n = days * 24
+    H = {"B.18": np.full(n, np.nan), "B.10": np.full(n, np.nan)}
+    Q = {"B.18": np.full(n, np.nan), "B.10": np.full(n, np.nan)}
+    for i in range(n):
+        d = i // 24
+        Q["B.18"][i] = impact.mcm_to_cms(rel[d]) + 12.0
+        H["B.18"][i] = 1.0 + 0.1 * Q["B.18"][i] ** 0.5
+        Q["B.10"][i] = impact.mcm_to_cms(rel[max(0, d - 2)])
+        H["B.10"][i] = 2.0 + sign * gain_cm_per_cms / 100.0 * Q["B.10"][i] + rng.normal(0, 0.005)
+    rel_daily = {(dt.date(2026, 1, 1) + dt.timedelta(days=d)).isoformat(): rel[d] for d in range(days)}
+    pts = [{"code": "B.18", "role": "below_dam", "lag_h": 0,
+            "rating": {"h0": 1.0, "a": 0.1, "b": 0.5, "res": [-0.05, 0.05], "qmax": 1e9, "qmin": 0.0}},
+           {"code": "B.10", "role": "after_diversion", "lag_h": 48, "rating": None}]
+    return H, Q, t0, rel_daily, pts
+
+
+def test_river7_learns_how_each_point_follows_a_release_change_and_scores_it_per_day():
+    # E-7D-DOWN (research/2026-10-05_e7d_down.log): below the dam the rating anchored on today's level; past the diversion
+    # a gain per day fitted on the year; the same method hindcast on the last days gives each point's error per day
+    H, Q, t0, rel, pts = _river_series()
+    r7 = impact.river7(H, Q, t0, rel, pts, test_days=60)
+    g = r7["gains_cm_per_cms"]["B.10"]
+    assert g[0] == 0 and g[1] == 0 and all(abs(x - 0.6) < 0.15 for x in g[2:])  # reaches B.10 on day 3 (two days' travel)
+    e = r7["errors"]["B.10"]
+    assert len(e["mae_m"]) == len(e["p90_m"]) == len(e["keep_mae_m"]) == 7 and e["n"] >= 50
+    assert sum(e["mae_m"][2:]) < sum(e["keep_mae_m"][2:])  # knowing the plan beats keeping today's level
+    assert r7["errors"]["B.18"]["mae_m"][0] < 0.02 and r7["lag_days"] == {"B.18": 0, "B.10": 2}
+
+
+def test_river7_never_lets_more_release_lower_a_point_downstream():
+    H, Q, t0, rel, pts = _river_series(sign=-1.0)
+    assert all(x == 0 for x in impact.river7(H, Q, t0, rel, pts, test_days=60)["gains_cm_per_cms"]["B.10"])
+
+
+def test_river7_needs_enough_days():
+    H, Q, t0, rel, pts = _river_series(days=40)
+    assert impact.river7(H, Q, t0, rel, pts, test_days=60) is None
+
+
+def test_a_points_now_is_its_latest_reading_within_36_hours_with_its_time():
+    # RID's gauges below Kaeng Krachan post in batches: at 05:10 ICT the latest reading was 6 h 10 min old, so a 6-hour
+    # window left the case without "now" and the plans on missing flows (2026-10-05)
+    x = np.full(100, np.nan)
+    x[90] = 2.5
+    assert impact._last_at(x, 96, impact.NOW_HOURS) == (2.5, 90) and impact.NOW_HOURS == 36
+    assert impact._last_at(x, 130 if len(x) > 130 else 99, 3) == (None, None)

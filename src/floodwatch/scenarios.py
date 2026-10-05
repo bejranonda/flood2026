@@ -70,7 +70,13 @@ def effects(release: list[float], storage: list[float], upper: list[float], lowe
     `today`: today's release, so the first day's step counts as a change too (warning time)."""
     all_m = [m for ms in margins.values() for m in ms if m is not None]
     city_m = [m for c in city for m in margins.get(c, []) if m is not None]
-    req = [m - (margin_req or {}).get(c, 0.0) for c, ms in margins.items() for m in ms if m is not None]
+
+    def req_at(c, d):  # one margin per point, or one per day (river7's hindcast error grows with the lead)
+        v = (margin_req or {}).get(c, 0.0)
+        if isinstance(v, (list, tuple)):
+            return v[d] if d < len(v) and v[d] is not None else 0.0
+        return v or 0.0
+    req = [m - req_at(c, d) for c, ms in margins.items() for d, m in enumerate(ms) if m is not None]
     steps = [abs(release[d] - release[d - 1]) for d in range(1, len(release))] + ([abs(release[0] - today)] if today is not None else [])
     above = [d for d, (s, u) in enumerate(zip(storage, upper)) if s <= u]
     return {"city_margin_min": min(city_m) if city_m else None, "worst_margin_min": min(all_m) if all_m else None,
@@ -151,13 +157,18 @@ RULE = ("แผนที่พาอ่างกลับสู่เส้น�
 
 
 def daily_downstream(state: dict, release_path: list[float], diversion_cms: float | None = None) -> dict:
-    """Per point, per day: the what-if row for the release that reaches it that day (whole-day travel time from its
-    lag; before day 1 the release is today's). Daily resolution; local inflow and the diversion held at today's."""
+    """Per point, per day: the release that reaches it that day (whole-day travel time from its lag; before day 1 the
+    release is today's). With `state["river7"]` (E-7D-DOWN) the level is that tested 7-day method's — below the dam its
+    rating anchored on today's level, past the diversion today's level + the fitted gain — and the range is that day's
+    90 % hindcast error; without it, impact.whatif's (local inflow and the diversion held at today's). Flows are the
+    what-if's either way."""
     today = (state.get("dam") or {}).get("released_mcm")
     if today is None:
         today = release_path[0]
     out = {}
     cache = {}
+    r7 = state.get("river7") or {}
+    gains, errs = r7.get("gains_cm_per_cms") or {}, r7.get("errors") or {}
     for p in state["points"]:
         lag_days = int(round((p.get("lag_h") or 0) / 24.0))
         rows = []
@@ -167,9 +178,24 @@ def daily_downstream(state: dict, release_path: list[float], diversion_cms: floa
             if key not in cache:
                 cache[key] = {row["code"]: row for row in impact.whatif(state, key, diversion_cms)["rows"]}
             row = cache[key].get(p["code"]) or {}
-            rows.append({k: row.get(k) for k in ("flow_cms", "level", "margin_m", "overflow", "outside")})
+            rec = {k: row.get(k) for k in ("flow_cms", "level", "margin_m", "overflow", "outside")}
+            mid = impact.level7(p, r, today, d + 1, gains[p["code"]]) if p["code"] in gains else None
+            if mid is not None:
+                e = errs.get(p["code"]) or {}
+                band = ((e.get("p90_m") or [None] * 7)[min(d, 6)] or (e.get("mae_m") or [None] * 7)[min(d, 6)] or 0.0)
+                bank = p.get("bank")
+                rec.update({"level": [mid - band, mid, mid + band], "margin_m": (bank - mid) if bank is not None else None,
+                            "overflow": None if bank is None else "yes" if mid >= bank else "possible" if mid + band >= bank else "no"})
+            rows.append(rec)
         out[p["code"]] = rows
     return out
+
+
+def _req_txt(c: str, m) -> str:
+    if isinstance(m, (list, tuple)):
+        vals = [x for x in m if x is not None]
+        return f"{c} ≥ {min(vals):.2f}–{max(vals):.2f} ม." if vals else c
+    return f"{c} ≥ {m:.2f} ม."
 
 
 def compare(state: dict, inflow_today: float, upper: list[float], lower: list[float], normal: float,
@@ -184,9 +210,19 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
     inflow_mid = [max(0.0, inflow_today)] * days
     inflow_lo = [max(0.0, inflow_today + inflow_band(inflow_today, h)[0]) for h in range(1, days + 1)]
     inflow_hi = [max(0.0, inflow_today + inflow_band(inflow_today, h)[1]) for h in range(1, days + 1)]
-    # the downstream model's own error per point (the replay's mean error of the mass-balance method, cm → m)
-    vp = ((state.get("validation") or {}).get("points") or {})
-    margin_req = {c: (v.get("methods") or {}).get("absolute", 0.0) / 100.0 for c, v in vp.items()}
+    # the downstream model's own error: per point and day from river7's hindcast (E-7D-DOWN), else per point from the
+    # replay's mean error of the mass-balance method (cm → m)
+    r7 = state.get("river7") or {}
+    r7e = r7.get("errors") or {}
+    cm = lambda xs: [round(100 * x) if x is not None else None for x in (xs or [])]
+    downstream = ({"method": "hybrid", "window": r7.get("window"), "test": r7.get("test"),
+                   "mae_cm": {c: cm(e.get("mae_m")) for c, e in r7e.items()}, "keep_cm": {c: cm(e.get("keep_mae_m")) for c, e in r7e.items()},
+                   "gains_cm_per_cms": r7.get("gains_cm_per_cms")} if r7e else {"method": "whatif"})
+    if r7e:
+        margin_req = {c: [round(x, 3) if x is not None else 0.0 for x in (e.get("mae_m") or [])] for c, e in r7e.items()}
+    else:
+        vp = ((state.get("validation") or {}).get("points") or {})
+        margin_req = {c: (v.get("methods") or {}).get("absolute", 0.0) / 100.0 for c, v in vp.items()}
     plans = candidate_plans(today, max_release, days)
     if custom:
         plans.append({"kind": "custom", "release": [round(float(x), 2) for x in custom]})
@@ -216,7 +252,8 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
                                      "note": "คงน้ำไหลเข้าวันนี้ ช่วง = ความคลาดเคลื่อนของวิธีนี้เองที่ 1–7 วัน" + (" (ช่วงน้ำไหลเข้ามาก กว้างกว่าปกติมาก)" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else " (ปี 2568–69)") + "; แบบจำลองจากฝนแพ้วิธีนี้ทุกช่วงในการทดสอบ 2026-10-05 จึงไม่ใช้"},
             "upper": upper, "lower": lower, "normal": normal, "max_storage": max_storage, "max_release": max_release,
             "candidates": len(rows), "feasible": len(feas), "best_for": best, "optimal": opt, "plans": show,
-            "margin_req": margin_req,
+            "margin_req": margin_req, "downstream": downstream,
             "constraints": ["ทุกจุดห่างตลิ่ง (ของหน่วยงานผู้วัด) มากกว่าความคลาดเคลื่อนของแบบจำลองท้ายน้ำ: " +
-                            ", ".join(f"{c} ≥ {m:.2f} ม." for c, m in sorted(margin_req.items())), "ไม่เกินความจุสูงสุดของอ่าง",
+                            ", ".join(_req_txt(c, m) for c, m in sorted(margin_req.items())) + (" (วันที่ 1–7)" if r7e else ""),
+                            "ไม่เกินความจุสูงสุดของอ่าง",
                             "อ่างต้องไม่สูงขึ้นกว่าวันนี้เมื่ออยู่เหนือเส้นควบคุมบน (หรือไม่ต่ำลงเมื่ออยู่ใต้เส้นล่าง)"]}

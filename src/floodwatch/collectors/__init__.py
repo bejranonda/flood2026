@@ -22,8 +22,8 @@ BACKFILL_DAYS = 365  # waterlevel_graph serves at most one year (checked 2026-09
 def _run(source: str, fn) -> None:
     """Run one collector with health bookkeeping; never raise (circuit-breaker style isolation)."""
     try:
-        data_time = fn()
-        db.record_health(source, True, data_time=data_time)
+        data_time = fn()  # a collector returns its newest data time, or a count / None (only a datetime is a data time)
+        db.record_health(source, True, data_time=data_time if isinstance(data_time, dt.datetime) else None)
     except Exception as e:  # logged + recorded; other collectors keep running
         log.exception("collector %s failed", source)
         db.record_health(source, False, error=f"{type(e).__name__}: {e}")

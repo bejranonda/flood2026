@@ -705,7 +705,16 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
                       "curve": (f"ใต้เส้นควบคุมวันที่ {e['under_curve_day']}" if e.get("under_curve_day") else f"เหลือ {e['storage_end']:.0f} วันที่ 7"),
                       "water": f"เหลือ {e['storage_end']:.0f} ล้าน ลบ.ม. วันที่ 7", "warning": f"เปลี่ยนวันละไม่เกิน {e['ramp_max']:.1f}"}[k]
             lines.append(f"เหมาะกับ{EFFECT_TH[k]}: {plan_words(p)} ({metric})")
-    lines.append("🔴 ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง — ใช้เปรียบเทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์")
+    ds = cmp.get("downstream") or {}
+    mae = ds.get("mae_cm") or {}
+    d1 = max((v[0] for v in mae.values() if v and v[0] is not None), default=None)
+    d7 = max((v[-1] for v in mae.values() if v and v[-1] is not None), default=None)
+    tested = ds.get("method") == "hybrid" and d1 is not None and d7 is not None
+    if tested:  # E-7D-DOWN: the 7-day downstream method with its hindcast error per day
+        lines.append(f"🟠 ระดับท้ายน้ำ 7 วัน ทดสอบย้อนหลังแล้ว: คลาดเคลื่อนเฉลี่ยสูงสุด ±{d1} ซม. ในวันที่ 1 ถึง ±{d7} ซม. ในวันที่ 7"
+                     " — แผนต้องห่างตลิ่งมากกว่านี้ทุกวัน ใช้เปรียบเทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์")
+    else:
+        lines.append("🔴 ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง — ใช้เปรียบเทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์")
     first = f"ตอนนี้อ่าง{name}{pos and ' ' + pos} ระบายวันละ {rel:.1f} และมีน้ำเข้า {inf:.1f} ล้าน ลบ.ม." if rel is not None and inf is not None else f"ตอนนี้อ่าง{name} {pos}"
     if star and opt.get("constraints_met"):
         e = star["effects"]
@@ -718,6 +727,7 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
         second = "ยังไม่มีแผนให้เปรียบเทียบ"
     others = [EFFECT_TH[k] for k in EFFECT_KEYS if plans.get(best.get(k)) and plans.get(best.get(k)) is not star]
     third = ("แผนอื่นเหมาะกับ" + " ".join(dict.fromkeys(others)) + " ดูในแต่ละการ์ด" if others else "")
-    tail = "ตัวเลขท้ายน้ำยังไม่ผ่านการทดสอบ ใช้เทียบระหว่างแผนเท่านั้น"
+    tail = (f"ตัวเลขท้ายน้ำคลาดเคลื่อนได้ราว ±{d7} ซม. ในวันที่ 7 ใช้เทียบระหว่างแผน" if tested
+            else "ตัวเลขท้ายน้ำยังไม่ผ่านการทดสอบ ใช้เทียบระหว่างแผนเท่านั้น")
     return lines, " ".join(x for x in (first, second, third, tail) if x)
 

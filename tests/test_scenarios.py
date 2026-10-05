@@ -105,3 +105,49 @@ def test_the_explanation_names_the_plan_the_rule_and_the_label_without_verdict_w
     assert "ยังไม่ผ่านการทดสอบ" in text and "ปลอดภัย" not in text and "safe" not in text.lower()
     assert explain.plan_words({"kind": "constant", "release": [14.0] * 7}) == "14.0 ล้าน ลบ.ม./วัน คงที่ 7 วัน"
     assert explain.plan_words({"kind": "front", "release": [20.0, 20.0, 10.0, 10.0, 10.0, 10.0, 10.0]}) == "20.0 ล้าน ลบ.ม./วัน 2 วันแรก แล้ว 10.0"
+
+
+def _r7_state():
+    import copy
+    from test_impact import STATE
+    st = copy.deepcopy(STATE)
+    mae = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    st["river7"] = {"method": "hybrid", "lag_days": {"B.18": 0, "B.10": 1, "B.16": 2, "B.15": 2},
+                    "gains_cm_per_cms": {"B.18": [0.0] * 7, "B.10": [0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+                                         "B.16": [0, 0, 0.4, 0.4, 0.4, 0.4, 0.4], "B.15": [0.0] * 7},
+                    "errors": {c: {"mae_m": mae, "p90_m": [2 * x for x in mae]} for c in ("B.18", "B.10", "B.16", "B.15")}}
+    return st
+
+
+def test_plans_use_the_river7_levels_once_the_release_reaches_each_point():
+    from floodwatch import impact
+    out = sc.daily_downstream(_r7_state(), [21.6] * 7)
+    dq = impact.mcm_to_cms(21.6) - impact.mcm_to_cms(10.8)
+    b10 = out["B.10"]  # today's level + 0.5 cm per m³/s from the day the new release reaches it (one day's travel → day 2)
+    assert abs(b10[0]["level"][1] - 1.85) < 1e-9 and abs(b10[1]["level"][1] - (1.85 + 0.005 * dq)) < 1e-6
+    assert abs(b10[1]["margin_m"] - (2.2 - 1.85 - 0.005 * dq)) < 1e-6 and abs(b10[1]["level"][2] - b10[1]["level"][1] - 0.3) < 1e-9
+    loc = 140.0 - impact.mcm_to_cms(10.8)  # B.18: its own rating, anchored on today's level
+    want = 2.18 + 0.1 * ((impact.mcm_to_cms(21.6) + loc) ** 0.5 - (impact.mcm_to_cms(10.8) + loc) ** 0.5)
+    assert abs(out["B.18"][0]["level"][1] - want) < 1e-6
+    assert all(abs(r["level"][1] - 1.9) < 1e-9 for r in out["B.15"])  # no detectable response: today's level
+
+
+def test_a_plan_keeps_the_river_models_margin_for_each_day():
+    eff = sc.effects(release=[10.8] * 7, storage=[720] * 7, upper=[600] * 7, lower=[200] * 7, normal=710.0,
+                     margins={"B.10": [0.5] * 7}, city=("B.15",), today=10.8, margin_req={"B.10": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]})
+    assert abs(eff["margin_vs_req_min"] - (0.5 - 0.7)) < 1e-9
+    cmp = sc.compare(_r7_state(), inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0)
+    assert cmp["margin_req"]["B.10"] == [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    assert any("B.10 ≥ 0.10–0.40 ม." in c for c in cmp["constraints"])
+
+
+def test_the_plan_says_which_downstream_model_it_used_and_the_story_states_its_tested_error():
+    from floodwatch import explain
+    cmp = sc.compare(_r7_state(), inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0)
+    ds = cmp["downstream"]
+    assert ds["method"] == "hybrid" and ds["mae_cm"]["B.10"] == [10, 15, 20, 25, 30, 35, 40]
+    lines, story = explain.scenarios(cmp)
+    text = " ".join(lines) + story
+    assert "ทดสอบย้อนหลังแล้ว" in text and "±40 ซม." in text and "ยังไม่ผ่านการทดสอบ" not in text
+    from test_impact import STATE
+    assert sc.compare(STATE, inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0)["downstream"]["method"] == "whatif"

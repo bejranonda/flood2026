@@ -468,6 +468,9 @@ def _window(lag: int) -> list[int]:
     return [max(0, int(round(lag * 0.8))) if lag > 15 else max(0, lag - 3), int(round(lag * 1.2)) if lag > 15 else lag + 3]
 
 
+NOW_HOURS = 36  # a point's "now": its latest reading within 36 h, shown with its time (RID posts in batches, overnight > 6 h)
+
+
 def _last_at(x, idx: int, hours: int = 6) -> tuple[float | None, int | None]:
     """The latest value at or before hour `idx` within `hours`, and its hour; (None, None) when there is none."""
     for k in range(idx, max(-1, idx - hours), -1):
@@ -478,6 +481,116 @@ def _last_at(x, idx: int, hours: int = 6) -> tuple[float | None, int | None]:
 
 def _last(x, idx: int, hours: int = 6):
     return _last_at(x, idx, hours)[0]
+
+
+RIVER7_TEST_DAYS = 90
+RIVER7_MIN_FIT = 60
+
+
+def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days: int = RIVER7_TEST_DAYS) -> dict | None:
+    """The river below the dam on days 1–7 of a release plan (E-7D-DOWN, research/2026-10-05_e7d_down.log): the point right
+    below the dam moves along its rating curve anchored on today's level; every point past the diversion moves by a gain
+    per day fitted on the year (cm per m³/s of release change reaching it; never below 0 — a point with no detectable
+    response keeps today's level). The same method hindcast on the last `test_days` issue days gives each point's error per
+    day — the margin a plan must keep. Each month of that window is scored with gains fitted on the other months (8 days
+    purged at its edges): fitted only on the months before, B.10's gain came out negative in the dry season (small
+    releases, most of the water diverted at เขื่อนเพชร, releases raised when the river was low) and clipped to 0 — the
+    research's interleaved months found the release's effect in both samples (E-7D-DOWN). Daily means of Thai days. None
+    with too little data."""
+    import datetime as dt
+    n = len(next(iter(H.values())))
+    day_of = [(t0 + dt.timedelta(hours=i + 7)).date().isoformat() for i in range(n)]
+    days = sorted(set(day_of))
+    pos = {d: i for i, d in enumerate(days)}
+    hours: dict = {}
+    for i, d in enumerate(day_of):
+        hours.setdefault(d, []).append(i)
+
+    def daily(x):
+        x, out = np.asarray(x, float), np.full(len(days), np.nan)
+        for d, hs in hours.items():
+            v = x[hs]
+            v = v[np.isfinite(v)]
+            if len(v) >= 12:
+                out[pos[d]] = v.mean()
+        return out
+    HD = {p["code"]: daily(H[p["code"]]) for p in points if p["code"] in H}
+    q18 = daily(Q["B.18"]) if "B.18" in Q else None
+    rel = np.array([rel_daily.get(d, np.nan) for d in days], float)
+    lagd = {p["code"]: int(round((p.get("lag_h") or 0) / 24.0)) for p in points}
+    issue = [i for i in range(1, len(days) - 7) if np.isfinite(rel[i:i + 8]).all()]
+    if len(issue) < test_days + RIVER7_MIN_FIT:
+        return None
+    test = issue[-test_days:]
+    month = lambda i: days[i][:7]
+
+    def fit_for(block):  # every issue day outside the month and 8 days either side of it
+        inb = [j for j in issue if month(j) == block]
+        lo, hi = min(inb) - 8, max(inb) + 8
+        return [j for j in issue if j < lo or j > hi]
+    blocks = sorted({month(i) for i in test})
+
+    def reach(i, k, lag):
+        return rel[i + k - lag] if k - lag >= 1 else rel[i]
+
+    def gains(rows, code):  # m per m³/s, one per day, never below 0
+        h, out = HD[code], []
+        for k in range(1, 8):
+            ok = [i for i in rows if np.isfinite(h[i]) and np.isfinite(h[i + k])]
+            dq = np.array([mcm_to_cms(reach(i, k, lagd[code]) - rel[i]) for i in ok])
+            dh = np.array([h[i + k] - h[i] for i in ok])
+            out.append(max(0.0, float(np.sum(dq * dh) / np.sum(dq ** 2))) if len(ok) >= 30 and np.sum(dq ** 2) > 0 else 0.0)
+        return out
+
+    def predict(p, i, k, g):
+        h = HD[p["code"]]
+        if p["role"] == "below_dam":
+            r = p.get("rating")
+            if not r or q18 is None or not np.isfinite(q18[i]):
+                return np.nan
+            loc = max(0.0, q18[i] - mcm_to_cms(rel[i]))
+            return h[i] + level_at(r, mcm_to_cms(reach(i, k, 0)) + loc) - level_at(r, mcm_to_cms(rel[i]) + loc)
+        return h[i] + g[k - 1] * mcm_to_cms(reach(i, k, lagd[p["code"]]) - rel[i])
+
+    out_g, errs = {}, {}
+    for p in points:
+        code = p["code"]
+        if code not in HD:
+            continue
+        dam_side = p["role"] == "below_dam"
+        g_fit = {b: ([0.0] * 7 if dam_side else gains(fit_for(b), code)) for b in blocks}
+        out_g[code] = [0.0] * 7 if dam_side else [round(100 * x, 3) for x in gains(issue, code)]
+        mae, p90, keep, cnt = [], [], [], 0
+        for k in range(1, 8):
+            e, ek = [], []
+            for i in test:
+                obs, now, pr = HD[code][i + k], HD[code][i], predict(p, i, k, g_fit[month(i)])
+                if np.isfinite(obs) and np.isfinite(now) and np.isfinite(pr):
+                    e.append(abs(pr - obs))
+                    ek.append(abs(now - obs))
+            mae.append(round(float(np.mean(e)), 3) if e else None)
+            p90.append(round(float(np.quantile(e, 0.9)), 3) if e else None)
+            keep.append(round(float(np.mean(ek)), 3) if ek else None)
+            cnt = max(cnt, len(e))
+        errs[code] = {"mae_m": mae, "p90_m": p90, "keep_mae_m": keep, "n": cnt}
+    return {"method": "hybrid", "gains_cm_per_cms": out_g, "lag_days": lagd, "errors": errs,
+            "window": [days[test[0]], days[test[-1]]], "fit_days": len(issue), "test": "each month scored with gains from the other months",
+            "source": "research/2026-10-05_e7d_down.log"}
+
+
+def level7(p: dict, release_mcm: float, today_mcm: float, k: int, gains_cm: list) -> float | None:
+    """A point's level on day k of a plan (river7's method): below the dam its rating curve anchored on today's level; past
+    the diversion today's level + that day's gain × the release change that has reached it (m³/s)."""
+    h = p.get("h_now")
+    if h is None:
+        return None
+    if p["role"] == "below_dam":
+        r = p.get("rating")
+        if not r:
+            return None
+        loc = max(0.0, (p.get("q_now") or 0.0) - mcm_to_cms(today_mcm))
+        return h + level_at(r, mcm_to_cms(release_mcm) + loc) - level_at(r, mcm_to_cms(today_mcm) + loc)
+    return h + (gains_cm[k - 1] or 0.0) / 100.0 * (mcm_to_cms(release_mcm) - mcm_to_cms(today_mcm))
 
 
 METHODS = ("keep", "absolute", "anchored", "gain")
@@ -589,14 +702,14 @@ def build_state(c, case: str = "kaeng-krachan", now=None, rain7: dict | None = N
         dam_lo, dam_hi = cfg["dam_to_first_h"]
         w = _window(lags[code])
         f = fits.get(code)
-        h_now, h_k = _last_at(H[code], idx)
+        h_now, h_k = _last_at(H[code], idx, NOW_HOURS)
         points.append({**p, "name_th": m.get("name_th"), "agency": m.get("agency"), "bank": m.get("bank_msl"),
                        "lat": m.get("lat"), "lon": m.get("lon"),
                        "lag_h": lags[code], "lag_r": round(f[1], 2) if f else None,
                        "window": [w[0] + dam_lo, w[1] + dam_hi], "rating": rating,
-                       "q_now": _last(Q[code], idx), "h_now": h_now,
+                       "q_now": _last(Q[code], idx, NOW_HOURS), "h_now": h_now,
                        "h_time": (t0 + dt.timedelta(hours=h_k)).isoformat() if h_k is not None else None,
-                       "q_up_lagged": _last(Q[up[0]], idx - up[1]) if up else None})
+                       "q_up_lagged": _last(Q[up[0]], idx - up[1], NOW_HOURS) if up else None})
     dams = {r["dam_id"]: dict(r) for r in c.execute(
         """SELECT DISTINCT ON (dam_id) dam_id, agency, name_th, dam_date::text AS dam_date, storage_mcm, storage_pct, inflow_mcm,
                   released_mcm, spilled_mcm, level_m FROM dam_daily WHERE dam_id = ANY(%s) ORDER BY dam_id, dam_date DESC""",
@@ -655,6 +768,7 @@ def build_state(c, case: str = "kaeng-krachan", now=None, rain7: dict | None = N
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
             "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), **replay(q18, q10, q16, city, lags_cut, cut)},
+            "river7": river7(H, Q, t0, rel_daily, points),
             "data_request": DATA_REQUEST,
             "data_time": data_time.isoformat() if data_time else None, "built_at": now.isoformat()}
 

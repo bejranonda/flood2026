@@ -123,6 +123,8 @@ def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     assert "wgrp-h" in js and '<li class="item s-' in js and 'class="badge b-' in js and "อีก 7 วัน" in js
     assert "openDamSheet(i, false)" in js and "bindPopup" not in js
     assert "Math.round(p7)" in js  # the arrow follows the two percentages on the row, never "↗ 94 %" beside "94 %"
+    # E-7D-DOWN: plans name the downstream model they used; a tested one shows its error, not "untested"
+    assert "cmp.downstream" in js and "🟠 ท้ายน้ำ ±" in js and "st.river7" in js
 
 
 def test_the_real_settings_reach_the_impact_endpoints():
