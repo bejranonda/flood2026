@@ -153,3 +153,9 @@ def test_the_tab_assets_carry_a_content_hash_so_every_change_reaches_browsers_pa
     for name in ("impact.js", "impact.css"):
         h = hashlib.sha256((web / name).read_bytes()).hexdigest()[:10]
         assert f"/static/{name}?v={h}" in html, name
+
+
+def test_impact_mode_sends_the_origin_as_referer_so_osm_tiles_are_not_blocked():
+    # KI-300: Referrer-Policy same-origin stripped the Referer from tile requests; OSM's Thai edge answers 403 "Access
+    # blocked" to referer-less browsers (osm.wiki/Blocked). The origin alone is sent: the /impact path never leaves the site.
+    assert api.impact_page(PageReq()).headers.get("referrer-policy") == "strict-origin-when-cross-origin"

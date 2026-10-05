@@ -802,7 +802,7 @@ def impact_html(html: str) -> str:
 # The main app on a password page: never framed (clickjacking); scripts only from us and Leaflet's CDN (no inline
 # script); inline styles allowed because app.js builds some (D-100); tiles from OpenStreetMap; data only from us.
 IMPACT_PAGE_HEADERS = {
-    "X-Frame-Options": "DENY", "Referrer-Policy": "same-origin", "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy": "default-src 'self'; script-src 'self' https://unpkg.com; "
                                "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; "
                                "font-src https://fonts.gstatic.com; img-src 'self' data: https://unpkg.com "
