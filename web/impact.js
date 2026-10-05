@@ -27,7 +27,7 @@
   const api = (path, opts) => fetch(path, Object.assign({ credentials: "same-origin", cache: "no-store" }, opts || {}));
   const narrow = () => window.innerWidth <= 800;
 
-  const state = { authed: false, cases: [], dams: null, sel: "dams", kase: {} };
+  const state = { authed: false, cases: [], dams: null, sel: "dams", kase: {}, loadedAt: 0 };
   const layers = { dams: null, kase: null };
   let damMarkers = [];
   // app.js's map: it may exist already (a classic script's top-level binding) or announce itself later
@@ -45,6 +45,8 @@
   function msg(text) { view.innerHTML = '<p class="imp-card">' + esc(text) + "</p>"; }
 
   async function show() {
+    // the state rebuilds hourly: a page left open reloads what it shows after 30 minutes
+    if (state.authed && Date.now() - state.loadedAt > 30 * 60 * 1000) { state.authed = false; state.kase = {}; }
     if (!state.authed && !(await loadAll())) return;
     render();
   }
@@ -57,6 +59,7 @@
     if (!r.ok) { msg("โหลดข้อมูลไม่สำเร็จ (" + r.status + ")"); return false; }
     state.cases = (await r.json()).cases || [];
     state.authed = true;
+    state.loadedAt = Date.now();
     $("#imp-logout").hidden = false;
     try { const d = await api("/api/impact/dams"); state.dams = d.ok ? await d.json() : null; } catch (e) { state.dams = null; }
     drawDams();
@@ -91,8 +94,7 @@
     try { await api("/api/impact/logout", { method: "POST" }); } catch (e) { /* the cookie expires by itself */ }
     state.authed = false; state.dams = null; state.kase = {}; state.sel = "dams";
     for (const k of Object.keys(layers)) { if (layers[k]) { layers[k].remove(); layers[k] = null; } }
-    setTab("impact");
-    showLogin("ออกจากระบบแล้ว");
+    showLogin("ออกจากระบบแล้ว");  // no setTab here: its session check would race this message
   }
 
   function render() {
