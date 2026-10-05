@@ -178,3 +178,19 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-pop-table th:first-child, .imp-pop-table td:first-child { text-align: left; }
 .imp-pop-table td.imp-neg { color: var(--critical); font-weight: 700; }
 
+
+/* v0.31 dams list in the station list's grammar (owner: "too much info each card") — groups, two-line rows, tap → sheet */
+#view-impact .imp-grp { margin: 10px 0 4px; }
+#view-impact .imp-grp .wgrp-h { margin: 0 0 6px; }
+#view-impact .imp-dams .item.imp-dam { padding: 8px 12px; margin-bottom: 6px; }
+#view-impact .imp-dams .item .meta { font-variant-numeric: tabular-nums; }
+.s-below { border-left-color: #8d6e63; } .b-below { background: #8d6e63; }
+#view-impact .imp-case-tag { font: inherit; font-size: 12px; font-weight: 600; color: var(--accent); background: #e8f0fb; border: 0;
+  border-radius: 10px; padding: 1px 8px; margin-left: 4px; cursor: pointer; white-space: nowrap; }
+.imp-sheet .imp-chip-static { cursor: default; }
+.imp-sheet .imp-chips-num { margin: 6px 0 4px; }
+.imp-sheet .imp-h3 { font-size: 16px; margin: 12px 0 4px; }
+.imp-sheet .imp-line { font-size: 14px; margin: 4px 0; }
+.imp-sheet .imp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.imp-sheet .imp-actions .btn { min-height: 40px; }
+.imp-sheet .badge { vertical-align: middle; }

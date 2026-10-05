@@ -286,3 +286,14 @@ def test_a_dams_year_also_merges_inflow_and_the_curves_are_looked_up_for_the_day
     ahead = impact.curves_ahead(curves, "2026-10-05", 2)
     assert ahead == {"upper": [590.0, 588.0], "lower": [203.0, 202.0], "dates": ["2026-10-06", "2026-10-07"]}
     assert impact.curves_ahead(curves, "2028-02-28", 2)["upper"] == [600.0, None]  # 29 Feb listed, 1 Mar not
+
+
+def test_a_largest_since_claim_needs_enough_years_and_says_whose_records():
+    # live 2026-10-05: "มากกว่าทุกวันในปี 2568–2568 (เท่าที่ สสน. มีข้อมูล)" — one year fetched so far, and HII has more
+    one = {2025: (3.0, "2025-09-01")}
+    assert impact.release_note(3.66, "2026-10-05", one) is None
+    seven = {y: (2.0, f"{y}-09-01") for y in range(2019, 2026)}
+    note = impact.release_note(3.66, "2026-10-05", seven)
+    assert "2562–2568" in note and "ข้อมูลในระบบเริ่มปี 2562" in note and "เท่าที่ สสน. มีข้อมูล" not in note
+    two_ago = {**seven, 2024: (4.0, "2024-09-01")}  # the last year that released more was 2024: one year since is not news
+    assert impact.release_note(3.66, "2026-10-05", two_ago) is None

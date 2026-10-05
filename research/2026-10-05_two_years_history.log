@@ -1,0 +1,46 @@
+ Container floodwatch-worker-run-dc421a0f798c Creating 
+ Container floodwatch-worker-run-dc421a0f798c Created 
+… 10
+… 20
+… 30
+… 40
+
+=== sample 1: 46 gauges with two years (HII gave an extra year for 49 of 60)
+
+=== +12 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change -21.3% (per-gauge mean -13.0%) · served a model   27 (star   27) · held ≥10 %   19 · worse   2
+star, 2 years          n   46 · error vs no-change -19.6% (per-gauge mean -11.4%) · served a model   24 (star   23) · held ≥10 %   14 · worse   3
+
+=== +24 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change  -9.0% (per-gauge mean  -7.5%) · served a model   22 (star   17) · held ≥10 %   13 · worse   1
+star, 2 years          n   46 · error vs no-change  -8.3% (per-gauge mean  -7.3%) · served a model   21 (star   16) · held ≥10 %   13 · worse   2
+
+=== +48 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change  -8.5% (per-gauge mean  -5.1%) · served a model   21 (star   16) · held ≥10 %   15 · worse   3
+star, 2 years          n   46 · error vs no-change  -7.6% (per-gauge mean  -5.2%) · served a model   21 (star   15) · held ≥10 %   14 · worse   2
+
+=== +72 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change  -8.5% (per-gauge mean  -4.7%) · served a model   20 (star   17) · held ≥10 %   14 · worse   4
+star, 2 years          n   46 · error vs no-change  -8.8% (per-gauge mean  -6.1%) · served a model   20 (star   16) · held ≥10 %   15 · worse   3
+… 10
+… 20
+… 30
+… 40
+
+=== sample 2: 46 gauges with two years (HII gave an extra year for 48 of 60)
+
+=== +12 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change -18.1% (per-gauge mean -14.8%) · served a model   32 (star   31) · held ≥10 %   23 · worse   5
+star, 2 years          n   46 · error vs no-change -20.6% (per-gauge mean -15.8%) · served a model   32 (star   31) · held ≥10 %   22 · worse   7
+
+=== +24 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change -18.3% (per-gauge mean -12.9%) · served a model   27 (star   21) · held ≥10 %   18 · worse   1
+star, 2 years          n   46 · error vs no-change -17.9% (per-gauge mean -12.2%) · served a model   27 (star   24) · held ≥10 %   18 · worse   4
+
+=== +48 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change -16.5% (per-gauge mean -10.4%) · served a model   23 (star   19) · held ≥10 %   14 · worse   2
+star, 2 years          n   46 · error vs no-change -15.2% (per-gauge mean  -9.2%) · served a model   26 (star   22) · held ≥10 %   15 · worse   5
+
+=== +72 h (chosen on the first half, scored on the second)
+star, 1 year (same inputs) n   46 · error vs no-change -10.4% (per-gauge mean  -8.7%) · served a model   21 (star   18) · held ≥10 %   13 · worse   2
+star, 2 years          n   46 · error vs no-change -13.4% (per-gauge mean  -8.1%) · served a model   28 (star   25) · held ≥10 %   17 · worse   4

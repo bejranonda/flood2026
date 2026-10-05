@@ -75,3 +75,24 @@ def test_the_tested_models_ship_with_the_package_and_carry_their_evidence():
     for m in models.values():
         assert len(m["beta"]) == 8 and set(m["op_gain"]) == {"1", "3", "7"} and set(m["bias"]) == {str(k) for k in range(1, 8)}
         assert set(m["band_model"]) == set(m["band_persist"]) == {str(k) for k in range(1, 8)} and m["test_days"] >= 30 and "research/" in m["source"]
+
+
+def test_dams_without_a_tested_model_get_a_persistence_outlook_from_their_own_inflow():
+    import datetime as dt
+    inflow = {(dt.date(2026, 1, 1) + dt.timedelta(days=k)).isoformat(): 10.0 + (k % 5) for k in range(270)}
+    m = R.persistence_model(41, "ป่าสักชลสิทธิ์", inflow)
+    assert m["beta"] is None and m["method"] == "persistence" and set(m["band_persist"]) == {str(h) for h in range(1, 8)}
+    assert m["test_days"] >= 260 and m["band_persist"]["7"][0] < 0 < m["band_persist"]["7"][1]
+    path = R.inflow_path(m, inflow_today=34.4, rain_past7=[0.0] * 7, rain_fc7=[0.0] * 7)
+    assert all(p["method"] == "persistence" and p["mid"] == 34.4 for p in path)
+    assert R.persistence_model(41, "x", dict(list(inflow.items())[:100])) is None  # too little history: no outlook
+
+
+def test_a_persistence_outlook_needs_no_rain_and_says_it_is_a_projection():
+    import datetime as dt
+    inflow = {(dt.date(2026, 1, 1) + dt.timedelta(days=k)).isoformat(): 30.0 for k in range(270)}
+    m = R.persistence_model(41, "ป่าสักชลสิทธิ์", inflow)
+    dam = {"storage_mcm": 957.0, "inflow_mcm": 34.4, "released_mcm": 43.2, "dam_date": "2026-10-05"}
+    o = R.outlook(m, dam, None, curves7={"upper": [465.0] * 7, "lower": [132.0] * 7}, normal=870.0)
+    assert o and abs(o["days"][6]["storage"] - (957.0 + 7 * (34.4 - 43.2))) < 0.05 and o["methods"] == {"1-3": "persistence", "4-7": "persistence"}
+    assert "ถ้าไหลเข้าและระบายเท่าวันนี้" in o["note"] and o["test"]["model"] is False

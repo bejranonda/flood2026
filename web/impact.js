@@ -112,71 +112,128 @@
     } else renderCase(state.sel);
   }
 
-  /* ---------- national dams at risk ---------- */
+  /* ---------- national dams at risk — the station list's grammar: groups with ⓘ, two-line rows, tap → sheet ---------- */
+  const GROUPS = [["above", "เหนือเส้นควบคุมบน", "warning", "ปริมาตรสูงกว่าเส้นควบคุมบน (rule curve ของ สสน.) ของวันที่รายงาน"],
+    ["between", "อยู่ระหว่างเส้นควบคุม", "normal", "ปริมาตรอยู่ระหว่างเส้นควบคุมบนและล่างของวันที่รายงาน"],
+    ["below", "ต่ำกว่าเส้นควบคุมล่าง", "below", "ปริมาตรต่ำกว่าเส้นควบคุมล่างของวันที่รายงาน — น้ำน้อยกว่าแผน"],
+    [null, "ไม่มีเส้นควบคุม", "unknown", "สสน. ไม่มีเส้นควบคุมของเขื่อนนี้ (เช่น เขื่อนทดน้ำหรือเขื่อนน้ำไหลผ่าน)"]];
+  const info = (tip, label) => (typeof infoBtn === "function" ? infoBtn(tip, label)
+    : '<button type="button" class="conf-badge" title="' + esc(tip) + '" aria-label="' + esc(label) + '">ⓘ</button>');
+  const qn = (x) => (x == null ? "–" : num(x, Math.abs(x) >= 1 ? 1 : 2));  // ล้าน ลบ.ม.(/วัน): 1 decimal, 2 below 1
+  const bare = (n) => esc(String(n || "").replace(/^เขื่อน/, ""));
+
+  function damPct(x, storage) {
+    const n = x.normal_mcm;
+    return n ? (100 * storage) / n : null;
+  }
+
   function renderDams() {
     const body = $("#imp-body"), d = state.dams;
     if (!d || !d.dams || !d.dams.length) { body.innerHTML = '<p class="muted">ยังไม่มีข้อมูลเขื่อน — ระบบคำนวณใหม่ทุกชั่วโมง</p>'; return; }
-    const count = (p) => d.dams.filter((x) => x.position === p).length;
-    const latest = d.dams.map((x) => (x.records[0] || {}).dam_date).filter(Boolean).sort().pop();
-    body.innerHTML = '<p class="imp-sum">เขื่อนขนาดใหญ่ ' + num(d.dams.length, 0) + " แห่ง · เหนือเส้นควบคุมบน <b>" +
-      num(count("above"), 0) + "</b> · ต่ำกว่าเส้นควบคุมล่าง " + num(count("below"), 0) + " · ข้อมูลรายวันจาก สสน. " + day(latest) + "</p>" +
-      (d.curves < d.records ? '<p class="muted">เส้นควบคุมยังโหลดไม่ครบ (' + num(d.curves, 0) + " จาก " + num(d.records, 0) +
-        " ระเบียน — ทยอยดึงจาก สสน. ชั่วโมงละไม่เกิน 10 ครั้ง)</p>" : "") +
-      '<ul class="list imp-dams">' + d.dams.map(damItem).join("") + "</ul>" +
-      '<p class="muted">ตำแหน่งเทียบเส้นควบคุมระดับน้ำ (rule curve) ของ สสน. ณ วันที่รายงาน — เป็นข้อเท็จจริง ไม่ใช่คำเตือน;' +
-      " ชป. และ กฟผ. แสดงแยกกัน ไม่รวมตัวเลข</p>";
-    body.querySelectorAll("[data-dam]").forEach((li) => li.addEventListener("click", (e) => {
-      if (e.target.closest("[data-case]")) return;
-      focusDam(Number(li.dataset.dam));
-    }));
-    body.querySelectorAll("[data-case]").forEach((b) => b.addEventListener("click", () => { state.sel = b.dataset.case; render(); }));
+    const dates = d.dams.map((x) => (x.records[0] || {}).dam_date).filter(Boolean);
+    const latest = dates.slice().sort().pop();
+    const withOutlook = d.dams.filter((x) => x.outlook).length;
+    const noCurve = d.records - d.curves;
+    const head = '<p class="sumline">' + num(d.dams.length, 0) + " เขื่อน · ข้อมูลรายวัน " + day(latest) + " · ล้าน ลบ.ม.(/วัน) " +
+      info("ข้อมูลรายวันจาก สสน. (กรมชลประทาน, กฟผ.) · เส้นควบคุมของ สสน." + (noCurve > 0 ? " — " + num(noCurve, 0) + " ระเบียนไม่มีเส้นควบคุมที่ต้นทาง" : "") +
+        " · แนวโน้ม 7 วัน " + num(withOutlook, 0) + " เขื่อน (แบบจำลองที่ผ่านการทดสอบ หรือ * คงค่าวันนี้) · ตัวเลขบนการ์ด: เข้า = น้ำไหลเข้า, ออก = ระบาย, % = ปริมาตรเทียบปริมาตรปกติ" +
+        " · * = ถ้าไหลเข้าและระบายเท่าวันนี้ (ยังไม่มีแบบจำลองที่ผ่านการทดสอบ) · ชป. และ กฟผ. แยกกัน ไม่รวมตัวเลข", "ที่มาและวิธีอ่าน") + "</p>";
+    let html = head, i = 0;
+    const index = [];
+    for (const [pos, title, cls, tip] of GROUPS) {
+      const members = d.dams.map((x, k) => [x, k]).filter(([x]) => (x.position || null) === pos);
+      if (!members.length) continue;
+      html += '<section class="wgrp imp-grp"><div class="wgrp-h"><b>' + title + '</b> <small class="muted">' + num(members.length, 0) + "</small> " +
+        info(tip, title) + '</div><ul class="list imp-dams">' + members.map(([x, k]) => damItem(x, k, cls, latest)).join("") + "</ul></section>";
+      i += members.length;
+      index.push(...members.map(([, k]) => k));
+    }
+    body.innerHTML = html;
+    body.querySelectorAll("[data-dam]").forEach((li) => {
+      const open = (e) => { if (e.target.closest(".conf-badge, [data-case]")) return; openDamSheet(Number(li.dataset.dam), true); };
+      li.addEventListener("click", open);
+      li.addEventListener("keydown", (e) => { if (e.key === "Enter") open(e); });
+    });
+    body.querySelectorAll("[data-case]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); state.sel = b.dataset.case; render(); }));
+  }
+
+  function damItem(x, i, cls, latest) {
+    const r = x.records[0] || {};
+    const pct = r.storage_pct != null ? r.storage_pct : damPct(x, r.storage_mcm);
+    const o = x.outlook && x.outlook.days && x.outlook.days.length ? x.outlook.days[6] : null;
+    const first = x.outlook && x.outlook.days ? x.outlook.days[0] : null;
+    let trend = "";
+    if (o && first) {
+      const p7 = damPct(x, o.storage);
+      const arrow = o.storage > (r.storage_mcm || 0) + 0.5 ? "↗" : o.storage < (r.storage_mcm || 0) - 0.5 ? "↘" : "→";
+      const held = x.outlook.test && x.outlook.test.model === false;
+      trend = " · 7 วัน " + arrow + " " + (p7 != null ? num(p7, 0) + " %" : num(o.storage, 0)) + (held ? "*" : "");
+    }
+    const stale = r.dam_date && latest && r.dam_date < latest ? " · ⏳ " + day(r.dam_date) : "";
+    return '<li class="item s-' + cls + ' imp-dam" data-dam="' + i + '" tabindex="0"><div class="row"><span class="name">' + bare(x.name_th) +
+      (x.case ? ' <button type="button" class="imp-case-tag" data-case="' + esc(x.case) + '">กรณีวิเคราะห์ ›</button>' : "") +
+      '</span><span class="badge b-' + cls + '">' + (pct != null ? num(pct, 0) + " %" : "–") + "</span></div>" +
+      '<div class="meta">เข้า ' + qn(r.inflow_mcm) + " · ออก " + qn(r.released_mcm) + trend + stale + "</div></li>";
   }
 
   function recLine(r) {
-    return '<span class="imp-rec">' + agency(r.agency) + " " + day(r.dam_date) + ": " + num(r.storage_pct, 0) + " % · ระบาย " +
-      num(r.released_mcm, 2) + " ล้าน ลบ.ม./วัน" + (r.released_mcm == null ? "" : " (≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วินาที)") + "</span>";
+    return agency(r.agency) + " " + day(r.dam_date) + ": " + num(r.storage_mcm, 0) + " (" + num(r.storage_pct, 0) + " %) · ระบาย " +
+      qn(r.released_mcm) + (r.released_mcm == null ? "" : " (≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วินาที)");
   }
 
-  function outlookLine(o, compact) {
-    if (!o || !o.days || !o.days.length) return "";
-    const last = o.days[6], first = o.days[0];
-    const meth = o.methods && o.methods["1-3"] === "model" ? "แบบจำลองฝน" : "คงน้ำเข้าวันนี้";
-    const trend = last.storage > first.storage + 0.5 ? "↗" : last.storage < first.storage - 0.5 ? "↘" : "→";
-    const curve = last.above_upper === true ? " · ยังเหนือเส้นควบคุม" : last.above_upper === false ? " · ใต้เส้นควบคุม" : "";
-    return '<div class="imp-outlook">📅 7 วัน: อ่าง ' + trend + " " + num(last.storage, 0) + " <small>(" + num(last.storage_lo, 0) + "–" + num(last.storage_hi, 0) + ")</small>" +
-      (compact ? "" : " · ไหลเข้า " + num(first.inflow, 1) + "→" + num(last.inflow, 1)) + curve +
-      ' <button type="button" class="conf-badge" title="น้ำไหลเข้า: ' + meth + (o.methods && o.methods["4-7"] !== o.methods["1-3"] ? " (วันที่ 1–3) แล้ว" + (o.methods["4-7"] === "model" ? "แบบจำลอง" : "คงค่าวันนี้") + " (วันที่ 4–7)" : "") +
-      " · ทดสอบกับฝนคาดการณ์จริง " + esc(o.test && o.test.days) + " วัน: ดีกว่าคงค่าวันนี้ " + num(o.test && o.test.gain_3d, 0) + " % ที่ 3 วัน, " + num(o.test && o.test.gain_7d, 0) + " % ที่ 7 วัน · " + esc(o.note || "") + '">ⓘ</button></div>';
+  function damSheetHtml(x) {
+    const r = x.records[0] || {};
+    const g = GROUPS.find((gg) => gg[0] === (x.position || null)) || GROUPS[3];
+    const up = r.rule && r.rule.upper != null ? r.rule.upper : null;
+    const chip = (label, val, sub) => '<span class="chip imp-chip-static">' + label + " <b>" + val + "</b>" + (sub ? ' <small class="muted">' + sub + "</small>" : "") + "</span>";
+    const chips = '<div class="chips imp-chips-num">' + chip("ปริมาตร", num(r.storage_mcm, 0), r.storage_pct != null ? num(r.storage_pct, 0) + " %" : "") +
+      (up != null ? chip(r.storage_mcm > up ? "เหนือเส้นควบคุม" : "ใต้เส้นควบคุม", (r.storage_mcm > up ? "+" : "−") + num(Math.abs(r.storage_mcm - up), 0), "") : "") +
+      chip("ไหลเข้า", qn(r.inflow_mcm), "") + chip("ระบาย", qn(r.released_mcm), r.released_mcm != null ? "≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วิ" : "") + "</div>";
+    const o = x.outlook;
+    let out = "";
+    if (o && o.days && o.days.length) {
+      const d7 = o.days[6];
+      const meth = o.methods || {};
+      const mWord = (m) => (m === "model" ? "แบบจำลองฝน" : "คงค่าวันนี้");
+      const modelled = o.test && o.test.model !== false;
+      const tip = modelled ? "น้ำไหลเข้า: " + mWord(meth["1-3"]) + " (วันที่ 1–3), " + mWord(meth["4-7"]) + " (วันที่ 4–7) · ทดสอบกับฝนคาดการณ์จริง " +
+        (o.test && o.test.days) + " วัน: ดีกว่าคงค่าวันนี้ " + num(o.test && o.test.gain_3d, 0) + " % ที่ 3 วัน, " + num(o.test && o.test.gain_7d, 0) +
+        " % ที่ 7 วัน · " + (o.note || "") + " · ฝนในลุ่มน้ำ 7 วัน " + num(o.rain7_mm, 0) + " มม." : (o.note || "");
+      const p = { storage: o.days.map((d) => d.storage), storage_low: o.days.map((d) => d.storage_lo), storage_high: o.days.map((d) => d.storage_hi) };
+      const c = { upper: o.days.map((d) => d.upper), normal: x.normal_mcm, dates: o.days.map((d) => d.date) };
+      out = '<h3 class="imp-h3">7 วันข้างหน้า' + (modelled ? "" : ' <small class="muted">ถ้าเท่าวันนี้</small>') + " " + info(tip, "ที่มาของแนวโน้ม") + "</h3>" +
+        '<p class="imp-line">อ่าง ' + num(r.storage_mcm, 0) + " → <b>" + num(d7.storage, 0) + "</b> <small class=\"muted\">(" + num(d7.storage_lo, 0) + "–" + num(d7.storage_hi, 0) + ")</small>" +
+        (d7.above_upper === true ? " · ยังเหนือเส้นควบคุม" : d7.above_upper === false ? " · ใต้เส้นควบคุม" : "") + " · ระบายเท่าวันนี้</p>" +
+        chartSvg(p, c) +
+        '<details><summary>รายวัน</summary><div class="imp-scroll"><table><thead><tr><th scope="col">วัน</th><th scope="col">ไหลเข้า</th><th scope="col">อ่าง (ช่วง)</th><th scope="col">เส้นบน</th></tr></thead><tbody>' +
+        o.days.map((dd) => '<tr><th scope="row">' + esc(dayShort(dd.date)) + "</th><td>" + qn(dd.inflow) + (dd.method === "model" ? "" : "*") + "</td><td>" + num(dd.storage, 0) +
+          " <small>" + num(dd.storage_lo, 0) + "–" + num(dd.storage_hi, 0) + "</small></td><td" + (dd.above_upper ? ' class="imp-neg"' : "") + ">" + num(dd.upper, 0) + "</td></tr>").join("") +
+        '</tbody></table></div><p class="muted">* คงค่าวันนี้ (แบบจำลองไม่ผ่านเกณฑ์ที่ช่วงนี้)</p></details>';
+    } else {
+      out = '<p class="muted">ยังไม่มีแนวโน้ม 7 วัน — แบบจำลองน้ำไหลเข้าของเขื่อนนี้ยังไม่ผ่านการทดสอบ หรือยังไม่มีประวัติน้ำไหลเข้า</p>';
+    }
+    const others = x.records.slice(1).map((rr) => '<p class="imp-line muted">' + recLine(rr) + "</p>").join("");
+    const note = x.records.map((rr) => rr.release_note).filter(Boolean)[0];
+    return '<div class="imp-dam-sheet"><h2>' + damName(x.name_th) + '</h2><p class="muted">' + agency(r.agency) + " · ข้อมูลรายวัน " + day(r.dam_date) +
+      ' · <span class="badge b-' + g[2] + '">' + g[1] + "</span></p>" + chips + out + others +
+      (note ? '<p class="imp-line">📌 ' + esc(note) + "</p>" : "") +
+      '<div class="imp-actions"><button type="button" class="btn" data-map="1">🗺️ ดูบนแผนที่</button>' +
+      (x.case ? '<button type="button" class="btn primary" data-case-open="' + esc(x.case) + '">เปิดกรณีวิเคราะห์ ›</button>' : "") + "</div></div>";
   }
 
-  function outlookTable(o) {
-    if (!o || !o.days) return "";
-    return '<div class="imp-pop-rec"><b>📅 7 วันข้างหน้า</b> <small>(' + esc(o.note || "") + ')</small><table class="imp-pop-table"><thead><tr><th>วัน</th><th>ไหลเข้า</th><th>อ่าง (ช่วง)</th><th>เส้นบน</th></tr></thead><tbody>' +
-      o.days.map((d) => "<tr><td>" + esc(dayShort(d.date)) + "</td><td>" + num(d.inflow, 1) + (d.method === "model" ? "" : "*") + "</td><td>" + num(d.storage, 0) +
-        " <small>" + num(d.storage_lo, 0) + "–" + num(d.storage_hi, 0) + "</small></td><td" + (d.above_upper ? ' class="imp-neg"' : "") + ">" + num(d.upper, 0) + "</td></tr>").join("") +
-      "</tbody></table><small>* คงค่าวันนี้ (แบบจำลองไม่ผ่านเกณฑ์ที่ช่วงนี้) · ล้าน ลบ.ม.(/วัน) · ฝน 7 วัน " + num(o.rain7_mm, 0) + " มม.</small></div>";
-  }
-
-  function damItem(x, i) {
-    const pos = POS[x.position];
-    const note = x.records.map((r) => r.release_note).filter(Boolean)[0];
-    return '<li class="item imp-dam ' + (pos ? pos[1] : "imp-unknown") + '" data-dam="' + i + '" tabindex="0">' +
-      '<div class="imp-dam-head"><b>' + damName(x.name_th) + '</b><span class="imp-pos">' + (pos ? pos[0] : "ยังไม่มีเส้นควบคุม") +
-      '</span></div><div class="meta">' + x.records.map(recLine).join("") + "</div>" + outlookLine(x.outlook, true) +
-      (note ? '<div class="imp-small">📌 ' + esc(note.split(" —")[0].split(";")[0]) + "</div>" : "") +
-      (x.case ? '<button type="button" class="btn imp-case-btn" data-case="' + esc(x.case) + '">เปิดกรณีวิเคราะห์ ›</button>' : "") + "</li>";
-  }
-
-  function damPopup(x) {
-    const pos = POS[x.position];
-    return '<div class="imp-pop"><b>' + damName(x.name_th) + "</b>" + (pos ? '<div class="imp-pop-pos ' + pos[1] + '">' + pos[0] + "</div>" : "") +
-      x.records.map((r) => '<div class="imp-pop-rec"><b>' + agency(r.agency) + "</b> · " + day(r.dam_date) +
-        "<br>ปริมาตร " + num(r.storage_mcm, 0) + " ล้าน ลบ.ม. (" + num(r.storage_pct, 1) + " %)" +
-        (r.rule ? "<br>เส้นควบคุมบน / ล่าง " + num(r.rule.upper, 0) + " / " + num(r.rule.lower, 0) : "") +
-        "<br>ระบาย " + num(r.released_mcm, 2) + " ล้าน ลบ.ม./วัน" + (r.released_mcm == null ? "" : " ≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วินาที") +
-        (r.inflow_mcm != null ? "<br>ไหลเข้า " + num(r.inflow_mcm, 2) + " ล้าน ลบ.ม./วัน" : "") +
-        (r.release_note ? '<div class="imp-small">' + esc(r.release_note) + "</div>" : "") + "</div>").join("") + outlookTable(x.outlook) +
-      '<div class="muted">ที่มา: สสน. (ชป., กฟผ.) · แนวโน้ม 7 วัน: FloodWatch (D-102)</div></div>';
+  function openDamSheet(i, pan) {
+    const x = state.dams && state.dams.dams[i];
+    if (!x) return;
+    openSheet(damSheetHtml(x), (box) => {
+      box.querySelector("[data-map]").addEventListener("click", () => {
+        document.getElementById("sheet").hidden = true;
+        if (narrow()) setTab("map");
+        setTimeout(() => { if (mapRef) mapRef.setView([x.lat, x.lon], 10); }, narrow() ? 120 : 0);
+      });
+      const cb = box.querySelector("[data-case-open]");
+      if (cb) cb.addEventListener("click", () => { document.getElementById("sheet").hidden = true; state.sel = cb.dataset.caseOpen; setTab("impact"); render(); });
+    });
+    if (pan && mapRef) mapRef.setView([x.lat, x.lon], 9);  // as a station row does: the map follows, the tab stays
   }
 
   function drawDams() {
@@ -184,21 +241,16 @@
     if (!mapRef.getPane("impact")) mapRef.createPane("impact").style.zIndex = 660;  // above the gauges: dams stay tappable
     if (layers.dams) layers.dams.remove();
     layers.dams = L.layerGroup();
-    damMarkers = state.dams.dams.map((x) => {
+    damMarkers = state.dams.dams.map((x, i) => {
       const pos = POS[x.position];
       const icon = L.divIcon({ className: "imp-dam-icon " + (pos ? pos[1] : "imp-unknown"), html: "◆", iconSize: [20, 20] });
       return L.marker([x.lat, x.lon], { icon, pane: "impact", title: "เขื่อน" + x.name_th, keyboard: true })
-        .bindPopup(damPopup(x), { maxWidth: 280 }).addTo(layers.dams);
+        .on("click", () => openDamSheet(i, false)).addTo(layers.dams);  // as a gauge marker does: the sheet, not a popup
     });
     layers.dams.addTo(mapRef);
   }
 
-  function focusDam(i) {
-    const x = state.dams && state.dams.dams[i];
-    if (!mapRef || !x) return;
-    if (narrow()) setTab("map");
-    setTimeout(() => { mapRef.setView([x.lat, x.lon], 10); if (damMarkers[i]) damMarkers[i].openPopup(); }, narrow() ? 120 : 0);
-  }
+
 
   /* ---------- a case (Kaeng Krachan first) — the app's grammar: chips, one ★ card, one-line rows, sheets ---------- */
   function openSheet(html, onOpen) {
@@ -428,23 +480,24 @@
     // storage (mid, band) against the upper rule curve and the normal storage, 7 days; SVG attributes only (no inline
     // styles). The y-range follows the data so a 50-unit fall is visible; ticks at the left, the legend in HTML below.
     const W = 340, H = 140, L = 46, R = 10, T = 10, B = 22, n = p.storage.length;
-    const vals = [].concat(p.storage, p.storage_low, p.storage_high, cmp.upper);
+    const hasUpper = (cmp.upper || []).every((v) => v != null);
+    const vals = [].concat(p.storage, p.storage_low, p.storage_high, hasUpper ? cmp.upper : []);
     let lo = Math.min(...vals), hi = Math.max(...vals);
-    if (cmp.normal >= lo - 40 && cmp.normal <= hi + 40) { lo = Math.min(lo, cmp.normal); hi = Math.max(hi, cmp.normal); }
+    if (cmp.normal != null && cmp.normal >= lo - 40 && cmp.normal <= hi + 40) { lo = Math.min(lo, cmp.normal); hi = Math.max(hi, cmp.normal); }
     lo = Math.floor((lo - 5) / 10) * 10; hi = Math.ceil((hi + 5) / 10) * 10;
     const x = (i) => L + (i * (W - L - R)) / (n - 1), y = (v) => T + (H - T - B) - ((v - lo) * (H - T - B)) / (hi - lo);
     const line = (arr) => arr.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1)).join(" ");
     const band = line(p.storage_high) + " " + p.storage_low.map((v, i) => x(n - 1 - i).toFixed(1) + "," + y(p.storage_low[n - 1 - i]).toFixed(1)).join(" ");
     const tick = (v) => "<line x1=\"" + (L - 4) + "\" x2=\"" + (W - R) + "\" y1=\"" + y(v).toFixed(1) + "\" y2=\"" + y(v).toFixed(1) + "\" stroke=\"#e3e7ec\" stroke-width=\"1\"></line>" +
       "<text x=\"" + (L - 6) + "\" y=\"" + (y(v) + 3.5).toFixed(1) + "\" text-anchor=\"end\" font-size=\"10\" fill=\"#5b6573\">" + num(v, 0) + "</text>";
-    const normal = cmp.normal >= lo && cmp.normal <= hi ? "<line x1=\"" + L + "\" x2=\"" + (W - R) + "\" y1=\"" + y(cmp.normal).toFixed(1) + "\" y2=\"" + y(cmp.normal).toFixed(1) + "\" stroke=\"#c62828\" stroke-width=\"1.2\" stroke-dasharray=\"2 3\"></line>" : "";
+    const normal = cmp.normal != null && cmp.normal >= lo && cmp.normal <= hi ? "<line x1=\"" + L + "\" x2=\"" + (W - R) + "\" y1=\"" + y(cmp.normal).toFixed(1) + "\" y2=\"" + y(cmp.normal).toFixed(1) + "\" stroke=\"#c62828\" stroke-width=\"1.2\" stroke-dasharray=\"2 3\"></line>" : "";
     const days = [0, Math.floor((n - 1) / 2), n - 1].map((i) => "<text x=\"" + x(i).toFixed(1) + "\" y=\"" + (H - 6) + "\" text-anchor=\"" + (i === 0 ? "start" : i === n - 1 ? "end" : "middle") + "\" font-size=\"10\" fill=\"#5b6573\">" + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</text>").join("");
     return "<svg class=\"imp-svg\" viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"ปริมาตรอ่าง 7 วันเทียบเส้นควบคุม\">" +
       tick(lo) + tick(Math.round((lo + hi) / 20) * 10) + tick(hi) +
       "<polygon points=\"" + band + "\" fill=\"#1565c0\" fill-opacity=\"0.15\"></polygon>" +
-      "<polyline points=\"" + line(cmp.upper) + "\" fill=\"none\" stroke=\"#e46c0a\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></polyline>" + normal +
+      (hasUpper ? "<polyline points=\"" + line(cmp.upper) + "\" fill=\"none\" stroke=\"#e46c0a\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></polyline>" : "") + normal +
       "<polyline points=\"" + line(p.storage) + "\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"2.5\"></polyline>" + days + "</svg>" +
-      "<p class=\"imp-legend\"><span class=\"lg lg-st\">ปริมาตรอ่าง (ช่วงน้ำไหลเข้าต่ำ–สูง)</span><span class=\"lg lg-up\">เส้นควบคุมบน</span>" +
+      "<p class=\"imp-legend\"><span class=\"lg lg-st\">ปริมาตรอ่าง (ช่วงน้ำไหลเข้าต่ำ–สูง)</span>" + (hasUpper ? "<span class=\"lg lg-up\">เส้นควบคุมบน</span>" : "") +
       (normal ? "<span class=\"lg lg-no\">ปริมาตรปกติ " + num(cmp.normal, 0) + "</span>" : "") + "</p>";
   }
 

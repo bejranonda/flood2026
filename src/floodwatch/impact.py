@@ -196,6 +196,9 @@ def rule_curve_on(curves: dict | None, ymd: str | None) -> dict | None:
     return {"upper": up, "lower": lo} if up is not None and lo is not None else None
 
 
+MIN_YEARS_NO_HIGHER = 5
+
+
 def release_note(released_mcm: float, ymd: str, years: dict) -> str | None:
     """"Today's release is more than every day in years A–B; the last year that released more was C" — only over years
     fully present in `years` ({year: (highest daily release, its date)}, complete years only) and only when at least the
@@ -205,11 +208,13 @@ def release_note(released_mcm: float, ymd: str, years: dict) -> str | None:
     higher = [y for y in earlier if years[y][0] >= r]
     last = max(higher) if higher else None
     span = list(range((last + 1) if last else (earlier[0] if earlier else this_year), this_year))
-    if not span or not all(y in years for y in span) or (last is not None and last >= this_year - 1):
+    # news only over several complete years: ≥ 2 since a higher year, ≥ 5 when no year released more (our records may
+    # simply be short — the national back-fill fills a dam's years gradually)
+    if not span or not all(y in years for y in span) or len(span) < (2 if last is not None else MIN_YEARS_NO_HIGHER):
         return None
     what = f"ระบายวันนี้ {r:.2f} ล้าน ลบ.ม./วัน มากกว่าทุกวันในปี {span[0] + 543}–{span[-1] + 543}"
     return what + (f"; ปีล่าสุดที่ระบายมากกว่านี้คือ {last + 543} (สูงสุด {years[last][0]:.2f} ล้าน ลบ.ม./วัน"
-                   f" เมื่อ {th_date(years[last][1])})" if last else " (เท่าที่ สสน. มีข้อมูล)") + " — ข้อมูลรายวันจาก สสน."
+                   f" เมื่อ {th_date(years[last][1])})" if last else f" (ข้อมูลในระบบเริ่มปี {span[0] + 543})") + " — ข้อมูลรายวันจาก สสน."
 
 
 def curves_ahead(curves: dict | None, from_ymd: str | None, days: int = 7) -> dict | None:

@@ -28,11 +28,14 @@ with sync_playwright() as p:
         r["dam_markers"] = pg.locator(".imp-dam-icon").count()
         r["logout_visible"] = pg.is_visible("#imp-logout")
         pg.screenshot(path=f"{OUT}/tab_{name}_dams.png", full_page=False)
-        # a dam card opens its popup on the map (on phones the map tab)
-        pg.locator(".imp-dams .item").first.click(); pg.wait_for_timeout(1200)
+        # a dam row opens its sheet, as a station row does (v0.31; was the map popup)
+        pg.locator(".imp-dams .item").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-dam-sheet", timeout=8000)
         r["after_card_tab"] = pg.evaluate("document.body.dataset.tab")
-        r["popup"] = pg.inner_text(".leaflet-popup-content")[:160] if pg.locator(".leaflet-popup-content").count() else None
+        r["popup"] = pg.inner_text("#detail .imp-dam-sheet")[:160]
+        r["dam_rows"] = {"h_median": pg.evaluate("(() => { const h = [...document.querySelectorAll('.imp-dams .item')].map(c => c.getBoundingClientRect().height).sort((a,b)=>a-b); return h[Math.floor(h.length/2)]; })()"),
+                         "groups": pg.locator("#imp-body .imp-grp").count()}
         pg.screenshot(path=f"{OUT}/tab_{name}_popup.png", full_page=False)
+        pg.click("#detail .close"); pg.wait_for_timeout(300)
         # the case
         pg.click('.tabs [data-tab="impact"]'); pg.wait_for_timeout(500)
         pg.click('[data-imp="kaeng-krachan"]'); pg.wait_for_selector("#imp-sc", timeout=20000)
