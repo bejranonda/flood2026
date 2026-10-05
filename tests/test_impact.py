@@ -139,3 +139,9 @@ def test_the_value_shown_now_comes_with_its_hour():
     x = np.array([1.0, 2.0, np.nan, np.nan])
     assert impact._last_at(x, 3) == (2.0, 1)
     assert impact._last_at(np.array([np.nan] * 10), 9) == (None, None)  # nothing in the last 6 hours: say so
+
+
+def test_fixed_page_text_carries_no_numbers_that_go_stale():
+    # today's values (release 10.8 vs 3.04, the year's highest flow 143) belong in the live state, not in fixed text
+    text = " ".join(x["th"] + x["why"] for x in impact.DATA_REQUEST)
+    assert not any(v in text for v in ("10.8", "3.04", "143"))

@@ -88,7 +88,7 @@
       day(d.dam_date) + "</small></h2><div class=\"kv\">" +
       box("ระบายรวม", d.released_mcm, 2, "ล้าน ลบ.ม./วัน", cms(d.released_mcm)) +
       box("น้ำไหลเข้าอ่าง", d.inflow_mcm, 2, "ล้าน ลบ.ม./วัน", cms(d.inflow_mcm)) +
-      box("ปริมาตรอ่าง", d.storage_mcm, 1, "ล้าน ลบ.ม.", d.storage_pct == null ? "" : num(d.storage_pct, 1) + " % ของความจุ") +
+      box("ปริมาตรอ่าง", d.storage_mcm, 1, "ล้าน ลบ.ม.", d.storage_pct == null ? "" : num(d.storage_pct, 1) + " %") +
       box("ระบายทางน้ำล้น", d.spilled_mcm, 2, "ล้าน ลบ.ม./วัน", "") + "</div>" +
       (e ? '<p class="note">กฟผ. รายงานเขื่อนเดียวกัน (' + day(e.dam_date) + "): ระบาย " + num(e.released_mcm, 2) +
         " ล้าน ลบ.ม./วัน, " + num(e.storage_pct, 1) + " % — ไม่ตรงกับกรมชลประทาน หน้านี้ใช้ตัวเลขกรมชลประทาน" +
@@ -124,8 +124,8 @@
       "</ul></section>";
   }
 
-  function valTable(P, key) {
-    const body = Object.keys(P).map((code) => {
+  function valTable(P, key, order) {
+    const body = order.map((code) => {
       const p = P[code], ms = p[key];
       if (!ms) return "";
       const best = Math.min.apply(null, METHODS.map((m) => ms[m[0]]));
@@ -143,13 +143,14 @@
     const P = v.points || {};
     const b18 = st.points.find((p) => p.code === "B.18") || {};
     const qmax = b18.rating ? b18.rating.qmax : null;
-    const gains = Object.keys(P).map((c) => esc(c) + " " + num(P[c].gain_cm_per_cms, 2)).join(", ");
+    const order = st.points.map((p) => p.code).filter((c) => P[c]);  // down the river, not alphabetical
+    const gains = order.map((c) => esc(c) + " " + num(P[c].gain_cm_per_cms, 2)).join(", ");
     return '<section class="card" id="val"><h2>ทดสอบย้อนหลัง <small>' + (v.whatif_ready ? "ผ่านเกณฑ์" : "ยังไม่ผ่านเกณฑ์") +
       "</small></h2>" +
       '<p class="muted">หา rating curve เวลาเดินทาง และค่าตอบสนอง จากข้อมูลก่อน ' + day(v.from) +
       " แล้วทดสอบกับช่วงหลังจากนั้น (ทุก 3 ชม.) โดยใช้น้ำที่วัดได้ที่ B.18 แทนการระบาย ตัวเลข = ความคลาดเคลื่อนเฉลี่ยของระดับน้ำ (ซม.)" +
-      " ณ เวลาที่น้ำเดินทางถึง ช่องสีเขียว = ดีที่สุด</p>" + valTable(P, "methods") +
-      "<details><summary>เฉพาะช่วงที่น้ำที่ B.18 เปลี่ยน ≥ 15 ลบ.ม./วินาที</summary>" + valTable(P, "methods_big") + "</details>" +
+      " ณ เวลาที่น้ำเดินทางถึง ช่องสีเขียว = ดีที่สุด</p>" + valTable(P, "methods", order) +
+      "<details><summary>เฉพาะช่วงที่น้ำที่ B.18 เปลี่ยน ≥ 15 ลบ.ม./วินาที</summary>" + valTable(P, "methods_big", order) + "</details>" +
       '<ul class="facts"><li>ค่าตอบสนองที่เรียนรู้ (ซม. ต่อ 1 ลบ.ม./วินาทีที่ B.18): ' + gains + "</li>" +
       "<li>เกณฑ์เปิดตาราง what-if: วิธีใดวิธีหนึ่งต้องคลาดเคลื่อนน้อยกว่า “คงระดับวันนี้” อย่างน้อย 10 % ทั้งที่ B.10 และ B.16" +
       " (รวมช่วงน้ำเปลี่ยนมาก เมื่อมีอย่างน้อย 30 ครั้ง) — คำนวณใหม่ทุกชั่วโมง</li></ul>" +

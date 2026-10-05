@@ -103,3 +103,10 @@ def test_the_real_settings_reach_the_impact_endpoints():
     # the other tests stub _impact_conf; this one runs it (a missing import gave 500s on every endpoint)
     pw, secret = api._impact_conf()
     assert isinstance(pw, str) and isinstance(secret, str)
+
+
+def test_the_replay_table_follows_the_river_and_reported_percent_is_shown_as_reported():
+    from pathlib import Path
+    js = (Path(api.__file__).resolve().parents[3] / "web" / "impact.js").read_text()
+    assert "st.points.map((p) => p.code).filter((c) => P[c])" in js  # B.10, B.16, B.15, PCH001 — not alphabetical
+    assert "ของความจุ" not in js  # the agencies' percentages are not defined the same way (RID 102 % vs EGAT 59 %)
