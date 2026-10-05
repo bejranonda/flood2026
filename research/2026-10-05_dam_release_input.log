@@ -1,0 +1,73 @@
+ Container floodwatch-worker-run-60a43c24ec62 Creating 
+ Container floodwatch-worker-run-60a43c24ec62 Created 
+ภูมิพล           on แม่น้ำปิง (line 0.2 km away, agree 0.987): 13 gauges below within 150 km
+อุบลรัตน์: no main-river line within 8.0 km (nearest 49.0)
+สิรินธร          on แม่น้ำมูล (line 7.3 km away, agree 0.951): 2 gauges below within 150 km
+จุฬาภรณ์: no main-river line within 8.0 km (nearest 44.8)
+ห้วยหลวง: no main-river line within 8.0 km (nearest 50.2)
+ลำนางรอง: no main-river line within 8.0 km (nearest 68.4)
+มูลบน            on แม่น้ำมูล (line 0.5 km away, agree 0.951): 5 gauges below within 150 km
+น้ำพุง: no main-river line within 8.0 km (nearest 67.4)
+ลำแชะ: no main-river line within 8.0 km (nearest 15.5)
+ป่าสักชลสิทธิ์   on แม่น้ำป่าสัก (line 0.1 km away, agree 0.982): 9 gauges below within 150 km
+สิริกิติ์        on แม่น้ำน่าน (line 0.9 km away, agree 0.979): 10 gauges below within 150 km
+แก่งกระจาน       on แม่น้ำเพชรบุรี (line 0.1 km away, agree 0.977): 10 gauges below within 150 km
+ศรีนครินทร์      on แม่น้ำแควใหญ่ (line 1.3 km away, agree 0.929): 5 gauges below within 150 km
+วชิราลงกรณ       on แม่น้ำแควน้อย (line 0.3 km away, agree 0.961): 11 gauges below within 150 km
+ปราณบุรี         on แม่น้ำปราณบุรี (line 1.0 km away, agree 1.0): 1 gauges below within 150 km
+กระเสียว: no main-river line within 8.0 km (nearest 41.3)
+ทับเสลา: no main-river line within 8.0 km (nearest 36.8)
+บางพระ: no main-river line within 8.0 km (nearest 27.2)
+แม่งัดสมบูรณ์ชล  on แม่น้ำปิง (line 4.9 km away, agree 0.987): 11 gauges below within 150 km
+หนองปลาไหล: no main-river line within 8.0 km (nearest 29.1)
+รัชชประภา: no main-river line within 8.0 km (nearest 25.8)
+บางลาง           on แม่น้ำปัตตานี (line 0.1 km away, agree 1.0): 12 gauges below within 150 km
+คลองสียัด: no main-river line within 8.0 km (nearest 44.6)
+ขุนด่านปราการชล  on แม่น้ำนครนายก (line 0.4 km away, agree 1.0): 5 gauges below within 150 km
+ประแสร์          on แม่น้ำประแสร์ (line 0.7 km away, agree 1.0): 2 gauges below within 150 km
+กิ่วลม           on แม่น้ำวัง (line 0.0 km away, agree 0.989): 8 gauges below within 150 km
+กิ่วคอหมา        on แม่น้ำวัง (line 0.5 km away, agree 0.989): 9 gauges below within 150 km
+แควน้อยบำรุงแดน: no main-river line within 8.0 km (nearest 27.7)
+นฤบดินทรจินดา: no main-river line within 8.0 km (nearest 22.3)
+แม่กวงอุดมธารา: no main-river line within 8.0 km (nearest 15.2)
+ลำปาว: no main-river line within 8.0 km (nearest 39.9)
+ลำตะคอง: no main-river line within 8.0 km (nearest 50.6)
+ลำพระเพลิง: no main-river line within 8.0 km (nearest 30.8)
+น้ำอูน: no main-river line within 8.0 km (nearest 41.3)
+แม่มอก: no main-river line within 8.0 km (nearest 35.2)
+gauges below a dam: 106 (of 767 with a forecast)
+… 10
+… 20
+… 30
+… 40
+… 50
+… 60
+… 70
+… 80
+… 90
+… 100
+gauges scored: 104 · release values present for 100% of hours (median gauge)
+
+=== +12 h (chosen on the first half, scored on the second)
+star (today)           n  104 · error vs no-change -18.5% (per-gauge mean -14.4%) · served a model   68 (star   60) · held ≥10 %   50 · worse   8
+star + dam release     n  104 · error vs no-change -17.2% (per-gauge mean -14.4%) · served a model   67 (star   58) · held ≥10 %   48 · worse   8
+star (today) ≤ 60 km   n   52 · error vs no-change -24.0% (per-gauge mean -15.1%) · served a model   35 (star   30) · held ≥10 %   27 · worse   5
+star + dam release ≤ 60 km n   52 · error vs no-change -22.7% (per-gauge mean -16.0%) · served a model   34 (star   29) · held ≥10 %   26 · worse   5
+
+=== +24 h (chosen on the first half, scored on the second)
+star (today)           n  104 · error vs no-change  -4.5% (per-gauge mean  -4.1%) · served a model   41 (star   36) · held ≥10 %   23 · worse   5
+star + dam release     n  104 · error vs no-change  -3.7% (per-gauge mean  -4.3%) · served a model   40 (star   35) · held ≥10 %   25 · worse   6
+star (today) ≤ 60 km   n   52 · error vs no-change  -4.7% (per-gauge mean  -3.8%) · served a model   22 (star   20) · held ≥10 %   14 · worse   3
+star + dam release ≤ 60 km n   52 · error vs no-change  -4.5% (per-gauge mean  -4.3%) · served a model   22 (star   20) · held ≥10 %   15 · worse   4
+
+=== +48 h (chosen on the first half, scored on the second)
+star (today)           n  104 · error vs no-change  -3.0% (per-gauge mean  -2.3%) · served a model   42 (star   37) · held ≥10 %   19 · worse  14
+star + dam release     n  104 · error vs no-change  -3.4% (per-gauge mean  -3.1%) · served a model   41 (star   36) · held ≥10 %   23 · worse  10
+star (today) ≤ 60 km   n   52 · error vs no-change  -4.1% (per-gauge mean  -3.6%) · served a model   19 (star   17) · held ≥10 %   11 · worse   6
+star + dam release ≤ 60 km n   52 · error vs no-change  -3.5% (per-gauge mean  -3.7%) · served a model   18 (star   16) · held ≥10 %   10 · worse   5
+
+=== +72 h (chosen on the first half, scored on the second)
+star (today)           n  104 · error vs no-change  -3.7% (per-gauge mean  -2.2%) · served a model   43 (star   40) · held ≥10 %   22 · worse  16
+star + dam release     n  104 · error vs no-change  -3.5% (per-gauge mean  -2.6%) · served a model   44 (star   41) · held ≥10 %   24 · worse  15
+star (today) ≤ 60 km   n   52 · error vs no-change  -3.3% (per-gauge mean  -3.1%) · served a model   20 (star   20) · held ≥10 %   11 · worse   8
+star + dam release ≤ 60 km n   52 · error vs no-change  -3.4% (per-gauge mean  -3.2%) · served a model   20 (star   20) · held ≥10 %   11 · worse   7

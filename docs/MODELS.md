@@ -310,6 +310,16 @@ daily forecasts, a year of archive available); WeatherNext 3 (research only).
 | Gulf tide tables (Navy) | our harmonic fit covers lower reaches | small gain expected |
 | Gate and pump operations | not in any feed we reached | ask BMA/RID (unchanged) |
 
+### 5e. Experiment E-DAM (2026-10-05): a dam's daily release as a `star` input — no gain
+106 gauges lie on a main river within 150 km below a RID dam with a release history (dams placed on HII's river lines with
+`rivers.chainage`: ภูมิพล → 13 gauges on the Ping, วชิราลงกรณ 11, สิริกิติ์ 10, แก่งกระจาน 10, ป่าสักฯ 9 …). Input: the
+previous Thai day's release (what is known that morning) as log changes over 1 and 3 days and against the 30-day mean.
+Honest protocol (q52_harness), 104 gauges scored: error vs "no change" 12 h −18.5 → −17.2 %, 24 h −4.5 → −3.7 %, 48 h
+−3.0 → −3.4 %, 72 h −3.7 → −3.5 %; within 60 km the same picture. Verdict: not adopted — a daily release known a day
+late adds nothing the gauge's own and upstream levels do not carry. Hourly releases (ONWR item 1) would be the real test.
+research/2026-10-05_dam_release_input.log. (The first run served the variant at 0 gauges: the time axis had been read as
+seconds instead of hours and every feature was NaN — a never-served variant is a bug signal, GUIDELINES §6c-8.)
+
 ### 9b. Reservoir inflow nationwide (owner 2026-10-05: "not only the water level … inflow, reservoir and much more")
 Daily inflow for every RID dam (HII) against ERA5 catchment rain (HydroBASINS lev08 upstream basins), fit 2018–2024,
 tested 2025–2026, recursive to 7 days with observed rain (an upper bound): the rain + yesterday's-inflow model beats

@@ -271,6 +271,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Test every assumption against persistence before it becomes an input** (the rain-driven inflow lost); show what
   failed as context, and say in the UI which side is tested and which is labelled.
 - **Styles scoped to a view do not reach the app's shared sheet**: content placed in `#sheet` needs its own classes.
+- **A variant that is never served at any horizon is a bug, not a result** (NaN features drop every training row): print the finite share of every new input; the harness's time axis is hours since the epoch (`forecast.hourly_grid`).
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
