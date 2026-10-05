@@ -2,6 +2,20 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.30.0 — 2026-10-05
+- **The impact tab's case view reads like the rest of the app (owner: "just click and see … not read so long"; D-102).**
+  Number chips (tap → the dam's sheet), one ★ card with three icon lines and one "why", one-line plan rows with
+  "เหมาะกับ…" badges, ➕ กำหนดเอง in a sheet, ✨, a river strip in the app's colours (tap → the station's own sheet),
+  and one ℹ️ collapsible whose buttons open the replay, the river table, the full comparison, the method and the data
+  request. First screen 768 characters, no long paragraphs. The disabled what-if card is gone.
+- **7-day reservoir outlook on the dams list (Q58, D-102).** For 17 dams a rain-driven inflow model (ERA5 catchment rain
+  + yesterday's inflow, 2018–2024) is used only at the horizons where it beat persistence by ≥ 10 % in an operational
+  test with archived rain *forecasts* (46 wet-season days); elsewhere today's inflow is held; storage by water balance
+  with each dam's monthly loss term; bands from the tested residuals; recomputed every 6 h; the test result sits in the ⓘ.
+- **Research (MODELS §5e–5h):** discharge forecasts for RID gauges beat persistence on both samples (a new parameter;
+  placement to be decided); upstream flow as an input and a dam's daily release as an input do not help; two years of
+  training history under test.
+
 ## v0.29.0 — 2026-10-05
 - **7-day release scenarios for Kaeng Krachan on the impact tab (owner request; D-101).** Plans are found by search (676
   constant, ramped and front-loaded releases), each judged on seven effects (city margin, worst point, overtopping,

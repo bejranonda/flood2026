@@ -334,14 +334,25 @@ and 48 h next to the upstream level changes. Sample 1: 12 h −24.9 → −23.1 
 72 h −10.8 → −9.3 %; sample 2 worse at every horizon (24 h −18.1 → −15.8 %, 72 h −12.7 → −8.1 %). Fails the two-sample
 gate (owner 2026-10-05). The level already carries the routing signal. research/2026-10-05_upstream_flow_input.log.
 
+### 5h. Experiment E-Q (2026-10-05): discharge forecasts for RID gauges — a new parameter that beats persistence
+The same ladder on log(1 + Q) for RID gauges with discharge (two disjoint samples, 97 and 94 gauges; production inputs):
+served error vs "no change" 12 h −11.3 / −13.1 %, 24 h −7.8 / −5.4 %, 48 h −7.1 / −7.2 %, 72 h −7.8 / −7.4 %; about half
+the gauges get a model (persistence's own 24 h error is ≈ 35 % of the flow). Consistent on both samples at every horizon
+→ a flow forecast is credible as a product parameter; where to show it is the owner's call (impact tab, RID sheets).
+research/2026-10-05_discharge_forecast.log.
+
 ### 9b. Reservoir inflow nationwide (owner 2026-10-05: "not only the water level … inflow, reservoir and much more")
 Daily inflow for every RID dam (HII) against ERA5 catchment rain (HydroBASINS lev08 upstream basins), fit 2018–2024,
 tested 2025–2026, recursive to 7 days with observed rain (an upper bound): the rain + yesterday's-inflow model beats
 persistence by ≥ 10 % at 7 days for 16 of 35 dams (the large and northern/western reservoirs), is level for 13, and worse
 for 6 (แก่งกระจาน, ทับเสลา, ลำพระเพลิง, บางลาง, ปราณบุรี, ป่าสักชลสิทธิ์). HII's day-of-year average beats persistence at
-7 days for the big dams too. Before any outlook is shown: (1) the same test with archived rain *forecasts* (Open-Meteo's
-historical-forecast or previous-runs APIs) for the operational skill; (2) a loss term where the balance leaks (−1.8 to
-−2.8 ล้าน ลบ.ม./วัน at the biggest reservoirs); (3) the gate per dam, as for gauges (Q58). KI-301, research/2026-10-05_dam_inflow_nationwide.log.
+7 days for the big dams too. **Operational test (research/2026-10-05_q58_operational.log):** Open-Meteo's previous-runs archive gives 92 days of
+lead-1…7 rain forecasts (2026-07-06…10-06); leads 3–7 run 35–50 % too wet, so a multiplicative bias per lead is learned on
+the first 46 days and the last 46 are scored. With *forecast* rain the model beats persistence by ≥ 10 % at 3 days for
+15 of 17 dams and at 7 days for 11; it fails at 3 days for แก่งกระจาน and แม่กวงอุดมธารา and at 7 days for ภูมิพล, กิ่วคอหมา,
+แม่กวงฯ, อุบลรัตน์. The monthly loss term (balance residual) improves the 7-day storage outlook for 13 of 17 dams. Built as
+the dams-list outlook (D-102): the model only at the horizons where it passed, persistence with its band elsewhere.
+Window: 46 wet-season days — re-test as the archive grows. KI-301, research/2026-10-05_dam_inflow_nationwide.log.
 
 ## 10. How to reproduce
 

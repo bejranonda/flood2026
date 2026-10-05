@@ -695,3 +695,13 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
 - Decision makers see the trade-offs ("เหมาะกับ…" per effect) and a custom plan next to the searched ones; ✨ retells,
   never decides.
 
+### 19.22 Operational skill, not upper bounds; decision panels in the app's grammar (v0.30.0, D-102)
+- A model that beats persistence with *observed* future inputs has only shown an upper bound. Before it serves anyone,
+  test it with the inputs actually available at issue time (archived rain forecasts, bias-corrected per lead) and gate it
+  per unit and per horizon — the reservoir outlook uses the rain model where that test passed and persistence elsewhere.
+- Four candidate improvements were tested the same night with the two-sample protocol: one new parameter passed
+  (discharge forecasts), two inputs failed (upstream flow, dam release), one is running (two years of history). Failures are
+  recorded with their numbers (MODELS §5e–5h) so nobody repeats them.
+- The decision panel was rebuilt to the app's grammar after the owner saw a report instead of a tool; the first screen is
+  measured (characters, long paragraphs) in the browser check.
+

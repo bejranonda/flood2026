@@ -273,6 +273,16 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Styles scoped to a view do not reach the app's shared sheet**: content placed in `#sheet` needs its own classes.
 - **A variant that is never served at any horizon is a bug, not a result** (NaN features drop every training row): print the finite share of every new input; the harness's time axis is hours since the epoch (`forecast.hourly_grid`).
 
+### 6c-9. Decision support reads like the app (D-102)
+- **Numbers first, prose on demand.** A panel for decision makers uses the same grammar as the public tabs: chips with
+  the numbers, one recommendation card, one-line rows, sheets for tables and reasons, ⓘ toasts for side notes, one ℹ️
+  collapsible for method and limits. Measure it: `scripts/impact_tab_check.py` reports the first screen's characters and
+  counts paragraphs over 160 characters — keep the latter at zero.
+- **Reuse the app's components** (`.chips`, `.item`, `.conf-badge`, `#sheet`, `showDetail`) so engineers meet what residents
+  know; text badges built on `.conf-badge` need their own pill shape (the circle wraps text vertically).
+- **A forecast on a card says which method made it and how it tested**, per horizon when the method changes with the
+  horizon (the reservoir outlook: model for days 1–3, persistence for 4–7 at some dams).
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Zero-wait two-stage UX (v0.22.0):** Tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" immediately renders the deterministic rule-written story (`r.story`, ~40 ms) so visitors never face a blank 5–7 s shimmer. In the background, GLM retells the story in warm, natural spoken Thai (`&part=gist`); when verified, the card seamlessly updates with the polished retelling and badge. If GLM times out or is rejected, the rule story remains in place without error.

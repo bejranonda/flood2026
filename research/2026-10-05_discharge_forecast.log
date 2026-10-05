@@ -1,0 +1,38 @@
+ Container floodwatch-worker-run-9b633ee18045 Creating 
+ Container floodwatch-worker-run-9b633ee18045 Created 
+… 20
+… 40
+… 60
+… 80
+
+=== sample 1: 97 RID gauges with discharge · persistence 24 h RMSE in log Q: median 0.308 (≈ 36 % of the flow)
+
+=== +12 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   97 · error vs no-change -11.3% (per-gauge mean  -3.0%) · served a model   55 (star   43) · held ≥10 %   33 · worse   9
+
+=== +24 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   97 · error vs no-change  -7.8% (per-gauge mean  -8.3%) · served a model   49 (star   37) · held ≥10 %   33 · worse   6
+
+=== +48 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   97 · error vs no-change  -7.1% (per-gauge mean  -3.9%) · served a model   50 (star   44) · held ≥10 %   30 · worse  11
+
+=== +72 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   97 · error vs no-change  -7.8% (per-gauge mean  -2.3%) · served a model   49 (star   43) · held ≥10 %   35 · worse   8
+… 20
+… 40
+… 60
+… 80
+
+=== sample 2: 95 RID gauges with discharge · persistence 24 h RMSE in log Q: median 0.296 (≈ 34 % of the flow)
+
+=== +12 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   94 · error vs no-change -13.1% (per-gauge mean  -8.8%) · served a model   51 (star   40) · held ≥10 %   33 · worse   9
+
+=== +24 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   94 · error vs no-change  -5.4% (per-gauge mean  -6.2%) · served a model   42 (star   34) · held ≥10 %   27 · worse   5
+
+=== +48 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   94 · error vs no-change  -7.2% (per-gauge mean  -6.5%) · served a model   41 (star   34) · held ≥10 %   28 · worse   6
+
+=== +72 h (chosen on the first half, scored on the second)
+flow ladder (log Q)    n   94 · error vs no-change  -7.4% (per-gauge mean  -5.9%) · served a model   35 (star   31) · held ≥10 %   26 · worse   5
