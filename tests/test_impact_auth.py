@@ -110,6 +110,9 @@ def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     assert "FW_TABS" in js and "fw:map" in js
     assert not (web / "impact.html").exists()  # the standalone shell is gone: one app, two modes
     assert "style=" not in js and "const agency = (a) => esc(" in js  # outside strings escaped; styles by class
+    # the scenarios (D-101) reuse the app's own ✨ card and bottom sheet, so engineers meet the patterns residents know
+    assert 'id="imp-sc"' in js and "bindAskUrl(sec," in js and "askHTML()" in js and 'getElementById("sheet")' in js
+    assert "ยังไม่ผ่านการทดสอบ" in js and "chartSvg(" in js and 'id=\\"imp-custom\\"' in js
 
 
 def test_the_real_settings_reach_the_impact_endpoints():
@@ -182,3 +185,19 @@ def test_scenarios_endpoint_needs_ready_inputs_and_validates_a_custom_plan(monke
     with pytest.raises(HTTPException) as e:
         api.impact_scenarios(Req(tok), "kaeng-krachan", release=None, diversion_cms=None)
     assert e.value.status_code == 503
+
+
+def test_scenario_explain_needs_login_and_returns_the_story_and_lines(monkeypatch):
+    from test_impact import STATE
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = {**STATE, "case": "kaeng-krachan", "built_at": "2026-10-05T12:00:00+00:00", "validation": {"whatif_ready": False},
+          "dam": {**STATE["dam"], "name_th": "แก่งกระจาน", "dam_date": "2026-10-05", "storage_mcm": 725.85, "storage_pct": 102.2, "inflow_mcm": 10.33},
+          "scenario_inputs": {"curves7": {"upper": [593.0] * 7, "lower": [204.0] * 7, "dates": ["2026-10-%02d" % d for d in range(6, 13)]},
+                              "normal_mcm": 710.0, "max_mcm": 900.0, "release_cap": 25.0, "release_max_seen": 24.36}}
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st)
+    with pytest.raises(HTTPException) as e:
+        api.impact_explain(Req(), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="simple")
+    assert e.value.status_code == 401
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    out = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="simple").body)
+    assert "แก่งกระจาน" in out["story"] and len(out["lines"]) >= 5 and "ai" in out

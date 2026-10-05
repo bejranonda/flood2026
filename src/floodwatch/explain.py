@@ -648,3 +648,72 @@ def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
             for k in sorted(_cache, key=lambda k: _cache[k][1])[:1000]:
                 _cache.pop(k, None)
     return good
+
+
+# --- impact tab: the 7-day release scenarios (D-101) ------------------------------------------------------------------
+def plan_words(plan: dict) -> str:
+    """A release plan in words: constant, ramp, front-loaded or day by day (ล้าน ลบ.ม./วัน)."""
+    r = plan["release"]
+    kind = plan.get("kind")
+    if kind in ("hold", "constant") or len(set(r)) == 1:
+        return f"{r[0]:.1f} ล้าน ลบ.ม./วัน คงที่ 7 วัน" + (" (เท่าวันนี้)" if kind == "hold" else "")
+    if kind == "ramp":
+        return f"ทยอย{'เพิ่ม' if r[-1] > r[0] else 'ลด'}จาก {r[0]:.1f} เป็น {r[-1]:.1f} ล้าน ลบ.ม./วัน ใน 7 วัน"
+    if kind == "front":
+        k = next(i for i in range(1, len(r)) if r[i] != r[0])
+        return f"{r[0]:.1f} ล้าน ลบ.ม./วัน {k} วันแรก แล้ว {r[k]:.1f}"
+    return "รายวัน " + ", ".join(f"{x:.1f}" for x in r) + " ล้าน ลบ.ม./วัน"
+
+
+def scenarios(cmp: dict) -> tuple[list[str], str]:
+    """Lines and a plain story for the scenario comparison: today's reservoir, the ★ plan and the rule, what each other
+    plan is best for, the constraints and the label. Numbers from the engine only; the AI may retell, never decide."""
+    from floodwatch.scenarios import EFFECT_KEYS, EFFECT_TH
+    dam = cmp.get("dam") or {}
+    name = f"เขื่อน{dam.get('name_th') or ''}"
+    st0, up0, rel, inf = dam.get("storage_mcm"), (cmp.get("upper") or [None])[0], dam.get("released_mcm"), dam.get("inflow_mcm")
+    lines = [f"🏞️ {name} · ข้อมูลรายวัน {dam.get('dam_date') or ''}"]
+    pos = ""
+    if st0 is not None and up0 is not None:
+        pos = (f"สูงกว่าเส้นควบคุมบน {st0 - up0:.0f} ล้าน ลบ.ม." if st0 > up0 else f"ต่ำกว่าเส้นควบคุมบน {up0 - st0:.0f} ล้าน ลบ.ม.")
+        lines.append(f"ปริมาตรอ่าง {st0:.0f} ล้าน ลบ.ม." + (f" ({dam['storage_pct']:.0f} %)" if dam.get("storage_pct") is not None else "")
+                     + f" · {pos} (เส้นบนวันนี้ {up0:.0f})")
+    if rel is not None and inf is not None:
+        hi = (cmp.get("inflow") or {}).get("high") or []
+        lo = (cmp.get("inflow") or {}).get("low") or []
+        band = f" ช่วงที่เป็นไปได้ใน 7 วัน {lo[-1]:.1f}–{hi[-1]:.1f}" if lo and hi else ""
+        lines.append(f"วันนี้ระบาย {rel:.2f} และมีน้ำไหลเข้า {inf:.2f} ล้าน ลบ.ม./วัน (คิดว่าไหลเข้าเท่านี้ต่อไป{band})")
+    rain = ((cmp.get("inputs") or {}).get("rain7") or {}).get("mm")
+    if rain:
+        lines.append(f"☁️ ฝนคาดการณ์ในลุ่มน้ำเหนือเขื่อน 7 วัน รวม {sum(rain):.0f} มม. (ดูประกอบ ไม่ได้ใช้คำนวณ)")
+    plans = {p["id"]: p for p in cmp.get("plans") or []}
+    opt = cmp.get("optimal") or {}
+    star = plans.get(opt.get("id"))
+    if star and opt.get("constraints_met"):
+        lines.append(f"★ แผนที่เข้าเกณฑ์: {plan_words(star)} — {opt.get('reason', '')}")
+    elif star:
+        lines.append(f"⚠️ {opt.get('reason', '')} แผนที่ใกล้เคียงที่สุด: {plan_words(star)}")
+    best = cmp.get("best_for") or {}
+    for k in EFFECT_KEYS:
+        p = plans.get(best.get(k))
+        if p and p is not star:
+            e = p["effects"]
+            metric = {"city": f"ห่างตลิ่งในเมืองต่ำสุด {e['city_margin_min']:.2f} ม." if e.get("city_margin_min") is not None else "",
+                      "worst": f"ห่างตลิ่งต่ำสุด {e['worst_margin_min']:.2f} ม." if e.get("worst_margin_min") is not None else "",
+                      "total": f"เกินตลิ่งรวม {e['overtop_sum']:.2f}", "dam": f"ปริมาตรสูงสุด {e['storage_peak']:.0f}",
+                      "curve": (f"ใต้เส้นควบคุมวันที่ {e['under_curve_day']}" if e.get("under_curve_day") else f"เหลือ {e['storage_end']:.0f} วันที่ 7"),
+                      "water": f"เหลือ {e['storage_end']:.0f} ล้าน ลบ.ม. วันที่ 7", "warning": f"เปลี่ยนวันละไม่เกิน {e['ramp_max']:.1f}"}[k]
+            lines.append(f"เหมาะกับ{EFFECT_TH[k]}: {plan_words(p)} ({metric})")
+    lines.append("🔴 ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง — ใช้เปรียบเทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์")
+    first = f"ตอนนี้อ่าง{name}{pos and ' ' + pos} ระบายวันละ {rel:.1f} และมีน้ำเข้า {inf:.1f} ล้าน ลบ.ม." if rel is not None and inf is not None else f"ตอนนี้อ่าง{name} {pos}"
+    if star and opt.get("constraints_met"):
+        second = f"แผนที่เข้าเกณฑ์คือ{plan_words(star)} เพราะ{opt.get('reason', '')}"
+    elif star:
+        second = f"{opt.get('reason', '')} แผนที่ใกล้เคียงที่สุดคือ{plan_words(star)}"
+    else:
+        second = "ยังไม่มีแผนให้เปรียบเทียบ"
+    others = [EFFECT_TH[k] for k in EFFECT_KEYS if plans.get(best.get(k)) and plans.get(best.get(k)) is not star]
+    third = ("แผนอื่นเหมาะกับ" + " ".join(dict.fromkeys(others)) + " ดูในแต่ละการ์ด" if others else "")
+    tail = "ตัวเลขท้ายน้ำยังไม่ผ่านการทดสอบ ใช้เทียบระหว่างแผนเท่านั้น"
+    return lines, " ".join(x for x in (first, second, third, tail) if x)
+

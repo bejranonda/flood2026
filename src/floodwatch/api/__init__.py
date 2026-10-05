@@ -733,12 +733,8 @@ def impact_case(request: Request, case_id: str):
     return JSONResponse(_impact_state(impact.state_key(case_id)), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
-@app.get("/api/impact/case/{case_id}/scenarios", include_in_schema=False)
-def impact_scenarios(request: Request, case_id: str, release: str | None = Query(None, max_length=200),
-                     diversion_cms: float | None = Query(None, ge=0, le=2000)):
-    """The 7-day release scenarios (D-101): plans found by search, judged on every effect, ★ by the stated rule; `release`
-    = a custom plan, 7 daily values in ล้าน ลบ.ม./วัน. Downstream numbers are unvalidated and labelled so (D-099)."""
-    _impact_require(request)
+def _impact_compare(case_id: str, release: str | None, diversion_cms: float | None) -> dict:
+    """The scenario comparison for a case from its hourly state (D-101); HTTP errors when the inputs are not ready."""
     from floodwatch import impact, scenarios
     if case_id not in impact.CASES:
         raise HTTPException(404, "unknown case")
@@ -762,10 +758,32 @@ def impact_scenarios(request: Request, case_id: str, release: str | None = Query
                                  normal=float(si["normal_mcm"]), max_release=float(si["release_cap"]), max_storage=si.get("max_mcm"),
                                  custom=custom, diversion_cms=diversion_cms)
     out = _memo(("impact_scenarios", case_id, release or "", diversion_cms, st.get("built_at")), build, ttl=600)
-    return JSONResponse({**out, "dates": c7.get("dates"), "inputs": si, "dam": st.get("dam"), "built_at": st.get("built_at"),
-                         "downstream_validated": bool((st.get("validation") or {}).get("whatif_ready")),
-                         "downstream_note": "ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง (D-099)"},
-                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+    return {**out, "dates": c7.get("dates"), "inputs": si, "dam": st.get("dam"), "built_at": st.get("built_at"),
+            "downstream_validated": bool((st.get("validation") or {}).get("whatif_ready")),
+            "downstream_note": "ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง (D-099)"}
+
+
+@app.get("/api/impact/case/{case_id}/scenarios", include_in_schema=False)
+def impact_scenarios(request: Request, case_id: str, release: str | None = Query(None, max_length=200),
+                     diversion_cms: float | None = Query(None, ge=0, le=2000)):
+    """The 7-day release scenarios (D-101): plans found by search, judged on every effect, ★ by the stated rule; `release`
+    = a custom plan, 7 daily values in ล้าน ลบ.ม./วัน. Downstream numbers are unvalidated and labelled so (D-099)."""
+    _impact_require(request)
+    return JSONResponse(_impact_compare(case_id, release, diversion_cms), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
+@app.get("/api/impact/case/{case_id}/explain", include_in_schema=False)
+def impact_explain(request: Request, case_id: str, release: str | None = Query(None, max_length=200),
+                   diversion_cms: float | None = Query(None, ge=0, le=2000), part: str | None = Query(None, max_length=8),
+                   q: str | None = Query(None, max_length=16)):
+    """✨ for the scenarios: the rules write the story and lines; GLM may retell them (part=gist), never decide (D-068)."""
+    _impact_require(request)
+    cmp = _impact_compare(case_id, release, diversion_cms)
+    lines, story = explain.scenarios(cmp)
+    if part == "gist":
+        return JSONResponse({"gist": explain.gist("simple", lines, story)}, headers={"Cache-Control": "no-store"})
+    return JSONResponse({"q": "simple", "question": explain.QUESTIONS["simple"], "story": story, "lines": lines,
+                         "ai": os.environ.get("AI_EXPLAIN", "1") == "1" and ai.available()}, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/impact/kaeng-krachan/whatif", include_in_schema=False)

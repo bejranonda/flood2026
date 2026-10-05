@@ -198,6 +198,7 @@
     $("#imp-onmap", body).addEventListener("click", () => showCaseOnMap(st));
     bindWhatif(st);
     drawCase(st);
+    loadScenarios(st, body, null);
   }
 
   function caseHtml(st) {
@@ -210,6 +211,7 @@
       '<p class="muted">ข้อมูลถึง ' + when(st.data_time) + " · คำนวณ " + when(st.built_at) +
       " · เวลาไทย · ระดับ ม.รทก. ตามหมุดของหน่วยงานผู้วัด</p>" +
       '<button type="button" class="btn imp-onmap" id="imp-onmap">🗺️ ดูแม่น้ำ เขื่อน และสถานีบนแผนที่</button>' + gate +
+      '<section class="imp-card" id="imp-sc"><h3>สถานการณ์การระบาย 7 วันข้างหน้า</h3><p class="muted">กำลังคำนวณ…</p></section>' +
       damHtml(st) + riverHtml(st) + valHtml(st) + whatifHtml(st) + reqHtml(st) + methodHtml(st);
   }
 
@@ -238,6 +240,133 @@
     // desktop: keep clear of the legend box at the bottom right
     setTimeout(() => { if (pts.length) mapRef.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [24, 24],
       paddingBottomRight: [narrow() ? 24 : 300, 24] }); }, narrow() ? 120 : 0);
+  }
+
+  /* ---------- 7-day release scenarios (D-101): plans found by search, judged on every effect, ★ by a stated rule ---------- */
+  const EFFECT_TH = { city: "ปกป้องตัวเมือง", worst: "ไม่มีจุดใดล้นหนัก", total: "ท่วมรวมน้อยสุด", dam: "ความปลอดภัยเขื่อน",
+    curve: "กลับใต้เส้นควบคุมเร็ว", water: "เก็บน้ำไว้ใช้", warning: "เตือนล่วงหน้าได้" };
+  const EFFECT_ROWS = [["city", "ห่างตลิ่งในเมืองต่ำสุด (ม.)", (e) => num(e.city_margin_min, 2)],
+    ["worst", "ห่างตลิ่งต่ำสุดทุกจุด (ม.)", (e) => num(e.worst_margin_min, 2)],
+    ["total", "เกินตลิ่งรวม (ม.·จุด·วัน)", (e) => num(e.overtop_sum, 2)],
+    ["dam", "ปริมาตรสูงสุด (ล้าน ลบ.ม.) · วันเหนือปกติ", (e) => num(e.storage_peak, 0) + " · " + num(e.days_above_normal, 0)],
+    ["curve", "กลับใต้เส้นควบคุมบน", (e) => (e.under_curve_day ? "วันที่ " + num(e.under_curve_day, 0) : "ไม่ใน 7 วัน")],
+    ["water", "ปริมาตรวันที่ 7 (ล้าน ลบ.ม.)", (e) => num(e.storage_end, 0)],
+    ["warning", "เปลี่ยนอัตราวันละไม่เกิน (ล้าน ลบ.ม.)", (e) => num(e.ramp_max, 1)]];
+
+  function planWords(p) {
+    const r = p.release, same = r.every((x) => x === r[0]);
+    if (p.kind === "hold" || p.kind === "constant" || same) return num(r[0], 1) + " ล้าน ลบ.ม./วัน คงที่ 7 วัน" + (p.kind === "hold" ? " (เท่าวันนี้)" : "");
+    if (p.kind === "ramp") return "ทยอย" + (r[6] > r[0] ? "เพิ่ม" : "ลด") + "จาก " + num(r[0], 1) + " เป็น " + num(r[6], 1) + " ล้าน ลบ.ม./วัน ใน 7 วัน";
+    if (p.kind === "front") { const k = r.findIndex((x, i) => i > 0 && x !== r[0]); return num(r[0], 1) + " ล้าน ลบ.ม./วัน " + num(k, 0) + " วันแรก แล้ว " + num(r[k], 1); }
+    return "รายวัน " + r.map((x) => num(x, 1)).join(", ") + " ล้าน ลบ.ม./วัน";
+  }
+
+  async function loadScenarios(st, body, custom) {
+    const sec = $("#imp-sc", body);
+    if (!sec) return;
+    sec.innerHTML = "<h3>สถานการณ์การระบาย 7 วันข้างหน้า</h3><p class=\"muted\">กำลังคำนวณ…</p>";
+    const q = new URLSearchParams();
+    if (custom) q.set("release", custom.join(","));
+    let r;
+    try { r = await api("/api/impact/case/" + encodeURIComponent(st.case) + "/scenarios" + (q.toString() ? "?" + q.toString() : "")); }
+    catch (e) { sec.innerHTML = "<h3>สถานการณ์การระบาย 7 วันข้างหน้า</h3><p class=\"imp-err\">เชื่อมต่อไม่ได้</p>"; return; }
+    if (r.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+    if (r.status === 503) { sec.innerHTML = "<h3>สถานการณ์การระบาย 7 วันข้างหน้า</h3><p class=\"muted\">ยังไม่พร้อม: ต้องมีเส้นควบคุม น้ำไหลเข้า และปริมาตรปกติของวันนี้ (คำนวณใหม่ทุกชั่วโมง)</p>"; return; }
+    if (!r.ok) { sec.innerHTML = "<h3>สถานการณ์การระบาย 7 วันข้างหน้า</h3><p class=\"imp-err\">คำนวณไม่ได้ (" + r.status + ")</p>"; return; }
+    const cmp = await r.json();
+    state.cmp = cmp;
+    sec.innerHTML = scenariosHtml(cmp, st);
+    sec.querySelectorAll("[data-plan]").forEach((li) => li.addEventListener("click", () => openPlanSheet(cmp, li.dataset.plan)));
+    const f = $("#imp-custom", sec);
+    f.addEventListener("submit", (e) => {
+      e.preventDefault();
+      loadScenarios(st, body, [...f.querySelectorAll("input")].map((i) => Number(i.value) || 0));
+    });
+    if (typeof bindAskUrl === "function") {
+      bindAskUrl(sec, "/api/impact/case/" + encodeURIComponent(st.case) + "/explain?q=simple" + (custom ? "&release=" + encodeURIComponent(custom.join(",")) : ""));
+    }
+  }
+
+  function scenariosHtml(cmp, st) {
+    const d = cmp.dam || {}, inf = cmp.inflow || {}, inputs = cmp.inputs || {};
+    const up0 = cmp.upper[0], diff = d.storage_mcm - up0;
+    const rain = inputs.rain7 && inputs.rain7.mm ? inputs.rain7.mm.reduce((a, b) => a + b, 0) : null;
+    const head = "<p class=\"imp-sc-head\">วันนี้ " + num(d.storage_mcm, 0) + " ล้าน ลบ.ม. (" + num(d.storage_pct, 0) + " %) · " +
+      (diff >= 0 ? "<b>เหนือเส้นควบคุมบน " + num(diff, 0) + "</b>" : "ต่ำกว่าเส้นควบคุมบน " + num(-diff, 0)) + " · ระบาย " + num(d.released_mcm, 2) +
+      " · ไหลเข้า " + num(d.inflow_mcm, 2) + " ล้าน ลบ.ม./วัน <small>(คิดว่าไหลเข้าเท่านี้ต่อไป ช่วง 7 วัน " + num(inf.low[6], 1) + "–" + num(inf.high[6], 1) + ")</small>" +
+      (rain != null ? " · ☁️ ฝนในลุ่มน้ำ 7 วัน " + num(rain, 0) + " มม. <small>(ดูประกอบ)</small>" : "") + "</p>";
+    const label = "<p class=\"imp-label\">🔴 ระดับท้ายน้ำยังไม่ผ่านการทดสอบย้อนหลัง — ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์ · " +
+      "<a href=\"#imp-val\">ผลทดสอบ</a></p>";
+    const opt = cmp.optimal || {};
+    const rule = "<p class=\"imp-rule\">★ เกณฑ์: " + esc(opt.rule || "") + "</p>" +
+      (opt.constraints_met ? "" : "<p class=\"imp-note\">" + esc(opt.reason || "") + "</p>");
+    const cards = "<ul class=\"list imp-plans\">" + cmp.plans.map(planCard).join("") + "</ul>";
+    const today = d.released_mcm != null ? d.released_mcm : 10;
+    const customForm = "<form id=\"imp-custom\" class=\"imp-custom\"><span>กำหนดเอง (ล้าน ลบ.ม./วัน, วันที่ 1–7):</span>" +
+      [1, 2, 3, 4, 5, 6, 7].map((i) => "<input type=\"number\" inputmode=\"decimal\" step=\"0.1\" min=\"0\" max=\"200\" aria-label=\"วันที่ " + i + "\" value=\"" + esc(today) + "\">").join("") +
+      "<button class=\"btn\" type=\"submit\">คำนวณ</button></form>";
+    const matrix = "<details class=\"imp-matrix\"><summary>ตารางเปรียบเทียบทุกผล</summary><div class=\"imp-scroll\"><table><thead><tr><th scope=\"col\">ผล</th>" +
+      cmp.plans.map((p) => "<th scope=\"col\">" + (p.optimal ? "★ " : "") + esc(planWords(p)) + "</th>").join("") + "</tr></thead><tbody>" +
+      EFFECT_ROWS.map(([k, label2, fmt]) => "<tr><th scope=\"row\">" + label2 + "</th>" + cmp.plans.map((p) => "<td" + (cmp.best_for[k] === p.id ? " class=\"imp-best\"" : "") + ">" + fmt(p.effects) + "</td>").join("") + "</tr>").join("") +
+      "</tbody></table></div></details>";
+    const notes = "<ul class=\"imp-facts\"><li>ค้นหาแผน " + num(cmp.candidates, 0) + " แบบ (คงที่ ทยอย และสองช่วง) ในช่วง 0–" + num(cmp.max_release, 0) +
+      " ล้าน ลบ.ม./วัน — " + esc(inputs.release_cap_note || "") + "</li><li>เข้าเกณฑ์ " + num(cmp.feasible, 0) + " แบบ: " + cmp.constraints.map(esc).join(" · ") + "</li>" +
+      "<li>อ่าง: สมดุลน้ำรายวัน (ปริมาตร + ไหลเข้า − ระบาย; ตรวจกับข้อมูล สสน. 2561–69: ค่ามัธยฐานของส่วนต่าง −0.15 ล้าน ลบ.ม./วัน) · " + esc(inf.note || "") + "</li>" +
+      "<li>ท้ายน้ำ: rating curve + เวลาเดินทางเป็นวัน น้ำท่าระหว่างทางและการผันที่เขื่อนเพชรคงที่เท่าวันนี้ (ดูวิธีการ)</li></ul>";
+    const ask = typeof askHTML === "function" ? "<div class=\"imp-ask\">" + askHTML() + "</div>" : "";
+    return "<h3>สถานการณ์การระบาย 7 วันข้างหน้า <small>แตะการ์ดเพื่อดูรายวัน</small></h3>" + head + label + rule + cards + customForm + matrix + ask + notes;
+  }
+
+  function planCard(p) {
+    const e = p.effects;
+    const badges = (p.best_for || []).map((k) => "<span class=\"imp-badge-eff\">เหมาะกับ" + EFFECT_TH[k] + "</span>").join("");
+    const curve = e.under_curve_day ? "กลับใต้เส้นควบคุมวันที่ " + num(e.under_curve_day, 0) : "ยังเหนือเส้นควบคุมใน 7 วัน";
+    const worst = e.worst_margin_min == null ? "–" : (e.worst_margin_min < 0 ? "<b class=\"imp-neg\">เกินตลิ่ง " + num(-e.worst_margin_min, 2) + " ม.</b>" : "ห่างตลิ่งต่ำสุด " + num(e.worst_margin_min, 2) + " ม.");
+    return "<li class=\"item imp-plan" + (p.optimal ? " imp-opt" : "") + (p.feasible ? "" : " imp-infeasible") + "\" data-plan=\"" + esc(p.id) + "\" tabindex=\"0\">" +
+      "<div class=\"imp-dam-head\"><b>" + (p.optimal ? "★ " : "") + esc(planWords(p)) + "</b>" + (p.kind === "custom" ? "<span class=\"imp-pos\">กำหนดเอง</span>" : "") + "</div>" +
+      "<div class=\"meta\">อ่างวันที่ 7: " + num(e.storage_end, 0) + " <small>(" + num(p.storage_low[6], 0) + "–" + num(p.storage_high[6], 0) + ")</small> ล้าน ลบ.ม. · " + curve +
+      "<br>ท้ายน้ำ: " + worst + " · เปลี่ยนวันละ ≤ " + num(e.ramp_max, 1) + "</div>" +
+      (badges ? "<div class=\"imp-badges\">" + badges + "</div>" : "") + (p.feasible ? "" : "<div class=\"imp-small\">ไม่เข้าเกณฑ์</div>") + "</li>";
+  }
+
+  function chartSvg(p, cmp) {
+    // storage (mid, band) against the upper rule curve, 7 days; SVG attributes only (no inline styles)
+    const W = 320, H = 110, pad = 24, n = p.storage.length;
+    const vals = [].concat(p.storage, p.storage_low, p.storage_high, cmp.upper, [cmp.normal]);
+    const lo = Math.min(...vals) - 10, hi = Math.max(...vals) + 10;
+    const x = (i) => pad + (i * (W - 2 * pad)) / (n - 1), y = (v) => H - pad - ((v - lo) * (H - 2 * pad)) / (hi - lo);
+    const line = (arr) => arr.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1)).join(" ");
+    const band = line(p.storage_high) + " " + p.storage_low.map((v, i) => x(n - 1 - i).toFixed(1) + "," + y(p.storage_low[n - 1 - i]).toFixed(1)).join(" ");
+    return "<svg class=\"imp-svg\" viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"ปริมาตรอ่าง 7 วันเทียบเส้นควบคุม\">" +
+      "<polygon points=\"" + band + "\" fill=\"#1565c0\" fill-opacity=\"0.15\"></polygon>" +
+      "<polyline points=\"" + line(cmp.upper) + "\" fill=\"none\" stroke=\"#e46c0a\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></polyline>" +
+      "<line x1=\"" + pad + "\" x2=\"" + (W - pad) + "\" y1=\"" + y(cmp.normal).toFixed(1) + "\" y2=\"" + y(cmp.normal).toFixed(1) + "\" stroke=\"#c62828\" stroke-width=\"1\" stroke-dasharray=\"2 3\"></line>" +
+      "<polyline points=\"" + line(p.storage) + "\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"2.5\"></polyline>" +
+      "<text x=\"" + (W - pad) + "\" y=\"" + (y(cmp.upper[n - 1]) - 4).toFixed(1) + "\" text-anchor=\"end\" font-size=\"10\" fill=\"#e46c0a\">เส้นควบคุมบน</text>" +
+      "<text x=\"" + pad + "\" y=\"" + (y(cmp.normal) - 4).toFixed(1) + "\" font-size=\"10\" fill=\"#c62828\">ปริมาตรปกติ " + num(cmp.normal, 0) + "</text>" +
+      "<text x=\"" + pad + "\" y=\"" + (H - 6) + "\" font-size=\"10\" fill=\"#5b6573\">วันที่ 1</text><text x=\"" + (W - pad) + "\" y=\"" + (H - 6) + "\" text-anchor=\"end\" font-size=\"10\" fill=\"#5b6573\">วันที่ " + n + "</text></svg>";
+  }
+
+  function openPlanSheet(cmp, id) {
+    const p = cmp.plans.find((x) => x.id === id);
+    const sheet = document.getElementById("sheet"), box = document.getElementById("detail");
+    if (!p || !sheet || !box) return;
+    const codes = Object.keys(p.downstream || {});
+    const rows = p.release.map((r, i) => "<tr><th scope=\"row\">" + day(cmp.dates ? cmp.dates[i] : null) + "</th><td>" + num(r, 1) + "</td><td>" + num(p.storage[i], 0) +
+      " <small>(" + num(p.storage_low[i], 0) + "–" + num(p.storage_high[i], 0) + ")</small></td><td" + (p.storage[i] > cmp.upper[i] ? "" : " class=\"imp-best\"") + ">" + num(p.storage[i] - cmp.upper[i], 0) + "</td>" +
+      codes.map((c) => { const m = p.downstream[c][i].margin_m; return "<td" + (m != null && m < 0 ? " class=\"imp-neg\"" : "") + ">" + num(m, 2) + "</td>"; }).join("") + "</tr>").join("");
+    const e = p.effects;
+    box.innerHTML = "<div class=\"tools\"><button class=\"btn close\" aria-label=\"ปิด\">✕</button></div>" +
+      "<h2 id=\"sheet-title\">" + (p.optimal ? "★ " : "") + esc(planWords(p)) + "</h2>" +
+      "<p class=\"muted\">" + (p.optimal && cmp.optimal.constraints_met ? "แผนที่เข้าเกณฑ์: " + esc(cmp.optimal.reason) : (p.best_for || []).map((k) => "เหมาะกับ" + EFFECT_TH[k]).join(" · ") || (p.feasible ? "เข้าเกณฑ์" : "ไม่เข้าเกณฑ์")) + "</p>" +
+      chartSvg(p, cmp) +
+      "<div class=\"imp-scroll\"><table><thead><tr><th scope=\"col\">วัน</th><th scope=\"col\">ระบาย</th><th scope=\"col\">อ่าง (ช่วง)</th><th scope=\"col\">เทียบเส้นบน</th>" +
+      codes.map((c) => "<th scope=\"col\">" + esc(c) + " ห่างตลิ่ง (ม.)</th>").join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      "<ul class=\"imp-facts\"><li>ล้าน ลบ.ม./วัน · อ่างเป็นค่ากลาง (ช่วง = น้ำไหลเข้าต่ำ–สูง) · เทียบเส้นบน = ปริมาตร − เส้นควบคุมบนของวันนั้น</li>" +
+      "<li>ท้ายน้ำ: ตลิ่งของหน่วยงานผู้วัด · 🔴 ยังไม่ผ่านการทดสอบย้อนหลัง · วันเหนือปริมาตรปกติ " + num(e.days_above_normal, 0) + " · เกินตลิ่งรวม " + num(e.overtop_sum, 2) + "</li></ul>";
+    sheet.hidden = false;
+    box.querySelector(".close").addEventListener("click", () => { sheet.hidden = true; });
+    box.scrollTop = 0;
   }
 
   function damHtml(st) {

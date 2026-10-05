@@ -93,23 +93,51 @@ def best_for(rows: list[dict]) -> dict:
             "warning": _key(rows, lambda e: (e["ramp_max"], -none(e["worst_margin_min"], -1e9)))}
 
 
-def optimal(rows: list[dict], normal: float, max_storage: float | None = None) -> dict:
-    """The stated rule: among plans that bring storage back under the upper rule curve within 7 days (and never above the
-    maximum storage, when known), the least downstream impact — no overtopping first, then the highest worst-point margin,
-    then the gentlest change of release. Returns the id and the reason in Thai; id None when no plan qualifies."""
-    feas = [r for r in rows if r["effects"]["under_curve_day"] is not None
-            and (max_storage is None or r["effects"]["storage_peak"] <= max_storage)]
-    if not feas:
-        return {"id": None, "reason": "ไม่มีแผนใดพาอ่างกลับใต้เส้นควบคุมบนได้ภายใน 7 วัน (ด้วยอัตราระบายในช่วงที่ค้นหา) — แสดงแผนที่ดีที่สุดต่อแต่ละผลแทน"}
+def feasible(rows: list[dict], storage0: float, upper_today: float | None, max_storage: float | None,
+             lower_today: float | None = None) -> list[dict]:
+    """The plans a decision maker may consider: C1 no gauge over its bank on any day; C2 storage never above the maximum
+    storage (when known); C3 the reservoir does not end further from the rule curve than today — above the upper curve
+    it must not end higher than today, below the lower curve it must not end lower."""
+    out = []
+    for r in rows:
+        e = r["effects"]
+        if e["overtop_sum"] > 0 or (e["worst_margin_min"] is not None and e["worst_margin_min"] < 0):
+            continue
+        if max_storage is not None and e["storage_peak"] > max_storage:
+            continue
+        if upper_today is not None and storage0 > upper_today and e["storage_end"] > storage0:
+            continue
+        if lower_today is not None and storage0 < lower_today and e["storage_end"] < storage0:
+            continue
+        out.append(r)
+    return out
+
+
+def optimal(rows: list[dict], storage0: float, upper_today: float | None, normal: float, max_storage: float | None = None,
+            lower_today: float | None = None) -> dict:
+    """The stated rule: among the feasible plans (no overtopping, within the maximum storage, the reservoir not left
+    further from its curve), the fastest return toward the upper rule curve (earliest day under it, then the lowest
+    storage on day 7), then the gentlest change of release. When no plan is feasible the rule says so and shows the plan
+    that lowers the reservoir with the least overtopping — downstream is then the binding constraint."""
     e = lambda r: r["effects"]
-    win = min(feas, key=lambda r: (e(r)["overtop_sum"], -(e(r)["worst_margin_min"] if e(r)["worst_margin_min"] is not None else -1e9),
-                                   e(r)["ramp_max"], -e(r)["storage_end"]))
-    w = e(win)
-    over = ("โดยไม่มีจุดใดเกินตลิ่ง" if w["overtop_sum"] == 0 else f"โดยเกินตลิ่งรวมน้อยที่สุด ({w['overtop_sum']:.2f} ม.·จุด·วัน)")
-    margin = f" (ห่างตลิ่งต่ำสุด {w['worst_margin_min']:.2f} ม.)" if w["worst_margin_min"] is not None else ""
-    return {"id": win["id"], "reason": f"พาอ่างกลับใต้เส้นควบคุมบนในวันที่ {w['under_curve_day']} {over}{margin}"
-                                        f" และเปลี่ยนอัตราระบายวันละไม่เกิน {w['ramp_max']:.1f} ล้าน ลบ.ม."
-                                        + (f"; ปริมาตรสูงสุด {w['storage_peak']:.0f} เทียบปริมาตรปกติ {normal:.0f} ล้าน ลบ.ม." if normal else "")}
+    feas = feasible(rows, storage0, upper_today, max_storage, lower_today)
+    if feas:
+        win = min(feas, key=lambda r: (e(r)["under_curve_day"] if e(r)["under_curve_day"] is not None else 99,
+                                       e(r)["storage_end"], e(r)["ramp_max"]))
+        w = e(win)
+        when = (f"กลับใต้เส้นควบคุมบนในวันที่ {w['under_curve_day']}" if w["under_curve_day"] is not None
+                else f"ลดปริมาตรอ่างได้มากที่สุดโดยยังไม่ถึงเส้นควบคุมบนใน 7 วัน (เหลือ {w['storage_end']:.0f} ล้าน ลบ.ม.)")
+        margin = f" (ห่างตลิ่งต่ำสุด {w['worst_margin_min']:.2f} ม.)" if w["worst_margin_min"] is not None else ""
+        return {"id": win["id"], "constraints_met": True,
+                "reason": f"{when} โดยไม่มีจุดใดเกินตลิ่ง{margin} และเปลี่ยนอัตราระบายวันละไม่เกิน {w['ramp_max']:.1f} ล้าน ลบ.ม."
+                          + (f"; ปริมาตรสูงสุด {w['storage_peak']:.0f} เทียบปริมาตรปกติ {normal:.0f} ล้าน ลบ.ม." if normal else ""),
+                "rule": "แผนที่พาอ่างกลับสู่เส้นควบคุมเร็วที่สุด ในบรรดาแผนที่ไม่มีจุดใดเกินตลิ่ง ไม่เกินความจุสูงสุด และไม่ปล่อยให้อ่างสูงขึ้นอีก"}
+    lowering = [r for r in rows if e(r)["storage_end"] <= storage0 and (max_storage is None or e(r)["storage_peak"] <= max_storage)] or rows
+    win = min(lowering, key=lambda r: (e(r)["overtop_sum"], e(r)["storage_end"], e(r)["ramp_max"]))
+    return {"id": win["id"], "constraints_met": False,
+            "reason": "ไม่มีแผนใดลดปริมาตรอ่างได้โดยไม่มีจุดใดเกินตลิ่ง — ตลิ่งท้ายน้ำเป็นข้อจำกัดหลัก; แสดงแผนที่ลดอ่างโดยเกินตลิ่งน้อยที่สุดแทน"
+                      f" (เกินตลิ่งรวม {e(win)['overtop_sum']:.2f} ม.·จุด·วัน) ⚠️ ระดับท้ายน้ำยังไม่ผ่านการทดสอบ",
+            "rule": "แผนที่พาอ่างกลับสู่เส้นควบคุมเร็วที่สุด ในบรรดาแผนที่ไม่มีจุดใดเกินตลิ่ง ไม่เกินความจุสูงสุด และไม่ปล่อยให้อ่างสูงขึ้นอีก"}
 
 
 def daily_downstream(state: dict, release_path: list[float], diversion_cms: float | None = None) -> dict:
@@ -158,17 +186,21 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
                      "storage_low": water_balance(storage0, inflow_lo, p["release"]),
                      "storage_high": water_balance(storage0, inflow_hi, p["release"]),
                      "downstream": down, "effects": effects(p["release"], storage, upper, lower, normal, margins, city)})
-    best = best_for(rows)
-    opt = optimal(rows, normal, max_storage)
+    feas = feasible(rows, storage0, upper[0], max_storage, lower[0])
+    best = best_for(feas or rows)  # per-effect bests among the plans a decision maker may consider
+    opt = optimal(rows, storage0, upper[0], normal, max_storage, lower[0])
     show_ids = [r["id"] for r in rows if r["kind"] in ("hold", "custom")] + [opt["id"]] + list(best.values())
     seen, show = set(), []
     for rid in show_ids:
         if rid and rid not in seen:
             seen.add(rid)
             r = next(x for x in rows if x["id"] == rid)
-            show.append({**r, "best_for": [k for k in EFFECT_KEYS if best[k] == rid], "optimal": rid == opt["id"]})
+            show.append({**r, "best_for": [k for k in EFFECT_KEYS if best[k] == rid], "optimal": rid == opt["id"],
+                         "feasible": any(f["id"] == rid for f in feas)})
     return {"days": days, "inflow": {"mid": inflow_mid, "low": inflow_lo, "high": inflow_hi, "method": "hold",
                                      "regime": "high" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else "normal",
                                      "note": "คงน้ำไหลเข้าวันนี้ ช่วง = ความคลาดเคลื่อนของวิธีนี้เองที่ 1–7 วัน" + (" (ช่วงน้ำไหลเข้ามาก กว้างกว่าปกติมาก)" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else " (ปี 2568–69)") + "; แบบจำลองจากฝนแพ้วิธีนี้ทุกช่วงในการทดสอบ 2026-10-05 จึงไม่ใช้"},
             "upper": upper, "lower": lower, "normal": normal, "max_storage": max_storage, "max_release": max_release,
-            "candidates": len(rows), "best_for": best, "optimal": opt, "plans": show}
+            "candidates": len(rows), "feasible": len(feas), "best_for": best, "optimal": opt, "plans": show,
+            "constraints": ["ไม่มีจุดใดเกินตลิ่ง (ตลิ่งของหน่วยงานผู้วัด)", "ไม่เกินความจุสูงสุดของอ่าง",
+                            "อ่างต้องไม่สูงขึ้นกว่าวันนี้เมื่ออยู่เหนือเส้นควบคุมบน (หรือไม่ต่ำลงเมื่ออยู่ใต้เส้นล่าง)"]}

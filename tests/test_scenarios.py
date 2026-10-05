@@ -38,20 +38,28 @@ def _row(i, **e):
 
 
 def test_best_for_each_effect_and_the_stated_optimal_rule_are_explainable():
-    rows = [_row("hold", city_margin_min=2.0, worst_margin_min=1.8, under_curve_day=None, storage_peak=740.0, days_above_normal=7),
-            _row("more", city_margin_min=1.2, worst_margin_min=1.0, under_curve_day=5, storage_peak=726.0, days_above_normal=2, ramp_max=3.0),
-            _row("most", city_margin_min=-0.3, worst_margin_min=-0.3, overtop_sum=0.9, under_curve_day=3, storage_peak=726.0,
-                 days_above_normal=1, storage_end=560.0, end_vs_lower=300.0, ramp_max=8.0),
-            _row("ramp", city_margin_min=1.4, worst_margin_min=1.1, under_curve_day=6, storage_peak=728.0, days_above_normal=3, ramp_max=1.0)]
-    best = sc.best_for(rows)
-    assert best["city"] == "hold" and best["worst"] == "hold" and best["dam"] in ("more", "most") and best["curve"] == "most"
-    assert best["water"] == "hold" and best["warning"] in ("hold",) and best["total"] == "hold"
-    opt = sc.optimal(rows, normal=710.0)
-    # feasible = back under the upper curve within 7 days; among those, least downstream impact (no overtopping, highest
-    # worst-point margin), then the gentlest ramp → "ramp" (1.1 m) beats "more" (1.0 m); "most" overtops; "hold" never returns
-    assert opt["id"] == "ramp" and "เส้นควบคุม" in opt["reason"] and "ตลิ่ง" in opt["reason"]
-    none = sc.optimal([rows[0]], normal=710.0)
-    assert none["id"] is None and "ไม่มีแผน" in none["reason"]
+    # storage today 725 above the upper curve (600): a plan must not overtop any gauge (C1), not exceed the maximum
+    # storage (C2) and not leave the reservoir higher than today (C3); ★ = fastest return toward the curve, then the
+    # gentlest change of release. Per-effect bests are taken among the same feasible plans.
+    rows = [_row("hold", city_margin_min=2.0, worst_margin_min=1.8, under_curve_day=None, storage_peak=740.0, storage_end=740.0,
+                 days_above_normal=7),
+            _row("zero", city_margin_min=2.3, worst_margin_min=2.3, under_curve_day=None, storage_peak=798.0, storage_end=798.0,
+                 days_above_normal=7),
+            _row("more", city_margin_min=1.2, worst_margin_min=1.0, under_curve_day=None, storage_peak=725.0, storage_end=690.0,
+                 days_above_normal=2, ramp_max=3.0),
+            _row("most", city_margin_min=-0.3, worst_margin_min=-0.3, overtop_sum=0.9, under_curve_day=7, storage_peak=725.0,
+                 storage_end=598.0, days_above_normal=1, end_vs_lower=300.0, ramp_max=8.0),
+            _row("ramp", city_margin_min=1.4, worst_margin_min=1.1, under_curve_day=None, storage_peak=725.0, storage_end=690.0,
+                 days_above_normal=3, ramp_max=1.0)]
+    feas = sc.feasible(rows, storage0=725.0, upper_today=600.0, max_storage=900.0)
+    assert [r["id"] for r in feas] == ["more", "ramp"]  # hold/zero let the reservoir rise; most overtops
+    best = sc.best_for(feas)
+    assert best["city"] == "ramp" and best["worst"] == "ramp" and best["warning"] == "ramp" and best["water"] in ("more", "ramp")
+    opt = sc.optimal(rows, storage0=725.0, upper_today=600.0, normal=710.0, max_storage=900.0)
+    assert opt["id"] == "ramp" and opt["constraints_met"] is True and "ตลิ่ง" in opt["reason"] and "เส้นควบคุม" in opt["reason"]
+    # nothing meets the constraints: say so, pick the plan that overtops least while still lowering the reservoir
+    only = sc.optimal([rows[0], rows[1], rows[3]], storage0=725.0, upper_today=600.0, normal=710.0, max_storage=900.0)
+    assert only["constraints_met"] is False and only["id"] == "most" and "ไม่มีแผน" in only["reason"]
 
 
 def test_daily_downstream_uses_whole_day_travel_times_and_todays_release_before_day_one():
@@ -69,3 +77,24 @@ def test_the_inflow_band_widens_in_the_high_inflow_regime():
     lo_h, hi_h = sc.inflow_band(12.0, 7)
     assert lo_n < 0 < hi_n and (sc.HIGH_BAND is None or (lo_h < lo_n and hi_h > hi_n))
     assert sc.inflow_band(3.0, 9) == sc.inflow_band(3.0, 7)  # beyond 7 days the 7-day band holds
+
+
+def test_the_explanation_names_the_plan_the_rule_and_the_label_without_verdict_words():
+    from floodwatch import explain
+    plan = {"id": "p1", "kind": "ramp", "release": [10.8, 12.0, 13.2, 14.4, 15.6, 16.8, 18.0], "storage": [724] * 7, "storage_low": [700] * 7,
+            "storage_high": [740] * 7, "best_for": ["curve", "dam"], "optimal": True, "feasible": True,
+            "effects": {"city_margin_min": 1.4, "worst_margin_min": 1.1, "overtop_sum": 0.0, "storage_peak": 725.0, "days_above_normal": 3,
+                        "under_curve_day": None, "storage_end": 690.0, "end_vs_lower": 486.0, "ramp_max": 1.2, "release_mean": 14.4}}
+    cmp = {"dam": {"name_th": "แก่งกระจาน", "dam_date": "2026-10-05", "storage_mcm": 725.85, "storage_pct": 102.2, "released_mcm": 10.8,
+                   "inflow_mcm": 10.33}, "upper": [597.7] * 7, "lower": [204.0] * 7, "normal": 710.0,
+           "inflow": {"mid": [10.33] * 7, "low": [0.0] * 7, "high": [15.7] * 7, "regime": "high", "method": "hold", "note": "x"},
+           "inputs": {"rain7": {"mm": [6.9, 7.6, 4.6, 3.9, 14.3, 17.2, 6.1]}},
+           "optimal": {"id": "p1", "constraints_met": True, "reason": "ลดปริมาตรอ่างได้มากที่สุด โดยไม่มีจุดใดเกินตลิ่ง", "rule": "r"},
+           "best_for": {"city": "p1", "worst": "p1", "total": "p1", "dam": "p1", "curve": "p1", "water": "p1", "warning": "p1"},
+           "plans": [plan], "downstream_validated": False}
+    lines, story = explain.scenarios(cmp)
+    text = " ".join(lines) + story
+    assert "แก่งกระจาน" in text and "ทยอย" in text and "10.8" in text and "18.0" in text and "เส้นควบคุม" in text
+    assert "ยังไม่ผ่านการทดสอบ" in text and "ปลอดภัย" not in text and "safe" not in text.lower()
+    assert explain.plan_words({"kind": "constant", "release": [14.0] * 7}) == "14.0 ล้าน ลบ.ม./วัน คงที่ 7 วัน"
+    assert explain.plan_words({"kind": "front", "release": [20.0, 20.0, 10.0, 10.0, 10.0, 10.0, 10.0]}) == "20.0 ล้าน ลบ.ม./วัน 2 วันแรก แล้ว 10.0"

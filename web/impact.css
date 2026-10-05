@@ -76,3 +76,21 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-pop-pos.imp-below { color: #6d4c41; }
 .imp-pop-rec { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
 .imp-tip { font-size: 12px; font-weight: 600; }
+
+/* 7-day release scenarios (D-101): cards like the station list, ★ on the plan that meets the rule, badges per effect */
+#view-impact .imp-sc-head { font-size: 14px; margin: 4px 0 6px; }
+#view-impact .imp-label { font-size: 13px; color: var(--critical); background: #fdecea; border-radius: 6px; padding: 4px 8px; margin: 0 0 6px; }
+#view-impact .imp-rule { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+#view-impact .imp-plans { padding: 0; margin: 0 0 8px; }
+#view-impact .item.imp-plan { cursor: pointer; border-left-color: #2f6fb0; }
+#view-impact .item.imp-opt { border-left-color: #f2b705; background: #fffdf3; }
+#view-impact .item.imp-infeasible { border-left-color: #c9ced6; color: var(--muted); }
+#view-impact .imp-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+#view-impact .imp-badge-eff { font-size: 12px; background: #e8f0fb; color: #0d3b66; border-radius: 10px; padding: 1px 8px; }
+#view-impact .imp-custom { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); margin: 6px 0; }
+#view-impact .imp-custom input { font: inherit; width: 4.6em; padding: 6px 4px; border: 1px solid var(--line); border-radius: 6px; min-height: 36px; color: var(--ink); }
+#view-impact .imp-custom .btn { min-height: 36px; padding: 4px 10px; }
+#view-impact .imp-matrix thead th { min-width: 110px; white-space: normal; }
+#view-impact .imp-ask { margin-top: 8px; }
+.imp-svg { width: 100%; height: auto; display: block; margin: 6px 0; }
+
