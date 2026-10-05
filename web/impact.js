@@ -27,7 +27,7 @@
   const api = (path, opts) => fetch(path, Object.assign({ credentials: "same-origin", cache: "no-store" }, opts || {}));
   const narrow = () => window.innerWidth <= 800;
 
-  const state = { authed: false, cases: [], dams: null, sel: "dams", kase: {}, loadedAt: 0 };
+  const state = { authed: false, cases: [], dams: null, sel: "dams", kase: {}, loadedAt: 0, notice: "" };
   const layers = { dams: null, kase: null };
   let damMarkers = [];
   // app.js's map: it may exist already (a classic script's top-level binding) or announce itself later
@@ -54,7 +54,7 @@
   async function loadAll() {
     let r;
     try { r = await api("/api/impact/cases"); } catch (e) { msg("เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง"); return false; }
-    if (r.status === 401) { showLogin(""); return false; }
+    if (r.status === 401) { showLogin(state.notice || ""); state.notice = ""; return false; }
     if (r.status === 503) { msg("หน้านี้ยังไม่ได้ตั้งค่า (ผู้ดูแลระบบต้องตั้งรหัสผ่านก่อน)"); return false; }
     if (!r.ok) { msg("โหลดข้อมูลไม่สำเร็จ (" + r.status + ")"); return false; }
     state.cases = (await r.json()).cases || [];
@@ -94,7 +94,8 @@
     try { await api("/api/impact/logout", { method: "POST" }); } catch (e) { /* the cookie expires by itself */ }
     state.authed = false; state.dams = null; state.kase = {}; state.sel = "dams";
     for (const k of Object.keys(layers)) { if (layers[k]) { layers[k].remove(); layers[k] = null; } }
-    showLogin("ออกจากระบบแล้ว");  // no setTab here: its session check would race this message
+    state.notice = "ออกจากระบบแล้ว";  // shown by the session check that setTab starts (no race with a second form)
+    setTab("impact");
   }
 
   function render() {

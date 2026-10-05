@@ -282,6 +282,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 
 ## 6c. Releases (D-025)
 Bump `floodwatch.__version__` and `pyproject.toml`, add a [CHANGELOG](../CHANGELOG.md) entry, tag `vX.Y.Z`, publish a GitHub release, and bump the `?v=` asset query. The UI reads the version from `/api/stats`.
+**Release steps run one at a time, each checked (2026-10-05: a `&&`/`;` chain let `gh release create` run after the tag push failed, so GitHub made the tag on the old `main`):** tests → `git tag -a` → `git push origin main` → `git push origin vX.Y.Z` → `gh release create vX.Y.Z --verify-tag` (refuses when the tag is not on GitHub). Never chain a publishing step after a step that may fail.
 
 ## 7. Code and security standards
 
