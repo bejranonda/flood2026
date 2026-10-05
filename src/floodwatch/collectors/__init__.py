@@ -765,23 +765,27 @@ def hii_dams_history(per_run: int = 10, first_year: int = 2018, pause_s: float =
         meta = {r["dam_id"]: r for r in c.execute("SELECT dam_id, agency, name_th FROM dam").fetchall()}
         complete = {(r["dam_id"], r["y"]) for r in c.execute(
             """SELECT dam_id, extract(year FROM dam_date)::int AS y FROM dam_daily WHERE released_mcm IS NOT NULL
-               GROUP BY 1, 2 HAVING count(*) >= 300""").fetchall()}
+               AND inflow_mcm IS NOT NULL GROUP BY 1, 2 HAVING count(*) >= 300""").fetchall()}
         refreshed = {}
         for d in meta:
             st = db.get_state(c, f"dam_rule_curve_{d}") or {}
             if st.get("fetched"):
                 refreshed[d] = dt.datetime.fromisoformat(st["fetched"])
     written = 0
-    for dam_id, year in dam_history_todo(sorted(meta), complete, refreshed, this_year, first_year, per_run, case_dams, now):
+    for dam_id, year in dam_history_todo(sorted(meta), complete, refreshed, this_year, first_year, per_run // 2 or 1, case_dams, now):
         payload, _ = _get_json("hii_dams", f"{HII_ANALYST}/dam_yearly_graph?data_type=dam_released&dam_id={dam_id}&year={year}")
         part = parsing.parse_hii_dam_year(payload)
+        time.sleep(pause_s)
+        # inflow too (D-102): a reservoir outlook — even persistence with an honest band — needs each dam's inflow history
+        inflow = parsing.parse_hii_dam_year(_get_json("hii_dams", f"{HII_ANALYST}/dam_yearly_graph?data_type=dam_inflow&dam_id={dam_id}&year={year}")[0])
         m = meta[dam_id]
-        rows = dam_year_rows(dam_id, m["agency"], m["name_th"] or part["name_th"], part, {"series": []})
+        rows = dam_year_rows(dam_id, m["agency"], m["name_th"] or part["name_th"], part, {"series": []}, inflow=inflow)
         with db.connect() as c, c.cursor() as cur:
-            cur.executemany("""INSERT INTO dam_daily (dam_id, agency, name_th, dam_date, storage_mcm, released_mcm)
-                               VALUES (%(dam_id)s, %(agency)s, %(name_th)s, %(dam_date)s, %(storage_mcm)s, %(released_mcm)s)
+            cur.executemany("""INSERT INTO dam_daily (dam_id, agency, name_th, dam_date, storage_mcm, released_mcm, inflow_mcm)
+                               VALUES (%(dam_id)s, %(agency)s, %(name_th)s, %(dam_date)s, %(storage_mcm)s, %(released_mcm)s, %(inflow_mcm)s)
                                ON CONFLICT (dam_id, dam_date) DO UPDATE SET
-                                   released_mcm = COALESCE(dam_daily.released_mcm, EXCLUDED.released_mcm)""", rows)
+                                   released_mcm = COALESCE(dam_daily.released_mcm, EXCLUDED.released_mcm),
+                                   inflow_mcm = COALESCE(dam_daily.inflow_mcm, EXCLUDED.inflow_mcm)""", rows)
             if year == this_year and part["upper"]:
                 db.set_state(c, f"dam_rule_curve_{dam_id}", {**{k: part[k] for k in ("upper", "lower", "normal", "upper_bound",
                                                                                        "lower_bound")}, "fetched": now.isoformat()})
