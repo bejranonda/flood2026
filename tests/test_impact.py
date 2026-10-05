@@ -156,3 +156,46 @@ def test_dam_notes_raise_what_an_engineer_would_question():
     assert any("เกิน 100 %" in n and "ทางน้ำล้น" in n for n in notes)       # over full but no spill reported: a question
     assert impact.dam_notes({**rid, "storage_pct": 90.0}, None, 140.0) == []
     assert impact.dam_notes(None, None, None) == []
+
+
+DAM_YEAR = {"result": "OK", "data": {
+    "graph_data": [{"year": 2026, "dam_name": "แก่งกระจาน", "data": [
+        {"date": "2026-10-04T00:00:00+07:00", "value": 11.2755}, {"date": "2026-10-05T00:00:00+07:00", "value": 10.8},
+        {"date": "2026-10-06T00:00:00+07:00", "value": None}]}],
+    "upper_rule_curve": [{"date": "2020-10-05", "value": 593.37}, {"date": "2020-02-29", "value": 600.0}],
+    "lower_rule_curve": [{"date": "2020-10-05", "value": 203.8}, {"date": "2020-02-29", "value": 300.0}],
+    "lower_bound": 65, "upper_bound": 900, "normal_bound": 710}}
+
+
+def test_hii_dam_year_gives_daily_values_and_the_rule_curves_by_day_of_year():
+    from floodwatch.collectors import parsing
+    y = parsing.parse_hii_dam_year(DAM_YEAR)
+    assert y["series"] == [("2026-10-04", 11.2755), ("2026-10-05", 10.8)]  # Thai dates; empty days dropped
+    assert y["upper"]["10-05"] == 593.37 and y["lower"]["10-05"] == 203.8 and y["normal"] == 710.0
+    assert impact.rule_curve_on(y, "2026-10-05") == {"upper": 593.37, "lower": 203.8}
+    assert impact.rule_curve_on(y, "2027-02-28") is None  # a day the curve does not list: say nothing
+
+
+def test_dam_notes_state_the_rule_curve_and_how_rare_todays_release_is():
+    rid = {"agency": "RID", "dam_date": "2026-10-05", "released_mcm": 10.8, "storage_mcm": 725.85, "storage_pct": 99.0}
+    years = {2018: (24.36, "2018-08-21"), 2019: (8.90, "2019-10-05"), 2020: (2.76, "2020-05-26"), 2021: (9.13, "2021-11-05"),
+             2022: (4.75, "2022-04-07"), 2023: (3.46, "2023-11-28"), 2024: (3.89, "2024-08-01"), 2025: (3.89, "2025-11-02")}
+    notes = impact.dam_notes(rid, None, None, rule={"upper": 593.37, "lower": 203.8}, years=years)
+    assert any("เส้นควบคุมบน" in n and "132" in n for n in notes)               # 725.85 − 593.37, a fact, not a verdict
+    assert any("2561" in n and "24.36" in n for n in notes)                       # the last year that released more
+    assert not any("เส้นควบคุม" in n for n in impact.dam_notes({**rid, "storage_mcm": 500.0}, None, None,
+                                                                 rule={"upper": 593.37, "lower": 203.8}))
+    assert not any("2561" in n for n in impact.dam_notes({**rid, "released_mcm": 5.0}, None, None, years=years))
+    gap = {y: v for y, v in years.items() if y != 2023}  # a year we have not seen: no "more than every day in …" claim
+    assert not any("มากกว่าทุกวัน" in n for n in impact.dam_notes(rid, None, None, years=gap))
+
+
+def test_a_dams_year_merges_release_and_storage_by_date():
+    from floodwatch import collectors
+    rel = {"series": [("2026-10-04", 11.2755), ("2026-10-05", 10.8)]}
+    sto = {"series": [("2026-10-05", 725.849), ("2026-10-06", 725.0)]}
+    rows = collectors.dam_year_rows(13, "RID", "แก่งกระจาน", rel, sto)
+    by = {r["dam_date"]: r for r in rows}
+    assert by["2026-10-05"]["released_mcm"] == 10.8 and by["2026-10-05"]["storage_mcm"] == 725.849
+    assert by["2026-10-04"]["storage_mcm"] is None and by["2026-10-06"]["released_mcm"] is None
+    assert all(r["dam_id"] == 13 and r["agency"] == "RID" for r in rows) and len(rows) == 3

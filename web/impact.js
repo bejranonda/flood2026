@@ -86,9 +86,21 @@
       day(d.dam_date) + "</small></h2><div class=\"kv\">" +
       box("ระบายรวม", d.released_mcm, 2, "ล้าน ลบ.ม./วัน", cms(d.released_mcm)) +
       box("น้ำไหลเข้าอ่าง", d.inflow_mcm, 2, "ล้าน ลบ.ม./วัน", cms(d.inflow_mcm)) +
-      box("ปริมาตรอ่าง", d.storage_mcm, 1, "ล้าน ลบ.ม.", d.storage_pct == null ? "" : num(d.storage_pct, 1) + " %") +
-      box("ระบายทางน้ำล้น", d.spilled_mcm, 2, "ล้าน ลบ.ม./วัน", "") + "</div>" +
+      box("ปริมาตรอ่าง", d.storage_mcm, 1, "ล้าน ลบ.ม.", (d.storage_pct == null ? "" : num(d.storage_pct, 1) + " %") +
+        (d.normal_mcm ? " · ปริมาตรปกติ " + num(d.normal_mcm, 0) : "")) +
+      (d.rule_curve ? "<div><span>เส้นควบคุมวันนี้ (บน / ล่าง)</span><b>" + num(d.rule_curve.upper, 0) + " / " +
+        num(d.rule_curve.lower, 0) + "</b> ล้าน ลบ.ม.<small>สสน.</small></div>" : "") +
+      box("ระบายทางน้ำล้น", d.spilled_mcm, 2, "ล้าน ลบ.ม./วัน", "") + "</div>" + yearsHtml(d.yearly_max) +
       (st.dam_notes || []).map((n) => '<p class="note">' + esc(n) + "</p>").join("") + "</section>";
+  }
+
+  function yearsHtml(rows) {
+    if (!rows || !rows.length) return "";
+    const body = rows.map((r) => '<tr><th scope="row">' + num(r.year + 543, 0).replace(",", "") + (r.days < 300 ? "<small>ถึงวันนี้</small>" : "") +
+      "</th><td>" + num(r.max_mcm, 2) + "</td><td>" + num(toCms(r.max_mcm), 0) + "</td><td>" + day(r.date) + "</td></tr>").join("");
+    return "<details><summary>ระบายสูงสุดในแต่ละปี (ข้อมูลรายวันจาก สสน.)</summary><div class=\"scroll\"><table><thead><tr>" +
+      '<th scope="col">ปี</th><th scope="col">สูงสุด (ล้าน ลบ.ม./วัน)</th><th scope="col">≈ ลบ.ม./วินาที</th><th scope="col">วันที่</th>' +
+      "</tr></thead><tbody>" + body + "</tbody></table></div></details>";
   }
 
   function riverHtml(st) {

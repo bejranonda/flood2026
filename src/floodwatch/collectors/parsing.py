@@ -411,3 +411,23 @@ def parse_hii_dams(payload: dict) -> list[dict]:
                     "storage_mcm": num("dam_storage"), "storage_pct": num("dam_storage_percent"), "inflow_mcm": num("dam_inflow"),
                     "released_mcm": num("dam_released"), "spilled_mcm": num("dam_spilled"), "level_m": lvl if lvl else None})
     return out
+
+
+def parse_hii_dam_year(payload: dict) -> dict:
+    """HII analyst/dam_yearly_graph (one dam, one year, one data_type): the daily values with Thai dates (empty days dropped),
+    the upper/lower rule curves by day of year ("MM-DD", ล้าน ลบ.ม.; HII lists them for a leap year) and the storage bounds
+    (normal_bound = the storage RID's percent divides by; checked 2026-10-05: 725.85 / 710 = 102.23 %)."""
+    d = payload.get("data") or {}
+    series = [(x["date"][:10], float(x["value"])) for g in d.get("graph_data") or [] for x in g.get("data") or []
+              if x.get("value") is not None and x.get("date")]
+
+    def curve(key: str) -> dict:
+        return {x["date"][5:10]: float(x["value"]) for x in d.get(key) or [] if x.get("value") is not None and x.get("date")}
+
+    def num(v):
+        return float(v) if v is not None else None
+
+    name = next((g.get("dam_name") for g in d.get("graph_data") or [] if g.get("dam_name")), None)
+    return {"name_th": name, "series": series, "upper": curve("upper_rule_curve"), "lower": curve("lower_rule_curve"),
+            "normal": num(d.get("normal_bound")), "upper_bound": num(d.get("upper_bound")), "lower_bound": num(d.get("lower_bound"))}
+

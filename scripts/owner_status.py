@@ -152,6 +152,13 @@ def main() -> None:
     rows.append(("GLM", "GLM API key for AI feedback triage (GLM_API_KEY in .env)", "done" if glm_key else "open",
                  "key configured" if glm_key else "empty (fill in later in .env, D-030)"))
 
+    # /impact (D-099): one shared password; it must be a long passphrase before partner data are loaded. Length only.
+    impact_pw = e.get("IMPACT_PASSWORD", "").strip()
+    rows.append(("IMPACT", "/impact password is a long passphrase (≥ 16 characters) before ONWR/RID data are loaded",
+                 "done" if len(impact_pw) >= 16 else "open",
+                 "not set: /impact answers 503" if not impact_pw else "long enough" if len(impact_pw) >= 16
+                 else "short pilot password: fine for public data only; change it before partner data arrive"))
+
     # A key that exists is not a key that works (KI-510): make one real request, never print the key or the URL.
     gistda_key = e.get("GISTDA_API_KEY", "").strip()
     if gistda_key:

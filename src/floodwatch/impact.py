@@ -161,9 +161,38 @@ def th_date(ymd: str | None) -> str:
     return f"{d} {TH_MONTHS[m - 1]} {(y + 543) % 100:02d}"
 
 
-def dam_notes(rid: dict | None, egat: dict | None, q18_now: float | None) -> list[str]:
-    """What an engineer would question in the dam's daily records — stated as questions, never resolved by us."""
+def rule_curve_on(curves: dict | None, ymd: str | None) -> dict | None:
+    """The upper and lower rule curves (ล้าน ลบ.ม.) on a date, by day of year; None when the curve does not list that day."""
+    if not curves or not ymd:
+        return None
+    k = str(ymd)[5:10]
+    up, lo = (curves.get("upper") or {}).get(k), (curves.get("lower") or {}).get(k)
+    return {"upper": up, "lower": lo} if up is not None and lo is not None else None
+
+
+def dam_notes(rid: dict | None, egat: dict | None, q18_now: float | None, rule: dict | None = None,
+              years: dict | None = None) -> list[str]:
+    """What an engineer would look at or question in the dam's records: facts against HII's rule curve and the dam's own
+    history (`years`: {year: (highest daily release, its date)}, complete years only), and doubts stated as questions."""
     notes = []
+    if rid and rule and rid.get("storage_mcm") is not None:
+        st, up, lo = rid["storage_mcm"], rule["upper"], rule["lower"]
+        if st > up:
+            notes.append(f"ปริมาตรอ่าง {st:.1f} ล้าน ลบ.ม. สูงกว่าเส้นควบคุมบน (upper rule curve) ของวันนี้ {st - up:.0f} ล้าน ลบ.ม."
+                         f" (เส้นบน {up:.1f}, เส้นล่าง {lo:.1f} — เส้นควบคุมจาก สสน.)")
+        elif st < lo:
+            notes.append(f"ปริมาตรอ่าง {st:.1f} ล้าน ลบ.ม. ต่ำกว่าเส้นควบคุมล่าง (lower rule curve) ของวันนี้ {lo - st:.0f} ล้าน ลบ.ม."
+                         f" (เส้นล่าง {lo:.1f} — เส้นควบคุมจาก สสน.)")
+    if rid and years and rid.get("released_mcm") is not None and rid.get("dam_date"):
+        r, this_year = rid["released_mcm"], int(str(rid["dam_date"])[:4])
+        earlier = sorted(y for y in years if y < this_year)
+        higher = [y for y in earlier if years[y][0] >= r]
+        last = max(higher) if higher else None
+        span = list(range((last + 1) if last else (earlier[0] if earlier else this_year), this_year))
+        if span and all(y in years for y in span) and (last is None or last < this_year - 1):
+            what = f"ระบายวันนี้ {r:.2f} ล้าน ลบ.ม./วัน มากกว่าทุกวันในปี {span[0] + 543}–{span[-1] + 543}"
+            notes.append(what + (f"; ปีล่าสุดที่ระบายมากกว่านี้คือ {last + 543} (สูงสุด {years[last][0]:.2f} ล้าน ลบ.ม./วัน"
+                                 f" เมื่อ {th_date(years[last][1])})" if last else " (เท่าที่ สสน. มีข้อมูล)") + " — ข้อมูลรายวันจาก สสน.")
     if rid and egat and egat.get("released_mcm") is not None:
         notes.append(f"กฟผ. รายงานเขื่อนเดียวกัน ({th_date(egat.get('dam_date'))}): ระบาย {egat['released_mcm']:.2f} ล้าน ลบ.ม./วัน"
                      + (f", {egat['storage_pct']:.1f} %" if egat.get("storage_pct") is not None else "")
@@ -180,9 +209,10 @@ def dam_notes(rid: dict | None, egat: dict | None, q18_now: float | None) -> lis
 DATA_REQUEST = [
     {"key": "diversion_dam", "th": "เขื่อนทดน้ำเพชร: การเปิดประตู ระดับน้ำหน้า/ท้ายเขื่อน และปริมาณน้ำที่ผ่านลงแม่น้ำและเข้าคลองฝั่งซ้าย/ขวา (รายชั่วโมงหรือรายวัน)",
      "why": "ผลทดสอบย้อนหลังชี้ว่าระดับน้ำท้ายน้ำขึ้นกับการบริหารเขื่อนเพชร ไม่ใช่การระบายจากแก่งกระจานโดยตรง — ข้อมูลนี้สำคัญที่สุด"},
-    {"key": "events", "th": "เหตุการณ์น้ำท่วมในอดีต (เช่น ส.ค. 2561): ปริมาณระบาย ระดับน้ำสูงสุดและเวลาที่แต่ละสถานี และพื้นที่ที่ท่วมจริง",
-     "why": "ข้อมูล 1 ปีของเราไม่มีการระบายขนาดใหญ่ (ดูน้ำสูงสุดที่ B.18 ในผลทดสอบย้อนหลัง) จึงตรวจสอบกรณีน้ำมากไม่ได้"},
-    {"key": "dam_release", "th": "เขื่อนแก่งกระจานรายชั่วโมง (หรือรายวัน) ย้อนหลัง 2–3 ปี: ระบายรวม แยกเครื่องกำเนิดไฟฟ้า/ทางระบายน้ำล้น/ประตูระบาย น้ำไหลเข้า ระดับและปริมาตรอ่าง และเส้นควบคุมระดับน้ำ (rule curve)",
+    {"key": "events", "th": "ระดับและปริมาณน้ำรายชั่วโมงที่ B.18, B.10, B.16, B.15 ช่วง ส.ค.–ก.ย. 2561 และพื้นที่ที่ท่วมจริง (รวมเหตุการณ์อื่นถ้ามี)",
+     "why": "ปี 2561 เขื่อนระบายสูงสุด 24.36 ล้าน ลบ.ม./วัน (≈ 282 ลบ.ม./วินาที, 21 ส.ค. 61) และตั้งแต่ปี 2562 ไม่มีปีใดเกิน 9.13"
+            " แต่ API สาธารณะของ สสน. ไม่มีระดับน้ำของสถานีเหล่านี้ในปี 2561 — เป็นทางเดียวที่จะทดสอบกรณีระบายมาก"},
+    {"key": "dam_release", "th": "เขื่อนแก่งกระจานรายชั่วโมง (หรือรายวัน) ย้อนหลัง 2–3 ปี: ระบายรวม แยกเครื่องกำเนิดไฟฟ้า/ทางระบายน้ำล้น/ประตูระบาย น้ำไหลเข้า ระดับและปริมาตรอ่าง และยืนยันเส้นควบคุมระดับน้ำ (rule curve) ฉบับที่ใช้อยู่ (สสน. มีชุดหนึ่ง)",
      "why": "ข้อมูลรายวันผ่าน สสน. มีสองชุด (ชป. และ กฟผ.) ที่ไม่ตรงกัน และรายวันหยาบเกินไปสำหรับช่วง 24–72 ชม."},
     {"key": "release_plan", "th": "แผนการระบายล่วงหน้า 1–7 วัน และเวลาที่ประกาศ", "why": "ทำให้คาดผลกระทบล่วงหน้าได้จริง"},
     {"key": "station_reference", "th": "ระดับตลิ่งที่สำรวจแล้ว rating curve และปริมาณน้ำวิกฤต (ความจุลำน้ำ) ที่ท่ายาง บ้านลาด และตัวเมืองเพชรบุรี",
@@ -364,6 +394,14 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
                   released_mcm, spilled_mcm, level_m FROM dam_daily WHERE dam_id = ANY(%s) ORDER BY dam_id, dam_date DESC""",
         (list(cfg["dam_ids"].values()),)).fetchall()}
     rid, egat = dams.get(cfg["dam_ids"]["RID"]), dams.get(cfg["dam_ids"]["EGAT"])
+    from floodwatch import db
+    curves = db.get_state(c, f"dam_rule_curve_{cfg['dam_ids']['RID']}")
+    yrows = c.execute("""SELECT extract(year FROM dam_date)::int AS y, count(*) AS n, max(released_mcm) AS mx,
+                                (array_agg(dam_date::text ORDER BY released_mcm DESC NULLS LAST))[1] AS d
+                         FROM dam_daily WHERE dam_id=%s AND released_mcm IS NOT NULL GROUP BY 1 ORDER BY 1""",
+                      (cfg["dam_ids"]["RID"],)).fetchall()
+    years = {r["y"]: (float(r["mx"]), r["d"]) for r in yrows if r["n"] >= 300}  # complete years only
+    rule = rule_curve_on(curves, rid.get("dam_date") if rid else None)
     cut = int(n * 0.6)
     lags_cut = {"B.10": best_lag(q18[:cut], q10[:cut]) or lags["B.10"]}
     lags_cut["B.16"] = max(lags_cut["B.10"], best_lag(q18[:cut], q16[:cut]) or lags["B.16"])
@@ -376,8 +414,10 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
     lags_cut["h"] = {"B.10": H["B.10"], "B.16": H["B.16"]}
     data_time = max((r[-1]["t"] for r in raw.values() if r), default=None)
     b18_now = next((p["q_now"] for p in points if p["code"] == "B.18"), None)
-    return {"case": case, "title": cfg["title"], "dam": {**(rid or {}), "egat": egat}, "dam_km": cfg["dam_km"],
-            "dam_notes": dam_notes(rid, egat, b18_now),
+    return {"case": case, "title": cfg["title"],
+            "dam": {**(rid or {}), "egat": egat, "rule_curve": rule, "normal_mcm": (curves or {}).get("normal"),
+                    "yearly_max": [{"year": r["y"], "max_mcm": float(r["mx"]), "date": r["d"], "days": r["n"]} for r in yrows]},
+            "dam_km": cfg["dam_km"], "dam_notes": dam_notes(rid, egat, b18_now, rule=rule, years=years),
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
             "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), **replay(q18, q10, q16, city, lags_cut, cut)},

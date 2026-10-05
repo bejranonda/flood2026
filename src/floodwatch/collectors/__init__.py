@@ -719,8 +719,56 @@ def hii_dams() -> dt.datetime | None:
                                spilled_mcm=EXCLUDED.spilled_mcm, level_m=EXCLUDED.level_m, fetched_at=now()""", rows)
         c.commit()
     log.info("hii_dams: %d dam-days", len(rows))
+    try:
+        hii_dam_history()  # the impact pilot's dam (Kaeng Krachan, RID record 13): history and rule curves
+    except Exception:
+        log.exception("hii_dam_history failed")
     days = [r["dam_date"] for r in rows]
     return dt.datetime.fromisoformat(max(days)).replace(tzinfo=dt.timezone.utc) if days else None
+
+
+def dam_year_rows(dam_id: int, agency: str | None, name_th: str | None, released: dict, storage: dict) -> list[dict]:
+    """One dam's year from HII's yearly graphs (release and storage), merged by Thai date into dam_daily rows."""
+    days: dict[str, dict] = {}
+    for key, part in (("released_mcm", released), ("storage_mcm", storage)):
+        for day, value in part.get("series") or []:
+            days.setdefault(day, {"released_mcm": None, "storage_mcm": None})[key] = value
+    return [{"dam_id": dam_id, "agency": agency, "name_th": name_th, "dam_date": day, **vals} for day, vals in sorted(days.items())]
+
+
+def hii_dam_history(dam_id: int = 13, first_year: int = 2018, pause_s: float = 1.0) -> int:
+    """A dam's daily release and storage since `first_year` and its rule curves (HII analyst/dam_yearly_graph), for the
+    impact page (D-099): earlier years once (until ≥ 300 days are stored), the current year every run. Existing daily
+    records win (COALESCE). Returns the rows written."""
+    this_year = dt.datetime.now(parsing.ICT).year
+    with db.connect() as c:
+        have = {r["y"] for r in c.execute("""SELECT extract(year FROM dam_date)::int AS y FROM dam_daily WHERE dam_id=%s
+                                             AND released_mcm IS NOT NULL GROUP BY 1 HAVING count(*) >= 300""", (dam_id,)).fetchall()}
+        meta = c.execute("SELECT agency, name_th FROM dam_daily WHERE dam_id=%s ORDER BY dam_date DESC LIMIT 1", (dam_id,)).fetchone()
+    agency, name = (meta["agency"], meta["name_th"]) if meta else (None, None)
+    written, curves = 0, None
+    for year in [y for y in range(first_year, this_year) if y not in have] + [this_year]:
+        parts = {}
+        for kind in ("dam_released", "dam_storage"):
+            payload, _ = _get_json("hii_dams", f"{HII_ANALYST}/dam_yearly_graph?data_type={kind}&dam_id={dam_id}&year={year}")
+            parts[kind] = parsing.parse_hii_dam_year(payload)
+            time.sleep(pause_s)
+        curves = curves or (parts["dam_released"] if parts["dam_released"]["upper"] else None)
+        rows = dam_year_rows(dam_id, agency, name or parts["dam_released"]["name_th"], parts["dam_released"], parts["dam_storage"])
+        with db.connect() as c, c.cursor() as cur:
+            cur.executemany("""INSERT INTO dam_daily (dam_id, agency, name_th, dam_date, storage_mcm, released_mcm)
+                               VALUES (%(dam_id)s, %(agency)s, %(name_th)s, %(dam_date)s, %(storage_mcm)s, %(released_mcm)s)
+                               ON CONFLICT (dam_id, dam_date) DO UPDATE SET
+                                   released_mcm = COALESCE(dam_daily.released_mcm, EXCLUDED.released_mcm),
+                                   storage_mcm = COALESCE(dam_daily.storage_mcm, EXCLUDED.storage_mcm)""", rows)
+            c.commit()
+        written += len(rows)
+    if curves:
+        with db.connect() as c:
+            db.set_state(c, f"dam_rule_curve_{dam_id}", {k: curves[k] for k in ("upper", "lower", "normal", "upper_bound", "lower_bound")})
+            c.commit()
+    log.info("hii_dam_history %s: %d dam-days", dam_id, written)
+    return written
 
 
 def run(source: str) -> None:
