@@ -715,3 +715,14 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
   reported", and a reservoir listed twice under two agencies' names (KI-305). The fix went to the server (one definition,
   zeros as missing, twins by distance and normal storage) with tests, not into the page.
 
+### 19.24 Seven days for a release plan: test what the plan uses, at the lead it uses it (D-104)
+- A plan needs two predictions for 7 days: the reservoir's inflow (its storage path) and the river's level below the dam
+  for that plan. Each was tested at every lead 1–7 with only what is known at issue time (archived rain *forecasts* at
+  their real lead, the actual releases as the plan — the release is the decision), in two disjoint samples and an
+  operational window, against keep/persistence *and* against what was served.
+- Many candidates, few kept: rich regressions with rain, wetness and tide fitted one mostly dry year and failed the wet
+  season; the simple, physically signed models held. The served margin is the hindcast error per point and day, and the
+  hindcast scores each month with what was learned on the other months (a seasonal river; one year of data).
+- The inflow side kept one change out of 31 candidates and four ways of choosing: feeding the served model the mean of
+  four rain forecasts. Choosing per dam among many candidates won on the first sample and lost on the second; a single
+  family improved the summed error but made 1–3 more dams worse. The owner's rule ("no unit made worse") decided.

@@ -365,3 +365,15 @@ UX principles established through visitor testing during the 2026 flood season:
 - **Twins:** 11 EGAT dams have an RID record of the same reservoir 0.0–1.2 km away with a normal storage equal to within
   0.01 %; 10 share the name, one does not (EGAT แม่งัด 53 = RID แม่งัดสมบูรณ์ชล 23, 0.3 km, 265.0 ล้าน ลบ.ม.). Four EGAT
   dams have no RID twin: ห้วยกุ่ม, ท่าทุ่งนา, ปากมูล, รัชชประภา. ปากมูล lies 10.1 km from RID สิรินธร (another reservoir).
+
+## 27. The river below Kaeng Krachan over 7 days (checked 2026-10-05, production database; E-7D-DOWN, D-104)
+- **Response to a release change**, fitted on the year (cm per m³/s that has reached the point, day 7): B.10 0.63, B.16
+  0.55, B.15 0.17, PCH001 1.01; B.18 follows its own rating (≈ +1.9 m for 10.8 → 21.5 ล้าน ลบ.ม./วัน on 5 Oct). Whole-day
+  travel times from the lags: B.18 0, B.10 1, B.16, B.15 and PCH001 2 days.
+- **The response is seasonal:** on the dry months alone (Oct 2025–Jun 2026) B.10's level moved *against* the release
+  (−0.27…−0.77 cm per m³/s, corr −0.05…−0.14). Mean change of release over 2 days by month: 0.02–0.13 ล้าน ลบ.ม./วัน from
+  Dec to Apr, 0.4–0.6 in Aug–Sep 2026, 1.08 in Oct 2026.
+- **Seven-day error of "keep today's level"** (Jul–Sep 2026): B.18 10→28 cm (day 1→7), B.10 12→42, B.16 12→39, B.15 8→29,
+  PCH001 10→37. Rain on the two lowland basins between the dam and the city did not explain day-to-day level changes beyond
+  the release in that year.
+- **RID's gauges here post in batches** (≈ 18 readings a day; at 05:10 ICT the newest was 6 h old), PCH001 every 10 minutes.

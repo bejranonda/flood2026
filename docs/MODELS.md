@@ -3,7 +3,7 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.31.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9c the reservoirs and the national dams list. Numbers come from running code or the cited research files;
+> It describes **v0.32.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans. Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -27,9 +27,13 @@
 **แท็บจับตา** — รวมสิ่งที่ควรรู้ล่วงหน้า 24–48 ชม. ตัวเลข "6 ใน 10" คือ **สถิติจริงของแอปเอง** 30 วันที่ผ่านมา ว่าเมื่อแอปคาดแบบนี้ เกิดจริงกี่ครั้ง
 
 **เขื่อน (แท็บ 💧 ผลกระทบ สำหรับเจ้าหน้าที่)** — 38 เขื่อนใหญ่ จัดกลุ่มตามเส้นควบคุม (rule curve) ของ สสน. · % = ปริมาตร ÷ ปริมาตรที่ระดับเก็บกักปกติ
-ของหน่วยงานนั้น (นิยามเดียวทั้งรายการ — ชป. รายงานแบบนี้; % ที่ กฟผ. รายงานเป็น 0 หรือนิยามต่างกัน จึงไม่ใช้) · แนวโน้ม 7 วัน: 17 เขื่อนใช้แบบจำลองฝน
-ที่ผ่านการทดสอบกับ *ฝนคาดการณ์จริง* (เฉพาะช่วงวันที่ผ่านเกณฑ์) ที่เหลือแสดง "ถ้าไหลเข้าและระบายเท่าวันนี้" (*) พร้อมช่วงจากข้อมูลของเขื่อนเอง ·
+ของหน่วยงานนั้น (นิยามเดียวทั้งรายการ — ชป. รายงานแบบนี้; % ที่ กฟผ. รายงานเป็น 0 หรือนิยามต่างกัน จึงไม่ใช้) · แนวโน้ม 7 วัน: 16 เขื่อนใช้แบบจำลองฝน
+ที่ผ่านการทดสอบกับ *ฝนคาดการณ์จริง* (เฉพาะช่วงวันที่ผ่านเกณฑ์) ป้อนด้วยค่าเฉลี่ยฝนคาดการณ์ 4 แบบ (ECMWF, GFS, ICON, ค่าผสม) ซึ่งดีกว่าแบบเดียวทุกช่วงวันในการทดสอบสองชุด (§9d) ที่เหลือแสดง "ถ้าไหลเข้าและระบายเท่าวันนี้" (*) พร้อมช่วงจากข้อมูลของเขื่อนเอง ·
 ค่า 0 ที่แปลว่า "ไม่ได้รายงาน" ไม่แสดงเป็น 0 และไม่ใช้เป็นจุดเริ่มคาดการณ์ · กฟผ. กับ ชป. แยกกันเสมอ (§9c)
+
+**แผนระบาย 7 วัน (แก่งกระจาน)** — ระดับท้ายน้ำแต่ละวันของแต่ละแผน: ใต้เขื่อน (B.18) ตาม rating curve เทียบระดับวันนี้ จุดอื่น =
+ระดับวันนี้ + การตอบสนองต่อการระบายที่เรียนรู้ (ไม่ติดลบ) · ทดสอบย้อนหลัง 7 วันแล้ว คลาดเคลื่อน ~10 ซม. วันแรก ถึง ~40 ซม. วันที่ 7 และแผนต้องห่างตลิ่ง
+มากกว่าค่านั้นทุกวัน (เดิมใช้สูตรที่คลาดเคลื่อน ~1 ม.) · ลองฝนในพื้นที่ท้ายเขื่อน ความชื้น น้ำขึ้นน้ำลง และแบบจำลองหลายแบบแล้ว ไม่ช่วย จึงไม่ใช้ (§11c)
 
 **ปรับปรุงแบบจำลอง (4 ต.ค. 2569, ทดสอบแบบไม่โกง: เลือกวิธีจากครึ่งแรก วัดผลครึ่งหลัง ยืนยันกับสถานีอีกชุดที่ไม่เคยเห็น)** —
 แบบจำลอง star อ่านค่าเพิ่ม: ระดับน้ำเทียบค่าเฉลี่ย 7 และ 30 วัน และการเปลี่ยนแปลง 1/3/72 ชม. ความคลาดเคลื่อนลดลงจาก "ถือว่าคงที่"
@@ -272,6 +276,8 @@ instead of hiding it.
 | More stations | ablation: 2 / 1 / 0 upstream gauges | 2 upstream gauges cut error 7.6 / 5.4 / 4.2 % (12/24/48 h); no saturation | try 3–4 (Q47); DWR as inputs after ~30 days (Q46) |
 | DWR village posts | quality check | local datum, default 4.00 m alarms, ~11 h history | archive + trend-only layer (D-081) |
 | Reservoir outlook (Q58, D-102) | a rain model per dam fed with archived rain *forecasts*, bias per lead, monthly loss term | beats persistence by ≥ 10 %: 15 of 17 dams at 3 d, 11 of 17 at 7 d; the loss term helps 13 of 17 | served per dam and per horizon where it passed; persistence elsewhere (§9b) |
+| 7-day inflow (E-7D-IN, D-104) | 31 candidates × six rain sources on 35 RID dams; four ways to choose | per-dam picking overfits (+38 % in sample 2); single families add 1–3 dams worse; the served model fed the 4-model rain mean is better at every lead in both samples, none worse | the 4-model rain mean for the served model (§9d); horizon 7 days |
+| 7-day river below the dam (E-7D-DOWN, D-104) | 15 candidates incl. rain, wetness, tide phase, analogs | the absolute chain ~1 m off; anchored at B.18 and a non-negative gain elsewhere beat keep by 5–15 % at days 3–7; rain terms ≈ 0 | served with a margin per point and day (§11c) |
 | Dams without a tested model (D-103) | a projection "if today's inflow and release hold" with the dam's own band | no skill claimed; marked * and "ถ้าเท่าวันนี้" | shown; 36 of 38 dams have a 7-day trend (§9c) |
 | EGAT's daily % (D-103, KI-305) | as the dams list's badge | 0 for 11 of 15 dams; the other four −44 … +26 points from storage ÷ normal | not used; storage ÷ the agency's own normal storage for every record (§9c) |
 | Night of 2026-10-05 (two-sample gate) | dam release input (E-DAM), damping (E-DAMP), upstream flow (E-UQ), two years of history (E-2Y), discharge forecasts (E-Q) | E-DAM no gain; E-DAMP, E-UQ and E-2Y fail the gate; E-Q passes both samples | E-Q is a new parameter (where to show it is the owner's call); the others not shipped (§5e–5i) |
@@ -393,7 +399,7 @@ dams); the release is held at today's value (the pilot dam's scenarios, §11b, v
 
 | Dams | Inflow I(k) | Band | Shown as |
 |---|---|---|---|
-| 17 RID dams with a rain model (§9b) | the model at the horizons where it beat persistence by ≥ 10 % with forecast rain; today's inflow at the others | the tested error per horizon (model or persistence) | "อีก 7 วัน ↘ 93 %" |
+| 16 RID dams with a rain model (§9b, §9d) | the model at the horizons where it beat persistence by ≥ 10 % with forecast rain — fed with the mean of four forecast models since v0.32 — today's inflow at the others | the tested error per horizon (model or persistence) | "อีก 7 วัน ↘ 93 %" |
 | others with ≥ 200 days of daily inflow, not all zero | today's inflow (persistence) | 10–90 % of the dam's own inflow change after h days | "… %*", sheet "ถ้าเท่าวันนี้" |
 
 Coverage 2026-10-05: 36 of 38 dams (ปากมูล: no data; แม่มอก: one day of inflow history, back-filled hourly). The row's
@@ -402,6 +408,45 @@ Tests: `test_one_percent_definition_ranks_the_list_and_egat_zeros_are_missing_no
 `test_an_egat_dam_at_an_rid_dam_with_the_same_normal_storage_is_one_dam_under_the_rid_name`,
 `test_no_outlook_from_a_record_of_zeros`, `test_dams_without_a_tested_model_get_a_persistence_outlook_from_their_own_inflow`,
 `test_a_persistence_outlook_needs_no_rain_and_says_it_is_a_projection`.
+
+### 9d. Reservoir inflow 1–7 days: 31 candidates, one change kept (E-7D-IN, D-104)
+Owner 2026-10-05: "Try validating many possibilities, models, theories, inputs, parameters for 7-day forecast … If the
+other rain model is not better, you can limit to 6 days". Every candidate sees only what is known at issue day t: inflow up
+to t, past rain = ERA5 to t−5 and the forecast system's own lead-0 rain after (ERA5 arrives ~5 days late), rain for
+t+1…t+7 = the archived forecasts (Open-Meteo previous runs) at their real lead, scaled per model and lead to ERA5's total
+on the first half of the window. 35 RID dams, issue days in the 92-day archive (first half chooses, second half scores,
+43 days), two disjoint samples (alternate dams). research/2026-10-05_e7d_inflow*.{py,log}.
+
+**Candidates** (×6 rain sources: best_match, ECMWF IFS 0.25°, GFS, ICON — leads ≤ 6 — and the 3- and 4-model means):
+persistence · climatology (day of year) · damped persistence (to the 30-day mean; to climatology) · direct ridge per
+horizon (inflow, rain past 1/3/7 days, 30-day wetness, forecast rain 1…h and h−1…h, forecast × wetness, season) · the same in
+log space · damped persistence + rain · the Q58 recursive model · analogs (20 nearest days, change after h) · an HBV-style
+soil bucket with linear-reservoir routing (calibrated per dam, its state corrected at t) · blends.
+
+**Choosing** (error vs persistence on the scored half, sample 1 | sample 2, dams made worse in brackets):
+
+| | 3 d | 7 d | verdict |
+|---|---|---|---|
+| served now (Q58 model where it passed, best_match rain) | −23.5 (0) \| −18.1 (0) | −17.2 (0) \| −20.5 (0) | baseline |
+| per dam, best of all on the first half | −31.2 (0) \| **+37.5** (5) | −24.2 (0) \| −20.4 (3) | overfits — fail |
+| one candidate per horizon picked on the other sample | −24.9 (3) \| −18.7 (2) | −12.5 (3) \| −14.1 (4) | fail (+16.6 % at 4 d) |
+| served + a family where persistence is served (best: direct ridge, 3-model rain) | −24.4 (0) \| −19.9 (2) | −23.2 (0) \| −20.2 (1) | dams worse — fail |
+| **served model, rain = mean of four models** | **−28.0 (0) \| −22.4 (0)** | **−18.5 (0) \| −23.4 (0)** | **passes** |
+
+The 4-model rain mean is better at every lead 1–7 in both samples (e.g. 2 d −25.4/−18.0 vs −21.3/−12.1 %) and makes no dam
+worse; ICON's archive stops at lead 6, so day 7 is the mean of the other three — the horizon stays 7 days. Built for the
+16 dams with a served horizon (research/2026-10-05_e7d_inflow_build.log; `src/floodwatch/data/reservoir_inflow7.json`):
+the same model form refitted on 2018–2024, the served horizons unchanged, per-model and per-lead rain scales, bands from
+the scored half as quantiles of (observed − predicted), and the monthly loss term. Kaeng Krachan stays on persistence for
+days 1–3 (its served choice) and runs the model on days 4–7: day-7 MAE 5.58 vs 6.19 (best_match rain) and 8.37
+(persistence) ล้าน ลบ.ม./วัน; the direct ridge would roughly halve its 3–7-day error (3.9 vs 5.6 at 3 d) but only a per-dam
+pick chooses it, and that rule fails across dams — not shipped (re-test when the archive holds a season more).
+**Bands (KI-309):** the Q58 build stored quantiles of (predicted − observed) and the outlook added them as (observed −
+predicted) — Bhumibol's 7-day band showed the range below the line where the misses lay above it; the Q58 bands are now
+read the right way round and every new band is stored as (observed − predicted). Production (`reservoir.run`, every 6 h):
+`rain_inputs7` (ERA5 + one multi-model forecast call per catchment point), `compose_rain`, `inflow_path7`, `outlook7`;
+the KK release plans take the dam's path when it is for the same day and a model is used (`scenarios.compare(inflow_path=…)`).
+Live 2026-10-05 22:38 UTC: 16 dams on the 4-model rain; KK inflow 10.3 → 7.9 (6.4–20.8) ล้าน ลบ.ม./วัน on day 7.
 
 ## 10. How to reproduce
 
@@ -423,6 +468,9 @@ Tests: `test_one_percent_definition_ranks_the_list_and_egat_zeros_are_missing_no
 - Q52 night of 2026-10-05 (two-sample gate): `2026-10-05_dam_release_input.py` (E-DAM), `2026-10-05_star_damping.py`
   (E-DAMP), `2026-10-05_discharge_forecast.py` (E-Q), `2026-10-05_upstream_flow_input.py` (E-UQ),
   `2026-10-05_two_years_history.py` (E-2Y), each with its `.log`.
+- 7 days for release plans (D-104): `research/2026-10-05_e7d_inflow.py` (35 dams, 31 candidates; cache outside the repo),
+  `_e7d_inflow_strategies.py` and `_e7d_inflow_narrow.py` (the choice, offline from its log), `_e7d_inflow_build.py R_E4`
+  (writes the BUILD_JSON behind `src/floodwatch/data/reservoir_inflow7.json`), `_e7d_down.py` (the river below Kaeng Krachan).
 - The impact tab in a browser: `IMPACT_PW="$(sed -n 's/^IMPACT_PASSWORD=//p' .env)" python3 scripts/impact_tab_check.py` — it
   measures the dams list (row height, groups) and checks that a row and a ◆ open the same dam sheet.
 
@@ -507,4 +555,53 @@ S(0) (below the lower curve: S(7) ≥ S(0)).
 None feasible → say so; show the lowering plan with the least overtopping. 2026-10-05 19:00 UTC: 108 feasible, ★ = 17.0
 constant (S(7) 679, worst margin 0.55 m, step 6.2); "hold" best for the city and warning time; 10.5 best for the worst
 point, total and water kept (the smallest release that still lowers the reservoir).
+
+### 11c. Seven days below the dam for a release plan (E-7D-DOWN, D-104)
+Owner 2026-10-05: "plan reservoir discharge release for 7 days in advance together with future rain and other parameters,
+so we need the good prediction for the impact tab for this forecast time period … 7-day prediction is first for impact
+analysis for reservoir management only". Until then plans were judged with `impact.whatif` per day — the absolute
+mass-balance + rating chain with today's local inflows and diversion held — and one margin per point from the replay,
+which scores the chain at the point's own lag (~1–2 days), not at days 3–7.
+
+**Test** (research/2026-10-05_e7d_down.{py,log}). Every issue day of the year of hourly data (2025-09-30…2026-10-05, 328
+days); the actual releases of days d+1…d+7 stand in for the plan (the release is the decision, so knowing it is fair);
+target = each point's daily mean level on d+k. 15 candidates: keep · mean reversion · the production chain (absolute) ·
+the chain anchored on today's level · a gain (today + g·ΔQ, cm per m³/s of release change reaching the point) · 14-input
+ridges per point and lead (release change, anomaly, yesterday's change, rain today/3/30 days, forecast rain, forecast ×
+wetness, season, spring–neap tide phase) with and without the release terms · the anchored chain corrected by a ridge ·
+analogs · a blend · the gain + γ·forecast rain (γ ≥ 0) · + rain × wetness · + mean reversion · a hybrid per point. Two
+disjoint samples (odd vs even months; each scored with every fit — ratings, lags, gains — made on the other, training days
+whose 7-day target reaches into the scored months dropped; observed rain, an upper bound for rain terms) and an operational
+check (fits before 2026-07-06, archived 4-model forecast rain, scored 17 Aug–28 Sep).
+
+| Summed MAE over the 5 points | day 1 | day 3 | day 5 | day 7 |
+|---|---|---|---|---|
+| production chain vs keep (sample 2) | 381 vs 30 cm | 383 vs 58 | 392 vs 73 | 395 vs 78 |
+| hybrid vs keep, picked on 1 → scored on 2 | −1 % | −5 % | −9 % | −13 % |
+| hybrid vs keep, picked on 2 → scored on 1 | −2 % | −6 % | −8 % | −14 % |
+| hybrid vs keep, operational (forecast rain) | −5 % | −9 % | −15 % | −13 % |
+| hybrid vs the production chain, operational | −73 % | −52 % | −45 % | −38 % |
+
+- The **absolute chain is ~1 m off** downstream (85–100 cm MAE at B.10, B.16 and PCH001 on every day; KI-306): plans were
+  judged on it. Anchored on today's level, the chain is the best method **right below the dam** (B.18 9 cm at day 7 vs
+  20–47 cm for keep), and past the diversion the **gain** is (B.10, B.16, PCH001); both samples agree per point.
+- **Rain on the land between the dam and the city did not help:** the non-negative rain coefficient fits to ≈ 0 (the gain
+  + rain equals the gain), and the 14-input ridges are worse than keep (2–4× worse operationally) — one mostly dry year
+  does not teach them the wet season. Mean reversion is worse operationally (+8 to +15 %); analogs ≈ keep. Future rain
+  enters the plan through the reservoir's inflow (§9d), not the river's level.
+- **Physics over fit:** fitted on the dry months alone, B.10's gain came out *negative* (−0.27…−0.77 cm per m³/s: small
+  releases, most of the water diverted at เขื่อนเพชร, releases raised when the river was low). A negative gain would tell a
+  planner that releasing more lowers the river; gains are clipped at 0 and each month is scored with gains from the other
+  months.
+
+**Served (D-104, `impact.river7`, `impact.level7`, hourly):** level(c, k) = today's level + Δrating(release reaching B.18
+on day k) at B.18; = today's level + g(c, k) · ΔQ(c, k) elsewhere (g ≥ 0, fitted on the year; ΔQ in m³/s of release change
+that has reached c by day k, whole-day travel times). Margin a plan must keep = that point's MAE on that day; the range
+shown = the 90 % error. Live hindcast 2026-07-01…09-28 (each month scored with gains from the other months), MAE day 1→7:
+B.18 8→11 cm (keep 10→28), B.10 12→41 (12→42), B.16 12→38 (12→39), B.15 8→29 (= keep; gain ≈ 0), PCH001 10→34 (10→37);
+gains on day 7: B.10 0.63, B.16 0.55, B.15 0.17, PCH001 1.01 cm per m³/s. 2026-10-05 22:40 UTC: 228 of 676 plans feasible,
+★ = 21.5 constant, bound by B.18 (0.14 m from its bank against its 0.11 m day-7 error). Tests:
+`test_river7_learns_how_each_point_follows_a_release_change_and_scores_it_per_day`, `test_river7_never_lets_more_release_lower_a_point_downstream`,
+`test_plans_use_the_river7_levels_once_the_release_reaches_each_point`, `test_a_plan_keeps_the_river_models_margin_for_each_day`,
+`test_the_plan_says_which_downstream_model_it_used_and_the_story_states_its_tested_error`.
 

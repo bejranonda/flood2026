@@ -292,6 +292,17 @@ People using the app may be stressed, on the move, or protecting their home. Be 
   normal storage); a source's 0 that means "not reported" is shown as missing or "ไม่มีข้อมูล", never as 0 %, and never
   starts a forecast (KI-305). Forecast words are the app's ("อีก 7 วัน" as "อีก 24 ชม.").
 - **An arrow agrees with the numbers beside it**, rounded as shown: never "↗ 94 %" next to "94 %".
+- **A planning model's error is per lead.** A 7-day plan keeps the margin of *that day's* tested error, never one number
+  from a 1–2 day replay (KI-306); show the range of that day.
+- **Never let a fitted coefficient contradict physics in a decision tool:** a release's effect downstream is ≥ 0 (a
+  negative fit says the data are confounded, not that more release lowers the river); clip it and say why.
+- **"Now" is the latest reading within a stated window, shown with its time** — a feed that posts in batches must not
+  leave a case without "now" overnight (KI-307).
+- **A band is stored and added as (observed − predicted)** — write the sign into the variable name or the docstring; a
+  mirrored band looks plausible and points the wrong way (KI-309).
+- **Choosing a model per unit on ~40 days overfits** (E-7D-IN: +38 % in the second sample). Choose a change for all units,
+  confirm it on units it was not chosen on, and prefer the change that improves what is served without making any unit
+  worse.
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.

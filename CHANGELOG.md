@@ -2,6 +2,21 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.32.0 — 2026-10-05
+- **Seven days for the impact tab's release plans (owner: "plan reservoir discharge release for 7 days in advance
+  together with future rain"; D-104).** The river below Kaeng Krachan is judged per plan with a tested model — B.18's
+  rating anchored on today's level, past the diversion today's level + a non-negative gain — and each point keeps a
+  margin of *that day's* hindcast error (~10 cm on day 1 to ~40 cm on day 7). The old absolute chain was ~1 m off
+  (KI-306). The plan's inflow uses the dam's tested 7-day path; the page, the ★ story and the test sheet say which models
+  were used and how they tested.
+- **The served reservoir inflow model now runs on the mean of four rain forecasts** (best_match, ECMWF, GFS, ICON): better
+  at every lead 1–7 in both samples and no dam made worse — the one change of 31 candidates and four selection rules that
+  passed the two-sample gate (MODELS §9d). 7 days hold.
+- Fixes: the 7-day bands were mirrored (KI-309); overnight the KK case had no "now" (RID posts in batches, KI-307);
+  hii_dams_history was recorded as failing although it worked (KI-308).
+- Research: E-7D-IN (35 dams, 31 candidates incl. an HBV-style bucket, analogs, log/direct ridges) and E-7D-DOWN (15 river
+  candidates incl. rain, wetness, tide phase) — results in MODELS §9d and §11c, including what did not work.
+
 ## v0.31.0 — 2026-10-05
 - **The dams list reads like the station list (owner: "too much info each card"; D-103).** Dams grouped under headers
   with ⓘ (เหนือเส้นควบคุมบน · อยู่ระหว่างเส้นควบคุม · ไม่มีเส้นควบคุม); two-line rows — name and a storage-% badge, then

@@ -856,3 +856,28 @@ reporting zeros are missing or "ไม่มีข้อมูล", and no outlo
 1 %) is listed under the RID name with its record apart (KI-217). Tests: `test_one_percent_definition_ranks_the_list_and_egat_zeros_are_missing_not_empty`,
 `test_an_egat_dam_at_an_rid_dam_with_the_same_normal_storage_is_one_dam_under_the_rid_name`, `test_no_outlook_from_a_record_of_zeros`.
 Still unknown: what EGAT's % measures — to ask with KI-295.
+
+### KI-306 — The release plans were judged with a river chain ~1 m off · 🟢 fixed (D-104)
+E-7D-DOWN (research/2026-10-05_e7d_down.log): the absolute what-if (mass balance + each point's rating, local inflow and
+diversion held) errs by 85–100 cm at B.10, B.16 and PCH001 on every day of a 7-day hindcast, ~23 cm at B.18; the scenarios
+(D-101) used it for every plan's daily levels and one margin per point. Now plans use the tested hybrid (§11c of MODELS:
+B.18's rating anchored on today's level, a non-negative gain elsewhere) with a margin per point and day.
+
+### KI-307 — Overnight the Kaeng Krachan case had no "now" (RID posts in batches) · 🟢 fixed
+2026-10-05 22:10 UTC: the latest readings at B.18, B.10, B.16 and B.15 were 6 h 10 min old (16:00 UTC; 18 readings a day),
+just past the 6-hour window of `_last_at`; the case state had `h_now`/`q_now` = None and the plans ran on missing flows.
+A point's "now" is now its latest reading within 36 h (`impact.NOW_HOURS`), shown with its time. Test:
+`test_a_points_now_is_its_latest_reading_within_36_hours_with_its_time`.
+
+### KI-308 — hii_dams_history recorded every run as a failure · 🟢 fixed
+`collectors._run` passes a collector's return value as its data time; hii_dams_history returns a count of dam-days, the
+health write put it into a timestamp column ("DatatypeMismatch … smallint"), and 10 runs in a row were recorded as failures
+although the data was written. Only a datetime counts as a data time now. Test:
+`test_a_collector_that_returns_a_count_is_recorded_as_a_success_without_a_data_time`.
+
+### KI-309 — The reservoir outlook's 7-day bands were mirrored (stored predicted − observed, added as observed − predicted) · 🟢 fixed (D-104)
+research/2026-10-05_q58_operational.py stored each band as quantiles of (prediction − observation); `reservoir.inflow_path`
+adds a band to the prediction. Bhumibol's 7-day model band [−38.3, −0.07] meant the inflow came in above the model, but the
+range was drawn below the line; Sirikit's persistence band [−13.8, +36.2] the same way round. Found 2026-10-05 while
+writing the 7-day build. `load_models` now reads the Q58 bands as (observed − predicted); every new band is stored that
+way. Test: `test_the_q58_bands_are_read_as_observed_minus_predicted`.
