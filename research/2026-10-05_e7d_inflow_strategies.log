@@ -1,0 +1,111 @@
+dams 35 (sample 1: 18, sample 2: 17)
+
+=== 1 d — error vs persistence on the scored half (sample 1 | sample 2), dams worse than persistence
+  F:R_E4       -9.9 % ( 1 worse) |   -9.7 % ( 1 worse)
+  S           -14.8 % ( 0 worse) |   -9.5 % ( 1 worse)
+  F:D_E3      -11.6 % ( 0 worse) |   -9.4 % ( 0 worse)
+  F:D_ec      -11.0 % ( 0 worse) |   -9.3 % ( 0 worse)
+  F:D_bm      -11.4 % ( 0 worse) |   -8.6 % ( 0 worse)
+  F:R_bm      -11.0 % ( 0 worse) |   -7.9 % ( 0 worse)
+  F:D_icon     -8.1 % ( 2 worse) |   -6.9 % ( 0 worse)
+  C           -11.7 % ( 3 worse) |   -6.4 % ( 1 worse)
+  F:D_E4      -15.3 % ( 0 worse) |   -5.7 % ( 2 worse)
+  F:BL3        -9.1 % ( 0 worse) |   -5.6 % ( 3 worse)
+  F:BL1        -4.9 % ( 0 worse) |   -3.8 % ( 1 worse)
+  F:HB_bm      -5.3 % ( 0 worse) |   -2.7 % ( 0 worse)
+  served now  -14.8 % ( 0) |   -9.5 % ( 1)
+
+=== 2 d — error vs persistence on the scored half (sample 1 | sample 2), dams worse than persistence
+  F:R_E4      -24.2 % ( 0 worse) |  -15.4 % ( 1 worse)
+  F:D_E3      -20.3 % ( 1 worse) |  -15.3 % ( 1 worse)
+  F:D_bm      -17.8 % ( 0 worse) |  -13.6 % ( 1 worse)
+  F:D_ec      -20.6 % ( 1 worse) |  -13.3 % ( 1 worse)
+  F:D_E4      -18.0 % ( 1 worse) |  -12.3 % ( 2 worse)
+  S           -21.3 % ( 1 worse) |  -12.1 % ( 0 worse)
+  F:BL1       -11.6 % ( 0 worse) |  -11.6 % ( 2 worse)
+  F:BL2       -17.7 % ( 2 worse) |  -11.4 % ( 3 worse)
+  G           -10.8 % ( 6 worse) |  -14.5 % ( 4 worse) [BL2 | D_ec]
+  F:R_bm      -19.8 % ( 0 worse) |   -9.3 % ( 1 worse)
+  F:L_E3       -9.5 % ( 4 worse) |   -6.3 % ( 2 worse)
+  F:AN_E4      -6.2 % ( 1 worse) |   -7.5 % ( 2 worse)
+  served now  -21.3 % ( 1) |  -12.1 % ( 0)
+
+=== 3 d — error vs persistence on the scored half (sample 1 | sample 2), dams worse than persistence
+  F:D_E3      -25.6 % ( 1 worse) |  -20.4 % ( 2 worse)
+  G           -24.9 % ( 3 worse) |  -18.7 % ( 2 worse) [BL2 | L_bm]
+  F:R_E4      -26.9 % ( 0 worse) |  -18.2 % ( 1 worse)
+  S           -23.5 % ( 0 worse) |  -18.1 % ( 0 worse)
+  F:L_bm      -23.7 % ( 0 worse) |  -16.7 % ( 2 worse)
+  F:D_bm      -25.9 % ( 0 worse) |  -16.3 % ( 2 worse)
+  F:D_E4      -30.6 % ( 0 worse) |  -15.5 % ( 4 worse)
+  F:D_ec      -26.3 % ( 1 worse) |  -15.2 % ( 1 worse)
+  F:BL1       -20.2 % ( 0 worse) |  -14.8 % ( 2 worse)
+  F:R_bm      -21.8 % ( 0 worse) |  -14.1 % ( 1 worse)
+  F:AN_E4     -13.3 % ( 1 worse) |  -18.7 % ( 3 worse)
+  F:BL2       -23.5 % ( 1 worse) |  -13.0 % ( 4 worse)
+  served now  -23.5 % ( 0) |  -18.1 % ( 0)
+
+=== 4 d — error vs persistence on the scored half (sample 1 | sample 2), dams worse than persistence
+  F:D_E3      -26.0 % ( 1 worse) |  -21.6 % ( 3 worse)
+  F:D_ec      -27.3 % ( 1 worse) |  -20.9 % ( 1 worse)
+  F:D_bm      -26.4 % ( 0 worse) |  -20.3 % ( 2 worse)
+  F:R_E4      -25.9 % ( 0 worse) |  -19.8 % ( 2 worse)
+  F:L_bm      -30.0 % ( 0 worse) |  -19.7 % ( 2 worse)
+  F:R_bm      -22.1 % ( 0 worse) |  -18.9 % ( 1 worse)
+  F:D_E4      -29.3 % ( 0 worse) |  -18.8 % ( 3 worse)
+  F:L_ec      -30.8 % ( 0 worse) |  -18.4 % ( 2 worse)
+  F:BL1       -20.8 % ( 0 worse) |  -17.3 % ( 2 worse)
+  S           -17.3 % ( 0 worse) |  -19.8 % ( 0 worse)
+  F:L_E3      -28.4 % ( 2 worse) |  -17.2 % ( 2 worse)
+  F:BL2       -23.8 % ( 0 worse) |  -16.6 % ( 2 worse)
+  served now  -17.3 % ( 0) |  -19.8 % ( 0)
+
+=== 5 d — error vs persistence on the scored half (sample 1 | sample 2), dams worse than persistence
+  F:L_bm      -26.5 % ( 0 worse) |  -25.3 % ( 2 worse)
+  F:R_E4      -25.4 % ( 1 worse) |  -24.3 % ( 1 worse)
+  F:L_ec      -22.9 % ( 0 worse) |  -23.9 % ( 2 worse)
+  F:D_E3      -26.3 % ( 1 worse) |  -22.5 % ( 2 worse)
+  F:L_E3      -29.2 % ( 1 worse) |  -22.0 % ( 2 worse)
+  F:R_bm      -22.4 % ( 0 worse) |  -21.3 % ( 1 worse)
+  F:D_ec      -28.1 % ( 1 worse) |  -21.2 % ( 1 worse)
+  F:D_bm      -26.3 % ( 1 worse) |  -20.6 % ( 2 worse)
+  F:BL3       -26.3 % ( 2 worse) |  -20.0 % ( 1 worse)
+  F:BL2       -23.3 % ( 1 worse) |  -19.1 % ( 2 worse)
+  F:BL1       -21.0 % ( 0 worse) |  -19.0 % ( 2 worse)
+  F:D_E4      -27.0 % ( 1 worse) |  -18.7 % ( 3 worse)
+  served now  -18.2 % ( 0) |  -20.1 % ( 0)
+
+=== 6 d — error vs persistence on the scored half (sample 1 | sample 2), dams worse than persistence
+  F:D_E3      -24.6 % ( 1 worse) |  -25.0 % ( 3 worse)
+  F:R_E4      -23.6 % ( 1 worse) |  -26.0 % ( 1 worse)
+  F:D_E4      -22.9 % ( 2 worse) |  -22.4 % ( 2 worse)
+  F:L_ec      -21.8 % ( 1 worse) |  -23.2 % ( 2 worse)
+  F:D_ec      -25.2 % ( 1 worse) |  -21.6 % ( 1 worse)
+  F:BL3       -23.6 % ( 2 worse) |  -21.6 % ( 2 worse)
+  F:BL2       -21.0 % ( 1 worse) |  -24.5 % ( 3 worse)
+  F:D_bm      -23.6 % ( 2 worse) |  -20.7 % ( 2 worse)
+  F:R_bm      -20.5 % ( 1 worse) |  -22.0 % ( 1 worse)
+  F:L_bm      -21.1 % ( 0 worse) |  -20.3 % ( 2 worse)
+  F:BL1       -18.9 % ( 1 worse) |  -20.6 % ( 2 worse)
+  F:L_E3      -18.6 % ( 0 worse) |  -33.3 % ( 1 worse)
+  served now  -17.9 % ( 0) |  -21.2 % ( 0)
+
+=== 7 d — error vs persistence on the scored half (sample 1 | sample 2), dams worse than persistence
+  F:D_E3      -21.7 % ( 1 worse) |  -22.8 % ( 1 worse)
+  C           -24.2 % ( 0 worse) |  -20.4 % ( 3 worse)
+  F:D_ec      -21.6 % ( 1 worse) |  -19.5 % ( 2 worse)
+  F:L_ec      -18.9 % ( 1 worse) |  -19.4 % ( 2 worse)
+  F:L_E3      -18.6 % ( 0 worse) |  -25.7 % ( 1 worse)
+  F:D_E4      -18.2 % ( 2 worse) |  -18.6 % ( 3 worse)
+  F:D_bm      -19.8 % ( 2 worse) |  -18.1 % ( 2 worse)
+  F:R_E4      -18.0 % ( 0 worse) |  -24.0 % ( 1 worse)
+  F:R_bm      -17.3 % ( 0 worse) |  -20.8 % ( 0 worse)
+  S           -17.2 % ( 0 worse) |  -20.5 % ( 0 worse)
+  F:BL2       -17.1 % ( 2 worse) |  -18.5 % ( 2 worse)
+  F:L_bm      -17.3 % ( 0 worse) |  -16.7 % ( 2 worse)
+  served now  -17.2 % ( 0) |  -20.5 % ( 0)
+
+=== GATE: better than persistence and than served-now at 3 d and 7 d in both samples, no more dams worse than served-now
+no strategy passes
+
+6 vs 7 days (owner: 'limit to 6 days if necessary') — the best passing strategy's gain at 6 d and 7 d: {}

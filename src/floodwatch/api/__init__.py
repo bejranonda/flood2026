@@ -753,14 +753,20 @@ def _impact_compare(case_id: str, release: str | None, diversion_cms: float | No
         if len(custom) != 7 or any(not (0 <= x <= 200) for x in custom):
             raise HTTPException(422, "release: 7 numbers between 0 and 200")
 
+    # the dam's tested 7-day inflow (D-104), only when its outlook is for today's record and a model passed somewhere
+    o = ((_impact_state("reservoir_outlook") or {}).get("dams") or {}).get(str(impact.CASES[case_id]["dam_ids"]["RID"])) or {}
+    path = ([{"mid": d["inflow"], "lo": d["inflow_lo"], "hi": d["inflow_hi"], "method": d["method"]} for d in o["days"]]
+            if o.get("days") and (o.get("test") or {}).get("model") and o.get("dam_date") == (st.get("dam") or {}).get("dam_date") else None)
+
     def build():
         return scenarios.compare(st, inflow_today=float(st["dam"]["inflow_mcm"]), upper=c7["upper"], lower=c7["lower"],
                                  normal=float(si["normal_mcm"]), max_release=float(si["release_cap"]), max_storage=si.get("max_mcm"),
-                                 custom=custom, diversion_cms=diversion_cms)
-    out = _memo(("impact_scenarios", case_id, release or "", diversion_cms, st.get("built_at")), build, ttl=600)
+                                 custom=custom, diversion_cms=diversion_cms, inflow_path=path)
+    out = _memo(("impact_scenarios", case_id, release or "", diversion_cms, st.get("built_at"), bool(path)), build, ttl=600)
     return {**out, "dates": c7.get("dates"), "inputs": si, "dam": st.get("dam"), "built_at": st.get("built_at"),
             "downstream_validated": bool((st.get("validation") or {}).get("whatif_ready")),
-            "downstream_note": "ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง (D-099)"}
+            "downstream_note": ("ระดับท้ายน้ำ 7 วัน ทดสอบย้อนหลังแล้ว รายจุดรายวัน (D-104)" if st.get("river7")
+                                else "ระดับท้ายน้ำจาก rating curve + เวลาเดินทาง ยังไม่ผ่านการทดสอบย้อนหลัง (D-099)")}
 
 
 @app.get("/api/impact/case/{case_id}/scenarios", include_in_schema=False)

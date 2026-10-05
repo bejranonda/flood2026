@@ -125,6 +125,7 @@ def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     assert "Math.round(p7)" in js  # the arrow follows the two percentages on the row, never "↗ 94 %" beside "94 %"
     # E-7D-DOWN: plans name the downstream model they used; a tested one shows its error, not "untested"
     assert "cmp.downstream" in js and "🟠 ท้ายน้ำ ±" in js and "st.river7" in js
+    assert "ใช้ในแบบจำลองน้ำไหลเข้า" in js  # D-104: the plan's inflow can run on the tested rain model; the page says so
 
 
 def test_the_real_settings_reach_the_impact_endpoints():
@@ -197,6 +198,26 @@ def test_scenarios_endpoint_needs_ready_inputs_and_validates_a_custom_plan(monke
     with pytest.raises(HTTPException) as e:
         api.impact_scenarios(Req(tok), "kaeng-krachan", release=None, diversion_cms=None)
     assert e.value.status_code == 503
+
+
+def test_scenarios_use_the_dams_tested_7_day_inflow_and_name_the_downstream_model(monkeypatch):
+    from test_impact import STATE
+    from test_scenarios import _r7_state
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = {**_r7_state(), "case": "kaeng-krachan", "built_at": "2026-10-05T12:00:00+00:00", "validation": {"whatif_ready": False},
+          "dam": {**STATE["dam"], "dam_date": "2026-10-05", "storage_mcm": 725.85, "inflow_mcm": 10.33},
+          "scenario_inputs": {"curves7": {"upper": [593.0] * 7, "lower": [204.0] * 7, "dates": [f"2026-10-{d:02d}" for d in range(6, 13)]},
+                              "normal_mcm": 710.0, "max_mcm": 900.0, "release_cap": 25.0, "release_max_seen": 24.36}}
+    days = [{"inflow": 12.0, "inflow_lo": 11.0, "inflow_hi": 14.0, "method": "model"}] * 7
+    outlook = {"dams": {"13": {"dam_date": "2026-10-05", "test": {"model": True}, "days": days}}}
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": outlook if key == "reservoir_outlook" else st)
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    out = json.loads(api.impact_scenarios(Req(tok), "kaeng-krachan", release=None, diversion_cms=None).body)
+    assert out["inflow"]["method"] == "model" and out["inflow"]["mid"] == [12.0] * 7
+    assert out["downstream"]["method"] == "hybrid" and "ทดสอบย้อนหลัง" in out["downstream_note"]
+    outlook["dams"]["13"]["dam_date"] = "2026-10-04"  # yesterday's outlook for today's record: not used
+    out = json.loads(api.impact_scenarios(Req(tok), "kaeng-krachan", release="10,10,10,10,10,10,10", diversion_cms=None).body)
+    assert out["inflow"]["method"] == "hold"
 
 
 def test_scenario_explain_needs_login_and_returns_the_story_and_lines(monkeypatch):

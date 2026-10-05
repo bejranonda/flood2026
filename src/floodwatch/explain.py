@@ -679,14 +679,17 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
         pos = (f"สูงกว่าเส้นควบคุมบน {st0 - up0:.0f} ล้าน ลบ.ม." if st0 > up0 else f"ต่ำกว่าเส้นควบคุมบน {up0 - st0:.0f} ล้าน ลบ.ม.")
         lines.append(f"ปริมาตรอ่าง {st0:.0f} ล้าน ลบ.ม." + (f" ({dam['storage_pct']:.0f} %)" if dam.get("storage_pct") is not None else "")
                      + f" · {pos} (เส้นบนวันนี้ {up0:.0f})")
+    modelled = (cmp.get("inflow") or {}).get("method") == "model"
     if rel is not None and inf is not None:
         hi = (cmp.get("inflow") or {}).get("high") or []
         lo = (cmp.get("inflow") or {}).get("low") or []
         band = f" ช่วงที่เป็นไปได้ใน 7 วัน {lo[-1]:.1f}–{hi[-1]:.1f}" if lo and hi else ""
-        lines.append(f"วันนี้ระบาย {rel:.2f} และมีน้ำไหลเข้า {inf:.2f} ล้าน ลบ.ม./วัน (คิดว่าไหลเข้าเท่านี้ต่อไป{band})")
+        how = ((cmp.get("inflow") or {}).get("note") or "แบบจำลองจากฝนคาดการณ์") if modelled else "คิดว่าไหลเข้าเท่านี้ต่อไป"
+        lines.append(f"วันนี้ระบาย {rel:.2f} และมีน้ำไหลเข้า {inf:.2f} ล้าน ลบ.ม./วัน ({how}{band})")
     rain = ((cmp.get("inputs") or {}).get("rain7") or {}).get("mm")
     if rain:
-        lines.append(f"☁️ ฝนคาดการณ์ในลุ่มน้ำเหนือเขื่อน 7 วัน รวม {sum(rain):.0f} มม. (ดูประกอบ ไม่ได้ใช้คำนวณ)")
+        lines.append(f"☁️ ฝนคาดการณ์ในลุ่มน้ำเหนือเขื่อน 7 วัน รวม {sum(rain):.0f} มม. "
+                     + ("(ใช้ในแบบจำลองน้ำไหลเข้า)" if modelled else "(ดูประกอบ ไม่ได้ใช้คำนวณ)"))
     plans = {p["id"]: p for p in cmp.get("plans") or []}
     opt = cmp.get("optimal") or {}
     star = plans.get(opt.get("id"))

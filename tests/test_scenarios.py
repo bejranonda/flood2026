@@ -151,3 +151,28 @@ def test_the_plan_says_which_downstream_model_it_used_and_the_story_states_its_t
     assert "ทดสอบย้อนหลังแล้ว" in text and "±40 ซม." in text and "ยังไม่ผ่านการทดสอบ" not in text
     from test_impact import STATE
     assert sc.compare(STATE, inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0)["downstream"]["method"] == "whatif"
+
+
+def test_plans_can_run_on_the_tested_7_day_inflow_path_and_say_so():
+    path = [{"mid": 10.0 + k, "lo": 9.0 + k, "hi": 12.0 + k, "method": "model" if k else "persistence"} for k in range(7)]
+    st = _r7_state()
+    st["dam"]["storage_mcm"] = 700.0
+    cmp = sc.compare(st, inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0, inflow_path=path)
+    inf = cmp["inflow"]
+    assert inf["mid"] == [10.0 + k for k in range(7)] and inf["low"][6] == 15.0 and inf["high"][6] == 18.0
+    assert inf["method"] == "model" and "แบบจำลอง" in inf["note"]
+    hold = next(p for p in cmp["plans"] if p["kind"] == "hold")
+    assert abs(hold["storage"][0] - (700.0 + 10.0 - 10.8)) < 1e-6  # day 1 on the model's inflow, today's release held
+
+
+def test_the_story_says_the_rain_forecast_drives_the_inflow_when_the_tested_model_is_used():
+    from floodwatch import explain
+    path = [{"mid": 10.0, "lo": 9.0, "hi": 12.0, "method": "model" if k >= 3 else "persistence"} for k in range(7)]
+    st = _r7_state()
+    st["dam"].update({"storage_mcm": 700.0, "inflow_mcm": 10.3, "name_th": "แก่งกระจาน"})
+    cmp = sc.compare(st, inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0, inflow_path=path)
+    cmp["inputs"] = {"rain7": {"mm": [6.9, 7.6, 4.6, 3.9, 14.3, 17.2, 6.1]}}
+    cmp["dam"] = st["dam"]
+    lines, story = explain.scenarios(cmp)
+    text = " ".join(lines) + story
+    assert "ใช้ในแบบจำลองน้ำไหลเข้า" in text and "ไม่ได้ใช้คำนวณ" not in text and "คิดว่าไหลเข้าเท่านี้ต่อไป" not in text

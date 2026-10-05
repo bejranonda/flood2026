@@ -200,16 +200,22 @@ def _req_txt(c: str, m) -> str:
 
 def compare(state: dict, inflow_today: float, upper: list[float], lower: list[float], normal: float,
             max_release: float, max_storage: float | None = None, custom: list[float] | None = None,
-            diversion_cms: float | None = None, city: tuple = ("B.15", "PCH001")) -> dict:
+            diversion_cms: float | None = None, city: tuple = ("B.15", "PCH001"), inflow_path: list | None = None) -> dict:
     """The whole comparison: every candidate (and the custom plan) evaluated with today's inflow held (mid) and the
     persistence band (low/high storage), best plan per effect, the ★ optimal, and the plans worth showing."""
     dam = state.get("dam") or {}
     storage0 = float(dam.get("storage_mcm") or 0.0)
     today = float(dam.get("released_mcm") or 0.0)
     days = len(upper)
-    inflow_mid = [max(0.0, inflow_today)] * days
-    inflow_lo = [max(0.0, inflow_today + inflow_band(inflow_today, h)[0]) for h in range(1, days + 1)]
-    inflow_hi = [max(0.0, inflow_today + inflow_band(inflow_today, h)[1]) for h in range(1, days + 1)]
+    tested = bool(inflow_path) and len(inflow_path) >= days and any(p.get("method") == "model" for p in inflow_path[:days])
+    if tested:  # the dam's tested 7-day inflow (D-104): the model where it passed, today's inflow elsewhere, its own band
+        inflow_mid = [max(0.0, float(p["mid"])) for p in inflow_path[:days]]
+        inflow_lo = [max(0.0, float(p["lo"])) for p in inflow_path[:days]]
+        inflow_hi = [max(0.0, float(p["hi"])) for p in inflow_path[:days]]
+    else:
+        inflow_mid = [max(0.0, inflow_today)] * days
+        inflow_lo = [max(0.0, inflow_today + inflow_band(inflow_today, h)[0]) for h in range(1, days + 1)]
+        inflow_hi = [max(0.0, inflow_today + inflow_band(inflow_today, h)[1]) for h in range(1, days + 1)]
     # the downstream model's own error: per point and day from river7's hindcast (E-7D-DOWN), else per point from the
     # replay's mean error of the mass-balance method (cm → m)
     r7 = state.get("river7") or {}
@@ -247,9 +253,14 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
             r = next(x for x in rows if x["id"] == rid)
             show.append({**r, "best_for": [k for k in EFFECT_KEYS if best[k] == rid], "optimal": rid == opt["id"],
                          "feasible": any(f["id"] == rid for f in feas)})
-    return {"days": days, "inflow": {"mid": inflow_mid, "low": inflow_lo, "high": inflow_hi, "method": "hold",
+    model_days = [k + 1 for k, p in enumerate((inflow_path or [])[:days]) if p.get("method") == "model"] if tested else []
+    model_note = (f"แบบจำลองจากฝนคาดการณ์ (วันที่ {model_days[0]}–{model_days[-1]}) ที่ผ่านการทดสอบสองชุด" if len(model_days) > 1 else
+                  f"แบบจำลองจากฝนคาดการณ์ (วันที่ {model_days[0]})" if model_days else "")
+    if tested:
+        model_note += (", วันอื่นคงค่าวันนี้" if len(model_days) < days else "") + " · ช่วง = ความคลาดเคลื่อนที่ทดสอบของแต่ละวิธี"
+    return {"days": days, "inflow": {"mid": inflow_mid, "low": inflow_lo, "high": inflow_hi, "method": "model" if tested else "hold",
                                      "regime": "high" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else "normal",
-                                     "note": "คงน้ำไหลเข้าวันนี้ ช่วง = ความคลาดเคลื่อนของวิธีนี้เองที่ 1–7 วัน" + (" (ช่วงน้ำไหลเข้ามาก กว้างกว่าปกติมาก)" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else " (ปี 2568–69)") + "; แบบจำลองจากฝนแพ้วิธีนี้ทุกช่วงในการทดสอบ 2026-10-05 จึงไม่ใช้"},
+                                     "note": model_note if tested else ("คงน้ำไหลเข้าวันนี้ ช่วง = ความคลาดเคลื่อนของวิธีนี้เองที่ 1–7 วัน" + (" (ช่วงน้ำไหลเข้ามาก กว้างกว่าปกติมาก)" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else " (ปี 2568–69)") + "; แบบจำลองจากฝนแพ้วิธีนี้ทุกช่วงในการทดสอบ 2026-10-05 จึงไม่ใช้")},
             "upper": upper, "lower": lower, "normal": normal, "max_storage": max_storage, "max_release": max_release,
             "candidates": len(rows), "feasible": len(feas), "best_for": best, "optimal": opt, "plans": show,
             "margin_req": margin_req, "downstream": downstream,
