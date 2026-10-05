@@ -288,6 +288,10 @@ People using the app may be stressed, on the move, or protecting their home. Be 
   row height, characters per row, rows on the first phone screen.
 - **Chart axes follow the data being decided on**; a reference line far outside it is named in the legend ("นอกกราฟ"),
   not drawn — stretching the axis flattens the line that matters.
+- **One definition per column:** a badge compares like with like across rows (the dams' % = storage ÷ the agency's own
+  normal storage); a source's 0 that means "not reported" is shown as missing or "ไม่มีข้อมูล", never as 0 %, and never
+  starts a forecast (KI-305). Forecast words are the app's ("อีก 7 วัน" as "อีก 24 ชม.").
+- **An arrow agrees with the numbers beside it**, rounded as shown: never "↗ 94 %" next to "94 %".
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.

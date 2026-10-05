@@ -5,11 +5,15 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
 ## v0.31.0 — 2026-10-05
 - **The dams list reads like the station list (owner: "too much info each card"; D-103).** Dams grouped under headers
   with ⓘ (เหนือเส้นควบคุมบน · อยู่ระหว่างเส้นควบคุม · ไม่มีเส้นควบคุม); two-line rows — name and a storage-% badge, then
-  "เข้า · ออก · 7 วัน ↘ %"; units and date once in the header. A row or a ◆ on the map opens the dam's sheet (chips, a
-  7-day chart, the daily table folded, the other agency's record, map and case buttons), as a station does. Measured at
-  390 px: row 112 → 62 px, 154 → 49 characters, 5 → 12 dams on the first screen.
-- **A 7-day trend for 38 of 39 dams:** a tested inflow model where one exists (17), else a projection "if today's inflow
+  "เข้า · ออก · อีก 7 วัน ↘ %"; units and date once in the header. A row or a ◆ on the map opens the dam's sheet (chips,
+  a 7-day chart, the daily table folded, the other agency's record, map and case buttons), as a station does. Six visitor
+  rounds, measured in a browser: row 112 → 62 px at 360–1366 px (never a third line), 154 → 53 characters, 5 → 12 dams
+  on the first phone screen; arrows agree with the numbers beside them.
+- **A 7-day trend for 36 of 38 dams:** a tested inflow model where one exists (17), else a projection "if today's inflow
   and release hold" with the dam's own band, marked *; the national back-fill now fetches inflow.
+- **One % for the whole list (KI-305):** storage ÷ the agency's own normal storage — EGAT reports 0 % for 11 of 15 dams
+  (and another definition for the rest), which showed as 0 % badges; reporting zeros are now missing or "ไม่มีข้อมูล" and
+  never start an outlook (ปากมูล); EGAT's แม่งัด is listed with RID's แม่งัดสมบูรณ์ชล, records apart.
 - **Honest "largest since":** the claim needs enough complete years and names our records (KI-304). Chart axes follow
   the storage; far reference lines are named, not drawn.
 - Research: two years of training history rejected by the two-sample gate (MODELS §5i).

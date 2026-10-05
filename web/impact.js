@@ -137,7 +137,8 @@
     const head = '<p class="sumline">' + num(d.dams.length, 0) + " เขื่อน · ข้อมูลรายวัน " + day(latest) + " · ล้าน ลบ.ม.(/วัน) " +
       info("ข้อมูลรายวันจาก สสน. (กรมชลประทาน, กฟผ.) · เส้นควบคุมของ สสน." + (noCurve > 0 ? " — " + num(noCurve, 0) + " ระเบียนไม่มีเส้นควบคุมที่ต้นทาง" : "") +
         " · แนวโน้ม 7 วัน " + num(withOutlook, 0) + " เขื่อน (แบบจำลองที่ผ่านการทดสอบ หรือ * คงค่าวันนี้) · ตัวเลขบนการ์ด: เข้า = น้ำไหลเข้า, ออก = ระบาย, % = ปริมาตรเทียบปริมาตรปกติ" +
-        " · * = ถ้าไหลเข้าและระบายเท่าวันนี้ (ยังไม่มีแบบจำลองที่ผ่านการทดสอบ) · ชป. และ กฟผ. แยกกัน ไม่รวมตัวเลข", "ที่มาและวิธีอ่าน") + "</p>";
+        " · * = ถ้าไหลเข้าและระบายเท่าวันนี้ (ยังไม่มีแบบจำลองที่ผ่านการทดสอบ) · % = ปริมาตร ÷ ปริมาตรที่ระดับเก็บกักปกติของหน่วยงานนั้น" +
+        " (ชป. รายงานแบบนี้; % ที่ กฟผ. รายงานเป็น 0 หรือนิยามต่างกัน จึงไม่ใช้) · ⏳ = ข้อมูลของวันก่อนหน้า · ชป. และ กฟผ. แยกกัน ไม่รวมตัวเลข", "ที่มาและวิธีอ่าน") + "</p>";
     let html = head, i = 0;
     const index = [];
     for (const [pos, title, cls, tip] of GROUPS) {
@@ -159,25 +160,29 @@
 
   function damItem(x, i, cls, latest) {
     const r = x.records[0] || {};
-    const pct = r.storage_pct != null ? r.storage_pct : damPct(x, r.storage_mcm);
+    const pct = r.pct_normal;
     const o = x.outlook && x.outlook.days && x.outlook.days.length ? x.outlook.days[6] : null;
     const first = x.outlook && x.outlook.days ? x.outlook.days[0] : null;
     let trend = "";
     if (o && first) {
       const p7 = damPct(x, o.storage);
-      const arrow = o.storage > (r.storage_mcm || 0) + 0.5 ? "↗" : o.storage < (r.storage_mcm || 0) - 0.5 ? "↘" : "→";
+      // the arrow agrees with the two numbers shown (badge now, % in 7 days); in ล้าน ลบ.ม. only when there is no %
+      const arrow = pct != null && p7 != null ? (Math.round(p7) > Math.round(pct) ? "↗" : Math.round(p7) < Math.round(pct) ? "↘" : "→")
+        : o.storage > (r.storage_mcm || 0) + 0.5 ? "↗" : o.storage < (r.storage_mcm || 0) - 0.5 ? "↘" : "→";
       const held = x.outlook.test && x.outlook.test.model === false;
-      trend = " · 7 วัน " + arrow + " " + (p7 != null ? num(p7, 0) + " %" : num(o.storage, 0)) + (held ? "*" : "");
+      trend = " · อีก 7 วัน " + arrow + " " + (p7 != null ? num(p7, 0) + " %" : num(o.storage, 0)) + (held ? "*" : "");
     }
-    const stale = r.dam_date && latest && r.dam_date < latest ? " · ⏳ " + day(r.dam_date) : "";
-    return '<li class="item s-' + cls + ' imp-dam" data-dam="' + i + '" tabindex="0"><div class="row"><span class="name">' + bare(x.name_th) +
+    const stale = r.dam_date && latest && r.dam_date < latest ? ' <small class="muted">⏳ ' + dayShort(r.dam_date) + "</small>" : "";
+    const meta = r.no_data ? "ไม่มีข้อมูล (แหล่งข้อมูลรายงานเป็น 0)" : "เข้า " + qn(r.inflow_mcm) + " · ออก " + qn(r.released_mcm) + trend;
+    return '<li class="item s-' + cls + ' imp-dam" data-dam="' + i + '" tabindex="0"><div class="row"><span class="name">' + bare(x.name_th) + stale +
       (x.case ? ' <button type="button" class="imp-case-tag" data-case="' + esc(x.case) + '">กรณีวิเคราะห์ ›</button>' : "") +
       '</span><span class="badge b-' + cls + '">' + (pct != null ? num(pct, 0) + " %" : "–") + "</span></div>" +
-      '<div class="meta">เข้า ' + qn(r.inflow_mcm) + " · ออก " + qn(r.released_mcm) + trend + stale + "</div></li>";
+      '<div class="meta">' + meta + "</div></li>";
   }
 
   function recLine(r) {
-    return agency(r.agency) + " " + day(r.dam_date) + ": " + num(r.storage_mcm, 0) + " (" + num(r.storage_pct, 0) + " %) · ระบาย " +
+    if (r.no_data) return agency(r.agency) + " " + day(r.dam_date) + ": ไม่มีข้อมูล (แหล่งข้อมูลรายงานเป็น 0)";
+    return agency(r.agency) + " " + day(r.dam_date) + ": " + num(r.storage_mcm, 0) + (r.pct_normal != null ? " (" + num(r.pct_normal, 0) + " %)" : "") + " · ระบาย " +
       qn(r.released_mcm) + (r.released_mcm == null ? "" : " (≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วินาที)");
   }
 
@@ -186,8 +191,9 @@
     const g = GROUPS.find((gg) => gg[0] === (x.position || null)) || GROUPS[3];
     const up = r.rule && r.rule.upper != null ? r.rule.upper : null;
     const chip = (label, val, sub) => '<span class="chip imp-chip-static">' + label + " <b>" + val + "</b>" + (sub ? ' <small class="muted">' + sub + "</small>" : "") + "</span>";
-    const chips = '<div class="chips imp-chips-num">' + chip("ปริมาตร", num(r.storage_mcm, 0), r.storage_pct != null ? num(r.storage_pct, 0) + " %" : "") +
-      (up != null ? chip(r.storage_mcm > up ? "เหนือเส้นควบคุม" : "ใต้เส้นควบคุม", (r.storage_mcm > up ? "+" : "−") + num(Math.abs(r.storage_mcm - up), 0), "") : "") +
+    const chips = r.no_data ? '<p class="muted">ไม่มีข้อมูล — แหล่งข้อมูลรายงานปริมาตร น้ำไหลเข้า และระบายเป็น 0</p>' :
+      '<div class="chips imp-chips-num">' + chip("ปริมาตร", num(r.storage_mcm, 0), r.pct_normal != null ? num(r.pct_normal, 0) + " %" : "") +
+      (up != null && r.storage_mcm != null ? chip(r.storage_mcm > up ? "เหนือเส้นควบคุม" : "ใต้เส้นควบคุม", (r.storage_mcm > up ? "+" : "−") + num(Math.abs(r.storage_mcm - up), 0), "") : "") +
       chip("ไหลเข้า", qn(r.inflow_mcm), "") + chip("ระบาย", qn(r.released_mcm), r.released_mcm != null ? "≈ " + num(toCms(r.released_mcm), 0) + " ลบ.ม./วิ" : "") + "</div>";
     const o = x.outlook;
     let out = "";
@@ -203,20 +209,20 @@
       const c = { upper: o.days.map((d) => d.upper), normal: x.normal_mcm, dates: o.days.map((d) => d.date) };
       out = '<h3 class="imp-h3">7 วันข้างหน้า' + (modelled ? "" : ' <small class="muted">ถ้าเท่าวันนี้</small>') + " " + info(tip, "ที่มาของแนวโน้ม") + "</h3>" +
         '<p class="imp-line">อ่าง ' + num(r.storage_mcm, 0) + " → <b>" + num(d7.storage, 0) + "</b> <small class=\"muted\">(" + num(d7.storage_lo, 0) + "–" + num(d7.storage_hi, 0) + ")</small>" +
-        (d7.above_upper === true ? " · ยังเหนือเส้นควบคุม" : d7.above_upper === false ? " · ใต้เส้นควบคุม" : "") + " · ระบายเท่าวันนี้</p>" +
+        (d7.above_upper === true ? " · ยังเหนือเส้นควบคุม" : d7.above_upper === false ? " · ใต้เส้นควบคุม" : "") + (modelled ? " · ระบายเท่าวันนี้" : "") + "</p>" +
         chartSvg(p, c) +
         '<details><summary>รายวัน</summary><div class="imp-scroll"><table><thead><tr><th scope="col">วัน</th><th scope="col">ไหลเข้า</th><th scope="col">อ่าง (ช่วง)</th><th scope="col">เส้นบน</th></tr></thead><tbody>' +
         o.days.map((dd) => '<tr><th scope="row">' + esc(dayShort(dd.date)) + "</th><td>" + qn(dd.inflow) + (dd.method === "model" ? "" : "*") + "</td><td>" + num(dd.storage, 0) +
           " <small>" + num(dd.storage_lo, 0) + "–" + num(dd.storage_hi, 0) + "</small></td><td" + (dd.above_upper ? ' class="imp-neg"' : "") + ">" + num(dd.upper, 0) + "</td></tr>").join("") +
-        '</tbody></table></div><p class="muted">* คงค่าวันนี้ (แบบจำลองไม่ผ่านเกณฑ์ที่ช่วงนี้)</p></details>';
+        '</tbody></table></div><p class="muted">* คงค่าวันนี้ (' + (modelled ? "แบบจำลองไม่ผ่านเกณฑ์ที่ช่วงนี้" : "ยังไม่มีแบบจำลองที่ผ่านการทดสอบ") + ")</p></details>";
     } else {
       out = '<p class="muted">ยังไม่มีแนวโน้ม 7 วัน — แบบจำลองน้ำไหลเข้าของเขื่อนนี้ยังไม่ผ่านการทดสอบ หรือยังไม่มีประวัติน้ำไหลเข้า</p>';
     }
     const others = x.records.slice(1).map((rr) => '<p class="imp-line muted">' + recLine(rr) + "</p>").join("");
     const note = x.records.map((rr) => rr.release_note).filter(Boolean)[0];
-    return '<div class="imp-dam-sheet"><h2>' + damName(x.name_th) + '</h2><p class="muted">' + agency(r.agency) + " · ข้อมูลรายวัน " + day(r.dam_date) +
+    return '<div class="imp-dam-sheet"><h2>' + damName(x.name_th) + '</h2><p class="muted">' + agency(r.agency) + " " + day(r.dam_date) + " · ล้าน ลบ.ม.(/วัน)" +
       ' · <span class="badge b-' + g[2] + '">' + g[1] + "</span></p>" + chips + out + others +
-      (note ? '<p class="imp-line">📌 ' + esc(note) + "</p>" : "") +
+      (note ? '<p class="imp-line">📌 ' + esc(note.split(" —")[0].split(";")[0]) + " " + info(note, "ที่มาของข้อสังเกต") + "</p>" : "") +
       '<div class="imp-actions"><button type="button" class="btn" data-map="1">🗺️ ดูบนแผนที่</button>' +
       (x.case ? '<button type="button" class="btn primary" data-case-open="' + esc(x.case) + '">เปิดกรณีวิเคราะห์ ›</button>' : "") + "</div></div>";
   }

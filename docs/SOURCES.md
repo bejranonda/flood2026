@@ -192,7 +192,7 @@ Freshness counts are rows with a timestamp on 2026-09-26/27. None of these is co
 | Source | Request | Result | Use |
 |---|---|---|---|
 | Google Flood Forecasting API | `POST floodforecasting.googleapis.com/v1/gauges:searchGaugesByArea` `{regionCode:"TH"}`; `floodStatus:searchLatestFloodStatusByArea`; `GET gaugeModels:batchGet?names=gaugeModels/{id}`; `GET gauges:queryGaugeForecasts?gaugeIds=…&issuedTimeStart=…`; key in `X-Goog-Api-Key` | ✅ 200: 103 HYBAS virtual gauges (all `qualityVerified`, `hasModel`); statuses (severity NO_FLOODING / ABOVE_NORMAL / SEVERE, trend, forecast window, inundation map type); thresholds warning / danger / extreme (m³/s); daily discharge ~9 days | ✅ collector `google_floodhub`, validated, not shown (D-087) |
-| HII large dams | `GET api-v3.thaiwater.net/api/v1/thaiwater30/analyst/dam` → `data.dam_daily` | ✅ 50 dams with storage, inflow, release, `dam.sub_basin_id` | reference |
+| HII large dams | `GET api-v3.thaiwater.net/api/v1/thaiwater30/analyst/dam` → `data.dam_daily` | ✅ 50 dams with storage, inflow, release, `dam.sub_basin_id` · ⚠️ EGAT's `storage_pct` is 0 for 11 of 15 dams and another definition for the rest; ปากมูล reports zeros (2026-10-05, KI-305) | reference |
 | HII dam history | `GET …/analyst/dam_yearly_graph?data_type=dam_released&dam_id={id}&year={yyyy}` (from `www.thaiwater.net/dist/js/app.chunk.js`) | ✅ daily values (MCM/day) for the year, plus `upper_rule_curve`, `lower_rule_curve`, bounds, `average_inflow` — **rule curves exist** (SOURCES §2d said none) | tested as input: no gain (D-090) |
 
 ### 2o. Kaeng Krachan pilot: dam records, rule curves, river history (probed 2026-10-05 08:00–10:00 UTC; D-099)

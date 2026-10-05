@@ -118,6 +118,11 @@ def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     assert 'class="chips imp-chips-num"' in js and "imp-hero" in js and "imp-row" in js and "imp-strip" in js
     assert "showDetail(b.dataset.code)" in js and 'class="conf-badge' in js and '<details class="imp-info">' in js
     assert "whatifHtml" not in js  # the disabled what-if card is gone (the custom plan does the same)
+    # v0.31 (owner: "too much info each card"): the dams list is the station list — group headers with ⓘ, two-line rows
+    # with one badge, the forecast in the app's words ("อีก N ชม." → "อีก 7 วัน"), row and ◆ open the same sheet
+    assert "wgrp-h" in js and '<li class="item s-' in js and 'class="badge b-' in js and "อีก 7 วัน" in js
+    assert "openDamSheet(i, false)" in js and "bindPopup" not in js
+    assert "Math.round(p7)" in js  # the arrow follows the two percentages on the row, never "↗ 94 %" beside "94 %"
 
 
 def test_the_real_settings_reach_the_impact_endpoints():

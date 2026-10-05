@@ -838,10 +838,21 @@ Replay 2026-10-05: no method beats keeping today's level at B.10 and B.16 (D-099
 ### KI-302 — A scenario rule without the model's error as a constraint recommends flooding · 🟢 fixed before release
 Live 2026-10-05: rule 1 ("least downstream impact among plans returning under the upper curve within 7 days") picked 25.0 ล้าน ลบ.ม./วัน for 7 days — the only plan that returned under the curve — with B.10 1.4 m over its bank; rule 2 ("no overtopping") picked 19.0 with an 8 cm margin, inside the downstream model's 39 cm mean error. Now every gauge's margin must exceed that point's replay error (D-101); the first day's step from today's release counts as a change (the 19.0 plan showed "เปลี่ยนวันละไม่เกิน 0.0"). Lesson: GUIDELINES §6c-8.
 
-### KI-303 — 22 large dams had no 7-day outlook (no tested model, no inflow history) · 🟢 38 of 39 covered (v0.31.0)
+### KI-303 — 22 large dams had no 7-day outlook (no tested model, no inflow history) · 🟢 36 of 38 covered (v0.31.0)
 2026-10-05: the outlook (D-102) exists for the 17 dams whose rain model was tested (16 that passed the observed-rain test plus Kaeng Krachan). The other 22 — among them ป่าสักชลสิทธิ์ at 110 % of normal storage, the dam furthest above its curve — show none: their model failed the full-year test (6 dams) or their inflow history was never fetched (the national back-fill collected releases only), so not even a persistence outlook with an honest band can be computed. `hii_dams_history` now fetches inflow as well (≤ 10 requests an hour, years lacking inflow are fetched again); once a dam has ≥ 300 inflow days, add it to the outlook with persistence and its own band (research/2026-10-05_dam_inflow_nationwide.py has the recipe). Say "ยังไม่มีแนวโน้ม" rather than invent one.
 **Update v0.31.0 (D-103):** the back-fill now fetches inflow; a one-off run filled 2025–2026 for most dams; every dam with ≥ 200 inflow days gets a projection "ถ้าไหลเข้าและระบายเท่าวันนี้" with its own band (marked *). 2026-10-05 21:20 UTC: 17 modelled + 29 projected records → 38 of 39 physical dams; แม่มอก (230) waits for its inflow history.
 
 ### KI-304 — "Largest since" claimed over our own short records ("2568–2568 (เท่าที่ สสน. มีข้อมูล)") · 🟢 fixed v0.31.0
 Seen on the owner's phone 2026-10-05: for ขุนด่านปราการชล the card said today's release was "มากกว่าทุกวันในปี 2568–2568 (เท่าที่ สสน. มีข้อมูล)" — only 2025 had been fetched by the national back-fill, and HII holds years back to 2018. Now the claim needs ≥ 2 years since a higher year, or ≥ 5 complete years when none released more, and says "(ข้อมูลในระบบเริ่มปี …)". Test: `test_a_largest_since_claim_needs_enough_years_and_says_whose_records`.
+**Update 2026-10-05 (KI-305):** after the zero rules and the twin merge: 38 dams, 36 with a trend — ปากมูล has no data, แม่มอก waits for its inflow history.
 
+### KI-305 — EGAT's daily % is 0 or another definition; ปากมูล reports zeros; one reservoir listed twice · 🟢 handled v0.31.0
+Seen while validating the dams list as a visitor (2026-10-05): four rows showed a **0 %** badge beside a 7-day trend of
+~90 %. HII `analyst/dam`: EGAT reports `storage_pct` 0 for 11 of its 15 dams (10 with water in them; ปากมูล reports 0 for
+storage, inflow and release) and a % that is not storage ÷ normal for the other four (−44 … +26 points; แก่งกระจาน 58.64
+vs 102.3); RID's % is storage ÷ normal (±0.16 points over 35 dams). EGAT แม่งัด and RID แม่งัดสมบูรณ์ชล (0.3 km apart,
+both 265.0 ล้าน ลบ.ม.) were two rows. Now: one % for every record (`pct_normal`, storage ÷ the agency's own normal);
+reporting zeros are missing or "ไม่มีข้อมูล", and no outlook starts from them; an EGAT twin (≤ 2 km, normal storage within
+1 %) is listed under the RID name with its record apart (KI-217). Tests: `test_one_percent_definition_ranks_the_list_and_egat_zeros_are_missing_not_empty`,
+`test_an_egat_dam_at_an_rid_dam_with_the_same_normal_storage_is_one_dam_under_the_rid_name`, `test_no_outlook_from_a_record_of_zeros`.
+Still unknown: what EGAT's % measures — to ask with KI-295.

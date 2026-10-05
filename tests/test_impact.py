@@ -258,6 +258,43 @@ def test_one_marker_per_physical_dam_with_both_agencies_side_by_side():
     assert by["ภูมิพล"]["position"] == "between" and layer[0]["name_th"] == "แก่งกระจาน"  # above the curve listed first
 
 
+def test_one_percent_definition_ranks_the_list_and_egat_zeros_are_missing_not_empty():
+    # HII 2026-10-04/05: RID's % is storage ÷ normal storage (±0.16 points over 35 dams); EGAT reports 0 % for 11 of 15
+    # dams with water in them and a % ≠ storage ÷ normal for the rest (Kaeng Krachan 58.64 vs 102.3); ปากมูล reports 0 for
+    # storage, inflow and release. The badge uses storage ÷ the agency's own normal storage (KI-305).
+    meta = [{"dam_id": 47, "agency": "EGAT", "name_th": "ห้วยกุ่ม", "lat": 16.413056, "lon": 101.797222, "normal_mcm": 20.23, "max_mcm": 25.14},
+            {"dam_id": 48, "agency": "EGAT", "name_th": "ปากมูล", "lat": 15.282103, "lon": 105.466051, "normal_mcm": 229.6, "max_mcm": None},
+            {"dam_id": 1, "agency": "RID", "name_th": "ภูมิพล", "lat": 17.24, "lon": 98.97, "normal_mcm": 13462.0, "max_mcm": 13462.0}]
+    latest = {47: {"dam_date": "2026-10-04", "storage_mcm": 18.31, "storage_pct": 0.0, "inflow_mcm": 0.1, "released_mcm": 0.4},
+              48: {"dam_date": "2026-10-04", "storage_mcm": 0.0, "storage_pct": 0.0, "inflow_mcm": 0.0, "released_mcm": 0.0},
+              1: {"dam_date": "2026-10-05", "storage_mcm": 9097.36, "storage_pct": 67.58, "inflow_mcm": 30.0, "released_mcm": 20.0}}
+    layer = impact.dams_layer(meta, latest, {}, {})
+    by = {d["name_th"]: d["records"][0] for d in layer}
+    assert by["ห้วยกุ่ม"]["storage_pct"] is None and by["ห้วยกุ่ม"]["pct_normal"] == 90.5  # 0 % reported with water in it: missing
+    assert by["ภูมิพล"]["storage_pct"] == 67.58 and by["ภูมิพล"]["pct_normal"] == 67.6  # RID's own figure kept beside it
+    pm = by["ปากมูล"]
+    assert pm["no_data"] and pm["storage_mcm"] is None and pm["inflow_mcm"] is None and pm["released_mcm"] is None and pm["pct_normal"] is None
+    assert not by["ห้วยกุ่ม"]["no_data"]
+    assert [d["name_th"] for d in layer] == ["ห้วยกุ่ม", "ภูมิพล", "ปากมูล"]  # one definition ranks the list; no data last
+
+
+def test_an_egat_dam_at_an_rid_dam_with_the_same_normal_storage_is_one_dam_under_the_rid_name():
+    # HII metadata: EGAT แม่งัด (53) and RID แม่งัดสมบูรณ์ชล (23) are 0.3 km apart, both 265.0 ล้าน ลบ.ม. normal storage;
+    # every other EGAT/RID pair within 1.2 km already shares its name. Records stay apart (KI-217), RID first.
+    meta = [{"dam_id": 23, "agency": "RID", "name_th": "แม่งัดสมบูรณ์ชล", "lat": 19.16138, "lon": 99.04011, "normal_mcm": 265.0, "max_mcm": 322.89},
+            {"dam_id": 53, "agency": "EGAT", "name_th": "แม่งัด", "lat": 19.1625, "lon": 99.043056, "normal_mcm": 265.0, "max_mcm": 325.0},
+            {"dam_id": 48, "agency": "EGAT", "name_th": "ปากมูล", "lat": 15.282103, "lon": 105.466051, "normal_mcm": 229.6, "max_mcm": None},
+            {"dam_id": 3, "agency": "RID", "name_th": "สิรินธร", "lat": 15.202778, "lon": 105.42089, "normal_mcm": 1966.47, "max_mcm": 1966.0}]
+    latest = {23: {"dam_date": "2026-10-05", "storage_mcm": 248.07, "storage_pct": 93.72},
+              53: {"dam_date": "2026-10-04", "storage_mcm": 247.74, "storage_pct": 0.0},
+              48: {"dam_date": "2026-10-04", "storage_mcm": 120.0, "storage_pct": 52.0},
+              3: {"dam_date": "2026-10-05", "storage_mcm": 1828.0, "storage_pct": 93.0}}
+    layer = impact.dams_layer(meta, latest, {}, {})
+    by = {d["name_th"]: d for d in layer}
+    assert "แม่งัด" not in by and [(r["agency"], r["dam_id"]) for r in by["แม่งัดสมบูรณ์ชล"]["records"]] == [("RID", 23), ("EGAT", 53)]
+    assert len(layer) == 3  # ปากมูล, 10 km from สิรินธร with another normal storage, stays its own dam
+
+
 def test_dam_history_comes_in_small_batches_current_year_first():
     import datetime as dt
     now = dt.datetime(2026, 10, 5, 12, tzinfo=dt.timezone.utc)

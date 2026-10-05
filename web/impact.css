@@ -194,3 +194,5 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-sheet .imp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
 .imp-sheet .imp-actions .btn { min-height: 40px; }
 .imp-sheet .badge { vertical-align: middle; }
+/* v0.31: a header badge moves to the next line whole, never split ("ฉบับทดลอง" / "v0.31.0" at 360 px with เจ้าหน้าที่) */
+.brand .beta, .brand .imp-badge { white-space: nowrap; }

@@ -44,6 +44,8 @@ def persistence_model(dam_id: int, name_th: str, inflow: dict) -> dict | None:
         return None
     idx = {d: i for i, d in enumerate(days)}
     vals = [float(inflow[d]) for d in days]
+    if not any(vals):
+        return None  # inflow only ever reported as 0 (ปากมูล): nothing to hold
     band, pairs = {}, 0
     for h in range(1, 8):
         ch = []
@@ -104,6 +106,8 @@ def outlook(model: dict, dam: dict, rain14: dict, curves7: dict | None, normal: 
     position against the upper rule curve per day, and the operational test result that justifies the method."""
     if dam.get("storage_mcm") is None or dam.get("inflow_mcm") is None or dam.get("released_mcm") is None:
         return None
+    if float(dam["storage_mcm"]) <= 0:
+        return None  # a reservoir reported empty is a missing value (KI-305), not a starting point
     d0 = str(dam["dam_date"])[:10]
     if model.get("beta"):
         if not rain14:

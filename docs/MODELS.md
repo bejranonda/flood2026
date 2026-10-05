@@ -3,7 +3,7 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.26.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52). Numbers come from running code or the cited research files;
+> It describes **v0.31.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9c the reservoirs and the national dams list. Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -25,6 +25,11 @@
 ถ้า "ไม่แน่ชัด" ใช้การเปลี่ยนแปลงที่วัดได้ล่าสุด (24 ชม. แต่ถ้า 6 ชม. ล่าสุดหยุดหรือกลับทิศ ถือว่าหยุด)
 
 **แท็บจับตา** — รวมสิ่งที่ควรรู้ล่วงหน้า 24–48 ชม. ตัวเลข "6 ใน 10" คือ **สถิติจริงของแอปเอง** 30 วันที่ผ่านมา ว่าเมื่อแอปคาดแบบนี้ เกิดจริงกี่ครั้ง
+
+**เขื่อน (แท็บ 💧 ผลกระทบ สำหรับเจ้าหน้าที่)** — 38 เขื่อนใหญ่ จัดกลุ่มตามเส้นควบคุม (rule curve) ของ สสน. · % = ปริมาตร ÷ ปริมาตรที่ระดับเก็บกักปกติ
+ของหน่วยงานนั้น (นิยามเดียวทั้งรายการ — ชป. รายงานแบบนี้; % ที่ กฟผ. รายงานเป็น 0 หรือนิยามต่างกัน จึงไม่ใช้) · แนวโน้ม 7 วัน: 17 เขื่อนใช้แบบจำลองฝน
+ที่ผ่านการทดสอบกับ *ฝนคาดการณ์จริง* (เฉพาะช่วงวันที่ผ่านเกณฑ์) ที่เหลือแสดง "ถ้าไหลเข้าและระบายเท่าวันนี้" (*) พร้อมช่วงจากข้อมูลของเขื่อนเอง ·
+ค่า 0 ที่แปลว่า "ไม่ได้รายงาน" ไม่แสดงเป็น 0 และไม่ใช้เป็นจุดเริ่มคาดการณ์ · กฟผ. กับ ชป. แยกกันเสมอ (§9c)
 
 **ปรับปรุงแบบจำลอง (4 ต.ค. 2569, ทดสอบแบบไม่โกง: เลือกวิธีจากครึ่งแรก วัดผลครึ่งหลัง ยืนยันกับสถานีอีกชุดที่ไม่เคยเห็น)** —
 แบบจำลอง star อ่านค่าเพิ่ม: ระดับน้ำเทียบค่าเฉลี่ย 7 และ 30 วัน และการเปลี่ยนแปลง 1/3/72 ชม. ความคลาดเคลื่อนลดลงจาก "ถือว่าคงที่"
@@ -263,10 +268,13 @@ instead of hiding it.
 | Averaging methods, stricter selection | forecast combination; gain on both halves | +0.4–0.9 points; stricter loses more than it saves | not shipped |
 | Flood Hub as a `star` input | the forecast's relative discharge change | +0.9 points at 72 h, none at 12–24 h (75 gauges) | candidate (Q55) |
 | Bands | by measured trend; shorter windows | narrower but less honest; wider and less honest | rejected; 72 h overconfidence → Q54 |
-
 | Google Flood Hub | 103 virtual points | agrees when it flags (2 of 3 SEVERE over our over-bank gauges), misses 7 over-bank places; 31 points beyond our gauges; 9-day horizon | collected and validated before any display (D-087) |
 | More stations | ablation: 2 / 1 / 0 upstream gauges | 2 upstream gauges cut error 7.6 / 5.4 / 4.2 % (12/24/48 h); no saturation | try 3–4 (Q47); DWR as inputs after ~30 days (Q46) |
 | DWR village posts | quality check | local datum, default 4.00 m alarms, ~11 h history | archive + trend-only layer (D-081) |
+| Reservoir outlook (Q58, D-102) | a rain model per dam fed with archived rain *forecasts*, bias per lead, monthly loss term | beats persistence by ≥ 10 %: 15 of 17 dams at 3 d, 11 of 17 at 7 d; the loss term helps 13 of 17 | served per dam and per horizon where it passed; persistence elsewhere (§9b) |
+| Dams without a tested model (D-103) | a projection "if today's inflow and release hold" with the dam's own band | no skill claimed; marked * and "ถ้าเท่าวันนี้" | shown; 36 of 38 dams have a 7-day trend (§9c) |
+| EGAT's daily % (D-103, KI-305) | as the dams list's badge | 0 for 11 of 15 dams; the other four −44 … +26 points from storage ÷ normal | not used; storage ÷ the agency's own normal storage for every record (§9c) |
+| Night of 2026-10-05 (two-sample gate) | dam release input (E-DAM), damping (E-DAMP), upstream flow (E-UQ), two years of history (E-2Y), discharge forecasts (E-Q) | E-DAM no gain; E-DAMP, E-UQ and E-2Y fail the gate; E-Q passes both samples | E-Q is a new parameter (where to show it is the owner's call); the others not shipped (§5e–5i) |
 | AI plain summary ("✨ ให้ AI สรุป") | free-form LLM vs deterministic rule narrative + background GLM retelling | free-form LLM invented safe/normal verdicts; rule narrative + checked retelling gives 91 % pass and 0 safety errors | deterministic rule story rendered at 0s (<50 ms); GLM polishes tone asynchronously; checked for safety; 🔊 voice readout added (D-068, KI-275) |
 
 ## 8. Limits we state
@@ -360,11 +368,44 @@ the first half and the second half is scored (43 days with inflow, 17 Aug–28 S
 15 of 17 dams and at 7 days for 11; it fails at 3 days for แก่งกระจาน and แม่กวงอุดมธารา and at 7 days for ภูมิพล, กิ่วคอหมา,
 แม่กวงฯ, อุบลรัตน์. The monthly loss term (balance residual) improves the 7-day storage outlook for 13 of 17 dams. Built as
 the dams-list outlook (D-102): the model only at the horizons where it passed, persistence with its band elsewhere.
-Window: 43 wet-season days — re-test as the archive grows. **Dams without a tested model (D-103):** a projection "if today's inflow and release hold" with a band from the dam's own daily inflow changes after 1–7 days (≥ 200 days of history), no loss term — shown with * (38 of 39 dams covered on 2026-10-05). KI-301, research/2026-10-05_dam_inflow_nationwide.log.
+Window: 43 wet-season days — re-test as the archive grows. The dams list and the dams without a tested model: §9c. KI-301, research/2026-10-05_dam_inflow_nationwide.log.
+
+### 9c. The national dams list (D-102, D-103): one % definition, reporting zeros, twin records, the 7-day trend
+Evidence: HII `analyst/dam` daily records in our database, checked 2026-10-05 ~21:30 UTC; code `impact.clean_record`,
+`impact.twin_names`, `impact.dams_layer`, `reservoir.persistence_model`, `reservoir.outlook`.
+
+**The badge's %.** `pct_normal` = storage ÷ the agency's own normal storage, for every record. RID reports exactly this
+(reported − computed −0.12 … +0.16 points over 35 dams). EGAT's reported % is 0 for 11 of its 15 dams (10 with water in
+them, e.g. ห้วยกุ่ม 18.31 of 20.23 ล้าน ลบ.ม.; ปากมูล reports 0 for everything) and differs by −44 … +26 points for the
+other four (แก่งกระจาน 58.64 vs 102.3, อุบลรัตน์ 81.26 vs 55.0, วชิราลงกรณ 84.59 vs 99.0, รัชชประภา 77.76 vs 74.2), so the
+list does not use it; the Kaeng Krachan case still shows it as reported, with the question to both agencies (KI-295).
+One definition ranks each group (highest first; records without data last).
+
+**Zeros that mean "not reported" (KI-305).** Storage 0 → missing; storage, inflow and release all 0 → "ไม่มีข้อมูล" and no
+outlook; a reported 0 % with water in the dam → missing. A persistence band needs an inflow history that is not all zeros.
+
+**Twin records.** An EGAT dam within 2 km of an RID dam whose normal storage agrees within 1 % is the same reservoir:
+all 11 such pairs lie 0.0–1.2 km apart with normal storages equal to within 0.01 %. It is listed under the RID name
+with both records apart (KI-217). Only แม่งัด ↔ แม่งัดสมบูรณ์ชล needed this (the other pairs share a name): 39 → 38 dams.
+
+**The 7-day trend.** Storage path S(t+h) = S(t) + Σ(k=1..h) [I(k) − R(today)] − L(month) (the loss term only for modelled
+dams); the release is held at today's value (the pilot dam's scenarios, §11b, vary it).
+
+| Dams | Inflow I(k) | Band | Shown as |
+|---|---|---|---|
+| 17 RID dams with a rain model (§9b) | the model at the horizons where it beat persistence by ≥ 10 % with forecast rain; today's inflow at the others | the tested error per horizon (model or persistence) | "อีก 7 วัน ↘ 93 %" |
+| others with ≥ 200 days of daily inflow, not all zero | today's inflow (persistence) | 10–90 % of the dam's own inflow change after h days | "… %*", sheet "ถ้าเท่าวันนี้" |
+
+Coverage 2026-10-05: 36 of 38 dams (ปากมูล: no data; แม่มอก: one day of inflow history, back-filled hourly). The row's
+arrow compares the two percentages shown, rounded as displayed (36 rows checked in a browser: none disagree).
+Tests: `test_one_percent_definition_ranks_the_list_and_egat_zeros_are_missing_not_empty`,
+`test_an_egat_dam_at_an_rid_dam_with_the_same_normal_storage_is_one_dam_under_the_rid_name`,
+`test_no_outlook_from_a_record_of_zeros`, `test_dams_without_a_tested_model_get_a_persistence_outlook_from_their_own_inflow`,
+`test_a_persistence_outlook_needs_no_rain_and_says_it_is_a_projection`.
 
 ## 10. How to reproduce
 
-- Tests: `docker compose run --rm --no-deps worker pytest -q` (≈ 290 tests).
+- Tests: `docker compose run --rm --no-deps worker pytest -q` (≈ 420 tests).
 - Nationwide backtest: `scripts/backtest_nationwide.py`. Track records: `risks.compute_records` (forecaster, daily).
 - Evidence scripts: `research/2026-10-03_verify_bank.py`, `_verify_up.py`, `_verify_rise.py`, `_verify_text_graph.py`,
   `_ablate_upstream.py`, `research/2026-10-04_floodhub_validate.py`.
@@ -382,7 +423,8 @@ Window: 43 wet-season days — re-test as the archive grows. **Dams without a te
 - Q52 night of 2026-10-05 (two-sample gate): `2026-10-05_dam_release_input.py` (E-DAM), `2026-10-05_star_damping.py`
   (E-DAMP), `2026-10-05_discharge_forecast.py` (E-Q), `2026-10-05_upstream_flow_input.py` (E-UQ),
   `2026-10-05_two_years_history.py` (E-2Y), each with its `.log`.
-- The impact tab in a browser: `IMPACT_PW="$(sed -n 's/^IMPACT_PASSWORD=//p' .env)" python3 scripts/impact_tab_check.py`.
+- The impact tab in a browser: `IMPACT_PW="$(sed -n 's/^IMPACT_PASSWORD=//p' .env)" python3 scripts/impact_tab_check.py` — it
+  measures the dams list (row height, groups) and checks that a row and a ◆ open the same dam sheet.
 
 ## 11. Impact what-if for a dam release (pilot Kaeng Krachan, `/impact`, D-099)
 

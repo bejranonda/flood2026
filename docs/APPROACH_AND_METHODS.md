@@ -706,8 +706,12 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
   measured (characters, long paragraphs) in the browser check.
 
 ### 19.23 Validate as a visitor, in rounds, with numbers (v0.31.0, D-103)
-- The owner's phone screenshot showed cards that read like records. Three rounds, each measured in a browser at 390 px
-  and looked at: v1 the station list's grammar (row height 112 → 62 px, 5 → 12 dams per screen), v2 wording and a trend
-  for every dam, v3 chart axes that follow the data. Each round fixed what the previous screenshot showed, not what was
-  guessed; the check script now carries the measures so later changes are held to them.
+- The owner's phone screenshot showed cards that read like records. Six rounds, each measured in a browser (360, 390 and
+  1366 px) and looked at: v1 the station list's grammar (row height 112 → 62 px, 5 → 12 dams per screen), v2 wording and
+  a trend for most dams, v3 chart axes that follow the data, v4 the app's words and units, v5 the numbers themselves,
+  v6 arrows and the header. Each round fixed what the previous screenshot showed, not what was guessed; the check script
+  carries the measures so later changes are held to them.
+- Looking at the numbers as a visitor found what no unit test had: 0 % badges from a source that reports 0 for "not
+  reported", and a reservoir listed twice under two agencies' names (KI-305). The fix went to the server (one definition,
+  zeros as missing, twins by distance and normal storage) with tests, not into the page.
 

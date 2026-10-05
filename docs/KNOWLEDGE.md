@@ -357,3 +357,11 @@ UX principles established through visitor testing during the 2026 flood season:
   2018–2026: ภูมิพล 16.6, วชิราลงกรณ 16.1, สิริกิติ์ 16.0, ศรีนครินทร์ 14.5 ล้าน ลบ.ม./วัน. Rain forecasts the inflow of the
   big reservoirs (16 of 35 dams ≥ 10 % better than persistence at 7 days) but not of the small flashy ones (KI-301).
 
+## 26. The national dams feed (HII `analyst/dam`; checked 2026-10-05, production database; D-103, KI-305)
+- **Two agencies, two % columns:** RID's `storage_pct` = storage ÷ normal storage (−0.12 … +0.16 points over 35 dams).
+  EGAT's is 0 for 11 of its 15 dams and, for the other four, not storage ÷ normal (แก่งกระจาน 58.64 vs 102.3, อุบลรัตน์
+  81.26 vs 55.0, วชิราลงกรณ 84.59 vs 99.0, รัชชประภา 77.76 vs 74.2). What it measures is unknown.
+- **Zeros:** ปากมูล (EGAT 48) reports 0 for storage, inflow and release; EGAT's records come a day after RID's (4 vs 5 Oct).
+- **Twins:** 11 EGAT dams have an RID record of the same reservoir 0.0–1.2 km away with a normal storage equal to within
+  0.01 %; 10 share the name, one does not (EGAT แม่งัด 53 = RID แม่งัดสมบูรณ์ชล 23, 0.3 km, 265.0 ล้าน ลบ.ม.). Four EGAT
+  dams have no RID twin: ห้วยกุ่ม, ท่าทุ่งนา, ปากมูล, รัชชประภา. ปากมูล lies 10.1 km from RID สิรินธร (another reservoir).

@@ -60,6 +60,15 @@ def test_catchment_rain_covers_the_past_week_and_the_next_week_area_weighted():
     assert abs(out["mm"][0] - (1.0 * 300 + 3.0 * 100) / 400) < 1e-9
 
 
+def test_no_outlook_from_a_record_of_zeros():
+    import datetime as dt
+    days = [(dt.date(2026, 1, 1) + dt.timedelta(days=k)).isoformat() for k in range(270)]
+    assert R.persistence_model(48, "ปากมูล", {d: 0.0 for d in days}) is None  # inflow only ever reported as 0: nothing to hold
+    m = R.persistence_model(48, "ปากมูล", {d: 10.0 + (k % 5) for k, d in enumerate(days)})
+    dam = {"storage_mcm": 0.0, "inflow_mcm": 0.0, "released_mcm": 0.0, "dam_date": "2026-10-04"}
+    assert R.outlook(m, dam, None, None, 229.6) is None  # a reservoir reported empty is a missing value, not a start point
+
+
 def test_the_dams_layer_carries_each_dams_outlook_when_one_exists():
     from floodwatch import impact
     meta = [{"dam_id": 12, "agency": "RID", "name_th": "สิริกิติ์", "lat": 17.76, "lon": 100.56, "normal_mcm": 9510.0, "max_mcm": 10500.0, "sub_basin_id": 2}]

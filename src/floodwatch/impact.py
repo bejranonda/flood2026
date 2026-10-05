@@ -285,27 +285,69 @@ def dam_position(storage_mcm: float | None, rule: dict | None) -> str | None:
 
 
 POSITION_ORDER = {"above": 0, "below": 1, "between": 2, None: 3}
+TWIN_KM, TWIN_NORMAL = 2.0, 0.01  # an EGAT dam this near an RID dam with the same normal storage is that reservoir
+
+
+def _km(a: dict, b: dict) -> float:
+    p1, p2, dl = math.radians(a["lat"]), math.radians(b["lat"]), math.radians(b["lon"] - a["lon"])
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 6371.0 * 2 * math.asin(math.sqrt(h))
+
+
+def twin_names(meta: list[dict]) -> dict:
+    """EGAT dam_id → the RID name of the same reservoir: within TWIN_KM with a normal storage within TWIN_NORMAL (HII
+    metadata 2026-10-05: all 11 such pairs are 0.0–1.2 km apart with an identical normal storage; only แม่งัด ↔
+    แม่งัดสมบูรณ์ชล differ in name). Records still stay apart (KI-217)."""
+    rid = [m for m in meta if m["agency"] == "RID" and m.get("lat") is not None and m.get("normal_mcm")]
+    out = {}
+    for e in meta:
+        if e["agency"] != "EGAT" or e.get("lat") is None or not e.get("normal_mcm"):
+            continue
+        twin = next((r for r in rid if _km(e, r) <= TWIN_KM and abs(e["normal_mcm"] - r["normal_mcm"]) <= TWIN_NORMAL * r["normal_mcm"]), None)
+        if twin:
+            out[e["dam_id"]] = twin["name_th"]
+    return out
+
+
+def clean_record(row: dict, normal: float | None) -> dict:
+    """The source's zeros that mean "not reported" (KI-305): storage 0 → missing; storage, inflow and release all 0 or
+    missing → no data; a reported 0 % with water in the dam → missing. pct_normal = storage ÷ this agency's own normal
+    storage — RID's reported definition (±0.16 points over 35 dams), so one definition ranks the list."""
+    r = dict(row)
+    if r.get("storage_mcm") is not None and r["storage_mcm"] <= 0:
+        r["storage_mcm"] = r["storage_pct"] = None
+        if not r.get("inflow_mcm") and not r.get("released_mcm"):
+            r["inflow_mcm"] = r["released_mcm"] = None
+    elif r.get("storage_mcm") is not None and r.get("storage_pct") is not None and r["storage_pct"] <= 0:
+        r["storage_pct"] = None
+    st = r.get("storage_mcm")
+    r["pct_normal"] = round(100.0 * st / normal, 1) if st is not None and normal else None
+    r["no_data"] = all(r.get(k) is None for k in ("storage_mcm", "inflow_mcm", "released_mcm"))
+    return r
 
 
 def dams_layer(meta: list[dict], latest: dict, curves: dict, years: dict, cases: dict | None = None,
                outlooks: dict | None = None) -> list[dict]:
-    """One entry per physical dam (records grouped by name; RID first, then EGAT — never merged, KI-217): each record's
-    latest daily values, the rule curve on its date, its position and the release note; the dam's position is its
-    first record's that has one. Sorted: above the upper curve, below the lower, between, unknown; then by storage %."""
+    """One entry per physical dam (records grouped by name, an EGAT twin under its RID name; RID first, then EGAT — never
+    merged, KI-217): each record's latest daily values cleaned of reporting zeros, the rule curve on its date, its position
+    and the release note; the dam's position is its first record's that has one. Sorted: above the upper curve, below the
+    lower, between, unknown; then by storage ÷ normal storage, records without data last."""
+    twins = twin_names(meta)
+    name = lambda m: twins.get(m["dam_id"], m["name_th"]) or ""
     groups: dict = {}
-    for m in sorted(meta, key=lambda m: (m["name_th"] or "", 0 if m["agency"] == "RID" else 1, m["dam_id"])):
-        groups.setdefault(m["name_th"], []).append(m)
+    for m in sorted(meta, key=lambda m: (name(m), 0 if m["agency"] == "RID" else 1, m["dam_id"])):
+        groups.setdefault(name(m), []).append(m)
     out = []
     for name, ms in groups.items():
         records = []
         for m in ms:
-            row = latest.get(m["dam_id"]) or {}
+            row = clean_record(latest.get(m["dam_id"]) or {}, m.get("normal_mcm"))
             rule = rule_curve_on(curves.get(m["dam_id"]), row.get("dam_date"))
             pos = dam_position(row.get("storage_mcm"), rule)
             note = release_note(row["released_mcm"], row["dam_date"], years.get(m["dam_id"]) or {}) \
                 if row.get("released_mcm") is not None and row.get("dam_date") else None
             records.append({"dam_id": m["dam_id"], "agency": m["agency"], **{k: row.get(k) for k in (
-                "dam_date", "storage_mcm", "storage_pct", "inflow_mcm", "released_mcm", "spilled_mcm")},
+                "dam_date", "storage_mcm", "storage_pct", "pct_normal", "no_data", "inflow_mcm", "released_mcm", "spilled_mcm")},
                 "rule": rule, "position": pos, "release_note": note})
         first = ms[0]
         pos = next((r["position"] for r in records if r["position"]), None)
@@ -313,7 +355,8 @@ def dams_layer(meta: list[dict], latest: dict, curves: dict, years: dict, cases:
                     "max_mcm": first.get("max_mcm"), "position": pos, "records": records,
                     "outlook": next(((outlooks or {}).get(m["dam_id"]) for m in ms if (outlooks or {}).get(m["dam_id"])), None),
                     "case": next(((cases or {}).get(m["dam_id"]) for m in ms if (cases or {}).get(m["dam_id"])), None)})
-    return sorted(out, key=lambda d: (POSITION_ORDER[d["position"]], -max((r["storage_pct"] or 0) for r in d["records"])))
+    return sorted(out, key=lambda d: (POSITION_ORDER[d["position"]],
+                                      -max((r["pct_normal"] if r["pct_normal"] is not None else -1.0) for r in d["records"])))
 
 
 def dam_notes(rid: dict | None, egat: dict | None, q18_now: float | None, rule: dict | None = None,
