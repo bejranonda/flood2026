@@ -256,6 +256,14 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **"Largest since …" only over years fully present** (≥ 300 days); a missing year suppresses the claim.
 - **Probe with the project User-Agent** from `config.py`; check that a shell variable is not empty before using it.
 
+### 6c-7. One app, two modes (D-100, KI-298)
+- `/impact` is `index.html` + the impact tab (`api.impact_html`): keep its anchors in `index.html` (the จับตา tab button,
+  `view-watch`, the `app.js` script tag) — the page fails loudly and the test catches it if they change.
+- After any change to `app.js` or `index.html`, check **both** pages: `scripts/ux_consistency.py` (public, C1–C20) and
+  `scripts/impact_tab_check.py` (the tab; the password from `.env` via the environment, never printed).
+- Static files sit behind Cloudflare's cache: a change needs a new `?v=` (the impact assets carry a content hash; bump
+  `app.js` / `style.css` by hand).
+
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.
 - **Zero-wait two-stage UX (v0.22.0):** Tapping "✨ ให้ AI สรุปให้ฟังง่าย ๆ" immediately renders the deterministic rule-written story (`r.story`, ~40 ms) so visitors never face a blank 5–7 s shimmer. In the background, GLM retells the story in warm, natural spoken Thai (`&part=gist`); when verified, the card seamlessly updates with the polished retelling and badge. If GLM times out or is rejected, the rule story remains in place without error.

@@ -380,3 +380,11 @@ median, same-day response (EGAT's record does not match, KI-295).
 **What would make it credible (asked on the page, Q56):** เขื่อนเพชร gate settings and canal flows; RID's hourly river
 records for Aug–Sep 2018; hourly releases and the rule curve in use; release plans; surveyed banks and channel capacity.
 
+**National dams at risk (D-100).** For each of HII's 50 daily dam records (39 physical dams): the storage on the reported
+date against HII's upper and lower rule curve for that day of the year (looked up by MM-DD) → *above* / *between* /
+*below* (a fact from the agencies' own curve, never turned into a warning); the "largest release since …" note uses the
+same rule as the case (complete years only, a gap suppresses it). Records of one dam (RID, EGAT) stay side by side,
+never merged (KI-217); the dam's colour comes from its first record with a position. Sorted above, below, between,
+unknown, then by storage %. 2026-10-05: 13 above (ป่าสักชลสิทธิ์ 109.8 %, 957 vs upper curve 465 ล้าน ลบ.ม., releasing
+43.2 ล้าน ลบ.ม./วัน ≈ 500 m³/s; หนองปลาไหล 105.0 %; แก่งกระจาน 102.2 %), 23 between, 3 without a curve (KI-299).
+

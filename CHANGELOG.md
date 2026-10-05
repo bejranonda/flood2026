@@ -2,6 +2,19 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.28.0 — 2026-10-05
+- **`/impact` is now the whole app plus a "💧 ผลกระทบ" tab (owner request; D-100).** Engineers get the same map, list,
+  แม่น้ำ, จับตา, point check and ✨ as the public page, and one more tab after login:
+  - **🏞️ เขื่อนทั่วประเทศ:** every large dam (39, from HII's 50 daily records) as a card and a ◆ on the map, coloured by
+    its storage against the agencies' own rule curve (5 Oct: 13 above the upper curve — ป่าสักชลสิทธิ์ 109.8 %, หนองปลาไหล
+    105 %, แก่งกระจาน 102 %), RID and EGAT side by side, and "the largest release since …" where it applies;
+  - **cases** as chips — Kaeng Krachan (pilot): the board from v0.27.0, and the Phetchaburi River, the dam and the five
+    gauges with travel times on the map.
+- The public page is unchanged; `app.js` gets two hooks (`window.FW_TABS`, the `fw:map` event) and `?v=119`.
+- Every dam's rule curve and release history from HII, at most 10 requests an hour (`hii_dams_history`); a `dam` table
+  with coordinates and storage bounds.
+- The impact assets carry a content hash in `?v=` (Cloudflare had served a stale file under an unchanged `?v=`, KI-298).
+
 ## v0.27.0 — 2026-10-05
 - **`/impact`: flood-impact analysis for partner engineers, pilot Kaeng Krachan (owner request; D-099).** A separate page
   behind one shared password (value only in `.env`): the dam's daily RID record against HII's rule curve (5 Oct: 132 ล้าน

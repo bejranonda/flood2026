@@ -679,3 +679,10 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
   100 % with no spill), the page states both and asks; it never resolves them silently.
 - Model, ratings and replay numbers: MODELS §11. Facts: KNOWLEDGE §25.
 
+### 19.20 One app, two modes: `/impact` is the main app plus a risk-and-impact tab (v0.28.0, D-100)
+- Engineers asked for "similar map and functions to main page"; rather than a second app, `/impact` serves the same page
+  with one more tab and two hooks in `app.js` (`window.FW_TABS`, the `fw:map` event). Every improvement to the public app
+  reaches the engineers' page at once; the public page never loads the impact code.
+- The risk view is a fact sheet: each large dam's storage against the agencies' own rule curve, the release against the
+  dam's own history, both agencies side by side. Impact (what happens downstream) stays per case, behind the replay gate.
+

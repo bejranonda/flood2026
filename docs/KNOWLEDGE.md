@@ -343,4 +343,8 @@ UX principles established through visitor testing during the 2026 flood season:
   today's level beats every what-if built from public data (MODELS §11, KI-297).
 - **Gauges:** PCH003 "ท่ายาง" (HII) moves with B.18 and most likely sits near the dam (KI-296). HII serves no river levels
   for 2018 for B.18, B.10, B.16, B.15 or PCH001; it does for 2024–25 (B.10).
+- **All large dams (HII, 2026-10-05, D-100):** 50 daily records for 39 physical dams (11 have both a RID and an EGAT record;
+  both ids return the same rule curve). 13 stood above their upper rule curve: ป่าสักชลสิทธิ์ 109.8 % (957 ล้าน ลบ.ม. vs
+  upper curve 465; releasing 43.2 ล้าน ลบ.ม./วัน ≈ 500 m³/s), หนองปลาไหล 105.0 %, แก่งกระจาน 102.2 %, นฤบดินทรจินดา 97.3 %,
+  กิ่วคอหมา 96.0 %, …; 23 between the curves; ห้วยกุ่ม, ปากมูล, ท่าทุ่งนา have no curve (KI-299).
 

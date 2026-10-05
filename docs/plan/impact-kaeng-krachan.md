@@ -63,3 +63,8 @@ today's level by ≥ 10 % at B.10 and B.16; the data request with five CSV templ
 B.18 carries RID's release (r 0.93 over a year). Security as above plus a strict CSP and `X-Frame-Options: DENY`.
 Numbers and ratings: MODELS §11; facts: KNOWLEDGE §25; doubts: KI-293–KI-297; owner questions: Q56.
 
+## v0.28.0: the main app plus a "💧 ผลกระทบ" tab (D-100)
+Owner: "similar map and functions to main page but add the risk and impacts as additional tab" → `/impact` serves the main
+app with one more tab: national dams at risk (rule-curve position, both agencies, release history) and the cases (this
+pilot first, drawn on the map with the real river line). The board above is the case view; the gate is unchanged.
+
