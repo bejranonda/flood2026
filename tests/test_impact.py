@@ -211,3 +211,66 @@ def test_the_first_gauge_is_checked_against_the_dams_reported_release():
     assert chk["days"] == 120 and chk["r"] > 0.95 and abs(chk["median_diff_cms"] - 10.0) < 1.0
     assert chk["lag0_r"] > chk["lag1_r"]                                             # it arrives the same day
     assert impact.release_vs_flow(dict(list(rel.items())[:10]), flow) is None        # too few days: no claim
+
+
+# --- national dams at risk (owner 2026-10-05: "National dams at risk", D-100) ------------------------------------------
+def test_dam_metadata_comes_with_coordinates_and_storage_bounds():
+    from floodwatch.collectors import parsing
+    payload = {"data": {"dam_daily": [{"dam_date": "2026-10-05", "dam": {"id": 13, "dam_name": {"th": "แก่งกระจาน"},
+               "dam_lat": 12.917017, "dam_long": 99.629886, "normal_storage": 710, "max_storage": 900, "sub_basin_id": 7},
+               "agency": {"agency_shortname": {"en": "RID"}}}]}}
+    assert parsing.parse_hii_dam_meta(payload) == [{"dam_id": 13, "agency": "RID", "name_th": "แก่งกระจาน", "lat": 12.917017,
+                                                    "lon": 99.629886, "normal_mcm": 710.0, "max_mcm": 900.0, "sub_basin_id": 7}]
+
+
+def test_a_dams_position_against_its_rule_curve_is_a_fact_not_a_verdict():
+    rule = {"upper": 593.37, "lower": 203.8}
+    assert impact.dam_position(725.85, rule) == "above" and impact.dam_position(150.0, rule) == "below"
+    assert impact.dam_position(400.0, rule) == "between"
+    assert impact.dam_position(None, rule) is None and impact.dam_position(400.0, None) is None
+
+
+def test_the_release_note_is_the_same_rule_the_case_page_uses():
+    years = {y: (v, f"{y}-08-01") for y, v in ((2018, 24.36), (2019, 8.9), (2020, 2.76), (2021, 9.13), (2022, 4.75),
+                                                (2023, 3.46), (2024, 3.89), (2025, 3.89))}
+    note = impact.release_note(10.8, "2026-10-05", years)
+    assert "2562–2568" in note and "2561" in note
+    assert impact.release_note(9.5, "2026-10-05", {**years, 2025: (9.6, "2025-09-01")}) is None  # last year released more
+
+
+def test_one_marker_per_physical_dam_with_both_agencies_side_by_side():
+    meta = [{"dam_id": 13, "agency": "RID", "name_th": "แก่งกระจาน", "lat": 12.917, "lon": 99.630, "normal_mcm": 710.0,
+             "max_mcm": 900.0, "sub_basin_id": 7},
+            {"dam_id": 57, "agency": "EGAT", "name_th": "แก่งกระจาน", "lat": 12.916, "lon": 99.633, "normal_mcm": 710.0,
+             "max_mcm": 900.0, "sub_basin_id": 7},
+            {"dam_id": 1, "agency": "RID", "name_th": "ภูมิพล", "lat": 17.24, "lon": 98.97, "normal_mcm": 13462.0,
+             "max_mcm": 13462.0, "sub_basin_id": 1}]
+    latest = {13: {"dam_date": "2026-10-05", "storage_mcm": 725.85, "storage_pct": 102.23, "released_mcm": 10.8,
+                   "inflow_mcm": 10.33, "spilled_mcm": 0.0},
+              57: {"dam_date": "2026-10-04", "storage_mcm": 726.3, "storage_pct": 58.64, "released_mcm": 3.04},
+              1: {"dam_date": "2026-10-05", "storage_mcm": 9000.0, "storage_pct": 66.9, "released_mcm": 1.0}}
+    curves = {13: {"upper": {"10-05": 593.37}, "lower": {"10-05": 203.8}}, 1: {"upper": {"10-05": 12000.0}, "lower": {"10-05": 7000.0}}}
+    layer = impact.dams_layer(meta, latest, curves, {}, cases={13: "kaeng-krachan"})
+    by = {d["name_th"]: d for d in layer}
+    kk = by["แก่งกระจาน"]
+    assert [r["agency"] for r in kk["records"]] == ["RID", "EGAT"] and kk["position"] == "above" and kk["case"] == "kaeng-krachan"
+    assert kk["records"][1]["position"] is None  # EGAT's record on 4 Oct, no curve listed for its id: no claim
+    assert by["ภูมิพล"]["position"] == "between" and layer[0]["name_th"] == "แก่งกระจาน"  # above the curve listed first
+
+
+def test_dam_history_comes_in_small_batches_current_year_first():
+    import datetime as dt
+    now = dt.datetime(2026, 10, 5, 12, tzinfo=dt.timezone.utc)
+    todo = impact_todo = __import__("floodwatch.collectors", fromlist=["x"]).dam_history_todo(
+        ids=[1, 13, 57], complete={(13, y) for y in range(2018, 2026)}, refreshed={13: now - dt.timedelta(hours=2)},
+        this_year=2026, first_year=2018, per_run=4, case_dams=(13,), now=now)
+    assert todo[:2] == [(1, 2026), (57, 2026)]  # stale current years first; 13 refreshed 2 h ago
+    assert len(todo) == 4 and all(y < 2026 for _, y in todo[2:]) and all(d != 13 for d, _ in todo)
+
+
+def test_the_case_river_is_drawn_from_hiis_line_as_lat_lon_parts():
+    geo = {"features": [{"properties": {"STR_NAMT": "แม่น้ำเพชรบุรี"},
+                         "geometry": {"type": "MultiLineString", "coordinates": [[[99.63, 12.92], [99.70, 12.95]], [[99.9, 13.1]]]}},
+                        {"properties": {"STR_NAMT": "แม่น้ำท่าจีน"}, "geometry": {"type": "LineString", "coordinates": [[100.1, 14.0]]}}]}
+    assert impact.river_line(geo, "แม่น้ำเพชรบุรี") == [[[12.92, 99.63], [12.95, 99.70]], [[13.1, 99.9]]]
+    assert impact.river_line(geo, "แม่น้ำท่าจีน") == [[[14.0, 100.1]]] and impact.river_line(None, "x") == []

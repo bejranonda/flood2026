@@ -36,6 +36,7 @@ TASKS = [
     ("situation", 1800),  # the national ticker in the top bar: rules + AI retelling after a check (D-089)
     ("google_floodhub", 6 * 3600),  # Google Flood Hub, Thailand: statuses, thresholds, forecasts (D-087, not shown yet)
     ("hii_dams", 6 * 3600),  # HII large dams, daily (RID/EGAT), for the impact page (D-099)
+    ("hii_dams_history", 3600),  # every dam's rule curve and release history, ≤ 10 requests an hour (D-100)
     ("impact", 3600),  # the impact page's state (Kaeng Krachan pilot, D-099)
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),

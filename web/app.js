@@ -461,6 +461,7 @@ function renderMap() {
     map.createPane("reports").style.zIndex = 350;
     map.createPane("stations").style.zIndex = 650;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(map);
+    document.dispatchEvent(new CustomEvent("fw:map", { detail: map }));  // a page mode may draw its own layers (D-100)
     // One box: the legend is the switch (owner 2026-10-04: "Let the all stations can be show and hide … simplify the
     // categories", chose "One box: legend with checkboxes"). Choices are remembered; phones start folded.
     legend = L.control({ position: "bottomright" });
@@ -1375,11 +1376,14 @@ function locate() {
 function setTab(tab) {
   document.body.dataset.tab = tab;
   document.querySelectorAll(".tabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
-  document.getElementById("view-list").hidden = tab === "river" || tab === "watch";
+  const extra = window.FW_TABS || {};  // tabs a page mode adds (impact mode, D-100); the public page has none
+  document.getElementById("view-list").hidden = tab === "river" || tab === "watch" || tab in extra;
   document.getElementById("view-river").hidden = tab !== "river";
   document.getElementById("view-watch").hidden = tab !== "watch";
+  for (const id of Object.keys(extra)) { const v = document.getElementById(`view-${id}`); if (v) v.hidden = tab !== id; }
   if (tab === "river") renderRiver().then(scrollRiver);
   if (tab === "watch") { wRegion = "all"; wProv = ""; renderWatch(); }  // opens nationwide every time (owner)
+  if (extra[tab] && extra[tab].show) extra[tab].show();
   if (tab === "map" && map) setTimeout(() => { map.invalidateSize(); if (fitPending) fitRegion(); }, 50);
 }
 

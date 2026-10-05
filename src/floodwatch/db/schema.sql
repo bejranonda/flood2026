@@ -159,6 +159,19 @@ CREATE TABLE IF NOT EXISTS dwr_station (
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
 -- Large dams, daily (HII analyst/dam; RID and EGAT records), for the impact page (D-099)
+-- The dams behind HII's daily records (D-100): one row per record id (RID and EGAT keep their own ids)
+CREATE TABLE IF NOT EXISTS dam (
+    dam_id        integer PRIMARY KEY,
+    agency        text,
+    name_th       text,
+    lat           double precision,
+    lon           double precision,
+    normal_mcm    double precision,
+    max_mcm       double precision,
+    sub_basin_id  integer,
+    updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS dam_daily (
     dam_id        integer NOT NULL,
     agency        text,

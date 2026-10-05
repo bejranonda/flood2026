@@ -662,11 +662,11 @@ def _impact_require(request: Request) -> None:
         raise HTTPException(401, "login required")
 
 
-def _impact_state() -> dict:
+def _impact_state(key: str = "impact_kaeng_krachan") -> dict:
     def build():
         with db.connect() as c:
-            return db.get_state(c, "impact_kaeng_krachan") or {}
-    return _memo(("impact_state",), build, ttl=120)
+            return db.get_state(c, key) or {}
+    return _memo(("impact_state", key), build, ttl=120)
 
 
 @app.post("/api/impact/login", include_in_schema=False)
@@ -702,6 +702,37 @@ def impact_board(request: Request):
     return JSONResponse(_impact_state(), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
+@app.get("/api/impact/cases", include_in_schema=False)
+def impact_cases(request: Request):
+    """The case picker (D-100): every case with its dam and whether its hourly state exists. Login required."""
+    _impact_require(request)
+    from floodwatch import impact
+    out = []
+    for cid, cfg in impact.CASES.items():
+        st = _impact_state(impact.state_key(cid))
+        out.append({"id": cid, "title": cfg["title"], "dam_name": cfg["dam_name"], "dam_id": cfg["dam_ids"]["RID"],
+                    "ready": bool(st.get("case")), "built_at": st.get("built_at")})
+    return JSONResponse({"cases": out}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/impact/dams", include_in_schema=False)
+def impact_dams(request: Request):
+    """National dams at risk (D-100): one entry per physical dam, both agencies' records, rule-curve position, release
+    note. Login required."""
+    _impact_require(request)
+    return JSONResponse(_impact_state("impact_dams"), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
+@app.get("/api/impact/case/{case_id}", include_in_schema=False)
+def impact_case(request: Request, case_id: str):
+    """One case's board (dam, river, replay, data request, river line for the map). Login required."""
+    _impact_require(request)
+    from floodwatch import impact
+    if case_id not in impact.CASES:
+        raise HTTPException(404, "unknown case")
+    return JSONResponse(_impact_state(impact.state_key(case_id)), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+
+
 @app.get("/api/impact/kaeng-krachan/whatif", include_in_schema=False)
 def impact_whatif(request: Request, release_mcm: float = Query(..., ge=0, le=200),
                   diversion_cms: float | None = Query(None, ge=0, le=2000)):
@@ -728,18 +759,43 @@ def impact_template(request: Request, name: str):
 
 
 @app.get("/impact", include_in_schema=False)
-def impact_page():
-    """The impact page shell (no data in it: the data come from /api/impact/* after login)."""
-    html = (WEB_DIR / "impact.html").read_text().replace("__VERSION__", f"v{__version__}")
-    return HTMLResponse(html, headers={"Cache-Control": "no-cache", "X-Robots-Tag": "noindex, nofollow", **IMPACT_PAGE_HEADERS})
+def impact_page(request: Request):
+    """Impact mode of the main app (D-100): the same page as / with one more tab (💧 ผลกระทบ), noindex and a strict
+    CSP. The tab's data come from /api/impact/* after login; the public page is untouched."""
+    html = page_for_host((WEB_DIR / "index.html").read_text(), _host(request)).replace("__VERSION__", f"v{__version__}")
+    return HTMLResponse(impact_html(html), headers={"Cache-Control": "no-cache", "X-Robots-Tag": "noindex, nofollow",
+                                                    **IMPACT_PAGE_HEADERS})
 
 
-# A password page: never framed by another site (clickjacking), only its own script, fonts from Google Fonts only.
+def impact_html(html: str) -> str:
+    """index.html + the impact tab, its view, its stylesheet and script (asset versions follow the release)."""
+    v = __version__
+    edits = [("</head>", f'<meta name="robots" content="noindex, nofollow">\n<link rel="stylesheet" href="/static/impact.css?v={v}">\n</head>'),
+             ("<body>", '<body data-mode="impact">'),
+             ('<button role="tab" data-tab="watch" aria-selected="false">⚠️ จับตา</button>',
+              '<button role="tab" data-tab="watch" aria-selected="false">⚠️ จับตา</button>\n'
+              '  <button role="tab" data-tab="impact" aria-selected="false">💧 ผลกระทบ</button>'),
+             ('<div id="view-watch" class="view" hidden></div>',
+              '<div id="view-watch" class="view" hidden></div>\n    <div id="view-impact" class="view" hidden></div>')]
+    for anchor, repl in edits:
+        if anchor not in html:  # the main page changed: fail loudly rather than serve half a page
+            raise RuntimeError(f"impact mode: anchor missing in index.html: {anchor[:40]}")
+        html = html.replace(anchor, repl, 1)
+    html, n = re.subn(r'(<script src="/static/app\.js\?v=\d+"></script>)', rf'\1\n<script src="/static/impact.js?v={v}"></script>', html)
+    if n != 1:
+        raise RuntimeError("impact mode: app.js script tag not found in index.html")
+    return html
+
+
+# The main app on a password page: never framed (clickjacking); scripts only from us and Leaflet's CDN (no inline
+# script); inline styles allowed because app.js builds some (D-100); tiles from OpenStreetMap; data only from us.
 IMPACT_PAGE_HEADERS = {
     "X-Frame-Options": "DENY", "Referrer-Policy": "same-origin", "X-Content-Type-Options": "nosniff",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
-                               "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; "
-                               "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://unpkg.com; "
+                               "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; "
+                               "font-src https://fonts.gstatic.com; img-src 'self' data: https://unpkg.com "
+                               "https://*.tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'none'; "
+                               "base-uri 'none'; form-action 'self'"}
 
 
 @app.get("/api/dwr")

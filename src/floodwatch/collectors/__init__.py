@@ -709,7 +709,13 @@ def hii_dams() -> dt.datetime | None:
     """HII's large dams, daily (RID and EGAT records: storage, inflow, release, spill), for the impact page (D-099)."""
     payload, _ = _get_json("hii_dams", f"{HII_ANALYST}/dam")
     rows = parsing.parse_hii_dams(payload)
+    meta = parsing.parse_hii_dam_meta(payload)
     with db.connect() as c, c.cursor() as cur:
+        cur.executemany("""INSERT INTO dam (dam_id, agency, name_th, lat, lon, normal_mcm, max_mcm, sub_basin_id)
+                           VALUES (%(dam_id)s, %(agency)s, %(name_th)s, %(lat)s, %(lon)s, %(normal_mcm)s, %(max_mcm)s, %(sub_basin_id)s)
+                           ON CONFLICT (dam_id) DO UPDATE SET agency=EXCLUDED.agency, name_th=EXCLUDED.name_th, lat=EXCLUDED.lat,
+                               lon=EXCLUDED.lon, normal_mcm=EXCLUDED.normal_mcm, max_mcm=EXCLUDED.max_mcm,
+                               sub_basin_id=EXCLUDED.sub_basin_id, updated_at=now()""", meta)
         cur.executemany("""INSERT INTO dam_daily (dam_id, agency, name_th, dam_date, storage_mcm, storage_pct, inflow_mcm,
                                released_mcm, spilled_mcm, level_m)
                            VALUES (%(dam_id)s, %(agency)s, %(name_th)s, %(dam_date)s, %(storage_mcm)s, %(storage_pct)s,
@@ -734,6 +740,55 @@ def dam_year_rows(dam_id: int, agency: str | None, name_th: str | None, released
         for day, value in part.get("series") or []:
             days.setdefault(day, {"released_mcm": None, "storage_mcm": None})[key] = value
     return [{"dam_id": dam_id, "agency": agency, "name_th": name_th, "dam_date": day, **vals} for day, vals in sorted(days.items())]
+
+
+def dam_history_todo(ids: list[int], complete: set, refreshed: dict, this_year: int, first_year: int, per_run: int,
+                     case_dams: tuple, now: dt.datetime) -> list[tuple[int, int]]:
+    """Which (dam, year) yearly graphs to fetch this run (D-100): current years not refreshed for 20 h first, then missing
+    earlier years — at most `per_run` requests, so the hourly task never holds up the collectors. Case dams keep their
+    own fuller history (hii_dam_history)."""
+    stale = [(d, this_year) for d in ids if d not in case_dams
+             and (refreshed.get(d) is None or now - refreshed[d] > dt.timedelta(hours=20))]
+    past = [(d, y) for y in range(this_year - 1, first_year - 1, -1) for d in ids
+            if d not in case_dams and (d, y) not in complete]
+    return (stale + past)[:per_run]
+
+
+def hii_dams_history(per_run: int = 10, first_year: int = 2018, pause_s: float = 1.0) -> int:
+    """Every large dam's rule curve and daily releases (HII analyst/dam_yearly_graph, data_type=dam_released) for the
+    national dams layer (D-100), a few requests an hour (dam_history_todo). Returns the dam-days written."""
+    now = dt.datetime.now(dt.timezone.utc)
+    this_year = dt.datetime.now(parsing.ICT).year
+    case_dams = tuple(cfg["dam_ids"]["RID"] for cfg in __import__("floodwatch.impact", fromlist=["CASES"]).CASES.values())
+    with db.connect() as c:
+        meta = {r["dam_id"]: r for r in c.execute("SELECT dam_id, agency, name_th FROM dam").fetchall()}
+        complete = {(r["dam_id"], r["y"]) for r in c.execute(
+            """SELECT dam_id, extract(year FROM dam_date)::int AS y FROM dam_daily WHERE released_mcm IS NOT NULL
+               GROUP BY 1, 2 HAVING count(*) >= 300""").fetchall()}
+        refreshed = {}
+        for d in meta:
+            st = db.get_state(c, f"dam_rule_curve_{d}") or {}
+            if st.get("fetched"):
+                refreshed[d] = dt.datetime.fromisoformat(st["fetched"])
+    written = 0
+    for dam_id, year in dam_history_todo(sorted(meta), complete, refreshed, this_year, first_year, per_run, case_dams, now):
+        payload, _ = _get_json("hii_dams", f"{HII_ANALYST}/dam_yearly_graph?data_type=dam_released&dam_id={dam_id}&year={year}")
+        part = parsing.parse_hii_dam_year(payload)
+        m = meta[dam_id]
+        rows = dam_year_rows(dam_id, m["agency"], m["name_th"] or part["name_th"], part, {"series": []})
+        with db.connect() as c, c.cursor() as cur:
+            cur.executemany("""INSERT INTO dam_daily (dam_id, agency, name_th, dam_date, storage_mcm, released_mcm)
+                               VALUES (%(dam_id)s, %(agency)s, %(name_th)s, %(dam_date)s, %(storage_mcm)s, %(released_mcm)s)
+                               ON CONFLICT (dam_id, dam_date) DO UPDATE SET
+                                   released_mcm = COALESCE(dam_daily.released_mcm, EXCLUDED.released_mcm)""", rows)
+            if year == this_year and part["upper"]:
+                db.set_state(c, f"dam_rule_curve_{dam_id}", {**{k: part[k] for k in ("upper", "lower", "normal", "upper_bound",
+                                                                                       "lower_bound")}, "fetched": now.isoformat()})
+            c.commit()
+        written += len(rows)
+        time.sleep(pause_s)
+    log.info("hii_dams_history: %d dam-days", written)
+    return written
 
 
 def hii_dam_history(dam_id: int = 13, first_year: int = 2018, pause_s: float = 1.0) -> int:
@@ -776,4 +831,5 @@ def run(source: str) -> None:
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
                   "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
                   "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells,
-                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "dwr_ews": dwr_ews, "google_floodhub": google_floodhub, "hii_dams": hii_dams}[source])
+                  "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "dwr_ews": dwr_ews, "google_floodhub": google_floodhub, "hii_dams": hii_dams,
+     "hii_dams_history": hii_dams_history}[source])

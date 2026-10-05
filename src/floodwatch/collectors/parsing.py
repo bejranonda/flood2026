@@ -431,3 +431,19 @@ def parse_hii_dam_year(payload: dict) -> dict:
     return {"name_th": name, "series": series, "upper": curve("upper_rule_curve"), "lower": curve("lower_rule_curve"),
             "normal": num(d.get("normal_bound")), "upper_bound": num(d.get("upper_bound")), "lower_bound": num(d.get("lower_bound"))}
 
+
+def parse_hii_dam_meta(payload: dict) -> list[dict]:
+    """The dams behind HII's daily records (D-100): one row per record id — agency, name, coordinates and the storage bounds
+    (ล้าน ลบ.ม.). Eleven dams have both a RID and an EGAT record (2026-10-05); they stay two rows."""
+    out = []
+    for r in (payload.get("data") or {}).get("dam_daily") or []:
+        dam = r.get("dam") or {}
+        if dam.get("id") is None or dam.get("dam_lat") is None or dam.get("dam_long") is None:
+            continue
+        num = lambda v: float(v) if v is not None else None
+        out.append({"dam_id": int(dam["id"]), "agency": ((r.get("agency") or {}).get("agency_shortname") or {}).get("en"),
+                    "name_th": (dam.get("dam_name") or {}).get("th"), "lat": float(dam["dam_lat"]), "lon": float(dam["dam_long"]),
+                    "normal_mcm": num(dam.get("normal_storage")), "max_mcm": num(dam.get("max_storage")),
+                    "sub_basin_id": dam.get("sub_basin_id")})
+    return out
+

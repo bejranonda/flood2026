@@ -196,6 +196,60 @@ def rule_curve_on(curves: dict | None, ymd: str | None) -> dict | None:
     return {"upper": up, "lower": lo} if up is not None and lo is not None else None
 
 
+def release_note(released_mcm: float, ymd: str, years: dict) -> str | None:
+    """"Today's release is more than every day in years A–B; the last year that released more was C" — only over years
+    fully present in `years` ({year: (highest daily release, its date)}, complete years only) and only when at least the
+    whole previous year released less; None otherwise."""
+    r, this_year = released_mcm, int(str(ymd)[:4])
+    earlier = sorted(y for y in years if y < this_year)
+    higher = [y for y in earlier if years[y][0] >= r]
+    last = max(higher) if higher else None
+    span = list(range((last + 1) if last else (earlier[0] if earlier else this_year), this_year))
+    if not span or not all(y in years for y in span) or (last is not None and last >= this_year - 1):
+        return None
+    what = f"ระบายวันนี้ {r:.2f} ล้าน ลบ.ม./วัน มากกว่าทุกวันในปี {span[0] + 543}–{span[-1] + 543}"
+    return what + (f"; ปีล่าสุดที่ระบายมากกว่านี้คือ {last + 543} (สูงสุด {years[last][0]:.2f} ล้าน ลบ.ม./วัน"
+                   f" เมื่อ {th_date(years[last][1])})" if last else " (เท่าที่ สสน. มีข้อมูล)") + " — ข้อมูลรายวันจาก สสน."
+
+
+def dam_position(storage_mcm: float | None, rule: dict | None) -> str | None:
+    """Storage against HII's rule curve for the day: 'above' the upper curve, 'below' the lower one, 'between'; None
+    without both. A fact from the agencies' own curve — the page never turns it into a verdict."""
+    if storage_mcm is None or not rule or rule.get("upper") is None or rule.get("lower") is None:
+        return None
+    return "above" if storage_mcm > rule["upper"] else "below" if storage_mcm < rule["lower"] else "between"
+
+
+POSITION_ORDER = {"above": 0, "below": 1, "between": 2, None: 3}
+
+
+def dams_layer(meta: list[dict], latest: dict, curves: dict, years: dict, cases: dict | None = None) -> list[dict]:
+    """One entry per physical dam (records grouped by name; RID first, then EGAT — never merged, KI-217): each record's
+    latest daily values, the rule curve on its date, its position and the release note; the dam's position is its
+    first record's that has one. Sorted: above the upper curve, below the lower, between, unknown; then by storage %."""
+    groups: dict = {}
+    for m in sorted(meta, key=lambda m: (m["name_th"] or "", 0 if m["agency"] == "RID" else 1, m["dam_id"])):
+        groups.setdefault(m["name_th"], []).append(m)
+    out = []
+    for name, ms in groups.items():
+        records = []
+        for m in ms:
+            row = latest.get(m["dam_id"]) or {}
+            rule = rule_curve_on(curves.get(m["dam_id"]), row.get("dam_date"))
+            pos = dam_position(row.get("storage_mcm"), rule)
+            note = release_note(row["released_mcm"], row["dam_date"], years.get(m["dam_id"]) or {}) \
+                if row.get("released_mcm") is not None and row.get("dam_date") else None
+            records.append({"dam_id": m["dam_id"], "agency": m["agency"], **{k: row.get(k) for k in (
+                "dam_date", "storage_mcm", "storage_pct", "inflow_mcm", "released_mcm", "spilled_mcm")},
+                "rule": rule, "position": pos, "release_note": note})
+        first = ms[0]
+        pos = next((r["position"] for r in records if r["position"]), None)
+        out.append({"name_th": name, "lat": first["lat"], "lon": first["lon"], "normal_mcm": first.get("normal_mcm"),
+                    "max_mcm": first.get("max_mcm"), "position": pos, "records": records,
+                    "case": next(((cases or {}).get(m["dam_id"]) for m in ms if (cases or {}).get(m["dam_id"])), None)})
+    return sorted(out, key=lambda d: (POSITION_ORDER[d["position"]], -max((r["storage_pct"] or 0) for r in d["records"])))
+
+
 def dam_notes(rid: dict | None, egat: dict | None, q18_now: float | None, rule: dict | None = None,
               years: dict | None = None) -> list[str]:
     """What an engineer would look at or question in the dam's records: facts against HII's rule curve and the dam's own
@@ -210,15 +264,9 @@ def dam_notes(rid: dict | None, egat: dict | None, q18_now: float | None, rule: 
             notes.append(f"ปริมาตรอ่าง {st:.1f} ล้าน ลบ.ม. ต่ำกว่าเส้นควบคุมล่าง (lower rule curve) ของวันนี้ {lo - st:.0f} ล้าน ลบ.ม."
                          f" (เส้นล่าง {lo:.1f} — เส้นควบคุมจาก สสน.)")
     if rid and years and rid.get("released_mcm") is not None and rid.get("dam_date"):
-        r, this_year = rid["released_mcm"], int(str(rid["dam_date"])[:4])
-        earlier = sorted(y for y in years if y < this_year)
-        higher = [y for y in earlier if years[y][0] >= r]
-        last = max(higher) if higher else None
-        span = list(range((last + 1) if last else (earlier[0] if earlier else this_year), this_year))
-        if span and all(y in years for y in span) and (last is None or last < this_year - 1):
-            what = f"ระบายวันนี้ {r:.2f} ล้าน ลบ.ม./วัน มากกว่าทุกวันในปี {span[0] + 543}–{span[-1] + 543}"
-            notes.append(what + (f"; ปีล่าสุดที่ระบายมากกว่านี้คือ {last + 543} (สูงสุด {years[last][0]:.2f} ล้าน ลบ.ม./วัน"
-                                 f" เมื่อ {th_date(years[last][1])})" if last else " (เท่าที่ สสน. มีข้อมูล)") + " — ข้อมูลรายวันจาก สสน.")
+        note = release_note(rid["released_mcm"], rid["dam_date"], years)
+        if note:
+            notes.append(note)
     if rid and egat and egat.get("released_mcm") is not None:
         notes.append(f"กฟผ. รายงานเขื่อนเดียวกัน ({th_date(egat.get('dam_date'))}): ระบาย {egat['released_mcm']:.2f} ล้าน ลบ.ม./วัน"
                      + (f", {egat['storage_pct']:.1f} %" if egat.get("storage_pct") is not None else "")
@@ -272,7 +320,8 @@ def template_csv(name: str) -> str | None:
 # --- the Kaeng Krachan case: state from the database (rebuilt hourly by the worker) -------------------------------------
 CASES = {
     "kaeng-krachan": {
-        "title": "เขื่อนแก่งกระจาน → แม่น้ำเพชรบุรี", "dam_ids": {"RID": 13, "EGAT": 57},
+        "title": "เขื่อนแก่งกระจาน → แม่น้ำเพชรบุรี", "dam_name": "แก่งกระจาน", "river": "แม่น้ำเพชรบุรี",
+        "dam_ids": {"RID": 13, "EGAT": 57},
         # no hourly dam data: from the dam to B.18 (~21 km) a few hours, an assumption stated on the page
         "dam_to_first_h": [2, 8], "dam_km": 21,
         "points": [{"code": "B.18", "role": "below_dam"}, {"code": "B.10", "role": "after_diversion"},
@@ -282,6 +331,24 @@ CASES = {
 }
 HOURLY_SQL = """SELECT date_trunc('hour', obs_time) AS t, avg(level_msl) AS h, avg(discharge) AS q FROM observation
                 WHERE code=%s AND quality_flag='ok' AND obs_time > now() - interval '370 days' GROUP BY 1 ORDER BY 1"""
+
+
+def state_key(case: str) -> str:
+    """collector_state key of a case's hourly state ('kaeng-krachan' → 'impact_kaeng_krachan')."""
+    return "impact_" + case.replace("-", "_")
+
+
+def river_line(geo_rivers: dict | None, name: str) -> list[list[list[float]]]:
+    """A named river from HII's main-river lines as [[lat, lon], …] parts, for the map (D-100)."""
+    parts = []
+    for f in (geo_rivers or {}).get("features") or []:
+        if (f.get("properties") or {}).get("STR_NAMT") != name:
+            continue
+        g = f.get("geometry") or {}
+        lines = g.get("coordinates") or []
+        for line in (lines if g.get("type") == "MultiLineString" else [lines]):
+            parts.append([[round(p[1], 5), round(p[0], 5)] for p in line])
+    return parts
 
 
 def _window(lag: int) -> list[int]:
@@ -386,7 +453,8 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
                 h[k] = r["h"] if r["h"] is not None else np.nan
                 q[k] = r["q"] if r["q"] is not None else np.nan
         H[code], Q[code] = h, q
-    meta = {r["code"]: r for r in c.execute("SELECT code, name_th, agency, bank_msl FROM station WHERE code = ANY(%s)", (codes,)).fetchall()}
+    meta = {r["code"]: r for r in c.execute("SELECT code, name_th, agency, bank_msl, lat, lon FROM station WHERE code = ANY(%s)",
+                                            (codes,)).fetchall()}
     q18, q10, q16 = Q["B.18"], Q["B.10"], Q["B.16"]
     fits = {"B.10": lag_fit(q18, q10), "B.16": lag_fit(q18, q16)}
     fits.update({p["code"]: lag_fit(q18, H[p["code"]]) for p in cfg["points"] if p["role"] == "city"})
@@ -410,6 +478,7 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
         f = fits.get(code)
         h_now, h_k = _last_at(H[code], idx)
         points.append({**p, "name_th": m.get("name_th"), "agency": m.get("agency"), "bank": m.get("bank_msl"),
+                       "lat": m.get("lat"), "lon": m.get("lon"),
                        "lag_h": lags[code], "lag_r": round(f[1], 2) if f else None,
                        "window": [w[0] + dam_lo, w[1] + dam_hi], "rating": rating,
                        "q_now": _last(Q[code], idx), "h_now": h_now,
@@ -454,6 +523,9 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
             "dam": {**(rid or {}), "egat": egat, "rule_curve": rule, "normal_mcm": (curves or {}).get("normal"),
                     "yearly_max": [{"year": r["y"], "max_mcm": float(r["mx"]), "date": r["d"], "days": r["n"]} for r in yrows]},
             "dam_km": cfg["dam_km"], "dam_notes": dam_notes(rid, egat, b18_now, rule=rule, years=years),
+            "river_line": river_line(db.get_state(c, "geo_rivers"), cfg["river"]),
+            "dam_latlon": next(([r["lat"], r["lon"]] for r in c.execute("SELECT lat, lon FROM dam WHERE dam_id=%s",
+                                                                          (cfg["dam_ids"]["RID"],)).fetchall()), None),
             "release_check": release_vs_flow(rel_daily, b18_daily),
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
@@ -462,11 +534,36 @@ def build_state(c, case: str = "kaeng-krachan", now=None) -> dict:
             "data_time": data_time.isoformat() if data_time else None, "built_at": now.isoformat()}
 
 
-def run() -> dict:
-    """Worker task (hourly): rebuild the case state and store it in collector_state 'impact_kaeng_krachan'."""
+def build_dams(c, now=None) -> dict:
+    """The national dams layer (D-100) from dam, dam_daily and the stored rule curves."""
+    import datetime as dt
     from floodwatch import db
+    meta = [dict(r) for r in c.execute("SELECT dam_id, agency, name_th, lat, lon, normal_mcm, max_mcm, sub_basin_id FROM dam").fetchall()]
+    latest = {r["dam_id"]: dict(r) for r in c.execute(
+        """SELECT DISTINCT ON (dam_id) dam_id, dam_date::text AS dam_date, storage_mcm, storage_pct, inflow_mcm, released_mcm,
+                  spilled_mcm FROM dam_daily WHERE storage_pct IS NOT NULL ORDER BY dam_id, dam_date DESC""").fetchall()}
+    curves = {m["dam_id"]: db.get_state(c, f"dam_rule_curve_{m['dam_id']}") for m in meta}
+    years: dict = {}
+    for r in c.execute("""SELECT dam_id, extract(year FROM dam_date)::int AS y, count(*) AS n, max(released_mcm) AS mx,
+                                 (array_agg(dam_date::text ORDER BY released_mcm DESC NULLS LAST))[1] AS d
+                          FROM dam_daily WHERE released_mcm IS NOT NULL GROUP BY 1, 2""").fetchall():
+        if r["n"] >= 300:
+            years.setdefault(r["dam_id"], {})[r["y"]] = (float(r["mx"]), r["d"])
+    cases = {cfg["dam_ids"]["RID"]: cid for cid, cfg in CASES.items()}
+    now = now or dt.datetime.now(dt.timezone.utc)
+    return {"built_at": now.isoformat(), "dams": dams_layer(meta, latest, {k: v for k, v in curves.items() if v}, years, cases),
+            "curves": sum(1 for v in curves.values() if v), "records": len(meta)}
+
+
+def run() -> dict:
+    """Worker task (hourly): rebuild every case's state and the national dams layer (collector_state)."""
+    from floodwatch import db
+    state = {}
     with db.connect() as c:
-        state = build_state(c)
-        db.set_state(c, "impact_kaeng_krachan", state)
+        for case in CASES:
+            state = build_state(c, case)
+            db.set_state(c, state_key(case), state)
+            c.commit()
+        db.set_state(c, "impact_dams", build_dams(c))
         c.commit()
     return state

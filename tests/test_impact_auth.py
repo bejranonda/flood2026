@@ -79,24 +79,37 @@ def test_the_whatif_is_refused_until_the_replay_passes_and_templates_need_the_se
         api.impact_template(Req(tok), "../etc/passwd")
 
 
-def test_the_impact_page_is_kept_out_of_search_engines():
-    page = api.impact_page()
-    assert "noindex" in page.headers.get("x-robots-tag", "") and "<title>" in page.body.decode()
-    # a password page must not be framed by another site (clickjacking) and runs only its own script
-    assert page.headers.get("x-frame-options") == "DENY"
+class PageReq:
+    headers = {"host": "flood.autobahn.bot"}
+
+
+def test_impact_mode_is_the_main_app_with_one_more_tab_and_the_public_page_is_unchanged():
+    # owner 2026-10-05: "In impact page we need similar map and functions to main page but add the risk and impacts as
+    # additional tab" → chose "Main app + ผลกระทบ tab" (D-100)
+    page, home = api.impact_page(PageReq()), api.index(PageReq())
+    html, pub = page.body.decode(), home.body.decode()
+    assert 'data-tab="impact"' in html and 'id="view-impact"' in html and "/static/impact.js" in html
+    assert "/static/app.js" in html and "leaflet" in html and 'data-tab="watch"' in html  # the whole main app
+    assert 'name="robots" content="noindex' in html and 'data-mode="impact"' in html
+    assert 'data-tab="impact"' not in pub and "/static/impact.js" not in pub and "impact.css" not in pub
+    assert "noindex" in page.headers.get("x-robots-tag", "") and page.headers.get("x-frame-options") == "DENY"
     csp = page.headers.get("content-security-policy", "")
-    assert "frame-ancestors 'none'" in csp and "script-src 'self'" in csp and "'unsafe-inline'" not in csp.split("script-src")[1].split(";")[0]
+    script = csp.split("script-src")[1].split(";")[0]
+    assert "'self'" in script and "https://unpkg.com" in script and "unsafe-inline" not in script  # no inline script
+    assert "frame-ancestors 'none'" in csp and "connect-src 'self'" in csp
     import types as _t
     robots = api.robots(_t.SimpleNamespace(headers={"host": "flood.autobahn.bot"}, url=_t.SimpleNamespace(hostname="flood.autobahn.bot"))).body.decode()
     assert "Disallow: /impact" in robots and "Disallow: /api/impact" in robots
 
 
-def test_the_page_runs_no_inline_script_or_style_and_escapes_outside_text():
+def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     from pathlib import Path
     web = Path(api.__file__).resolve().parents[3] / "web"
-    html, js = (web / "impact.html").read_text(), (web / "impact.js").read_text()
-    assert "<script>" not in html and "style=" not in html and "style=" not in js  # the CSP would block them
-    assert "const agency = (a) => esc(" in js and "innerHTML = '<p class=\"card\">' + esc(" in js
+    app, js = (web / "app.js").read_text(), (web / "impact.js").read_text()
+    assert "window.FW_TABS" in app and 'new CustomEvent("fw:map"' in app  # the two hooks, nothing else
+    assert "FW_TABS" in js and "fw:map" in js
+    assert not (web / "impact.html").exists()  # the standalone shell is gone: one app, two modes
+    assert "style=" not in js and "const agency = (a) => esc(" in js  # outside strings escaped; styles by class
 
 
 def test_the_real_settings_reach_the_impact_endpoints():
@@ -110,3 +123,23 @@ def test_the_replay_table_follows_the_river_and_reported_percent_is_shown_as_rep
     js = (Path(api.__file__).resolve().parents[3] / "web" / "impact.js").read_text()
     assert "st.points.map((p) => p.code).filter((c) => P[c])" in js  # B.10, B.16, B.15, PCH001 — not alphabetical
     assert "ของความจุ" not in js  # the agencies' percentages are not defined the same way (RID 102 % vs EGAT 59 %)
+
+
+def test_cases_dams_and_one_case_need_the_session_and_answer_from_the_hourly_state(monkeypatch):
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    states = {"impact_kaeng_krachan": {"case": "kaeng-krachan", "title": "เขื่อนแก่งกระจาน → แม่น้ำเพชรบุรี", "points": [],
+                                       "built_at": "2026-10-05T12:00:00+00:00", "validation": {"whatif_ready": False}},
+              "impact_dams": {"built_at": "2026-10-05T12:00:00+00:00", "dams": [{"name_th": "แก่งกระจาน", "position": "above"}]}}
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": states.get(key) or {})
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    for call in (lambda r: api.impact_cases(r), lambda r: api.impact_dams(r), lambda r: api.impact_case(r, "kaeng-krachan")):
+        with pytest.raises(HTTPException) as e:
+            call(Req())
+        assert e.value.status_code == 401
+    cases = json.loads(api.impact_cases(Req(tok)).body)["cases"]
+    assert cases[0]["id"] == "kaeng-krachan" and cases[0]["ready"] is True and cases[0]["dam_name"] == "แก่งกระจาน"
+    assert json.loads(api.impact_dams(Req(tok)).body)["dams"][0]["position"] == "above"
+    assert json.loads(api.impact_case(Req(tok), "kaeng-krachan").body)["case"] == "kaeng-krachan"
+    with pytest.raises(HTTPException) as e:
+        api.impact_case(Req(tok), "no-such-case")
+    assert e.value.status_code == 404

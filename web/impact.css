@@ -1,67 +1,78 @@
-/* /impact — impact analysis for partner engineers (D-099). Same tokens as style.css; no inline styles (CSP). */
-:root {
-  --bg: #f6f7f9; --card: #fff; --ink: #1c2430; --muted: #5b6573; --line: #e3e7ec;
-  --accent: #1565c0; --critical: #c62828; --good-bg: #e8f5e9; --warn-bg: #fff8e1;
-}
-* { box-sizing: border-box; }
-body { margin: 0; font-family: "Noto Sans Thai", system-ui, sans-serif; background: var(--bg); color: var(--ink);
-  font-size: 15px; line-height: 1.55; -webkit-text-size-adjust: 100%; }
-a { color: var(--accent); }
-[hidden] { display: none !important; }
+/* 💧 ผลกระทบ — the impact tab on /impact (D-100). Scoped to #view-impact and imp-* classes; reuses style.css's tokens
+   and components (.rchip, .item, .btn, .muted) so the tab looks like the rest of the app. */
+.imp-badge { margin-left: 4px; font-size: 12px; font-weight: 600; background: #f4d35e; color: #333; padding: 1px 8px;
+  border-radius: 10px; vertical-align: middle; }
+.imp-logout { font: inherit; font-size: 13px; background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, .6);
+  border-radius: 6px; padding: 2px 10px; min-height: 32px; cursor: pointer; }
+body[data-mode="impact"] .tabs button { white-space: nowrap; }
+@media (max-width: 800px) { body[data-mode="impact"] .tabs button { font-size: 13px; padding: 0 2px; } }
 
-.ih { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; padding: 8px 16px;
-  padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: #0d3b66; color: #fff; position: sticky; top: 0;
-  z-index: 10; font-size: 14px; }
-.pill { font-size: 12px; background: #f4d35e; color: #333; padding: 1px 8px; border-radius: 10px; }
-.ih button { margin-left: auto; font: inherit; font-size: 13px; background: transparent; color: #fff; cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, .6); border-radius: 6px; padding: 4px 10px; min-height: 36px; }
+#view-impact { font-size: 15px; }
+#view-impact .imp-head { margin: 2px 0 6px; }
+#view-impact .imp-chips { margin-bottom: 8px; }
+#view-impact .imp-title { font-size: 18px; line-height: 1.35; margin: 6px 0 2px; }
+#view-impact h3 { font-size: 16px; margin: 0 0 8px; }
+#view-impact h3 small, #view-impact h2 small { font-weight: 400; color: var(--muted); font-size: 13px; }
+#view-impact .imp-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 10px 0; }
+#view-impact .imp-off { border-style: dashed; }
+#view-impact .imp-note { background: #fff8e1; border-left: 4px solid #f2b705; border-radius: 4px; padding: 6px 10px;
+  font-size: 13px; margin: 8px 0 0; }
+#view-impact .imp-gate { border-radius: 10px; padding: 10px 12px; margin: 10px 0; font-size: 14px; }
+#view-impact .imp-gate.no { background: #fdecea; border: 1px solid #f5c2bd; }
+#view-impact .imp-gate.ok { background: #e8f5e9; border: 1px solid #b7dfba; }
+#view-impact .imp-onmap { margin: 6px 0 2px; }
+#view-impact .imp-facts { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); }
+#view-impact .imp-facts li { margin: 3px 0; }
+#view-impact .imp-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+#view-impact .imp-kv div { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+#view-impact .imp-kv span { display: block; color: var(--muted); font-size: 12px; }
+#view-impact .imp-kv b { font-size: 19px; }
+#view-impact .imp-kv small { display: block; color: var(--muted); font-size: 12px; }
+#view-impact .imp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#view-impact table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+#view-impact th, #view-impact td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+#view-impact th:first-child { text-align: left; }
+#view-impact thead th { font-size: 12px; color: var(--muted); font-weight: 600; vertical-align: bottom; white-space: normal; min-width: 60px; }
+#view-impact tbody th small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+#view-impact td small { color: var(--muted); }
+#view-impact td.imp-neg { color: var(--critical); font-weight: 700; }
+#view-impact td.imp-best { font-weight: 700; background: #e8f5e9; }
+#view-impact details > summary { cursor: pointer; font-weight: 600; min-height: 36px; padding-top: 6px; }
+#view-impact .imp-login { max-width: 380px; display: grid; gap: 8px; }
+#view-impact .imp-login h2 { font-size: 18px; margin: 0; }
+#view-impact .imp-login input { font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; min-height: 44px; }
+#view-impact .imp-err { color: var(--critical); min-height: 1.3em; margin: 0; font-size: 14px; }
+#view-impact .imp-req { padding-left: 22px; margin: 0; }
+#view-impact .imp-req li { margin: 8px 0; }
+#view-impact .imp-why { display: block; color: var(--muted); font-size: 13px; }
+#view-impact .imp-wf { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: end; margin-bottom: 8px; }
+#view-impact .imp-wf label { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+#view-impact .imp-wf input { font: inherit; width: 8em; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; min-height: 40px; }
 
-main { max-width: 1000px; margin: 0 auto; padding: 8px 16px 24px; }
-h1 { font-size: 20px; line-height: 1.35; margin: 8px 0 2px; }
-h2 { font-size: 17px; margin: 0 0 8px; }
-h2 small { font-weight: 400; color: var(--muted); font-size: 13px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
-.card.off { border-style: dashed; }
-.muted { color: var(--muted); font-size: 13px; }
-.note { background: var(--warn-bg); border-left: 4px solid #f2b705; border-radius: 4px; padding: 6px 10px; font-size: 13px;
-  margin: 8px 0 0; }
-.gate { border-radius: 10px; padding: 10px 14px; margin: 12px 0; font-size: 14px; }
-.gate.no { background: #fdecea; border: 1px solid #f5c2bd; }
-.gate.ok { background: var(--good-bg); border: 1px solid #b7dfba; }
-ul.facts { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); }
-ul.facts li { margin: 3px 0; }
+/* national dams: one card per physical dam, coloured by its position against the rule curve (a fact, not a status) */
+#view-impact .imp-sum { font-size: 14px; margin: 4px 0 8px; }
+#view-impact .imp-dams { padding: 0; margin: 0; }
+#view-impact .item.imp-dam { cursor: pointer; }
+#view-impact .item.imp-above { border-left-color: #e46c0a; }
+#view-impact .item.imp-between { border-left-color: #2f6fb0; }
+#view-impact .item.imp-below { border-left-color: #8d6e63; }
+#view-impact .imp-dam-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+#view-impact .imp-pos { font-size: 13px; font-weight: 600; }
+#view-impact .imp-above .imp-pos { color: #b4540a; }
+#view-impact .imp-below .imp-pos { color: #6d4c41; }
+#view-impact .imp-rec { display: block; }
+#view-impact .imp-small, .imp-pop .imp-small { font-size: 13px; color: var(--muted); margin-top: 4px; }
+#view-impact .imp-case-btn { margin-top: 8px; min-height: 36px; }
 
-.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
-.kv div { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
-.kv span { display: block; color: var(--muted); font-size: 12px; }
-.kv b { font-size: 20px; }
-.kv small { display: block; color: var(--muted); font-size: 12px; }
-
-.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
-th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
-th:first-child { text-align: left; }
-thead th { font-size: 12px; color: var(--muted); font-weight: 600; vertical-align: bottom; white-space: normal; min-width: 64px; }
-tbody th small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
-td small { color: var(--muted); }
-td.neg { color: var(--critical); font-weight: 700; }
-td.best { font-weight: 700; background: var(--good-bg); }
-
-.login { max-width: 380px; margin: 32px auto; display: grid; gap: 8px; }
-.login input { font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; min-height: 44px; }
-.btn { font: inherit; border-radius: 8px; padding: 8px 14px; min-height: 44px; border: 1px solid var(--line); background: #fff;
-  cursor: pointer; }
-.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.err { color: var(--critical); min-height: 1.3em; margin: 0; font-size: 14px; }
-
-ol.req { padding-left: 22px; margin: 0; }
-ol.req li { margin: 8px 0; }
-ol.req .why { display: block; color: var(--muted); font-size: 13px; }
-details > summary { cursor: pointer; font-weight: 600; min-height: 36px; }
-
-.wf { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: end; margin-bottom: 8px; }
-.wf label { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
-.wf input { font: inherit; width: 8em; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; min-height: 40px;
-  color: var(--ink); }
-
-footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 16px 24px; }
+/* map: dams as diamonds (gauges are circles), the case's gauges with travel-time labels */
+.imp-dam-icon { color: #fff; background: #8a94a3; border: 2px solid #fff; border-radius: 4px; text-align: center;
+  font-size: 12px; line-height: 16px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); }
+.imp-dam-icon.imp-above { background: #e46c0a; }
+.imp-dam-icon.imp-between { background: #2f6fb0; }
+.imp-dam-icon.imp-below { background: #8d6e63; }
+.imp-pop { font-size: 13px; line-height: 1.45; }
+.imp-pop-pos { font-weight: 700; margin: 2px 0 4px; }
+.imp-pop-pos.imp-above { color: #b4540a; }
+.imp-pop-pos.imp-below { color: #6d4c41; }
+.imp-pop-rec { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
+.imp-tip { font-size: 12px; font-weight: 600; }
