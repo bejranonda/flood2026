@@ -21,7 +21,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from floodwatch import __version__, ai, db, explain, geocode, point
-from floodwatch.config import DATUM_SUSPECT
+from floodwatch.config import DATUM_SUSPECT, settings
 from floodwatch import impact_auth, rain_cells, regions, risks
 from floodwatch import status as trend_rule
 from floodwatch import rivers as rivers_mod

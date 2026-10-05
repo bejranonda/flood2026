@@ -97,3 +97,9 @@ def test_the_page_runs_no_inline_script_or_style_and_escapes_outside_text():
     html, js = (web / "impact.html").read_text(), (web / "impact.js").read_text()
     assert "<script>" not in html and "style=" not in html and "style=" not in js  # the CSP would block them
     assert "const agency = (a) => esc(" in js and "innerHTML = '<p class=\"card\">' + esc(" in js
+
+
+def test_the_real_settings_reach_the_impact_endpoints():
+    # the other tests stub _impact_conf; this one runs it (a missing import gave 500s on every endpoint)
+    pw, secret = api._impact_conf()
+    assert isinstance(pw, str) and isinstance(secret, str)
