@@ -226,7 +226,7 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 #view-impact .imp-gr.imp-sel { background: #e8f0fb; box-shadow: inset 4px 0 0 var(--accent); }
 #view-impact .imp-gr.imp-infeasible .imp-gl { color: var(--muted); }
 #view-impact .imp-gr.imp-custom-row .imp-gl { color: var(--accent); }
-#view-impact .imp-c { text-align: center; padding: 6px 1px; }
+#view-impact .imp-grid td.imp-c { text-align: center; padding: 6px 1px; }
 .imp-c span, .imp-k { display: inline-block; width: 16px; height: 16px; border-radius: 3px; vertical-align: middle; background-color: var(--unknown); }
 .imp-c-ok span, .imp-k.imp-c-ok { background-color: var(--normal); }
 .imp-c-near span, .imp-k.imp-c-near { background-color: var(--warning); }

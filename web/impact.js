@@ -514,10 +514,12 @@
     let r;
     try { r = await api("/api/impact/case/" + encodeURIComponent(st.case) + "/scenarios" + (qp ? "?" + qp : "")); }
     catch (e) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="imp-err">เชื่อมต่อไม่ได้</p>'; return; }
+    if (!state.authed || state.sel !== st.case || !sec.isConnected) return;  // left the case or logged out while this loaded (review round 1)
     if (r.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
     if (r.status === 503) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="muted">ยังไม่พร้อม: ต้องมีเส้นควบคุม น้ำไหลเข้า และปริมาตรปกติของวันนี้ (คำนวณใหม่ทุกชั่วโมง)</p>'; return; }
     if (!r.ok) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="imp-err">คำนวณไม่ได้ (' + r.status + ")</p>"; return; }
     const cmp = await r.json();
+    if (!state.authed || state.sel !== st.case || !sec.isConnected) return;  // the second await can land late too
     state.cmp = cmp;
     sec.innerHTML = scenariosHtml(cmp);
     bindGrid(sec, cmp, st);
@@ -641,10 +643,8 @@
   }
   function bindAi(sec, st) {
     const qp = customParam();
-    if (typeof bindAskUrl === "function") {
-      const wrap = $(".imp-ai-body", sec);
-      if (wrap) bindAskUrl(wrap, "/api/impact/case/" + encodeURIComponent(st.case) + "/explain?q=simple" + (qp ? "&" + qp : ""));
-    }
+    const wrap = $(".imp-ai-body", sec);
+    if (wrap) bindAskChecked(wrap, "/api/impact/case/" + encodeURIComponent(st.case) + "/explain?q=simple" + (qp ? "&" + qp : ""));
     bindBrief(sec, st, qp);
   }
   function bindBrief(sec, st, qp) {
@@ -721,7 +721,7 @@
       '<input id="imp-parse-text" type="text" maxlength="200" autocomplete="off" placeholder="เช่น ระบาย 15 สามวันแล้วลดเหลือ 10">' +
       '<button type="button" class="btn" id="imp-parse-btn">อ่านแผน</button></div><p class="muted" id="imp-parse-msg" aria-live="polite"></p></div>' +
       '<form id="imp-custom" class="imp-custom">' + [1, 2, 3, 4, 5, 6, 7].map((i) => "<label>วันที่ " + i +
-        '<input type="number" inputmode="decimal" step="0.1" min="0" max="200" value="' + esc(today) + '"></label>').join("") +
+        '<input type="number" inputmode="decimal" step="any" min="0" max="200" value="' + esc(today) + '"></label>').join("") +
       '<button class="btn primary" type="submit">คำนวณ</button></form>', (box) => {
       const f = box.querySelector("#imp-custom"), msg = box.querySelector("#imp-parse-msg");
       box.querySelector("#imp-parse-btn").addEventListener("click", async () => {
@@ -791,6 +791,32 @@
     return '<div class="imp-ask"><button type="button" class="ai-btn" aria-expanded="false">' + esc(label) + "</button>" +
       '<div class="story" hidden><div class="story-h"><span>' + esc(heading) + '</span><button type="button" class="story-speak" title="ฟังเสียงอ่าน" aria-label="ฟังเสียงสรุป">🔊 ฟังเสียง</button></div>' +
       '<div class="story-body" aria-live="polite"></div></div></div>';
+  }
+
+  function bindAskChecked(box, url) {  // mirrors app.js bindAskUrl's toggle (app.js is frozen this release) but checks
+    // the session before fillStory: a 401 there showed "ตอนนี้สรุปไม่ได้ ลองแตะอีกครั้ง" instead of the login form
+    // (review round 1); fillStory's own fetch of the same URL is a second, cheap hit on the server's memoised result
+    const btn = box.querySelector(".ai-btn"), card = box.querySelector(".story");
+    if (!btn || !card) return;
+    const body = card.querySelector(".story-body"), open = () => btn.getAttribute("aria-expanded") === "true";
+    btn.addEventListener("click", async () => {
+      const now = !open();
+      btn.setAttribute("aria-expanded", String(now));
+      card.hidden = !now;
+      if (!now) {
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+        return;  // a second tap closes it
+      }
+      body.innerHTML = '<p class="story-text shimmer">กำลังสรุปให้…</p>';
+      let r;
+      try { r = await api(url); } catch (e) { return fillStory(card, url, open); }
+      if (r.status === 401) {
+        document.getElementById("sheet").hidden = true;
+        state.authed = false;
+        return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่");
+      }
+      fillStory(card, url, open);
+    });
   }
 
   function outsideNote(st) {  // the ⓘ behind every outside label; the largest release on record comes from the state
@@ -863,8 +889,8 @@
       box.querySelectorAll(".imp-days [data-day]").forEach((b) => b.addEventListener("click", () => pick(Number(b.dataset.day))));
       const mp = box.querySelector("[data-map-plan]");
       if (mp) mp.addEventListener("click", () => { document.getElementById("sheet").hidden = true; if (kst) showCaseOnMap(kst); else setTab("map"); });
-      if (cmpBox && typeof bindAskUrl === "function") {
-        bindAskUrl(box, "/api/impact/case/" + encodeURIComponent(st0(kst)) + "/explain?q=compare&a=" + encodeURIComponent(p.release.join(",")) +
+      if (cmpBox) {
+        bindAskChecked(box, "/api/impact/case/" + encodeURIComponent(st0(kst)) + "/explain?q=compare&a=" + encodeURIComponent(p.release.join(",")) +
           "&b=" + encodeURIComponent(other.release.join(",")));
       }
       pick(d0);
