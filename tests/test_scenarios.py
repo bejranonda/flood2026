@@ -61,7 +61,8 @@ def test_best_for_each_effect_and_the_stated_optimal_rule_are_explainable():
     thin = _row("thin", worst_margin_min=0.08, storage_end=660.0, margin_vs_req_min=-0.31)  # 8 cm margin, model error 39 cm
     assert "thin" not in [r["id"] for r in sc.feasible(rows + [thin], storage0=725.0, upper_today=600.0, max_storage=900.0)]
     best = sc.best_for(feas)
-    assert best["city"] == "ramp" and best["worst"] == "ramp" and best["warning"] == "ramp" and best["water"] in ("more", "ramp")
+    assert best["city"] == "ramp" and best["worst"] == "ramp" and best["warning"] == "ramp"
+    assert best["water"] is None  # both end at 690: no plan keeps more water (D-110)
     opt = sc.optimal(rows, storage0=725.0, upper_today=600.0, normal=710.0, max_storage=900.0)
     assert opt["id"] == "ramp" and opt["constraints_met"] is True and "ตลิ่ง" in opt["reason"] and "เส้นควบคุม" in opt["reason"]
     # nothing meets the constraints: say so, pick the plan that overtops least while still lowering the reservoir
@@ -176,3 +177,16 @@ def test_the_story_says_the_rain_forecast_drives_the_inflow_when_the_tested_mode
     lines, story = explain.scenarios(cmp)
     text = " ".join(lines) + story
     assert "ใช้ในแบบจำลองน้ำไหลเข้า" in text and "ไม่ได้ใช้คำนวณ" not in text and "คิดว่าไหลเข้าเท่านี้ต่อไป" not in text
+
+
+def test_a_goal_has_a_best_plan_only_when_the_plans_differ_on_it():
+    # D-110: "ท่วมรวมน้อยสุด" and "ไม่มีจุดใดล้นหนัก" were awarded to 9.5 while no plan overtopped and every margin was > 2 m
+    rows = [_row("a", worst_margin_min=2.11, city_margin_min=2.13, storage_end=715.0, ramp_max=0.0),
+            _row("b", worst_margin_min=2.13, city_margin_min=2.13, storage_end=723.0, ramp_max=1.13),
+            _row("c", worst_margin_min=0.18, city_margin_min=1.73, storage_end=639.0, ramp_max=10.87)]
+    best = sc.best_for(rows)
+    assert best["total"] is None  # nothing overtops anywhere
+    assert best["worst"] == "b" and best["water"] == "b" and best["warning"] == "a" and best["city"] in ("a", "b")
+    same = [_row("x", storage_end=700.0), _row("y", storage_end=700.4)]
+    assert sc.best_for(same)["water"] is None and sc.best_for(same)["city"] is None
+    assert sc.EFFECT_TH["worst"] == "ห่างตลิ่งมากสุด"

@@ -15,7 +15,7 @@ from floodwatch import impact
 
 DAYS = 7
 EFFECT_KEYS = ("city", "worst", "total", "dam", "curve", "water", "warning")
-EFFECT_TH = {"city": "ปกป้องตัวเมือง", "worst": "ไม่มีจุดใดล้นหนัก", "total": "ท่วมรวมน้อยสุด", "dam": "ความปลอดภัยเขื่อน",
+EFFECT_TH = {"city": "ปกป้องตัวเมือง", "worst": "ห่างตลิ่งมากสุด", "total": "ท่วมรวมน้อยสุด", "dam": "ความปลอดภัยเขื่อน",
              "curve": "กลับใต้เส้นควบคุมเร็ว", "water": "เก็บน้ำไว้ใช้", "warning": "เตือนล่วงหน้าได้"}
 # inflow(t+h) − inflow(t), 10–90 % (research/2026-10-05_kk_inflow_model.log): the band around "hold today's inflow".
 # PERSIST_BAND: 2025-2026, all days. HIGH_BAND: days with inflow ≥ HIGH_INFLOW (all years; floods move far more).
@@ -92,15 +92,41 @@ def _key(rows, fn):
     return min(rows, key=lambda r: fn(r["effects"]))["id"] if rows else None
 
 
+# a goal has a "best" plan only when the plans differ on it by more than this (D-110: "ท่วมรวมน้อยสุด" was awarded while no
+# plan overtopped anywhere): m for margins, ล้าน ลบ.ม. for storage, ล้าน ลบ.ม./วัน for the daily change
+TOL = {"city": 0.05, "worst": 0.05, "dam": 1.0, "water": 1.0, "warning": 0.1}
+
+
+def _spread(effects: list[dict], key: str) -> float:
+    vals = [e[key] for e in effects if e.get(key) is not None]
+    return (max(vals) - min(vals)) if len(vals) >= 2 else 0.0
+
+
+def _differs(rows: list[dict], k: str) -> bool:
+    e = [r["effects"] for r in rows]
+    if len(e) < 2:
+        return False
+    if k == "total":
+        return max(x["overtop_sum"] for x in e) > 0 and _spread(e, "overtop_sum") > 0.01
+    if k == "dam":
+        return _spread(e, "storage_peak") > TOL["dam"] or len({x["days_above_normal"] for x in e}) > 1
+    if k == "curve":
+        return len({99 if x["under_curve_day"] is None else x["under_curve_day"] for x in e}) > 1 or _spread(e, "storage_end") > TOL["water"]
+    key = {"city": "city_margin_min", "worst": "worst_margin_min", "water": "storage_end", "warning": "ramp_max"}[k]
+    return _spread(e, key) > TOL[k]
+
+
 def best_for(rows: list[dict]) -> dict:
+    """The best plan per goal, or None for a goal the plans do not differ on (D-110)."""
     none = lambda v, big: big if v is None else v
-    return {"city": _key(rows, lambda e: (-none(e["city_margin_min"], -1e9),)),
-            "worst": _key(rows, lambda e: (-none(e["worst_margin_min"], -1e9),)),
-            "total": _key(rows, lambda e: (e["overtop_sum"], -none(e["worst_margin_min"], -1e9))),
-            "dam": _key(rows, lambda e: (e["storage_peak"], e["days_above_normal"])),
-            "curve": _key(rows, lambda e: (none(e["under_curve_day"], 99), e["storage_end"])),
-            "water": _key(rows, lambda e: (-e["storage_end"],)),
-            "warning": _key(rows, lambda e: (e["ramp_max"], -none(e["worst_margin_min"], -1e9)))}
+    keys = {"city": lambda e: (-none(e["city_margin_min"], -1e9),),
+            "worst": lambda e: (-none(e["worst_margin_min"], -1e9),),
+            "total": lambda e: (e["overtop_sum"], -none(e["worst_margin_min"], -1e9)),
+            "dam": lambda e: (e["storage_peak"], e["days_above_normal"]),
+            "curve": lambda e: (none(e["under_curve_day"], 99), e["storage_end"]),
+            "water": lambda e: (-e["storage_end"],),
+            "warning": lambda e: (e["ramp_max"], -none(e["worst_margin_min"], -1e9))}
+    return {k: (_key(rows, fn) if _differs(rows, k) else None) for k, fn in keys.items()}
 
 
 def feasible(rows: list[dict], storage0: float, upper_today: float | None, max_storage: float | None,
