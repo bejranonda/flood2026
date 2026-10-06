@@ -87,3 +87,6 @@ infra/openvpn/*.ovpn
 
 # Temporary research / probe files
 bkk_stations_formatted.json
+
+# git worktrees made by Claude Code sessions (each holds a full checkout; never commit one)
+/.claude/worktrees/
