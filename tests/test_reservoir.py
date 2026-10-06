@@ -214,3 +214,16 @@ def test_each_horizon_can_use_its_own_family_and_rain_source():
     assert p[0]["mid"] == 6.0 and p[0]["method"] == "model"     # the direct model (bm rain does not enter its first weight)
     assert p[1]["mid"] == 8.0 and p[1]["method"] == "model"     # the recursion on GFS's rain: 5 + 1 + 2
     assert p[2]["method"] == "persistence"
+
+
+def test_the_note_names_each_day_ranges_model_and_rain():
+    import datetime as dt
+    par = {"mu": [0.0] * 5, "sd": [1.0] * 5, "w": [0.0] * 5, "ymean": 0.0}  # KF: the 30-day mean
+    beta = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    m7 = {"family": "R_E4", "models": ["best_match", "ecmwf_ifs025", "gfs_seamless", "icon_seamless"], "horizons": {
+        **{str(h): {"use": "R_E4", "family": "R_E4", "params": {"beta": beta}, "band_model": [0, 0], "band_persist": [0, 0], "mae_test": [1.0, 2.0]} for h in (1, 2)},
+        **{str(h): {"use": "KF_ec", "family": "KF_ec", "params": par, "band_model": [0, 0], "band_persist": [0, 0], "mae_test": [1.0, 2.0]} for h in range(3, 8)}}}
+    dam = {"storage_mcm": 700.0, "inflow_mcm": 10.0, "released_mcm": 10.0, "dam_date": "2026-10-05"}
+    rain = {"E4": ([1.0] * 30, [1.0] * 7), "ec": ([1.0] * 30, [2.0] * 7)}
+    o = R.outlook7(m7, dam, [10.0] * 30, [1.0] * 30, [1.0] * 7, None, 710.0, rain=rain)
+    assert "ฝนคาดการณ์ 4 แบบ (วันที่ 1–2)" in o["note"] and "ฝนคาดการณ์ ECMWF (วันที่ 3–7)" in o["note"]

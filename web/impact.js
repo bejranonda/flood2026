@@ -203,13 +203,12 @@
     let out = "";
     if (o && o.days && o.days.length) {
       const d7 = o.days[6];
-      const meth = o.methods || {};
-      const mWord = (m) => (m === "model" ? "แบบจำลองฝน" : "คงค่าวันนี้");
       const modelled = o.test && o.test.model !== false;
       const gains = [[1, o.test && o.test.gain_1d], [3, o.test && o.test.gain_3d], [7, o.test && o.test.gain_7d]].filter((g) => g[1] != null);
-      const tip = modelled ? "น้ำไหลเข้า: " + mWord(meth["1-3"]) + " (วันที่ 1–3), " + mWord(meth["4-7"]) + " (วันที่ 4–7) · ทดสอบกับฝนคาดการณ์จริง " +
-        (o.test && o.test.days) + " วัน" + (gains.length ? ": ดีกว่าคงค่าวันนี้ " + gains.map((g) => num(g[1], 0) + " % ที่ " + g[0] + " วัน").join(", ") : "") +
-        " · " + (o.note || "") + (o.rain7_mm != null ? " · ฝนในลุ่มน้ำ 7 วัน " + num(o.rain7_mm, 0) + " มม." : "") : (o.note || "");
+      // the note names each day range's model and rain; the gains are the tested ones (each horizon its own test window)
+      const tip = modelled ? (o.note || "") + (gains.length ? " · ทดสอบกับฝนคาดการณ์จริงย้อนหลัง: ดีกว่าคงค่าวันนี้ " +
+        gains.map((g) => num(g[1], 0) + " % ที่ " + g[0] + " วัน").join(", ") : "") +
+        (o.rain7_mm != null ? " · ฝนในลุ่มน้ำ 7 วัน " + num(o.rain7_mm, 0) + " มม." : "") : (o.note || "");
       const p = { storage: o.days.map((d) => d.storage), storage_low: o.days.map((d) => d.storage_lo), storage_high: o.days.map((d) => d.storage_hi) };
       const c = { upper: o.days.map((d) => d.upper), normal: x.normal_mcm, dates: o.days.map((d) => d.date) };
       out = '<h3 class="imp-h3">7 วันข้างหน้า' + (modelled ? "" : ' <small class="muted">ถ้าเท่าวันนี้</small>') + " " + info(tip, "ที่มาของแนวโน้ม") + "</h3>" +

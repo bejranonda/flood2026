@@ -257,11 +257,20 @@ def outlook7(m7: dict, dam: dict, inflow30: list, past30: list, fut7: list, curv
         gains[h] = round(100 * (1 - mt[0] / mt[1]), 1) if hz.get("use") not in (None, "persistence") and mt and mt[1] else None
     by_day = [p["method"] for p in inflow]
     model_days = [k + 1 for k, m in enumerate(by_day) if m == "model"]
-    span = (f"{model_days[0]}–{model_days[-1]}" if len(model_days) > 1 else str(model_days[0])) if model_days else ""
     fin = [x for x in fut7 if x == x]
-    n_models = len(m7.get("models") or [])
-    words = (f"แบบจำลองจากฝนคาดการณ์ {n_models} แบบ (วันที่ {span})" + ("" if len(model_days) == 7 else " · คงค่าวันนี้ในวันอื่น")
-             if model_days else "คงค่าวันนี้ (แบบจำลองไม่ผ่านเกณฑ์ที่ช่วงใดเลย)")
+    label = {"E4": "ค่าเฉลี่ยฝนคาดการณ์ 4 แบบ", "E3": "ค่าเฉลี่ยฝนคาดการณ์ 3 แบบ", "ec": "ฝนคาดการณ์ ECMWF", "gfs": "ฝนคาดการณ์ GFS",
+             "bm": "ฝนคาดการณ์", "icon": "ฝนคาดการณ์ ICON"}
+    groups: list = []  # consecutive model days with the same rain source, named in the note
+    for k in model_days:
+        hz = (m7.get("horizons") or {}).get(str(k)) or {}
+        src = str(hz.get("family") or m7.get("family") or "").split("_")[-1]
+        if groups and groups[-1][0] == src and groups[-1][2] == k - 1:
+            groups[-1][2] = k
+        else:
+            groups.append([src, k, k])
+    span = lambda a, b: f"{a}–{b}" if b > a else str(a)
+    words = (" และ ".join(f"แบบจำลองจาก{label.get(g[0], 'ฝนคาดการณ์')} (วันที่ {span(g[1], g[2])})" for g in groups) +
+             ("" if len(model_days) == 7 else " · คงค่าวันนี้ในวันอื่น") if model_days else "คงค่าวันนี้ (แบบจำลองไม่ผ่านเกณฑ์ที่ช่วงใดเลย)")
     return {"days": days, "release_assumed": rel, "methods": {"1-3": by_day[2], "4-7": by_day[6]}, "by_day": by_day,
             "test": {"model": bool(model_days), "gain_1d": gains[1], "gain_3d": gains[3], "gain_7d": gains[7], "days": m7.get("test_days"),
                      "from": m7.get("test_from"), "to": m7.get("test_to"), "family": m7.get("family"),
@@ -353,7 +362,8 @@ def run() -> dict:
                 need = sorted({m for x in srcs for m in RAIN_SOURCES[x]} | set(m7.get("models") or []))
                 era, fc = rain_inputs7(m7["points"], need, d0)
                 past30, fut7 = compose_rain(era, fc, m7["scale"], d0, m7["models"])
-                rain = {x: compose_rain(era, fc, m7["scale"], d0, RAIN_SOURCES[x]) for x in srcs}
+                # a source's own scales when the build learned them separately (KF_ec: ECMWF on the 2025 wet season)
+                rain = {x: compose_rain(era, fc, (m7.get("scale_by_source") or {}).get(x) or m7["scale"], d0, RAIN_SOURCES[x]) for x in srcs}
                 meta = c.execute("SELECT normal_mcm FROM dam WHERE dam_id=%s", (dam_id,)).fetchone() or {}
                 curves = db.get_state(c, f"dam_rule_curve_{dam_id}")
                 o = outlook7(m7, dict(row), inflow30, past30, fut7, impact.curves_ahead(curves, row["dam_date"]),
