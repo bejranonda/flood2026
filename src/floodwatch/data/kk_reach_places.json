@@ -1,0 +1,127 @@
+{
+ "built": "2026-10-06T18:10:19+00:00",
+ "source": "OpenStreetMap via Nominatim reverse (zoom 14) · © OpenStreetMap contributors (ODbL)",
+ "step_km": 1.0,
+ "coverage": {
+  "B.18": {
+   "samples": 48,
+   "villages": 41
+  },
+  "B.10": {
+   "samples": 31,
+   "villages": 30
+  },
+  "PCH001": {
+   "samples": 7,
+   "villages": 7
+  },
+  "B.16": {
+   "samples": 8,
+   "villages": 8
+  },
+  "B.15": {
+   "samples": 11,
+   "villages": 11
+  }
+ },
+ "reaches": {
+  "B.18": [
+   {
+    "village": "บ้านโพรงเข้",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านสารเห็ด",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านท่ามะริด",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านเขาลูกช้าง",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านท่าลาว",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านท่าไม้รวก",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านหนองเตียน",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านหนองชุมแสง",
+    "amphoe": "ท่ายาง"
+   }
+  ],
+  "B.10": [
+   {
+    "village": "บ้านแม่ประจันต์",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านหนองชุมแสง",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "ท่าแลง",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านท่ากระเทียม",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านท่าโล้",
+    "amphoe": "ท่ายาง"
+   },
+   {
+    "village": "บ้านหนองน้ำถ่าย",
+    "amphoe": "ท่ายาง"
+   }
+  ],
+  "PCH001": [
+   {
+    "village": "บ้านใต้วัดน้อย",
+    "amphoe": "เมืองเพชรบุรี"
+   },
+   {
+    "village": "บ้านไร่ถิ่นน้อย",
+    "amphoe": "บ้านลาด"
+   }
+  ],
+  "B.16": [
+   {
+    "village": "บ้านไร่ถิ่นน้อย",
+    "amphoe": "บ้านลาด"
+   },
+   {
+    "village": "บ้านท่ากระเทียม",
+    "amphoe": "ท่ายาง"
+   }
+  ],
+  "B.15": [
+   {
+    "village": "บ้านใต้วัดน้อย",
+    "amphoe": "เมืองเพชรบุรี"
+   },
+   {
+    "village": "บ้านโพธิ์",
+    "amphoe": "เมืองเพชรบุรี"
+   },
+   {
+    "village": "บ้านเหมืองไทร",
+    "amphoe": "บ้านแหลม"
+   },
+   {
+    "village": "บ้านลัดล่าง",
+    "amphoe": "บ้านแหลม"
+   }
+  ]
+ }
+}

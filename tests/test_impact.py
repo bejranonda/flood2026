@@ -443,3 +443,20 @@ def test_stored_onwr_layers_are_clipped_to_their_box_when_served():
     assert impact.clip_onwr(None) is None
     old = {"layers": {"flood-warn": {"features": [far]}}}  # an older copy without its box passes through unchanged
     assert impact.clip_onwr(old) is old
+
+
+def test_each_gauges_reach_has_its_river_length_in_km():
+    line = [[[13.0, 99.0 + 0.01 * k] for k in range(26)]]  # ~1.08 km per step along 13°N
+    pts = [{"code": "A", "lat": 13.0, "lon": 99.02}, {"code": "B", "lat": 13.0, "lon": 99.11}]
+    km = impact.reach_km(impact.river_reaches(line, pts, max_km=10.0))
+    assert set(km) == {"A", "B"} and 7.0 < km["A"] < 8.0 and 13.5 < km["B"] < 14.5  # 7 and 13 steps of ~1.08 km
+    assert impact.reach_km([]) == {}
+
+
+def test_villages_along_each_reach_come_from_the_built_file_and_a_case_without_one_has_none():
+    places = impact.reach_places("kaeng-krachan")
+    assert set(places) <= {"B.18", "B.10", "B.16", "B.15", "PCH001"} and places
+    for code, items in places.items():
+        assert items and all(set(x) == {"village", "amphoe"} for x in items)
+        assert all(not (x["amphoe"] or "").startswith("อำเภอ") for x in items)  # the prefix is stripped
+    assert impact.reach_places("no-such-case") == {}

@@ -8,7 +8,9 @@ bank of each gauge's own agency (never mixed, KI-217), and a flag when a flow is
 """
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
 
 import numpy as np
 
@@ -436,7 +438,7 @@ CASES = {
         # the catchment above the dam: HydroBASINS lev08 basins upstream (6 basins, 1,988 km²; research 2026-10-05) —
         # the four largest sub-basins' centroids with their areas, for the rain context
         "catchment_points": [(12.848, 99.288, 565), (13.102, 99.422, 527), (13.078, 99.218, 421), (12.925, 99.4, 267)],
-        "catchment_km2": 1988,
+        "catchment_km2": 1988, "places_file": "kk_reach_places.json",
         "points": [{"code": "B.18", "role": "below_dam"}, {"code": "B.10", "role": "after_diversion"},
                    {"code": "B.16", "role": "river"}, {"code": "B.15", "role": "city", "rating_from": "B.16"},
                    {"code": "PCH001", "role": "city", "rating_from": "B.16"}],
@@ -488,6 +490,31 @@ def clip_onwr(onwr: dict | None) -> dict | None:
                                         if f.get("rings") and mvt.ring_overlaps_bbox(f["rings"][0], *box)]}
               for lid, lay in onwr["layers"].items()}
     return {**onwr, "layers": layers}
+
+
+def reach_km(reaches: list[dict]) -> dict:
+    """km of river in each gauge's reach (the pieces river_reaches gives it), for a plan's 'km near the bank' (D-110)."""
+    tot: dict = {}
+    for r in reaches or []:
+        line = r.get("line") or []
+        tot[r["code"]] = tot.get(r["code"], 0.0) + sum(
+            _km({"lat": a[0], "lon": a[1]}, {"lat": b[0], "lon": b[1]}) for a, b in zip(line, line[1:]))
+    return {c: round(v, 1) for c, v in tot.items()}
+
+
+PLACES_DIR = Path(__file__).parent / "data"
+
+
+def reach_places(case: str) -> dict:
+    """Villages and อำเภอ along each gauge's reach (OpenStreetMap via Nominatim, built once by
+    research/2026-10-06_kk_reach_places.py; D-110): {code: [{"village", "amphoe"}]}; {} when the case has no file."""
+    name = (CASES.get(case) or {}).get("places_file")
+    if not name:
+        return {}
+    try:
+        return json.loads((PLACES_DIR / name).read_text(encoding="utf-8")).get("reaches") or {}
+    except (OSError, ValueError):
+        return {}
 
 
 def river_line(geo_rivers: dict | None, name: str) -> list[list[list[float]]]:
@@ -810,7 +837,7 @@ def build_state(c, case: str = "kaeng-krachan", now=None, rain7: dict | None = N
                     "yearly_max": [{"year": r["y"], "max_mcm": float(r["mx"]), "date": r["d"], "days": r["n"]} for r in yrows]},
             "dam_km": cfg["dam_km"], "dam_notes": dam_notes(rid, egat, b18_now, rule=rule, years=years),
             "river_line": (rl := river_line(db.get_state(c, "geo_rivers"), cfg["river"])),
-            "river_reaches": river_reaches(rl, points),
+            "river_reaches": (rr := river_reaches(rl, points)), "reach_km": reach_km(rr), "places": reach_places(case),
             "onwr": db.get_state(c, f"onwr_flood_{case.replace('-', '_')}"),
             "dam_latlon": next(([r["lat"], r["lon"]] for r in c.execute("SELECT lat, lon FROM dam WHERE dam_id=%s",
                                                                           (cfg["dam_ids"]["RID"],)).fetchall()), None),

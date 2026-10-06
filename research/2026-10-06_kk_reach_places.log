@@ -1,0 +1,8 @@
+ Container fwgrid-worker-run-4ec1feb2a1e9 Creating 
+ Container fwgrid-worker-run-4ec1feb2a1e9 Created 
+B.18: 48 samples, 41 with a village, 8 places
+B.10: 31 samples, 30 with a village, 6 places
+PCH001: 7 samples, 7 with a village, 2 places
+B.16: 8 samples, 8 with a village, 2 places
+B.15: 11 samples, 11 with a village, 4 places
+wrote /repo/src/floodwatch/data/kk_reach_places.json
