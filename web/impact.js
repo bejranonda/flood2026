@@ -704,43 +704,91 @@
       (normal ? "<span class=\"lg lg-no\">ปริมาตรปกติ " + num(cmp.normal, 0) + "</span>" : cmp.normal != null ? "<span class=\"lg lg-no\">ปริมาตรปกติ " + num(cmp.normal, 0) + " (นอกกราฟ)</span>" : "") + "</p>";
   }
 
+  function askBox(label, heading) {  // the ✨ story card's markup (app.js bindAskUrl/fillStory), with our own words
+    return '<div class="imp-ask"><button type="button" class="ai-btn" aria-expanded="false">' + esc(label) + "</button>" +
+      '<div class="story" hidden><div class="story-h"><span>' + esc(heading) + '</span><button type="button" class="story-speak" title="ฟังเสียงอ่าน" aria-label="ฟังเสียงสรุป">🔊 ฟังเสียง</button></div>' +
+      '<div class="story-body" aria-live="polite"></div></div></div>';
+  }
+
+  function outsideNote(st) {  // the ⓘ behind every outside label; the largest release on record comes from the state
+    const ys = ((st && st.dam && st.dam.yearly_max) || []).filter((y) => y.max_mcm != null);
+    const big = ys.reduce((b, y) => (!b || y.max_mcm > b.max_mcm ? y : b), null);
+    return "นอกช่วงข้อมูล = น้ำที่สถานีมากกว่าที่เคยวัดได้ในข้อมูลที่ใช้หา rating curve ระดับวันนั้นจึงมาจากการต่อเส้นโค้งออกไป · " +
+      "แบบจำลองท้ายน้ำเรียนจากช่วงที่เขื่อนทดน้ำเพชรรับการเปลี่ยนแปลงของการระบายไว้ น้ำที่เกินความจุคลองจะลงแม่น้ำ ระดับจริงจึงอาจสูงกว่าที่แสดง" +
+      (big ? " · การระบายสูงสุดที่มีบันทึก " + num(big.max_mcm, 1) + " ล้าน ลบ.ม./วัน (" + day(big.date) + ") — สสน. ไม่มีข้อมูลระดับแม่น้ำปีนั้นให้ตรวจสอบ" : "");
+  }
+
+  function riverGridHtml(cmp, p, sel) {  // 5 gauges × 7 days: each cell the server's status, the margin in m, hatched outside
+    const codes = Object.keys(p.downstream || {});
+    const head = '<thead><tr><th scope="col">สถานี</th>' + p.release.map((r, i) => '<th scope="col">' + (i + 1) + "</th>").join("") + "</tr></thead>";
+    const body = codes.map((c) => '<tr><th scope="row">' + esc(c) + "</th>" + p.downstream[c].map((r, i) => {
+      const rq = cmp.margin_req ? cmp.margin_req[c] : null, req = Array.isArray(rq) ? rq[i] : rq;
+      return '<td class="imp-m imp-rc-' + (r.status || "none") + (r.outside ? " imp-c-x" : "") + (i === sel ? " imp-dsel" : "") + '" data-day="' + i + '" title="' +
+        esc(c + " วันที่ " + (i + 1) + ": " + CELL_TH[r.status || "none"] + (req != null ? " · คลาดเคลื่อน ±" + num(req, 2) : "") + (r.outside ? " · ⚠ นอกช่วงข้อมูล" : "")) +
+        '">' + num(r.margin_m, 2) + "</td>";
+    }).join("") + "</tr>").join("");
+    return '<div class="imp-scroll"><table class="imp-rgrid">' + head + "<tbody>" + body + "</tbody></table></div>";
+  }
+
+  function coverageHtml(cmp, p) {  // river km near or over the bank, and the villages along those stretches (D-110)
+    const days = (p.days || []).map((d, i) => [d, i]).filter(([d]) => d.km > 0);
+    if (!days.length) return '<p class="imp-cover">🌊 ไม่มีช่วงใดของแม่น้ำใกล้ตลิ่งใน 7 วัน</p>';
+    const codes = [...new Set(days.flatMap(([d]) => d.codes || []))];
+    const vill = codes.map((c) => villagesText(cmp, c)).filter(Boolean);
+    return '<p class="imp-cover">🌊 แม่น้ำใกล้/เกินตลิ่ง วันที่ ' + dayRange(days.map(([, i]) => i + 1)) + " ราว " + num(Math.max(...days.map(([d]) => d.km)), 0) +
+      " กม. (" + codes.map(esc).join(", ") + ") " + info("กม. = ความยาวแม่น้ำช่วงที่สถานีที่ใกล้ที่สุด (ไม่เกิน 10 กม.) ใกล้หรือเกินตลิ่งในวันนั้น — " +
+        "สถานีเดียวแทนทั้งช่วง จึงเป็นค่าหยาบ · หมู่บ้าน: © OpenStreetMap contributors · ไม่ใช่พื้นที่น้ำท่วม", "กม. และหมู่บ้าน") + "</p>" +
+      (vill.length ? '<ul class="imp-cover-v">' + vill.map((v) => "<li>" + esc(v) + "</li>").join("") + "</ul>" : "");
+  }
+
   function openPlanSheet(cmp, id) {
     const p = cmp.plans.find((x) => x.id === id);
     if (!p) return;
-    const codes = Object.keys(p.downstream || {});
-    const worstAt = (i) => { let best = null; for (const c of codes) { const m = p.downstream[c][i].margin_m; if (m != null && (best == null || m < best.m)) best = { m, c }; } return best; };
-    const rows = p.release.map((r, i) => { const w = worstAt(i); return '<tr><th scope="row">' + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</th><td>" + num(r, 1) + "</td><td>" + num(p.storage[i], 0) +
-      " <small>(" + num(p.storage_low[i], 0) + "–" + num(p.storage_high[i], 0) + ")</small></td><td" + (p.storage[i] > cmp.upper[i] ? "" : ' class="imp-best"') + ">" + (p.storage[i] > cmp.upper[i] ? "+" : "") + num(p.storage[i] - cmp.upper[i], 0) + "</td>" +
-      "<td" + (w && w.m < 0 ? ' class="imp-neg"' : "") + ">" + (w ? num(w.m, 2) + " <small>" + esc(w.c) + "</small>" : "–") + "</td></tr>"; }).join("");
-    const perPoint = '<details><summary>ห่างตลิ่งรายจุด (ม.)</summary><div class="imp-scroll"><table><thead><tr><th scope="col">วัน</th>' +
-      codes.map((c) => '<th scope="col">' + esc(c) + "</th>").join("") + "</tr></thead><tbody>" +
-      p.release.map((r, i) => '<tr><th scope="row">' + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</th>" +
-        codes.map((c) => { const m = p.downstream[c][i].margin_m; return "<td" + (m != null && m < 0 ? ' class="imp-neg"' : "") + ">" + num(m, 2) + "</td>"; }).join("") + "</tr>").join("") + "</tbody></table></div></details>";
-    const e = p.effects;
-    const sub = p.optimal && cmp.optimal.constraints_met ? "แผนที่เข้าเกณฑ์: " + esc(cmp.optimal.reason)
+    const opt = cmp.optimal || {}, isStar = p.id === opt.id, e = p.effects;
+    const kst = state.kase[state.sel];
+    const sub = isStar ? (opt.constraints_met ? "★ ตามเกณฑ์ · " + shortWhy(p) : "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์ — ใกล้เคียงที่สุด")
       : ((p.best_for || []).map((k) => "เหมาะกับ" + EFFECT_TH[k]).join(" · ") || (p.feasible ? "เข้าเกณฑ์" : "ไม่เข้าเกณฑ์"));
-    const worstDay = p.release.reduce((b, r, i) => { const w = worstAt(i); return w && (b.m == null || w.m < b.m) ? { i, m: w.m } : b; }, { i: 0, m: null }).i;
+    let d0 = state.day != null ? state.day : worstDay(p);
     const daysBar = '<div class="chips imp-days" role="group" aria-label="วันบนแผนที่">' + p.release.map((r, i) =>
-      '<button type="button" class="chip' + (i === worstDay ? " on" : "") + '" data-day="' + i + '">' + (i + 1) + "</button>").join("") +
-      '</div><p class="muted imp-small">สีแม่น้ำตามวันที่เลือก · ไม่ใช่พื้นที่น้ำท่วม <button type="button" class="btn" data-map-plan="1">🗺️ ดูบนแผนที่</button></p>';
-    openSheet("<h2>" + (p.optimal ? "★ " : "") + esc(planWords(p)) + '</h2><p class="muted">' + sub + "</p>" + daysBar + chartSvg(p, cmp) +
-      '<div class="imp-scroll"><table><thead><tr><th scope="col">วัน</th><th scope="col">ระบาย</th><th scope="col">อ่าง (ช่วง)</th><th scope="col">เทียบเส้นบน</th><th scope="col">ห่างตลิ่งต่ำสุด</th></tr></thead><tbody>' + rows + "</tbody></table></div>" + perPoint +
-      '<ul class="imp-facts"><li>ล้าน ลบ.ม./วัน · อ่างเป็นค่ากลาง (ช่วง = น้ำไหลเข้าต่ำ–สูง) · เทียบเส้นบน = ปริมาตร − เส้นควบคุมบนของวันนั้น</li>' +
-      "<li>ท้ายน้ำ: ตลิ่งของหน่วยงานผู้วัด · " + ((cmp.downstream || {}).method === "hybrid" ? "🟠 ทดสอบย้อนหลังแล้ว คลาดเคลื่อนรายวัน (ดูผลทดสอบย้อนหลัง)" : "🔴 ยังไม่ผ่านการทดสอบย้อนหลัง") +
-      " · วันเหนือปริมาตรปกติ " + num(e.days_above_normal, 0) + " · เกินตลิ่งรวม " + num(e.overtop_sum, 2) + "</li></ul>", (box) => {
-      box.querySelectorAll("[data-day]").forEach((b) => b.addEventListener("click", () => {
-        box.querySelectorAll("[data-day]").forEach((x) => x.classList.toggle("on", x === b));
-        colorReaches(cmp, p, Number(b.dataset.day));
-      }));
-      const kst = state.kase[state.sel];
-      box.querySelector("[data-map-plan]").addEventListener("click", () => {
-        document.getElementById("sheet").hidden = true;
-        if (kst) showCaseOnMap(kst); else if (narrow()) setTab("map");  // the river into view (phones: the map tab)
-      });
-      colorReaches(cmp, p, worstDay);
+      '<button type="button" class="chip' + (i === d0 ? " on" : "") + '" data-day="' + i + '">' + (i + 1) + "</button>").join("") +
+      '</div><p class="muted imp-small">สีแม่น้ำตามวันที่เลือก · ไม่ใช่พื้นที่น้ำท่วม</p>';
+    const resRows = p.release.map((r, i) => '<tr><th scope="row">' + esc(dayShort(cmp.dates ? cmp.dates[i] : null)) + "</th><td>" + num(r, 1) + "</td><td>" +
+      num(p.storage[i], 0) + " <small>(" + num(p.storage_low[i], 0) + "–" + num(p.storage_high[i], 0) + ")</small></td><td" +
+      (p.storage[i] > cmp.upper[i] ? "" : ' class="imp-best"') + ">" + (p.storage[i] > cmp.upper[i] ? "+" : "") + num(p.storage[i] - cmp.upper[i], 0) + "</td></tr>").join("");
+    const units = "ล้าน ลบ.ม./วัน · อ่างเป็นค่ากลาง (ช่วง = น้ำไหลเข้าต่ำ–สูง) · เทียบเส้นบน = ปริมาตร − เส้นควบคุมบนของวันนั้น · ห่างตลิ่ง = ตลิ่งของหน่วยงานผู้วัด − ระดับ · " +
+      ((cmp.downstream || {}).method === "hybrid" ? "ท้ายน้ำทดสอบย้อนหลังแล้ว คลาดเคลื่อนรายวัน" : "ท้ายน้ำยังไม่ผ่านการทดสอบย้อนหลัง") +
+      " · วันเหนือปริมาตรปกติ " + num(e.days_above_normal, 0) + " · เกินตลิ่งรวม " + num(e.overtop_sum, 2);
+    const other = isStar ? cmp.plans.find((x) => x.kind === "hold") : cmp.plans.find((x) => x.id === opt.id);
+    const cmpBox = other && other.id !== p.id ? askBox(isStar ? "✨ เทียบกับคงระบายเท่าวันนี้" : "✨ เทียบกับแผน ★", "✨ เทียบสองแผน") : "";
+    openSheet("<h2>" + (isStar ? "★ " : "") + esc(planWords(p)) + (p.outside_any ? ' <span class="imp-out" title="' + esc(outsideText(p)) + '">⚠</span>' : "") + "</h2>" +
+      '<p class="muted imp-sub">' + esc(sub) + " " + info(isStar ? (opt.reason || "") + " · " + (opt.rule || "") : planWords(p), "ที่มาของแผน") + "</p>" +
+      daysBar + chartSvg(p, cmp) +
+      '<div class="imp-scroll"><table><thead><tr><th scope="col">วัน</th><th scope="col">ระบาย</th><th scope="col">อ่าง (ช่วง)</th><th scope="col">เทียบเส้นบน</th></tr></thead><tbody>' +
+      resRows + "</tbody></table></div>" +
+      '<h3 class="imp-h3">ห่างตลิ่ง (ม.) <small>ตลิ่งของหน่วยงานผู้วัด</small> ' + info(units, "หน่วยและสมมติฐาน") + "</h3>" + riverGridHtml(cmp, p, d0) +
+      coverageHtml(cmp, p) +
+      (p.outside_any ? '<p class="imp-outline">⚠ นอกช่วงข้อมูล ' + info(outsideNote(kst), "นอกช่วงข้อมูลคืออะไร") + '</p><ul class="imp-out-list">' +
+        (p.outside_detail || []).map((o) => "<li>" + esc(o.code + " " + num(o.flow_max, 0) + " ลบ.ม./วิ (เคยวัดสูงสุด " + num(o.qmax, 0) + ") วันที่ " +
+          dayRange(o.days)) + "</li>").join("") + "</ul>" : "") +  // one gauge a line: five gauges in one paragraph ran past 160 characters
+      '<div class="imp-actions">' + cmpBox + (narrow() ? '<button type="button" class="btn" data-map-plan="1">🗺️ ดูบนแผนที่</button>' : "") + "</div>", (box) => {
+      const pick = (d) => {
+        d0 = d;
+        box.querySelectorAll(".imp-days [data-day]").forEach((x) => x.classList.toggle("on", Number(x.dataset.day) === d));
+        box.querySelectorAll(".imp-rgrid td").forEach((td) => td.classList.toggle("imp-dsel", Number(td.dataset.day) === d));
+        colorReaches(cmp, p, d);
+      };
+      box.querySelectorAll(".imp-days [data-day]").forEach((b) => b.addEventListener("click", () => pick(Number(b.dataset.day))));
+      const mp = box.querySelector("[data-map-plan]");
+      if (mp) mp.addEventListener("click", () => { document.getElementById("sheet").hidden = true; if (kst) showCaseOnMap(kst); else setTab("map"); });
+      if (cmpBox && typeof bindAskUrl === "function") {
+        bindAskUrl(box, "/api/impact/case/" + encodeURIComponent(st0(kst)) + "/explain?q=compare&a=" + encodeURIComponent(p.release.join(",")) +
+          "&b=" + encodeURIComponent(other.release.join(",")));
+      }
+      pick(d0);
       if (kst && !narrow()) showCaseOnMap(kst, false);  // desktop: the coloured river beside the sheet
     });
   }
+  const st0 = (kst) => (kst && kst.case) || state.sel;
 
   function damHtml(st) {
     const d = st.dam || {};

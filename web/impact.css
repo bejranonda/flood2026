@@ -252,3 +252,19 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
   #view-impact .imp-grid tbody th { min-width: 84px; }
 }
 
+/* v0.34: the plan sheet — the river as gauges × days of margins, the coverage line, the outside line (D-110) */
+.imp-sheet .imp-sub { margin: 0 0 6px; }
+.imp-sheet .imp-rgrid { border-collapse: separate; border-spacing: 2px; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.imp-sheet .imp-rgrid th, .imp-sheet .imp-rgrid td { padding: 4px 2px; border: 0; text-align: center; }
+.imp-sheet .imp-rgrid tbody th { text-align: left; font-weight: 600; }
+.imp-sheet .imp-rgrid td.imp-m { color: #fff; font-weight: 600; border-radius: 4px; min-width: 36px; }
+.imp-sheet .imp-rc-ok { background-color: var(--normal); } .imp-sheet .imp-rc-near { background-color: var(--warning); }
+.imp-sheet .imp-rc-over { background-color: var(--critical); } .imp-sheet .imp-rc-none { background-color: var(--unknown); }
+.imp-sheet .imp-rgrid td.imp-dsel { outline: 2px solid var(--ink); outline-offset: -1px; }
+.imp-sheet .imp-cover { font-size: 14px; margin: 8px 0 2px; }
+.imp-sheet .imp-cover-v { padding-left: 20px; margin: 2px 0 6px; font-size: 13px; color: var(--muted); }
+.imp-sheet .imp-outline { font-size: 14px; color: #8a4b00; background: #fff4e5; border-left: 4px solid var(--warning); border-radius: 4px; padding: 6px 10px; margin: 6px 0 0; }
+.imp-sheet .imp-out-list { margin: 2px 0 6px; padding-left: 24px; font-size: 13px; color: #8a4b00; }
+.imp-sheet .imp-out { color: var(--warning); }
+.imp-sheet .imp-ask { flex: 1 1 100%; }
+
