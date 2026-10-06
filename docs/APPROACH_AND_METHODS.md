@@ -735,3 +735,6 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
   a better DEM exist.
 - A model change that wins the research samples but loses the latest season (the river's gain method) is not shipped;
   the code and the data stay, so the next season can decide.
+- More choosing data beats more candidates: with a whole wet season (2025) to choose on, the inflow choice that held on the
+  unseen 2026 window was the narrow one — keep what is served, add a damped-persistence + forecast-rain model only where
+  persistence was served, only on the days it held (D-106).

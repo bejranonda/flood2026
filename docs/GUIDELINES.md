@@ -304,6 +304,8 @@ People using the app may be stressed, on the move, or protecting their home. Be 
   river never overtopped in the record, show the river by its gauges, not land (D-105, KI-310).
 - **Another agency's layer is dated, credited and said not to be ours** ("ที่มา: สทนช." · update time · "not results of
   the plan"), fetched server-side so visitors' browsers never call a third party.
+- **Ship a change only on the leads where it holds:** if it passes the gate but makes another lead or another unit
+  worse, keep that lead as it is (D-106: days 1–2 unchanged).
 - **Choosing a model per unit on ~40 days overfits** (E-7D-IN: +38 % in the second sample). Choose a change for all units,
   confirm it on units it was not chosen on, and prefer the change that improves what is served without making any unit
   worse.

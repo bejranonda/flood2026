@@ -2,6 +2,25 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## v0.33.0 — 2026-10-06
+- **A flood view for each release plan (owner: "can we show flood area in the map for each … scenario?"; D-105).** Pick
+  a day in a plan's sheet and the map colours the Phetchaburi by its nearest gauge — red over the bank, orange inside that
+  day's model error, blue with room — and says it is not a flooded area (D-019). ONWR's own layers sit beside it: today's
+  area warning, the +1…+3-day forecast and the observed flooded area, dated and credited "ที่มา: สทนช." (refreshed every
+  3 h; a dependency-free vector-tile reader).
+- **Validated before use, and therefore not shown:** satellite flood maps (Copernicus GFM blind on 39–58 % of the
+  lowland, inconsistent between passes; GISTDA and GFM agree on 73 % of GISTDA's flood but 13 % of GFM's; no Google Flood
+  Hub gauge there) and a 30 m DEM flood area (an experiment that cannot be scored: no gauge went over its bank in three
+  years). Needed: ONWR/RID flood maps by release level and a higher-resolution DEM (OWNER_ACTIONS FLOODMAP, DEM).
+- **Reservoir inflow, chosen on a whole wet season (D-106):** the forecast archive reaches back to 2024, so models are now
+  chosen on the 2025 wet season and scored on 2026; damped persistence + ECMWF rain on days 3–7 where persistence was
+  served is better at every lead with no dam made worse — 32 dams on tested 7-day models (was 16).
+- **The river on three wet seasons:** HII's older years (2023-09 on) are kept as daily means; the gain method won both
+  samples but lost the latest season at days 5–7, so the served river model is unchanged (MODELS §11c). The 72 h-only
+  history idea for the public forecast fails on gauges made worse (MODELS §5i).
+- Fixes found while testing: logout now clears ONWR's layers and the plan legend; the 7-day tip names each day range's
+  model and its tested gains.
+
 ## v0.32.0 — 2026-10-05
 - **Seven days for the impact tab's release plans (owner: "plan reservoir discharge release for 7 days in advance
   together with future rain"; D-104).** The river below Kaeng Krachan is judged per plan with a tested model — B.18's

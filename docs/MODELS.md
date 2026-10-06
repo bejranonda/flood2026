@@ -3,7 +3,7 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.32.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans. Numbers come from running code or the cited research files;
+> It describes **v0.33.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans. Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -27,8 +27,9 @@
 **แท็บจับตา** — รวมสิ่งที่ควรรู้ล่วงหน้า 24–48 ชม. ตัวเลข "6 ใน 10" คือ **สถิติจริงของแอปเอง** 30 วันที่ผ่านมา ว่าเมื่อแอปคาดแบบนี้ เกิดจริงกี่ครั้ง
 
 **เขื่อน (แท็บ 💧 ผลกระทบ สำหรับเจ้าหน้าที่)** — 38 เขื่อนใหญ่ จัดกลุ่มตามเส้นควบคุม (rule curve) ของ สสน. · % = ปริมาตร ÷ ปริมาตรที่ระดับเก็บกักปกติ
-ของหน่วยงานนั้น (นิยามเดียวทั้งรายการ — ชป. รายงานแบบนี้; % ที่ กฟผ. รายงานเป็น 0 หรือนิยามต่างกัน จึงไม่ใช้) · แนวโน้ม 7 วัน: 16 เขื่อนใช้แบบจำลองฝน
-ที่ผ่านการทดสอบกับ *ฝนคาดการณ์จริง* (เฉพาะช่วงวันที่ผ่านเกณฑ์) ป้อนด้วยค่าเฉลี่ยฝนคาดการณ์ 4 แบบ (ECMWF, GFS, ICON, ค่าผสม) ซึ่งดีกว่าแบบเดียวทุกช่วงวันในการทดสอบสองชุด (§9d) ที่เหลือแสดง "ถ้าไหลเข้าและระบายเท่าวันนี้" (*) พร้อมช่วงจากข้อมูลของเขื่อนเอง ·
+ของหน่วยงานนั้น (นิยามเดียวทั้งรายการ — ชป. รายงานแบบนี้; % ที่ กฟผ. รายงานเป็น 0 หรือนิยามต่างกัน จึงไม่ใช้) · แนวโน้ม 7 วัน: 32 เขื่อนใช้แบบจำลองฝน
+ที่ผ่านการทดสอบกับ *ฝนคาดการณ์จริง* (เฉพาะช่วงวันที่ผ่านเกณฑ์) — แบบจำลองเดิมป้อนด้วยค่าเฉลี่ยฝนคาดการณ์ 4 แบบ และวันที่ 3–7 ที่เคยคงค่าวันนี้
+ใช้แบบจำลองคงค่าแบบหน่วง + ฝน ECMWF ซึ่งเลือกจากฤดูฝน 2568 ทั้งฤดู และดีกว่าเดิมทุกช่วงวันในปี 2569 โดยไม่มีเขื่อนใดแย่ลง (§9d) ที่เหลือแสดง "ถ้าไหลเข้าและระบายเท่าวันนี้" (*) พร้อมช่วงจากข้อมูลของเขื่อนเอง ·
 ค่า 0 ที่แปลว่า "ไม่ได้รายงาน" ไม่แสดงเป็น 0 และไม่ใช้เป็นจุดเริ่มคาดการณ์ · กฟผ. กับ ชป. แยกกันเสมอ (§9c)
 
 **แผนระบาย 7 วัน (แก่งกระจาน)** — ระดับท้ายน้ำแต่ละวันของแต่ละแผน: ใต้เขื่อน (B.18) ตาม rating curve เทียบระดับวันนี้ จุดอื่น =
@@ -285,6 +286,7 @@ instead of hiding it.
 | Dams without a tested model (D-103) | a projection "if today's inflow and release hold" with the dam's own band | no skill claimed; marked * and "ถ้าเท่าวันนี้" | shown; 36 of 38 dams have a 7-day trend (§9c) |
 | EGAT's daily % (D-103, KI-305) | as the dams list's badge | 0 for 11 of 15 dams; the other four −44 … +26 points from storage ÷ normal | not used; storage ÷ the agency's own normal storage for every record (§9c) |
 | Night of 2026-10-05 (two-sample gate) | dam release input (E-DAM), damping (E-DAMP), upstream flow (E-UQ), two years of history (E-2Y), discharge forecasts (E-Q) | E-DAM no gain; E-DAMP, E-UQ and E-2Y fail the gate; E-Q passes both samples | E-Q is a new parameter (where to show it is the owner's call); the others not shipped (§5e–5i) |
+| 7-day inflow on a whole wet season (E-7D-IN-LONG, D-106) | the same candidates chosen on the 2025 wet season, scored on 2026 | only 'served + KF_ec on days 3–7 where persistence was served' passes, with no lead or dam worse | shipped: 32 dams on tested models (§9d) |
 | A flood view per release plan (D-105) | river reaches by nearest gauge; ONWR's layers; satellite past floods; a DEM (HAND) flood area | reaches and ONWR's layers built; GFM blind on 39–58 % and inconsistent, GISTDA/GFM agree 73 %/13 %; DEM unscorable (no observed release flood) | reaches + ONWR shown; satellites and DEM not shown (§11d) |
 | River on three wet seasons (2026-10-06) | the gain method and rain terms with two more wet seasons | gain beats the hybrid in both month samples, loses the live Jul–Sep 2026 window at days 5–7 | served model unchanged; history kept for the next season (§11c) |
 | AI plain summary ("✨ ให้ AI สรุป") | free-form LLM vs deterministic rule narrative + background GLM retelling | free-form LLM invented safe/normal verdicts; rule narrative + checked retelling gives 91 % pass and 0 safety errors | deterministic rule story rendered at 0s (<50 ms); GLM polishes tone asynchronously; checked for safety; 🔊 voice readout added (D-068, KI-275) |
@@ -454,6 +456,26 @@ read the right way round and every new band is stored as (observed − predicted
 `rain_inputs7` (ERA5 + one multi-model forecast call per catchment point), `compose_rain`, `inflow_path7`, `outlook7`;
 the KK release plans take the dam's path when it is for the same day and a model is used (`scenarios.compare(inflow_path=…)`).
 Live 2026-10-05 22:38 UTC: 16 dams on the 4-model rain; KK inflow 10.3 → 7.9 (6.4–20.8) ล้าน ลบ.ม./วัน on day 7.
+
+**A whole wet season to choose on (E-7D-IN-LONG, 2026-10-06; D-106).** The archived forecasts reach back to 2024 at every
+lead, so the choice moved from 42 days to the 2025 wet season (~200 issue days per dam; rain scales learned there) and
+the score to the unseen 2026 window (research/2026-10-06_e7d_inflow_long*.{py,log}). Error vs persistence on 2026,
+sample 1 | sample 2 (dams worse than persistence):
+
+| | 1 d | 3 d | 5 d | 7 d |
+|---|---|---|---|---|
+| served model form | −15.0 (0) \| −10.5 (1) | −23.4 (0) \| −20.3 (0) | −22.3 (0) \| −28.1 (0) | −18.8 (1) \| −25.6 (0) |
+| per dam, best of all on 2025 | −15.0 \| −9.7 | −29.8 (0) \| −17.8 (2) | −33.6 (3) \| −28.0 (3) | −27.8 (2) \| −24.6 (4) |
+| one blend for all (picked on the other sample) | −14.5 \| −14.4 | −28.0 (0) \| −23.3 (**1**) | −33.9 \| −24.7 | — |
+| **served + KF_ec where persistence is served, days 3–7** | as served | **−24.8 (0) \| −23.8 (0)** | **−32.0 (0) \| −31.0 (0)** | **−27.0 (1) \| −28.2 (0)** |
+
+Every new family or per-dam choice lowered the summed error but left one or more dams worse than persistence in a sample
+(the owner's rule says no); damped persistence + ECMWF forecast rain (KF_ec) where persistence was served passes at days 3
+and 7 in both samples and, kept to days 3–7, makes no lead worse and no extra dam worse at any lead (at day 2 it left four
+more dams worse in sample 2, so days 1–2 stay as served). 85 dam-horizons on 20 dams; the file now holds 32 dams (16 new,
+e.g. แม่มอก, which had no outlook). Kaeng Krachan: KF_ec on day 3 (2026: 3.72 vs 4.57 for persistence), its served model on
+days 4–7 — its direct ridge still wins only under per-dam picking, which fails across dams. Live 2026-10-06: 37 of 38 dams
+with a trend, 32 of them modelled (5 still "if today holds"; ปากมูล has no data).
 
 ## 10. How to reproduce
 
