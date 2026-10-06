@@ -37,8 +37,9 @@ def _norm(text: str) -> str:
 
 
 def _blocked(text: str) -> bool:
-    """Text nobody may read into a plan: a per-second unit, or a value above MAX — as typed, and with thousands separators
-    read as such ("1,000" is one thousand; a list's commas are read as separators by the rules)."""
+    """Text nobody may read into a plan: a per-second unit, or a value above MAX — as typed, and with a comma before three
+    digits read as a thousands separator ("1,000" is one thousand, never "1" and "0"). The price: a comma list with
+    three-digit items ("10,150,150,…") is refused too; such a plan is typed into the boxes."""
     raw = (text or "").translate(_TH_DIGITS)
     if PER_SECOND.search(raw):
         return True
