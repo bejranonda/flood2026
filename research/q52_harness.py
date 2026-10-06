@@ -21,6 +21,7 @@ import random
 import numpy as np
 
 from floodwatch import forecast as F
+from floodwatch import model_gate
 
 rmse = lambda v: float(np.sqrt(np.mean(np.square(v))))
 
@@ -102,6 +103,9 @@ class Score:
             s["star"] += chosen == "star"
             s["held"] += chosen != "persistence" and rmse(B[chosen]) < (1 - F.SKILL_GATE) * pB
             s["worse"] += chosen != "persistence" and rmse(B[chosen]) > pB
+            # D-107: worse beyond chance — > 3 % and a block bootstrap (blocks of the horizon, in issue hours) says so
+            s["worse_real"] += chosen != "persistence" and model_gate.made_worse(
+                B[chosen], B["persistence"], block=h, metric="rmse")["worse"]
             self.ratio[variant][h].append(rmse(B[chosen]) / pB if pB > 0 else 1.0)
 
     def report(self, horizons=(6, 12, 24, 48, 72)) -> str:
@@ -114,5 +118,6 @@ class Score:
                     continue
                 lines.append(f"{v:22s} n {s['n']:4d} · error vs no-change {100 * (s['sumB'] / max(s['sumP'], 1e-12) - 1):+5.1f}% "
                              f"(per-gauge mean {100 * (np.mean(self.ratio[v][h]) - 1):+5.1f}%) · served a model {s['model']:4d} "
-                             f"(star {s['star']:4d}) · held ≥10 % {s['held']:4d} · worse {s['worse']:3d}")
+                             f"(star {s['star']:4d}) · held ≥10 % {s['held']:4d} · worse {s['worse']:3d} "
+                             f"(beyond chance {s['worse_real']:3d})")
         return "\n".join(lines)
