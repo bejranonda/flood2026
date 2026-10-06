@@ -268,3 +268,11 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-sheet .imp-out { color: var(--warning); }
 .imp-sheet .imp-ask { flex: 1 1 100%; }
 
+/* v0.34: ONWR's layers inside the app's one layer box, off by default (D-110) */
+.legend.layers .imp-onwr-grp { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.legend.layers .imp-onwr-h { font-weight: 600; white-space: nowrap; }
+.legend.layers .imp-onwr-grp .sw, .legend.layers .imp-onwr-key .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 2px; vertical-align: middle; }
+.legend.layers .onwr-c1 { background: #fdd835; } .legend.layers .onwr-c2 { background: #fb8c00; }
+.legend.layers .onwr-c3 { background: #e53935; } .legend.layers .onwr-obs { background: #1e88e5; }
+.legend.layers .imp-onwr-key { margin: 2px 0 0; color: var(--muted); }
+

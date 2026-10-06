@@ -370,16 +370,17 @@
     layers.kase.addTo(mapRef);
   }
 
-  // ONWR's flood layers over the case (owner 2026-10-06), dated and attributed: their area warning, its +1…+3-day forecast
-  // and the flooded area they observed — ONWR's areas, not results of a release plan
+  // ONWR's flood layers over the case (owner 2026-10-06), dated and attributed — ONWR's areas, not results of a plan.
+  // D-110: off by default, inside the app's one layer box (app.js builds it; its change handler ignores rows without
+  // data-layer, so app.js stays as it is); the cells come clipped to the case box (KI-318)
   const ONWR_LAYERS = [["flood-warn", "พื้นที่เตือนวันนี้"], ["flood-forecast-d1", "คาดการณ์ +1 วัน"], ["flood-forecast-d2", "คาดการณ์ +2 วัน"],
     ["flood-forecast-d3", "คาดการณ์ +3 วัน"], ["flood-area-poly", "พื้นที่น้ำท่วมที่พบ"]];
   const ONWR_FILL = { 1: "#fdd835", 2: "#fb8c00", 3: "#e53935", obs: "#1e88e5" };
-  let onwrGroups = {}, onwrCtl = null;
+  let onwrGroups = {}, onwrBox = null;
   function clearOnwr() {
     for (const g of Object.values(onwrGroups)) g.remove();
     onwrGroups = {};
-    if (onwrCtl) { onwrCtl.remove(); onwrCtl = null; }
+    if (onwrBox) { onwrBox.remove(); onwrBox = null; }
   }
   function drawOnwr(st) {
     clearOnwr();
@@ -395,28 +396,32 @@
           .bindTooltip("สทนช. · " + label + (f.cls ? " ระดับ " + f.cls : "") + (f.rai ? " · " + num(f.rai, 0) + " ไร่" : "") +
             (lay.updated ? " · ข้อมูล ณ " + when(lay.updated) : ""), { sticky: true }).addTo(g);
       }
-      onwrGroups[lid] = g;
+      onwrGroups[lid] = g;  // not on the map until its box is ticked
     }
-    onwrCtl = L.control({ position: "bottomleft" });
-    onwrCtl.onAdd = () => {
-      const div = L.DomUtil.create("div", "imp-onwr-ctl");
-      L.DomEvent.disableClickPropagation(div);
-      div.innerHTML = "<details" + (narrow() ? "" : " open") + "><summary>ชั้นข้อมูล สทนช.</summary>" +
-        ONWR_LAYERS.filter(([lid]) => o[lid]).map(([lid, label]) => {
-          const lay = o[lid], n = (lay.features || []).length;
-          return '<label><input type="checkbox" data-onwr="' + lid + '"' + (lid === "flood-warn" && n ? " checked" : "") + (n ? "" : " disabled") +
-            "> " + label + " <small>(" + num(n, 0) + (lay.updated ? " · " + when(lay.updated) : "") + ")</small></label>";
-        }).join("") +
-        '<p class="imp-onwr-key"><span class="sw onwr-c1"></span>1 <span class="sw onwr-c2"></span>2 <span class="sw onwr-c3"></span>3 ระดับความเสี่ยง' +
-        ' · <span class="sw onwr-obs"></span>น้ำท่วมที่พบ</p><small>ที่มา: สทนช. — พื้นที่ของ สทนช. ไม่ใช่ผลของแผนระบาย</small></details>';
-      div.querySelectorAll("[data-onwr]").forEach((cb) => {
-        const toggle = () => { const g = onwrGroups[cb.dataset.onwr]; if (!g) return; if (cb.checked) g.addTo(mapRef); else g.remove(); };
-        cb.addEventListener("change", toggle);
-        toggle();
-      });
-      return div;
-    };
-    onwrCtl.addTo(mapRef);
+    // app.js adds its layer box right after announcing the map (fw:map): one tick later it is there
+    if (document.querySelector(".legend.layers")) attachOnwrBox(o); else setTimeout(() => attachOnwrBox(o), 0);
+  }
+  function attachOnwrBox(o) {
+    const box = document.querySelector(".legend.layers");
+    if (!box || onwrBox || !Object.keys(onwrGroups).length) return;  // the browser check asserts the group sits in the app's box
+    const div = document.createElement("div");
+    div.className = "imp-onwr-grp";
+    div.innerHTML = '<div class="imp-onwr-h"><b>สทนช.</b> · ไม่ขึ้นกับแผนระบาย ' +
+      info("พื้นที่เตือน คาดการณ์ และพื้นที่น้ำท่วมที่พบของ สทนช. เฉพาะในกรอบของกรณีนี้ — ไม่ใช่ผลของแผนระบาย · ที่มา: สทนช.", "ชั้นข้อมูล สทนช.") + "</div>" +
+      ONWR_LAYERS.filter(([lid]) => o[lid]).map(([lid, label]) => {
+        const lay = o[lid], n = (lay.features || []).length;
+        return '<label title="' + esc(lay.updated ? "ข้อมูล ณ " + when(lay.updated) : "") + '"><input type="checkbox" data-onwr="' + lid + '"' + (n ? "" : " disabled") + "> " +
+          '<i class="sw ' + (lid === "flood-area-poly" ? "onwr-obs" : "onwr-c2") + '"></i> ' + label + ' <span class="lc">' + num(n, 0) + "</span></label>";
+      }).join("") +
+      '<p class="imp-onwr-key"><span class="sw onwr-c1"></span>1 <span class="sw onwr-c2"></span>2 <span class="sw onwr-c3"></span>3 ระดับความเสี่ยง</p>';
+    div.addEventListener("change", (e) => {
+      const lid = e.target && e.target.dataset ? e.target.dataset.onwr : null;
+      const g = lid && onwrGroups[lid];
+      if (!g) return;
+      if (e.target.checked) g.addTo(mapRef); else g.remove();
+    });
+    box.appendChild(div);
+    onwrBox = div;
   }
 
   // a plan's day on the map (owner 2026-10-06: a flood view per release scenario; D-019: the river, never land): each piece
