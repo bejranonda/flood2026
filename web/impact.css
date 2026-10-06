@@ -276,3 +276,14 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .legend.layers .onwr-c3 { background: #e53935; } .legend.layers .onwr-obs { background: #1e88e5; }
 .legend.layers .imp-onwr-key { margin: 2px 0 0; color: var(--muted); }
 
+/* v0.34: one ✨ entry (simple story · executive brief), the brief's bullets, a typed plan (D-110) */
+#view-impact .imp-ai > summary { list-style: none; display: inline-flex; align-items: center; min-height: 38px; }
+#view-impact .imp-ai > summary::-webkit-details-marker { display: none; }
+#view-impact .imp-ai[open] { flex: 1 1 100%; }
+#view-impact .imp-ai-body { display: grid; gap: 8px; margin-top: 8px; }
+#view-impact .imp-brief ul { padding-left: 20px; margin: 4px 0; }
+#view-impact .imp-brief li { font-size: 14px; margin: 3px 0; }
+.imp-sheet .imp-parse label { font-size: 13px; color: var(--muted); }
+.imp-sheet .imp-parse-row { display: flex; gap: 8px; margin: 4px 0; }
+.imp-sheet .imp-parse-row input { flex: 1 1 auto; min-width: 0; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; min-height: 42px; }
+

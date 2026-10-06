@@ -633,9 +633,65 @@
     select(state.selPlan && by[state.selPlan] ? state.selPlan : (cmp.optimal || {}).id);  // the map shows the ★ until a row is picked
   }
 
-  // AI entry points (Task 12 replaces these two stubs)
-  function aiMenuHtml() { return ""; }
-  function bindAi() { /* Task 12 */ }
+  // One ✨ entry on the case view (D-110): today's simple story and the executive brief, both on tap only (D-068)
+  function aiMenuHtml() {
+    return '<details class="imp-ai"><summary class="btn">✨ AI ▾</summary><div class="imp-ai-body">' +
+      (typeof askHTML === "function" ? askHTML() : "") +
+      '<button type="button" class="ai-btn imp-brief-btn" aria-expanded="false">📝 สรุปเสนอผู้บริหาร</button><div class="imp-brief" hidden></div></div></details>';
+  }
+  function bindAi(sec, st) {
+    const qp = customParam();
+    if (typeof bindAskUrl === "function") {
+      const wrap = $(".imp-ai-body", sec);
+      if (wrap) bindAskUrl(wrap, "/api/impact/case/" + encodeURIComponent(st.case) + "/explain?q=simple" + (qp ? "&" + qp : ""));
+    }
+    bindBrief(sec, st, qp);
+  }
+  function bindBrief(sec, st, qp) {
+    const btn = $(".imp-brief-btn", sec), card = $(".imp-brief", sec);
+    if (!btn || !card) return;
+    const url = "/api/impact/case/" + encodeURIComponent(st.case) + "/explain?q=brief" + (qp ? "&" + qp : "");
+    btn.addEventListener("click", async () => {
+      const open = btn.getAttribute("aria-expanded") !== "true";
+      btn.setAttribute("aria-expanded", String(open));
+      card.hidden = !open;
+      if (!open) return;
+      card.innerHTML = '<p class="muted">กำลังสรุป…</p>';
+      let r;
+      try { r = await api(url); } catch (e) { card.innerHTML = '<p class="imp-err">สรุปไม่ได้ ลองอีกครั้ง</p>'; return; }
+      if (r.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+      if (!r.ok) { card.innerHTML = '<p class="imp-err">สรุปไม่ได้ (' + r.status + ")</p>"; return; }
+      const data = await r.json();
+      let lines = data.lines || [];
+      const render = (by) => {
+        card.innerHTML = "<ul>" + lines.map((l) => "<li>" + esc(l) + "</li>").join("") + "</ul>" +
+          '<div class="imp-actions"><button type="button" class="btn imp-copy">📋 คัดลอก</button><span class="muted">' + esc(by) + "</span></div>";
+        $(".imp-copy", card).addEventListener("click", (e) => copyText(lines.join("\n"), e.currentTarget, card));
+      };
+      render(data.ai ? "ตัวเลขจากระบบ · กำลังให้ AI เรียบเรียง…" : "ตัวเลขจากระบบ");
+      if (!data.ai) return;
+      try {
+        const g = await api(url + "&part=gist");
+        if (g.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+        const items = g.ok ? ((await g.json()).items || []) : [];
+        if (card.hidden) return;
+        const n = items.filter(Boolean).length;
+        lines = lines.map((l, i) => items[i] || l);
+        render(n ? "✨ AI เรียบเรียง " + n + " จาก " + items.length + " ข้อ · ตัวเลขจากระบบ" : "ตัวเลขจากระบบ");
+      } catch (e) { render("ตัวเลขจากระบบ"); }
+    });
+  }
+  function copyText(text, btn, box) {
+    const selectAll = () => {
+      const ul = box.querySelector("ul");
+      if (!ul) return;
+      const rg = document.createRange(); rg.selectNodeContents(ul);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(rg);
+      btn.textContent = "เลือกข้อความแล้ว กด Ctrl+C";
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => { btn.textContent = "✔ คัดลอกแล้ว"; }, selectAll);
+    else selectAll();
+  }
 
   function matrixHtml(cmp) {
     const plans = cmp.plans.filter((p) => !(p.roles && p.roles.length === 1 && p.roles[0] === "ladder"));
@@ -660,14 +716,36 @@
 
   function openCustomSheet(st, body, cmp) {
     const today = (cmp.dam || {}).released_mcm != null ? cmp.dam.released_mcm : 10;
-    openSheet('<h2>กำหนดแผนเอง</h2><p class="muted">ล้าน ลบ.ม./วัน วันที่ 1–7 · ผลจะปรากฏเป็นแถวในรายการแผน</p>' +
-      '<form id="imp-custom" class="imp-custom">' + [1, 2, 3, 4, 5, 6, 7].map((i) => "<label>วันที่ " + i + '<input type="number" inputmode="decimal" step="0.1" min="0" max="200" value="' + esc(today) + '"></label>').join("") +
+    openSheet('<h2>ลองแผนเอง</h2><p class="muted">ล้าน ลบ.ม./วัน วันที่ 1–7 · ผลเป็นแถวในตารางแผน (เก็บได้ 3 แผน)</p>' +
+      '<div class="imp-parse"><label for="imp-parse-text">พิมพ์แผนเป็นภาษาไทย</label><div class="imp-parse-row">' +
+      '<input id="imp-parse-text" type="text" maxlength="200" autocomplete="off" placeholder="เช่น ระบาย 15 สามวันแล้วลดเหลือ 10">' +
+      '<button type="button" class="btn" id="imp-parse-btn">อ่านแผน</button></div><p class="muted" id="imp-parse-msg" aria-live="polite"></p></div>' +
+      '<form id="imp-custom" class="imp-custom">' + [1, 2, 3, 4, 5, 6, 7].map((i) => "<label>วันที่ " + i +
+        '<input type="number" inputmode="decimal" step="0.1" min="0" max="200" value="' + esc(today) + '"></label>').join("") +
       '<button class="btn primary" type="submit">คำนวณ</button></form>', (box) => {
-      const f = box.querySelector("#imp-custom");
+      const f = box.querySelector("#imp-custom"), msg = box.querySelector("#imp-parse-msg");
+      box.querySelector("#imp-parse-btn").addEventListener("click", async () => {
+        const text = box.querySelector("#imp-parse-text").value.trim();
+        if (!text) return;
+        msg.textContent = "กำลังอ่าน…";
+        let r;
+        try {
+          r = await api("/api/impact/case/" + encodeURIComponent(st.case) + "/parse",
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+        } catch (e) { msg.textContent = "เชื่อมต่อไม่ได้"; return; }
+        if (r.status === 401) { document.getElementById("sheet").hidden = true; state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+        if (r.status === 429) { msg.textContent = "อ่านแผนบ่อยเกินไป รอ 15 นาที"; return; }
+        if (!r.ok) { msg.textContent = "อ่านแผนนี้ไม่ได้ กรอกตัวเลขเอง"; return; }
+        const out = await r.json();
+        f.querySelectorAll("input").forEach((inp, i) => { inp.value = out.release[i]; });
+        msg.textContent = (out.by === "ai" ? "✨ AI อ่านแผนให้แล้ว" : "อ่านแผนแล้ว") + " — ตรวจตัวเลขแล้วกดคำนวณ";
+      });
       f.addEventListener("submit", (e) => {
         e.preventDefault();
         document.getElementById("sheet").hidden = true;
-        loadScenarios(st, body, [...f.querySelectorAll("input")].map((i) => Number(i.value) || 0));
+        const plan = [...f.querySelectorAll("input")].map((i) => Number(i.value) || 0);
+        state.customs = [plan].concat(state.customs.filter((c) => c.join(",") !== plan.join(","))).slice(0, 3);
+        loadScenarios(st, body);
       });
     });
   }
