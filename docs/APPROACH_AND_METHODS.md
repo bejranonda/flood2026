@@ -666,7 +666,7 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
 
 ### 19.18 Flood Hub as an input and honest 90 % bands (v0.26.0, D-097, D-098)
 - **Flood Hub in `star`:** for a non-BMA gauge within 10 km of a Flood Hub point, the input is the forecast's relative discharge change from the issue day to the target day, taken from the latest forecast issued at or before each hour (never later); a year of archive was backfilled once; a missing forecast drops the input and the live `star` falls back to the gauge's own methods.
-- **Calibrated 90 % band:** each day, per horizon (24/48/72 h) and kind (model / "no change"), the smallest factor ≥ 1 that makes 9 in 10 of the last 5 days' known outcomes fall inside; applied to q0/q4 around the median (linear in h from 1.0 at 0 h). The 50 % range is left as served — a daily factor overshot it on volatile days (`research/2026-10-05_band_calibration_rolling.log`).
+- **Calibrated 90 % band:** each day, per horizon (24/48/72 h) and kind (model / "no change"), the smallest factor ≥ 1 that makes 9 in 10 of the last 5 days' known outcomes fall inside — found on the raw range, the stored range divided by the factor in force when it was issued (since v0.33.1, KI-287; a day-by-day replay keeps this rule, MODELS §5k); applied to q0/q4 around the median (linear in h from 1.0 at 0 h). The 50 % range is left as served — a daily factor overshot it on volatile days (`research/2026-10-05_band_calibration_rolling.log`).
 
 ### 19.19 Impact analysis for partner engineers: the board first, the what-if behind a replay gate (v0.27.0, D-099)
 - **Who and where:** ONWR/RID engineers, a separate page `/impact` behind one shared password; the public tabs are untouched.

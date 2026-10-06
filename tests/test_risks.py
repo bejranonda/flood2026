@@ -147,3 +147,15 @@ def test_band90_factor_is_the_smallest_widening_that_makes_the_90_band_hold_and_
     calm = {t: 1.0 for t in wide}
     assert risks.band90_factors(runs("A", 150), {"A": calm}, now)["24"]["model"] == 1.0  # never narrows
     assert risks.band90_factors(runs("A", 40), {"A": wide}, now)["24"]["model"] == 1.0  # too few cases: unchanged
+
+
+def test_band90_factor_is_found_on_the_range_before_widening():
+    # KI-287 (2026-10-06): stored runs carry ranges already widened by the factor in force when they were issued
+    # (forecast.widen90, payload band90); the new factor is applied to the raw range, so it must be found on the raw range,
+    # or the calibration undoes itself once the window holds only widened runs
+    now = T0 + 10 * 24 * H
+    served = [0.85, 0.95, 1.0, 1.05, 1.15]  # a raw ±10 cm range stored after widening ×1.5 → ±15 cm
+    runs = [{"code": "A", "issue_time": now - (k + 30) * H, "now": 1.0, "band90": {"24": {"model": 1.5, "no change": 1.0}},
+             "path": [{"h": 24, "q": served, "method": "star"}, None, None]} for k in range(150)]
+    wide = {now - (k + 30) * H + 24 * H: 1.0 + (0.15 if k % 5 == 0 else 0.0) for k in range(150)}  # 20 % land 15 cm out
+    assert risks.band90_factors(runs, {"A": wide}, now)["24"]["model"] == 1.5  # ±15 cm on the raw ±10 cm: ×1.5 again

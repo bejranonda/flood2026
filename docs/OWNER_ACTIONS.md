@@ -23,7 +23,7 @@
 | **GFM** | GFM portal login in `.env` (optional: the maps are keyless) | ✅ **works** (2026-10-02 20:45 UTC, HTTP 200 + token) | |
 | **EWDS** | EWDS token for archived GloFAS forecasts | ✅ **works** (HTTP 200), but **not needed now**: GloFAS failed its upper-bound test (D-069) | |
 | **EGRESS** | A reliable Thai egress before any public national view (DWR, RID answer only from Thailand, KI-110). **2026-10-04/05: the OpenVPN sidecar keeps failing its TLS handshake (452 restarts by 05:20 UTC, KI-289); DWR posts stopped since 17:15 UTC, BMA DDS only now and then (last OK 04:23 UTC). Please check the VPN server and the `.ovpn` credentials; verify: `docker compose logs vpn` shows "Initialization Sequence Completed" and `source_health` for `dwr_ews` succeeds** | ⬜ open — needed before national goes public (D-046); **urgent for DWR/BMA DDS** | 1 |
-| **Q3+** | Courtesy/permission emails to HII, DWR, RID (drafts below) | ⬜ open — **more urgent since v0.16.0 (2026-09-30): every HII/RID/EGAT/พพภ. gauge is now public with forecasts (D-064, owner: "go public, send notes in parallel")**; HII first (we fetch a year per gauge, 733 requests once, then ~120 a day) | 2 |
+| ~~**Q3+**~~ | Courtesy/permission emails to HII, DWR, RID (drafts below) | ✅ **handled by the owner (2026-10-06)** | — |
 | Q15b/Q16 | R2 off-site backups | 🚫 **disabled** (owner choice: keep disabled; D-029) | — |
 | Q10 | Repository license | ✅ **closed** (MIT License added; D-043) | — |
 | BMA | Courtesy note to the flood69 relay (and BMA) that we show their copy of BMA data, with attribution (D-031, KI-218) | ⬜ optional | 3 |
@@ -117,7 +117,7 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 - **SSH:** 15,754 failed logins in 24 hours (normal scanning). Password login cannot succeed today (root is key-only; no other account has a password), but `PasswordAuthentication yes` is still set. If you want the log noise and the theoretical risk gone: `PasswordAuthentication no` in `/etc/ssh/sshd_config`, `sshd -t && systemctl reload ssh` (keep your current session open while testing a new key login), and `apt install fail2ban`. I did not touch this: it is a shared host and a lockout would be costly.
 
 ### IMPACT — the partner page `/impact` (new 2026-10-05, D-099)
-- **Why:** the page is behind one shared password. Your pilot password is short; with only public data on the page that is acceptable, not once ONWR/RID data are loaded (KI-293).
+- **Why:** the page is behind one shared password. Your pilot password is short; with only public data on the page that is acceptable, not once ONWR/RID data are loaded (KI-293). **Owner, 2026-10-06: the current password is for testing only** — set the long passphrase before any partner data are loaded.
 - **Steps:** (1) On the server, edit `.env`: `IMPACT_PASSWORD=<a long passphrase, ≥ 16 characters>` (never in git, chat logs or public channels). (2) `docker compose up -d app` — every open session ends, because the cookie is bound to the password. (3) Send https://flood.autobahn.bot/impact and the passphrase to the engineers through a private channel (Q56). (4) When their data arrive (the page lists what and has CSV templates), hand them to the session: they go into the database, never into git.
 - **Verify:** `python3 scripts/owner_status.py` → IMPACT ✅ (length only, the value is never printed); the old password is refused at `/impact`.
 
@@ -146,7 +146,7 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 | **Q8** | Show **Buddhist-era (พ.ศ.)** dates? | Day and month only |
 | **Q11** | Budget and retention for R2 and the raw archive | Keep forever, within the free tier |
 | **Q12** | Who is on call during a flood, and how many maintainers? | Nobody; alerts go to the log only |
-| **Q3 / Q4 / Q6 / Q9** | Permission mails to HII / BMA / Traffy; TMD, GISTDA keys; commercial use; frontend framework | Public data only, non-commercial, plain JS |
+| **Q3 / Q4 / Q6 / Q9** | ~~Permission mails to HII / BMA / Traffy~~ (Q3 handled by the owner, 2026-10-06); TMD, GISTDA keys; commercial use; frontend framework | Public data only, non-commercial, plain JS |
 
 ## 4. Done (verified)
 | When (UTC) | What | Evidence |

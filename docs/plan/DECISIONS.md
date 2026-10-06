@@ -654,6 +654,7 @@
 - **Revisit:** when ONWR/RID data arrive — เขื่อนเพชร gates and canal flows first, then the 2018 river records, hourly releases, release plans and surveyed banks: add them to the replay; the gate decides.
 
 ### D-098 — The 90 % band is widened daily so it holds as stated; the printed 50 % range stays
+> **2026-10-06 (v0.33.1):** the factor is now found on the raw range (a feedback bug, KI-287); a day-by-day replay keeps the 5-day, 9-in-10 rule and leaves the 50 % range uncalibrated (MODELS §5k).
 - **Date:** 2026-10-05 · **Status:** accepted (owner: "Yes" to Q54, widen the 48/72 h ranges so they hold as stated)
 - **Evidence:** research/2026-10-05_band_calibration.log — a fixed factor learned in the flood peak over-widened later (50 % bands would hold 64–68 %); research/2026-10-05_band_calibration_rolling.log — a daily factor from the last 5 days (outcomes already known, never below 1) brought the 90 % band closer to 90 % in all six horizon × kind cases (72 h "no change" 76 → 94 %, 48 h model 88 → 91 %), but overshot the 50 % band (48 h "no change" 41 → 63 %).
 - **Decision:** `risks.band90_factors` (daily, in the track records) → `forecast.widen90` scales q0/q4 around the median per horizon and kind (piecewise linear from 1.0 at 0 h); q1–q3 unchanged. First factors (2026-10-05): ×1.15/1.20/1.40 (model), ×1.00/1.25/1.55 ("no change") at 24/48/72 h. Affects the "5–25 %" bank-chance band and the "9 ใน 10 … ไม่เกิน X ซม." lines; the printed ranges do not change.

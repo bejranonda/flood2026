@@ -3,7 +3,7 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.33.0** (code in `src/floodwatch/`). **§12 shows how the models improved release by release** — what each change
+> It describes **v0.33.1** (code in `src/floodwatch/`). **§12 shows how the models improved release by release** — what each change
 > gained when it was tested, and what each model generation actually delivered, scored against what the water did. §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans. Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
@@ -48,12 +48,14 @@
 · ตรวจย้อนหลัง 30 วัน: ช่วงที่แอปบอกที่ 24 ชม. ถูกตามที่บอก (50 % ถูก 51 %) แต่ที่ 72 ชม. มั่นใจเกินไป (ถูก 44 %) และมักพลาดด้านต่ำ (น้ำลดมากกว่าที่คาด)
 
 **แบบจำลองดีขึ้นแค่ไหนในแต่ละรุ่น (§12)** — ตรวจ 2 แบบ: ผลทดสอบตอนปล่อยรุ่น (เลือกจากช่วงหนึ่ง วัดผลกับข้อมูลที่ไม่เคยเห็น)
-และผลจริงของการคาดการณ์ที่แอปออกไปแล้ว เทียบกับระดับน้ำที่เกิดจริง 91,429 รอบ ตั้งแต่ 26 ก.ย. 2569 ·
+และผลจริงของการคาดการณ์ที่แอปออกไปแล้ว เทียบกับระดับน้ำที่เกิดจริง 96,287 รอบ ตั้งแต่ 26 ก.ย. 2569 ·
 **ดีขึ้น:** จาก ~300 สถานีรอบ กทม. (v0.1) เป็น ~1,000 สถานีทั่วประเทศ (v0.16) · การคาดการณ์ 24 ชม. ที่ใช้แบบจำลองจริง
 (ไม่ใช่ "ถือว่าน้ำคงที่") เพิ่มจาก 38 % เป็น 56 % · คาด 6–12 ชม. แม่นกว่า "ถือว่าน้ำคงที่" 11–21 % ทุกรุ่นตั้งแต่มี star ·
 ตอนปล่อย v0.25 ความคลาดเคลื่อน 24–72 ชม. ลดจาก −5.3…−6.6 % เป็น −8.3…−9.4 % (สถานีชุดที่ไม่เคยเห็น) ·
-**ยังไม่ดีขึ้น:** ผลจริงที่ 24 ชม. แม่นกว่า "ถือว่าน้ำคงที่" เพียง 2–7 % และที่ 48–72 ชม. แทบไม่ต่าง · ช่วง 90 % ถูกจริง 80–89 %
-(รุ่นล่าสุด 81–83 %) น้อยกว่าที่บอก · สถานีชุดแรก 266 แห่ง (ส่วนใหญ่ใน กทม.) รุ่นล่าสุดยังพอ ๆ กับ "ถือว่าน้ำคงที่" ใน 1.5 วันที่วัดได้ ต้องตรวจต่อ ·
+**ยังไม่ดีขึ้น:** ผลจริงที่ 24 ชม. แม่นกว่า "ถือว่าน้ำคงที่" เพียง 3–7 % และที่ 48–72 ชม. แทบไม่ต่าง · ช่วง 90 % ถูกจริง 80–89 %
+(รุ่นล่าสุด 81–83 %) น้อยกว่าที่บอก — แก้ข้อผิดพลาดของการปรับช่วงรายวันแล้ว (v0.33.1) แต่เมื่อแม่น้ำเปลี่ยนจากลดเร็วเป็นทรงตัว
+ความเอียงของแบบจำลองกลับทิศในไม่กี่วัน ซึ่งการขยายช่วงแก้ไม่ได้ (§5k) · สถานีชุดแรก 266 แห่ง (ส่วนใหญ่ใน กทม.) รุ่นล่าสุดยังพอ ๆ กับ
+"ถือว่าน้ำคงที่" แต่ทดสอบในวันเดียวกันแล้ว ข้อมูลเข้าชุดใหม่ของ v0.25 ไม่ได้ทำให้แย่ลง — ช่วงน้ำลดทำให้ทุกแบบชนะได้น้อย (§5j) ·
 **แผนระบาย 7 วัน:** น้ำไหลเข้าเขื่อนแม่นกว่า "ถือว่าคงที่" 24–32 % ที่วันที่ 3–7 (ฤดูฝน 2569) · 32 เขื่อนมีแบบจำลองที่ผ่านการทดสอบ (เดิม 16) ·
 ระดับท้ายน้ำคลาดเคลื่อน ~10 ซม. วันแรก ถึง ~40 ซม. วันที่ 7 (สูตรเดิมคลาด ~1 ม.)
 
@@ -306,6 +308,8 @@ instead of hiding it.
 | Planning-model test (D-107) | the public 72 h gate (10 % skill, categories beyond 3 days, walk-forward only) for the 7-day tab | the river model beats "keep today" by 4–7 % at days 1–3 yet is the only what-if answer; margins needed month-by-month scoring | own test: two samples + the newest season, never worse than keep, physical sign, per-day margins (GUIDELINES §4.5) |
 | Research quota (D-108) | hand-paced Open-Meteo research under a written ≲ 1,000 a day | ≈ 4,800 weighted calls on 2026-10-06; live feeds unharmed (errors 503, never 429) | a shared counter in code: 3,000 a day, 1,000 an hour, 10 s apart |
 | As-issued record (E-HIST, §12) | every stored forecast run scored per model generation | see §12a | re-run as the record grows; backtest gains must show up as issued |
+| Old vs new `star` on the same days (E-SAME, §5j) | the inputs v0.25.0 added, on and off, at the gauges every generation forecast | new slightly better at every horizon on the same days; both gain only 0–7 % in the recession's last 7 days | served model unchanged; the flat as-issued record is the recession |
+| Daily range factors replayed (E-BAND, §5k) | windows of 3/5 days, targets 90/93 % (90 % range) and 50/53 % (50 % range) | a feedback bug (factor found on already-widened ranges); the served 5-day rule holds on average; a 50 % factor overshoots; misses changed side within days | bug fixed v0.33.1; rules unchanged; next: a short-term median correction (KI-287) |
 | AI plain summary ("✨ ให้ AI สรุป") | free-form LLM vs deterministic rule narrative + background GLM retelling | free-form LLM invented safe/normal verdicts; rule narrative + checked retelling gives 91 % pass and 0 safety errors | deterministic rule story rendered at 0s (<50 ms); GLM polishes tone asynchronously; checked for safety; 🔊 voice readout added (D-068, KI-275) |
 
 ## 8. Limits we state
@@ -389,6 +393,60 @@ Two disjoint samples of 46 gauges: 24 h −9.0 → −8.3 % and −18.3 → −1
 gauges made worse. Fails the two-sample gate. **The 72 h-only variant (2026-10-06)** is answered by the same log —
 it equals the two-year arm at 72 h: sample 1 −8.8 vs −8.5 % (3 vs 4 gauges worse), sample 2 −13.4 vs −10.4 % (**4 vs 2**
 worse) → fails on gauges made worse; not shipped. research/2026-10-05_two_years_history.log.
+
+### 5j. Experiment E-SAME (2026-10-06): the old and new `star` on the same days
+
+As issued (§12b), star-0.4 was level with "no change" at the gauges every model generation forecast (mostly the first
+Bangkok-area set), while older generations gained 2–7 % in their own weeks. Same days and gauges, the protocol of §5d;
+"old" = without the five inputs v0.25.0 added (D-092). Sample 1: 256 of the 274 gauges every generation forecast; sample 2
+(added after sample 1 showed a 12 h exception, as its confirmation): 289 of 300 other gauges drawn at random
+(`research/2026-10-06_star_same_days.{py,log}`, `_others.log`; read-only).
+
+| Horizon | Sample 1, second half of the window: old → new (vs "no change") | Sample 1, last 7 days | Sample 1: new worse / better beyond chance | Sample 2, second half: old → new | Sample 2: new worse / better |
+|---|---|---|---|---|---|
+| 1 h | −2.9 → −3.2 % | +0.3 → +0.2 % | 1 / 28 | −10.4 → −16.9 % | 11 / 85 |
+| 6 h | −9.2 → −9.9 % | −2.3 → −2.6 % | 5 / 19 | −20.6 → −22.2 % | 9 / 56 |
+| 12 h | −7.4 → −7.7 % | −4.4 → −3.3 % | **9 / 3** | −17.2 → −17.6 % | 13 / 36 |
+| 24 h | −8.5 → −9.4 % | −4.6 → −5.1 % | 8 / 7 | −9.1 → −11.5 % | 16 / 31 |
+| 48 h | −9.5 → −10.7 % | −5.5 → −6.8 % | 10 / 9 | −5.0 → −8.4 % | 19 / 40 |
+| 72 h | −9.9 → −10.9 % | −5.3 → −6.4 % | 6 / 14 | −3.4 → −7.8 % | 14 / 49 |
+
+**Verdict.** On the same days the v0.25.0 inputs are better at every horizon in both samples; at the first Bangkok-area
+gauges the gain is small, and in the recession's last seven days both versions gain only 0–7 % there — the flat as-issued
+record is the recession, not the inputs. Sample 1's 12 h exception (9 gauges worse, 3 better) does not hold on sample 2
+(13 worse, 36 better), so nothing changes. "Beyond chance" is `model_gate.made_worse` (D-107).
+
+### 5k. Experiment E-BAND (2026-10-06): do the daily range factors make the next day's ranges hold? (KI-287)
+
+As issued (§12b) the ranges held less often than they say. Answered on the stored forecasts themselves
+(`research/2026-10-06_band_replay.{py,log}`: one run per gauge per 6 h, 35,252 ranges with known outcomes; at 00:00 UTC
+each day a factor from the outcomes known by then, applied to that day's raw ranges; chosen on 1–2 Oct, scored on the
+later days).
+
+**A bug first.** `risks.band90_factors` measured coverage on the stored ranges — already widened by the factor in force —
+while the new factor is applied to the raw ranges: a loop that would have pulled the factor back toward 1.0 once five days
+of widened runs filled the window. Fixed in v0.33.1: the factor is found on the raw range (each stored range divided by the
+factor recorded in its run; test `test_band90_factor_is_found_on_the_range_before_widening`).
+
+| Range | Rule | Next-day coverage at 24 / 48 / 72 h (scored days) | Mean factor at 24 h |
+|---|---|---|---|
+| 90 % | none (raw) | 86.2 / 85.9 / 84.8 % | 1.00 |
+| 90 % | **5 days, 9 in 10 (served, D-098)** | **88.9 / 91.6 / 93.4 %** | 1.19 |
+| 90 % | 3 days, 9 in 10 | 88.5 / 90.6 / 93.4 % | 1.18 |
+| 90 % | 5 days, 93 in 100 | 91.9 / 93.7 / 94.5 % | 1.43 |
+| 50 % | **none (served; the numbers on the rows)** | 46.7 / 45.5 / 48.1 % | 1.00 |
+| 50 % | 5 days, 1 in 2 | 48.0 / 52.7 / 59.3 % (choosing days 59.6 / 64.2 / 58.6 %) | 1.14 |
+
+**Which side the misses fall on** (24 h, the raw 50 % range, below / above): 1 Oct 36.2 / 13.1 % · 2 Oct 29.5 / 15.8 % ·
+3 Oct 25.5 / 19.1 % · 4 Oct 26.0 / 27.1 % · 5 Oct 21.8 / 40.1 %. The water first fell faster than forecast, then levelled
+off while the models still expected a fall.
+
+**Verdict.** The 5- and 3-day rules tie on the choosing days (24 h factor 1.19 vs 1.18, coverage 91.7 vs 92.0 %); a change
+has to be better, not equal, so the served 5-day rule stays — on the scored days it holds 88.9/91.6/93.4 %. A 93 % target
+overshoots and costs width. The 50 % range stays uncalibrated: a daily factor overshoots on the choosing days, as in
+v0.26.0's test. No width rule fixes a day like 5 Oct (24 h: 83 % and 38 % under every rule), because the bias flipped
+within five days. Next: a short-term correction of the median when the river changes regime, tested day by day (D-098's
+lesson).
 
 ### 9b. Reservoir inflow nationwide (owner 2026-10-05: "not only the water level … inflow, reservoir and much more")
 Daily inflow for every RID dam (HII) against ERA5 catchment rain (HydroBASINS lev08 upstream basins), fit 2018–2024,
@@ -498,9 +556,11 @@ with a trend, 32 of them modelled (5 still "if today holds"; ปากมูล 
 ## 10. How to reproduce
 
 - Tests: `docker compose build worker`, then `docker compose run --rm --no-deps -v "$PWD/research:/app/research:ro" worker pytest -q`
-  (460 tests on 2026-10-06; the research mount lets the guard on Open-Meteo research run).
+  (461 tests on 2026-10-06; the research mount lets the guard on Open-Meteo research run).
 - Model history (§12): `research/2026-10-06_model_history.py` scores every stored forecast run (`forecast_run`, 14 days) per
   model generation against what happened, read-only; its `.log` holds the tables.
+- Same days, old vs new `star` (§5j): `research/2026-10-06_star_same_days.py` (`others` for the confirmation sample); range factors
+  replayed day by day (§5k): `research/2026-10-06_band_replay.py`; both read-only, with their `.log` files.
 - Judging a change: `floodwatch.model_gate.made_worse` (D-107). Research that calls Open-Meteo goes through
   `floodwatch.research_quota.get_json` with `-v "$PWD/data/research:/data/research"` (3,000 weighted calls a day, D-108).
 - Nationwide backtest: `scripts/backtest_nationwide.py`. Track records: `risks.compute_records` (forecaster, daily).
@@ -708,7 +768,8 @@ Two kinds of evidence, both from running code:
 - **When a change shipped** — the test that decided it: chosen on one period or sample, scored on another it never saw
   (§5d, §9d, §11c). Old and new are compared on the same days, so this measures the change itself.
 - **As issued** — what each model generation actually forecast, scored against what the water then did
-  (`research/2026-10-06_model_history.py`: all 91,429 forecast runs stored since 2026-09-26 12:27 UTC at 1,022 gauges;
+  (`research/2026-10-06_model_history.py`: all 96,287 forecast runs stored since 2026-09-26 12:27 UTC at 1,023 gauges, scored at
+  12:10 UTC on 2026-10-06;
   the gauge's mean reading within ±30 min of each valid time; read-only). This is what people saw, but each generation
   ran in a different week, so on its own it cannot rank them.
 
@@ -726,6 +787,7 @@ the typical miss is 10 % smaller.
 | v0.20.7 (10-03) | one forecaster per gauge: the measured trend became a model method that must win its place (D-080) | — | the words, the chart and the tabs agree (KI-270) |
 | v0.25.0 (10-04) | `star` reads 7/30-day means and 1/3/72 h changes (D-092); up to 4 learned upstream gauges (D-093) | on unseen gauges, error vs "no change" at 24/48/72 h: −6.6/−5.5/−5.3 → **−8.3/−8.5/−9.4 %**; gauges keeping a ≥ 10 % gain 51/44/49 → 67/70/69; at 72 h 21 gauges worse than "no change" (was 10) | more gauges with a real forecast; slow returns to the usual level learned |
 | v0.26.0 (10-05) | Flood Hub as an input near its points (D-097); the 90 % range widened daily until 9 in 10 recent outcomes fall inside (D-098) | 79 gauges: 72 h −8.3 → −9.2 %, 48 h −11.2 → −11.4 %; factors ×1.15/1.20/1.40 at 24/48/72 h | ranges meant to hold as stated (12b: not yet) |
+| v0.33.1 (10-06) | the daily range factor found on the raw range, not on ranges it had already widened (KI-287) | replayed day by day: next-day coverage of the 90 % range 88.9/91.6/93.4 % at 24/48/72 h (none: 86.2/85.9/84.8 %) (§5k) | a calibration that keeps working after its first five days |
 
 ### 12b. The public forecast as issued (2026-09-26 → 2026-10-06)
 
@@ -735,16 +797,16 @@ model served (not "no change"); how often the issued 90 % and 50 % ranges held a
 | Generation (releases; when it ran) | Gauges | 6 h | 12 h | 24 h | 48 h | 72 h | Model served | 90 % held | 50 % held |
 |---|---|---|---|---|---|---|---|---|---|
 | mvp-0.1 (v0.1–v0.7; 09-26 12:27 → 09-27 12:10, the flood peak) | 294 | −10.8 % | −4.8 % | −5.6 % (600) | −7.5 % | −9.6 % | 46 % | 87.5 % | 47.8 % |
-| star-0.2 (v0.8.0–v0.20.6; 09-27 → 10-03) | 1,021 | −11.3 % | −10.7 % | −6.6 % (10,962) | −2.8 % | +0.4 % | 38 % | 88.2 % | 51.5 % |
-| star-0.3 (v0.20.7–v0.24; 10-03 22:24 → 10-04 16:04) | 987 | −20.5 % | −19.6 % | −5.7 % (24,373) | +2.1 % | – | 44 % | 87.7 % | 48.2 % |
-| star-0.4 (v0.25.0; 10-04 16:49 → 10-05 07:00) | 990 | −15.4 % | −14.5 % | −3.5 % (16,938) | – | – | 56 % | 81.0 % | 39.2 % |
-| star-0.4, calibrated ranges (v0.26.0–v0.33.0; 10-05 07:00 → 10-06 07:39) | 998 | −14.1 % | −13.0 % | −1.6 % (1,103) | – | – | 54 % | 82.5 % | 37.1 % |
+| star-0.2 (v0.8.0–v0.20.6; 09-27 → 10-03) | 1,021 | −11.3 % | −10.7 % | −6.6 % (10,962) | −2.8 % | +0.5 % | 38 % | 88.2 % | 51.5 % |
+| star-0.3 (v0.20.7–v0.24; 10-03 22:24 → 10-04 16:04) | 987 | −20.5 % | −19.6 % | −5.7 % (24,373) | +1.9 % | – | 44 % | 87.7 % | 48.1 % |
+| star-0.4 (v0.25.0; 10-04 16:49 → 10-05 07:00) | 990 | −15.4 % | −14.5 % | −3.5 % (16,938) | – | – | 56 % | 81.0 % | 39.1 % |
+| star-0.4, calibrated ranges (v0.26.0–v0.33.0; 10-05 07:00 → 10-06 midday) | 1,001 | −15.4 % | −13.8 % | −3.1 % (5,565) | – | – | 55 % | 83.4 % | 38.0 % |
 
 "–": too recent to score, or fewer than 30 forecasts. Where a model was served, its own forecasts against "no change" on the
-same runs, at 6/12/24/48/72 h: star-0.2 −20.5/−22.2/−17.9/−13.6/−8.7 %; star-0.3 −32.5/−32.2/−15.7/−5.1 %; star-0.4
-−24.6/−23.5/−10.9 %; calibrated −23.2/−23.6/−8.2 %. On the 266 gauges every generation forecast (mostly the first
+same runs, at 6/12/24/48/72 h: star-0.2 −20.5/−22.2/−17.9/−13.6/−8.7 %; star-0.3 −32.5/−32.2/−15.7/−5.6 %; star-0.4
+−24.6/−23.5/−10.9 %; calibrated −24.8/−24.5/−9.6 %. On the 266 gauges every generation forecast (mostly the first
 Bangkok-area set), at 6/12/24 h: mvp-0.1 −18.4/+1.4/−7.9 %; star-0.2 −6.5/−2.3/−6.4 %; star-0.3 −5.4/−1.9/−3.4 %;
-star-0.4 +2.8/−0.2/+0.3 %; calibrated +0.7/−1.1/+2.2 %.
+star-0.4 +2.8/−0.2/+0.3 %; calibrated −1.2/−3.4/+3.4 %.
 
 **How to read it.** Each generation ran in a different week: mvp-0.1 on the flood peak around Bangkok ("no change" missed
 by 32–81 cm), star-0.2 over six days as rivers began to fall nationwide, star-0.3 for 18 hours, star-0.4 for a day and a
@@ -755,20 +817,21 @@ test in 12a.
 - **Reach:** ~300 → ~1,000 gauges with forecasts and ranges (v0.16.0).
 - **More real forecasts:** at 24 h the share served by a model rose from 38 % (star-0.2) to 56 % (star-0.4) — fewer "?" rows.
 - **Where a model speaks, it helps:** its 6–12 h misses are 20–33 % smaller than "no change" on the forecasts it served,
-  24 h 8–18 %.
+  24 h 10–18 %.
 - **Nationwide, 6–12 h forecasts** have been 11–21 % better than "no change" in every generation since `star`.
 
 **What did not, yet.**
-- **Beyond a day the issued gain is small:** 24 h −1.6 to −6.6 %; 48–72 h about zero since `star` (star-0.2 −2.8 % and
-  +0.4 %, star-0.3 +2.1 % at 48 h) — only the flood-peak day gave −7.5/−9.6 % (mvp-0.1).
+- **Beyond a day the issued gain is small:** 24 h −3.1 to −6.6 %; 48–72 h about zero since `star` (star-0.2 −2.8 % and
+  +0.5 %, star-0.3 +1.9 % at 48 h) — only the flood-peak day gave −7.5/−9.6 % (mvp-0.1).
 - **The ranges hold less often than they say:** the 90 % range held 80–89 % (star-0.4: 81–83 % at 24 h), the 50 % range
-  37–55 % (star-0.4: 37–39 % at 24 h). The daily calibration (v0.26.0) has not closed the gap: the stored ranges are the
-  calibrated ones (`forecast.widen90`), and at 24 h only one issue hour can be scored so far (82.5 % of 1,103). KI-287 is
-  open again.
-- **On the 266 gauges every generation forecast,** the latest model is level with "no change" in its two days (−1.1 to
-  +2.8 % at 6–24 h), where star-0.2 and star-0.3 gained 2–7 % in their weeks. Whether that is the recession's flat canals or
-  a loss from the v0.25.0 inputs on these gauges needs a same-days backtest of the old and new `star` on them (HANDOFF next
-  steps).
+  37–55 % (star-0.4: 38–39 % at 24 h). The daily calibration (v0.26.0) narrows the gap a little (24 h: 81.0 → 83.4 % on
+  5,565 forecasts) but does not close it. A day-by-day replay (§5k) shows why: the rule holds on average, but on 5 Oct the
+  bias flipped side within days, which no width rule fixes; it also found a feedback bug in the calibration, fixed in
+  v0.33.1. KI-287 stays open for a short-term correction of the median.
+- **On the 266 gauges every generation forecast,** the latest model is level with "no change" as issued (−3.4 to +3.4 % at
+  6–24 h), where star-0.2 and star-0.3 gained 2–7 % in their weeks. A same-days test (§5j) settles the cause: on the same
+  days the v0.25.0 inputs are slightly better than the old ones at every horizon, and in the last seven days both gain only
+  0–7 % — the recession, not the inputs.
 
 Re-run `research/2026-10-06_model_history.py` after each model change and weekly: a backtest gain in 12a has to show up
 here as issued.

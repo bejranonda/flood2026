@@ -2,14 +2,26 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## Unreleased (main after v0.33.0; the live site is unchanged)
+## v0.33.1 — 2026-10-06
+- **The daily range calibration no longer undoes itself (KI-287).** `risks.band90_factors` measured coverage on stored
+  ranges that were already widened by the factor in force, while the new factor is applied to the raw ranges; once five
+  days of widened forecasts filled the window, the ranges would have shrunk back. The factor is now found on the raw
+  range. A day-by-day replay on 35,252 stored ranges keeps the served rule (next-day coverage of the 90 % range
+  88.9/91.6/93.4 % at 24/48/72 h; a 93 % target overshoots) and leaves the 50 % range uncalibrated (a daily factor
+  overshoots). What no width rule fixes: on 5 Oct the misses changed side within days (the water stopped falling while
+  the models still expected a fall) — next, a short-term correction of the median (MODELS §5k).
+- **The old and the new `star` on the same days (MODELS §5j):** at the gauges every model generation forecast, the inputs
+  v0.25.0 added are slightly better than the old ones at every horizon on the same days; the flat as-issued record there
+  is the recession, not the inputs.
+- Owner items: Q3 handled by the owner; the `/impact` password is a test password by the owner's choice (a long
+  passphrase before any partner data are loaded).
 - **How the models improved, release by release (owner: "In models.MD we expect to see how good the models were developed
   here along many release and history"; MODELS §12).** The tested gain of every model release, and an as-issued record:
-  all 91,429 forecast runs stored since 2026-09-26, scored per model generation against what the water did. Nationwide,
-  6–12 h forecasts beat "no change" by 11–21 % in every generation since `star`, 24 h by 2–7 %, 48–72 h about zero; the
+  all 96,287 forecast runs stored since 2026-09-26, scored per model generation against what the water did. Nationwide,
+  6–12 h forecasts beat "no change" by 11–21 % in every generation since `star`, 24 h by 3–7 %, 48–72 h about zero; the
   share of 24 h forecasts served by a real model rose from 38 % to 56 %. The 90 % ranges held 80–89 % and the 50 % ranges
   37–55 % — KI-287 is open again; on the 266 gauges every generation forecast, the latest model is level with "no change"
-  in its first day and a half (a same-days backtest is next).
+  in its first day and a half — on the same days the newer inputs are not the cause (MODELS §5j).
 - **The rules follow the decisions (owner's review; D-109).** The phase gates are quality reviews (D-012), AI is GLM for
   everything the app shows (the ✨ card only on a tap, the ticker in the worker), held-out data means later in time plus a
   disjoint sample plus the newest season (the 2011–2022 events are not in the archive), PLAN shows what is live, and the
@@ -20,7 +32,7 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
 - **Research calls to Open-Meteo are counted in code (D-108, KI-264):** `floodwatch.research_quota` holds research to
   3,000 weighted calls a day, 1,000 an hour, 10 s apart, by the pricing page's weighting, in one ledger shared by every run;
   a test fails when a new research script names Open-Meteo without it. (Earlier today a hand-paced fetch used ≈ 4,800.)
-- Tests: 460 (15 new).
+- Tests: 461 (16 new).
 
 ## v0.33.0 — 2026-10-06
 - **A flood view for each release plan (owner: "can we show flood area in the map for each … scenario?"; D-105).** Pick

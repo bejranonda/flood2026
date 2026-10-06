@@ -157,7 +157,7 @@ def main() -> None:
     rows.append(("IMPACT", "/impact password is a long passphrase (≥ 16 characters) before ONWR/RID data are loaded",
                  "done" if len(impact_pw) >= 16 else "open",
                  "not set: /impact answers 503" if not impact_pw else "long enough" if len(impact_pw) >= 16
-                 else "short pilot password: fine for public data only; change it before partner data arrive"))
+                 else "short test password (owner 2026-10-06: for testing only); set a long passphrase before partner data"))
 
     # A key that exists is not a key that works (KI-510): make one real request, never print the key or the URL.
     gistda_key = e.get("GISTDA_API_KEY", "").strip()
@@ -209,6 +209,7 @@ def main() -> None:
     rows += new_source_checks(e)
 
     has_license = (ROOT / "LICENSE").exists()
+    rows.append(("Q3", "Permission mails to HII / BMA / Traffy, and DWR / RID (D-046)", "done", "handled by the owner (2026-10-06)"))
     rows.append(("Q10", "Repository license (open source, MIT)", "done" if has_license else "open",
                  "MIT License applied (LICENSE file present, D-043)" if has_license else "no LICENSE file"))
     rid = (ROOT / "src/floodwatch/data/station_coords_rid.json").exists()
@@ -216,7 +217,6 @@ def main() -> None:
                  "station_coords_rid.json present" if rid else "not provided"))
     for qid, title in (("Q19", "Who reads user feedback (notes), how often"),
                        ("Q7", "Notifications (LINE / Web Push) wanted?"), ("Q22", "Traffy text labelling / voice reports with Workers AI?"),
-                       ("Q3", "Permission mails to HII / BMA / Traffy, and DWR / RID before national data goes public (D-046)"),
                        ("EGRESS", "Reliable Thai egress before a public national launch (KI-110, D-046)"),
                        ("BMA", "Courtesy note to the flood69 relay / BMA about showing their data (D-031)"),
                        ("FLOODMAP", "Flood-coverage maps by release level below Kaeng Krachan from ONWR/RID (D-105)"),

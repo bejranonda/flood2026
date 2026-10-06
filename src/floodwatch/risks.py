@@ -258,7 +258,10 @@ def band90_factors(runs: list[dict], hourly: dict, now) -> dict:
                 continue
             q = p["q"]
             kind = "no change" if p.get("method") in (None, "persistence") else "model"
-            acc.setdefault((h, kind), []).append((q[0] - q[2], q[4] - q[2], y - q[2]))
+            # the stored range was already widened by the factor in force when it was issued (forecast.widen90); the new
+            # factor applies to the raw range, so it is found on the raw range (KI-287)
+            k_prev = float(((r.get("band90") or {}).get(str(h)) or {}).get(kind) or 1.0)
+            acc.setdefault((h, kind), []).append(((q[0] - q[2]) / k_prev, (q[4] - q[2]) / k_prev, y - q[2]))
     out: dict = {str(h): {"model": 1.0, "no change": 1.0} for h in (24, 48, 72)}
     for (h, kind), v in acc.items():
         if len(v) < BAND90_MIN_N:
@@ -287,7 +290,7 @@ FROM forecast_run f JOIN pick USING (id), LATERAL (
          max((e->'q'->>4)::float) FILTER (WHERE (e->>'h')::int <= 48) AS b4,
          max((e->'q'->>2)::float) FILTER (WHERE (e->>'h')::int = 24) AS m24
   FROM jsonb_array_elements(f.payload->'path') e) x"""
-LEAN_SQL = """SELECT f.code, f.issue_time, (f.payload->>'level_now')::float AS now,
+LEAN_SQL = """SELECT f.code, f.issue_time, (f.payload->>'level_now')::float AS now, f.payload->'band90' AS band90,
     f.payload->'path'->23 AS p24, f.payload->'path'->47 AS p48, f.payload->'path'->71 AS p72
   FROM forecast_run f JOIN (SELECT DISTINCT ON (code, date_trunc('day', issue_time), extract(hour from issue_time)::int / 6) id
     FROM forecast_run WHERE issue_time > %(since)s AND issue_time < now() - interval '24 hours'
@@ -331,8 +334,8 @@ def compute_records(c) -> dict:
                 a[k] = v
         series[code] = a
     by_hour = {code: dict(v) for code, v in mean.items()}
-    lean_runs = [{"code": r["code"], "issue_time": r["issue_time"], "now": r["now"], "path": [r["p24"], r["p48"], r["p72"]]}
-                 for r in c.execute(LEAN_SQL, {"since": since}).fetchall()]
+    lean_runs = [{"code": r["code"], "issue_time": r["issue_time"], "now": r["now"], "band90": r["band90"],
+                  "path": [r["p24"], r["p48"], r["p72"]]} for r in c.execute(LEAN_SQL, {"since": since}).fetchall()]
     rec = {"lean": lean_record(lean_runs, by_hour), "band90": band90_factors(lean_runs, by_hour, now),
            "bank_24": bank_record(r24, hi, banks, 24), "bank_48": bank_record(r48, hi, banks, 48),
            "upstream": upstream_record(pairs, series), "fast_rise": rise_record(rise, mean),

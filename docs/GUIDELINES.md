@@ -106,6 +106,8 @@ Score on data the model never saw — later in time first, then on units it was 
 - **Reported, not gating:** NSE, KGE, CRPS, peak magnitude and timing error, and POD/FAR/CSI for bank and warning exceedance.
 - **Unit tests, not gating:** mass-balance closure < 3 % for the storage model; monotonic constraints hold.
 - If coverage drops below 85 %: widen automatically (ACI) and alert.
+- **A calibration factor is found on the quantity it is applied to** (KI-287): stored ranges are already widened, so un-widen them before measuring, or the calibration feeds on itself and undoes itself.
+- **Check a model change as issued:** re-run `research/2026-10-06_model_history.py` after each model change and weekly; a backtest gain has to show up in what people were shown (MODELS §12b).
 - **"Made worse" means beyond chance (owner 2026-10-06, D-107).** When a change is judged, a gauge or dam counts as made worse only if its error rises by **more than 3 %** and a moving-block bootstrap (blocks of at least the horizon) puts the rise **above zero at 95 % one-sided** — `floodwatch.model_gate.made_worse`. Report every unit's change either way, with its size; too little data to resample lets the size alone decide.
 
 ### 4.4 Uncertainty is mandatory
@@ -127,7 +129,7 @@ Models that answer "what if the dam releases X?" for the 7-day impact tab (reser
 - **Thai egress limits (D-016):** the OpenVPN proxy (`THAI_EGRESS_PROXY`) is opt-in per request and only for **public pages** of sources that geo-block. **Never send credentials, tokens or personal data through it.** Always verify HTTPS certificates. Don't rotate relays or solve bot challenges to get past a block; if an IP class stays blocked, use an owner-controlled Thai host.
 - **Identify honestly:** `User-Agent: BKK-FloodWatch/<version> (+https://flood.autobahn.bot; <contact>)`. **Never spoof a browser**, rotate proxies, or otherwise get around blocks, bot challenges or rate limits. If blocked, ask the agency or use the approved Thai collector node ([KI-101](KNOWN_ISSUES.md)).
 - **Be polite:** poll no more often than the source updates (≥10 min for telemetry), cache aggressively, and back off under errors. Their servers are under flood load too.
-- **Respect ToS and robots.txt.** Ask HII, BMA and BMA/NECTEC (Traffy) for permission before public redistribution.
+- **Respect ToS and robots.txt.** Ask HII, BMA and BMA/NECTEC (Traffy) for permission before public redistribution (Q3: handled by the owner, 2026-10-06).
 - **Privacy:** don't store or republish citizen text or photos from third-party sources. Aggregate crowd reports spatially ([KI-107](KNOWN_ISSUES.md)).
 - **Our own user feedback (D-020):**
   - collect the minimum: no names or contacts;

@@ -1,0 +1,41 @@
+sample others: 300 gauges
+… 25
+… 50
+… 75
+… 100
+… 125
+… 150
+… 175
+… 200
+… 225
+… 250
+… 275
+gauges scored: 289
+
+=== second half of the 45-day window (B): served pipeline, error vs "no change" (summed RMSE)
++ 1 h  old: -10.4 % (n 287, model 154)  new: -16.9 % (n 287, model 190)
++ 3 h  old: -17.0 % (n 287, model 173)  new: -21.4 % (n 287, model 193)
++ 6 h  old: -20.6 % (n 288, model 172)  new: -22.2 % (n 288, model 190)
++12 h  old: -17.2 % (n 287, model 169)  new: -17.6 % (n 287, model 177)
++24 h  old:  -9.1 % (n 288, model 147)  new: -11.5 % (n 288, model 161)
++48 h  old:  -5.0 % (n 288, model 123)  new:  -8.4 % (n 288, model 147)
++72 h  old:  -3.4 % (n 288, model 109)  new:  -7.8 % (n 288, model 139)
+
+=== the last 7 days of B (the recession): served pipeline, error vs "no change" (summed RMSE)
++ 1 h  old:  -9.0 % (n 284, model 153)  new: -14.5 % (n 283, model 188)
++ 3 h  old: -15.1 % (n 284, model 172)  new: -18.0 % (n 283, model 191)
++ 6 h  old: -19.2 % (n 284, model 171)  new: -19.7 % (n 282, model 187)
++12 h  old: -15.5 % (n 283, model 168)  new: -15.6 % (n 281, model 175)
++24 h  old:  -8.8 % (n 283, model 145)  new:  -9.9 % (n 279, model 158)
++48 h  old:  -5.8 % (n 277, model 118)  new:  -5.4 % (n 275, model 141)
++72 h  old:  -4.7 % (n 275, model 105)  new:  -6.0 % (n 274, model 134)
+
+=== new vs old on B, gauge by gauge, beyond chance (> 3 % and a block bootstrap, D-107)
++ 1 h  gauges  229 · new worse  11 · new better  85 · same non-star method  87
++ 3 h  gauges  230 · new worse   8 · new better  81 · same non-star method  89
++ 6 h  gauges  230 · new worse   9 · new better  56 · same non-star method  94
++12 h  gauges  230 · new worse  13 · new better  36 · same non-star method 100
++24 h  gauges  230 · new worse  16 · new better  31 · same non-star method 117
++48 h  gauges  229 · new worse  19 · new better  40 · same non-star method 119
++72 h  gauges  229 · new worse  14 · new better  49 · same non-star method 114
+SUMMARY_JSON {"B|old|1": {"n": 287, "vs_no_change_pct": -10.4, "model_served": 154}, "B|new|1": {"n": 287, "vs_no_change_pct": -16.9, "model_served": 190}, "B|old|3": {"n": 287, "vs_no_change_pct": -17.0, "model_served": 173}, "B|new|3": {"n": 287, "vs_no_change_pct": -21.4, "model_served": 193}, "B|old|6": {"n": 288, "vs_no_change_pct": -20.6, "model_served": 172}, "B|new|6": {"n": 288, "vs_no_change_pct": -22.2, "model_served": 190}, "B|old|12": {"n": 287, "vs_no_change_pct": -17.2, "model_served": 169}, "B|new|12": {"n": 287, "vs_no_change_pct": -17.6, "model_served": 177}, "B|old|24": {"n": 288, "vs_no_change_pct": -9.1, "model_served": 147}, "B|new|24": {"n": 288, "vs_no_change_pct": -11.5, "model_served": 161}, "B|old|48": {"n": 288, "vs_no_change_pct": -5.0, "model_served": 123}, "B|new|48": {"n": 288, "vs_no_change_pct": -8.4, "model_served": 147}, "B|old|72": {"n": 288, "vs_no_change_pct": -3.4, "model_served": 109}, "B|new|72": {"n": 288, "vs_no_change_pct": -7.8, "model_served": 139}, "last7|old|1": {"n": 284, "vs_no_change_pct": -9.0, "model_served": 153}, "last7|new|1": {"n": 283, "vs_no_change_pct": -14.5, "model_served": 188}, "last7|old|3": {"n": 284, "vs_no_change_pct": -15.1, "model_served": 172}, "last7|new|3": {"n": 283, "vs_no_change_pct": -18.0, "model_served": 191}, "last7|old|6": {"n": 284, "vs_no_change_pct": -19.2, "model_served": 171}, "last7|new|6": {"n": 282, "vs_no_change_pct": -19.7, "model_served": 187}, "last7|old|12": {"n": 283, "vs_no_change_pct": -15.5, "model_served": 168}, "last7|new|12": {"n": 281, "vs_no_change_pct": -15.6, "model_served": 175}, "last7|old|24": {"n": 283, "vs_no_change_pct": -8.8, "model_served": 145}, "last7|new|24": {"n": 279, "vs_no_change_pct": -9.9, "model_served": 158}, "last7|old|48": {"n": 277, "vs_no_change_pct": -5.8, "model_served": 118}, "last7|new|48": {"n": 275, "vs_no_change_pct": -5.4, "model_served": 141}, "last7|old|72": {"n": 275, "vs_no_change_pct": -4.7, "model_served": 105}, "last7|new|72": {"n": 274, "vs_no_change_pct": -6.0, "model_served": 134}, "pairs|1": {"n": 229, "worse": 11, "better": 85, "same_method": 87}, "pairs|3": {"n": 230, "worse": 8, "better": 81, "same_method": 89}, "pairs|6": {"n": 230, "worse": 9, "better": 56, "same_method": 94}, "pairs|12": {"n": 230, "worse": 13, "better": 36, "same_method": 100}, "pairs|24": {"n": 230, "worse": 16, "better": 31, "same_method": 117}, "pairs|48": {"n": 229, "worse": 19, "better": 40, "same_method": 119}, "pairs|72": {"n": 229, "worse": 14, "better": 49, "same_method": 114}}

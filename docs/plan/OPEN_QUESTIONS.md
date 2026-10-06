@@ -38,7 +38,7 @@
 | Q8 | Dates in the **Buddhist era (พ.ศ.)**? | UI | — |
 | Q11 | **Budget/retention** for R2 and the raw archive | Sizing | — |
 | Q12 | **Who is on call** during a flood? | Alert routing | — |
-| Q3 | Permission mails to **HII / BMA / Traffy**, and **DWR / RID** before national data goes public (drafts in OWNER_ACTIONS, D-046) | Public redistribution; national launch | 3 |
+| ~~Q3~~ | ✅ **Handled by the owner (2026-10-06).** Permission mails to **HII / BMA / Traffy**, and **DWR / RID** before national data goes public (drafts in OWNER_ACTIONS, D-046) | Public redistribution; national launch | — |
 | Q4 | **TMD / GISTDA / Copernicus GFM / NASA** keys? | Optional P2 sources. **2026-10-02:** GISTDA ✅, GFM account ✅ (maps keyless), EWDS ✅; TMD and NASA not needed so far | — |
 | Q6 | Will the app ever be **commercial**? | Open-Meteo and FABDEM are non-commercial ([KI-106](../KNOWN_ISSUES.md)) | — |
 | Q9 | **Frontend framework** preference? | The plain-JS app is enough so far | — |
