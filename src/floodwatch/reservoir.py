@@ -96,6 +96,8 @@ def inflow_path(model: dict, inflow_today: float, rain_past7: list, rain_fc7: li
 
 
 INFLOW7_FILE = Path(__file__).resolve().parent / "data" / "reservoir_inflow7.json"
+RAIN_SOURCES = {"bm": ["best_match"], "ec": ["ecmwf_ifs025"], "gfs": ["gfs_seamless"], "icon": ["icon_seamless"],
+                "E3": ["best_match", "ecmwf_ifs025", "gfs_seamless"], "E4": ["best_match", "ecmwf_ifs025", "gfs_seamless", "icon_seamless"]}
 
 
 def load_inflow7() -> dict:
@@ -144,28 +146,39 @@ def features7(fam: str, inflow30: list, past30: list, fut7: list, h: int, d0) ->
                    math.sin(2 * math.pi * doy / 365.25), math.cos(2 * math.pi * doy / 365.25)]
 
 
-def inflow_path7(m7: dict, inflow30: list, past30: list, fut7: list, d0, days: int = 7) -> list[dict]:
-    """Days 1…7: the dam's E-7D-IN model at the horizons where it beat persistence by ≥ 10 % on the window's first half,
-    today's inflow elsewhere (or where that day's forecast is missing); lo/hi = mid + the tested band of the method used —
-    quantiles of (observed − predicted), so the range sits where the misses fell; never below zero."""
-    fam = str(m7.get("family") or "D").split("_")[0]
+def inflow_path7(m7: dict, inflow30: list, past30: list, fut7: list, d0, days: int = 7, rain: dict | None = None) -> list[dict]:
+    """Days 1…7: the dam's tested model at the horizons where it was chosen, today's inflow elsewhere (or where that
+    day's forecast or an input is missing); lo/hi = mid + the tested band of the method used — quantiles of (observed −
+    predicted), so the range sits where the misses fell; never below zero. A horizon may name its own family and rain
+    source ("family": "D_gfs"); `rain` = {source: (past30, fut7)} then feeds it, else past30/fut7."""
     today = float(inflow30[-1])
     vals = [float(x) for x in inflow30[-30:] if x is not None and x == x]
     m30 = sum(vals) / len(vals) if vals else today
-    rec = []  # the recursive family (the Q58 form): one step a day on the composed rain, inflow(d−1) → inflow(d)
-    if fam == "R":
-        beta = next((hz["params"]["beta"] for hz in (m7.get("horizons") or {}).values() if (hz.get("params") or {}).get("beta")), None)
-        rain, prev = list(past30[-8:]) + list(fut7), today
+    rec: dict = {}  # the recursive family (the Q58 form), one path per rain source: inflow(d−1) → inflow(d)
+
+    def recursion(beta, p30, f7):
+        series, prev, out_ = list(p30[-8:]) + list(f7), today, []
         for k in range(1, days + 1):
             j = 7 + k
-            prev = _model_step(beta, prev, [rain[j - i] for i in range(8)]) if beta and all(r == r for r in rain[j - 7:j + 1]) else float("nan")
-            rec.append(prev)
+            prev = _model_step(beta, prev, [series[j - i] for i in range(8)]) if beta and all(r == r for r in series[j - 7:j + 1]) else float("nan")
+            out_.append(prev)
+        return out_
     out = []
     for h in range(1, days + 1):
         hz = (m7.get("horizons") or {}).get(str(h)) or {}
-        use = hz.get("use") not in (None, "persistence") and bool(hz.get("params")) and all(x == x for x in fut7[:h])
+        full = str(hz.get("family") or m7.get("family") or "D")
+        fam, src = (full.split("_") + [None])[:2]
+        p30, f7 = (rain or {}).get(src) or (past30, fut7)
+        use = hz.get("use") not in (None, "persistence") and bool(hz.get("params")) and all(x == x for x in f7[:h])
         mid = today
-        x = ([rec[h - 1]] if fam == "R" else features7(fam, inflow30, past30, fut7, h, d0)) if use else []
+        x = []
+        if use and fam == "R":
+            beta = (hz.get("params") or {}).get("beta")
+            if (src, tuple(beta or [])) not in rec:
+                rec[(src, tuple(beta or []))] = recursion(beta, p30, f7)
+            x = [rec[(src, tuple(beta or []))][h - 1]]
+        elif use:
+            x = features7(fam, inflow30, p30, f7, h, d0)
         use = use and all(v == v for v in x)  # a missing inflow or rain input: persistence, never NaN
         if use and fam == "R":
             mid = max(0.0, x[0])
@@ -214,7 +227,8 @@ def rain_inputs7(points: list, models: list, d0, fetch=None) -> tuple[dict, dict
     return mean(acc_e), {m: mean(a) for m, a in acc_f.items()}
 
 
-def outlook7(m7: dict, dam: dict, inflow30: list, past30: list, fut7: list, curves7: dict | None, normal: float | None) -> dict | None:
+def outlook7(m7: dict, dam: dict, inflow30: list, past30: list, fut7: list, curves7: dict | None, normal: float | None,
+             rain: dict | None = None) -> dict | None:
     """The dam's 7-day outlook with its E-7D-IN model (D-104): inflow per horizon — the model where it beat persistence by
     ≥ 10 % on the choosing half, today's inflow elsewhere — with its tested band; storage with today's release held and the
     monthly loss term; the position against the upper rule curve per day; the test that justifies the method."""
@@ -223,7 +237,7 @@ def outlook7(m7: dict, dam: dict, inflow30: list, past30: list, fut7: list, curv
     if float(dam["storage_mcm"]) <= 0:
         return None
     d0 = dt.date.fromisoformat(str(dam["dam_date"])[:10])
-    inflow = inflow_path7(m7, inflow30, past30, fut7, d0)
+    inflow = inflow_path7(m7, inflow30, past30, fut7, d0, rain=rain)
     dates = [(d0 + dt.timedelta(days=k)).isoformat() for k in range(1, 8)]
     loss = m7.get("loss_by_month") or {}
     rel = float(dam["released_mcm"])
@@ -334,12 +348,16 @@ def run() -> dict:
                     """SELECT dam_date::text AS d, inflow_mcm AS v FROM dam_daily WHERE dam_id=%s AND inflow_mcm IS NOT NULL
                        AND dam_date > %s::date - 30 AND dam_date <= %s::date""", (dam_id, d0, d0)).fetchall()}
                 inflow30 = [hist.get((d0 - dt.timedelta(days=j)).isoformat(), float("nan")) for j in range(29, -1, -1)]
-                era, fc = rain_inputs7(m7["points"], m7["models"], d0)
+                srcs = {str(hz.get("family") or m7.get("family") or "").split("_")[-1] for hz in (m7.get("horizons") or {}).values()}
+                srcs = {x for x in srcs if x in RAIN_SOURCES}
+                need = sorted({m for x in srcs for m in RAIN_SOURCES[x]} | set(m7.get("models") or []))
+                era, fc = rain_inputs7(m7["points"], need, d0)
                 past30, fut7 = compose_rain(era, fc, m7["scale"], d0, m7["models"])
+                rain = {x: compose_rain(era, fc, m7["scale"], d0, RAIN_SOURCES[x]) for x in srcs}
                 meta = c.execute("SELECT normal_mcm FROM dam WHERE dam_id=%s", (dam_id,)).fetchone() or {}
                 curves = db.get_state(c, f"dam_rule_curve_{dam_id}")
                 o = outlook7(m7, dict(row), inflow30, past30, fut7, impact.curves_ahead(curves, row["dam_date"]),
-                             (curves or {}).get("normal") or meta.get("normal_mcm"))
+                             (curves or {}).get("normal") or meta.get("normal_mcm"), rain=rain)
                 if o:
                     out[str(dam_id)] = {**o, "name_th": m7.get("name_th"), "dam_date": row["dam_date"]}
             except Exception:

@@ -639,7 +639,7 @@
     const worstDay = p.release.reduce((b, r, i) => { const w = worstAt(i); return w && (b.m == null || w.m < b.m) ? { i, m: w.m } : b; }, { i: 0, m: null }).i;
     const daysBar = '<div class="chips imp-days" role="group" aria-label="วันบนแผนที่">' + p.release.map((r, i) =>
       '<button type="button" class="chip' + (i === worstDay ? " on" : "") + '" data-day="' + i + '">' + (i + 1) + "</button>").join("") +
-      '</div><p class="muted imp-small">แผนที่: สีของแม่น้ำในวันที่เลือก (ตามสถานีที่ใกล้ที่สุด ไม่ใช่พื้นที่น้ำท่วม) <button type="button" class="btn" data-map-plan="1">🗺️ ดูบนแผนที่</button></p>';
+      '</div><p class="muted imp-small">สีแม่น้ำตามวันที่เลือก · ไม่ใช่พื้นที่น้ำท่วม <button type="button" class="btn" data-map-plan="1">🗺️ ดูบนแผนที่</button></p>';
     openSheet("<h2>" + (p.optimal ? "★ " : "") + esc(planWords(p)) + '</h2><p class="muted">' + sub + "</p>" + daysBar + chartSvg(p, cmp) +
       '<div class="imp-scroll"><table><thead><tr><th scope="col">วัน</th><th scope="col">ระบาย</th><th scope="col">อ่าง (ช่วง)</th><th scope="col">เทียบเส้นบน</th><th scope="col">ห่างตลิ่งต่ำสุด</th></tr></thead><tbody>' + rows + "</tbody></table></div>" + perPoint +
       '<ul class="imp-facts"><li>ล้าน ลบ.ม./วัน · อ่างเป็นค่ากลาง (ช่วง = น้ำไหลเข้าต่ำ–สูง) · เทียบเส้นบน = ปริมาตร − เส้นควบคุมบนของวันนั้น</li>' +

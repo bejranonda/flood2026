@@ -366,8 +366,9 @@ HII serves a second year per gauge (2024-09 … 2025-10) for ~80 % of sampled ga
 levels for two years, ERA5 hourly rain, no Flood Hub), the training rows cut to the last 400 days in the baseline arm.
 Two disjoint samples of 46 gauges: 24 h −9.0 → −8.3 % and −18.3 → −17.9 %, 48 h −8.5 → −7.6 % and −16.5 → −15.2 %
 (worse on both), 72 h −8.5 → −8.8 % and −10.4 → −13.4 % (better on both, 21 → 28 gauges served in sample 2) with more
-gauges made worse. Fails the two-sample gate. Idea for later: a longer history for the 72 h model only.
-research/2026-10-05_two_years_history.log.
+gauges made worse. Fails the two-sample gate. **The 72 h-only variant (2026-10-06)** is answered by the same log —
+it equals the two-year arm at 72 h: sample 1 −8.8 vs −8.5 % (3 vs 4 gauges worse), sample 2 −13.4 vs −10.4 % (**4 vs 2**
+worse) → fails on gauges made worse; not shipped. research/2026-10-05_two_years_history.log.
 
 ### 9b. Reservoir inflow nationwide (owner 2026-10-05: "not only the water level … inflow, reservoir and much more")
 Daily inflow for every RID dam (HII) against ERA5 catchment rain (HydroBASINS lev08 upstream basins), fit 2018–2024,

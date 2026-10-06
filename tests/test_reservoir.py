@@ -199,3 +199,18 @@ def test_the_recursive_model_runs_on_the_composed_rain_day_by_day():
     p = R.inflow_path7(m7, [5.0] * 30, [0.0] * 30, [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0], dt.date(2026, 10, 5))
     assert p[0]["method"] == "persistence" and p[0]["mid"] == 5.0
     assert [x["mid"] for x in p[1:]] == [8.0, 11.0, 11.0, 11.0, 11.0, 11.0] and p[1]["method"] == "model"
+
+
+def test_each_horizon_can_use_its_own_family_and_rain_source():
+    import datetime as dt
+    d0 = dt.date(2026, 10, 5)
+    par_d = {"mu": [0.0] * 12, "sd": [1.0] * 12, "w": [1.0] + [0.0] * 11, "ymean": 1.0}      # today's inflow + 1
+    beta = [0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]                                          # inflow(d−1) + rain(d)
+    m7 = {"family": "D_E3", "horizons": {
+        "1": {"use": "D_bm", "family": "D_bm", "params": par_d, "band_model": [0, 0], "band_persist": [0, 0]},
+        "2": {"use": "R_gfs", "family": "R_gfs", "params": {"beta": beta}, "band_model": [0, 0], "band_persist": [0, 0]}}}
+    rain = {"bm": ([0.0] * 30, [9.0] * 7), "gfs": ([0.0] * 30, [1.0, 2.0, 0, 0, 0, 0, 0])}
+    p = R.inflow_path7(m7, [5.0] * 30, [0.0] * 30, [0.0] * 7, d0, rain=rain)
+    assert p[0]["mid"] == 6.0 and p[0]["method"] == "model"     # the direct model (bm rain does not enter its first weight)
+    assert p[1]["mid"] == 8.0 and p[1]["method"] == "model"     # the recursion on GFS's rain: 5 + 1 + 2
+    assert p[2]["method"] == "persistence"

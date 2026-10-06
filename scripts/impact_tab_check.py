@@ -66,6 +66,10 @@ with sync_playwright() as p:
         # ★ card → plan sheet with 7 day-rows and the chart
         pg.locator("#imp-sc .imp-hero").first.click(); pg.wait_for_selector("#sheet:not([hidden]) .imp-svg", timeout=8000)
         r["sheet_rows"] = pg.locator("#detail > .imp-sheet > .imp-scroll tbody tr").count()
+        # the plan's day on the map (D-105): seven day chips, the river legend, ONWR's layers control
+        r["plan_day_chips"] = pg.locator("#detail [data-day]").count()
+        r["reach_legend"] = pg.locator(".imp-reach-legend").count()
+        r["onwr_ctl"] = pg.locator(".imp-onwr-ctl").count()
         pg.screenshot(path=f"{OUT}/tab_{name}_plan_sheet.png", full_page=False)
         pg.click("#detail .close"); pg.wait_for_timeout(300)
         r["sheet_closed"] = pg.evaluate("document.getElementById('sheet').hidden")
