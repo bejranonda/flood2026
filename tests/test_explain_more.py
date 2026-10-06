@@ -174,3 +174,14 @@ def test_station_codes_in_the_rule_line_do_not_make_an_ai_line_foreign():
     own = "ห่างตลิ่งต่ำสุด 1.73 ม. (PCH001)"
     assert explain.check_item("จุดที่ห่างตลิ่งน้อยที่สุดคือ PCH001 ที่ 1.73 ม.", own) == []
     assert "not Thai" in explain.check_item("lowest margin at PCH001 1.73", own)
+
+
+def test_an_ai_item_may_not_add_advice_or_an_alarm_word_official_forbids():
+    # review round 1, D-110: _VERDICTS (the public ✨ card's words) only covers ปลอดภัย/ไม่ท่วม/แน่นอน; check_item must
+    # reject the rest of OFFICIAL's own banned list itself, without widening _VERDICTS (that would change check()).
+    from floodwatch import explain
+    own = "★ แผนตามเกณฑ์: 14→8 ทยอย → อ่างวันที่ 7 720 · ห่างตลิ่งต่ำสุด 0.16 ม. (B.10)"
+    issues = explain.check_item("ควรใช้แผน 14→8 ทยอย เพราะอ่างวันที่ 7 720 ห่างตลิ่งต่ำสุด 0.16 ม. (B.10)", own)
+    assert issues and any("ควร" in i for i in issues)
+    assert explain.check_item("แผน 14→8 ทยอย ทำให้อ่างวันที่ 7 720 ห่างตลิ่งต่ำสุด 0.16 ม. (B.10)", own) == []
+    assert "advice or alarm" not in " ".join(explain.check("ควรติดตามข่าว", "บทสรุป: น้ำทรงตัว"))  # check() itself unchanged

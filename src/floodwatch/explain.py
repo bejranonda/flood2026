@@ -659,13 +659,18 @@ OFFICIAL = ("คุณช่วยเรียบเรียงข้อมู�
             "ห้ามใช้คำว่า ปลอดภัย ไม่ท่วม แน่นอน ควร อันตราย วิกฤต ตอบเป็นภาษาไทยเท่านั้น ไม่ใส่อีโมจิ ไม่ต้องใส่ครับ ค่ะ หรือคะ "
             "ตอบเฉพาะข้อความ")
 ITEM_MAX = 160  # characters in one brief bullet (GUIDELINES §6c-9: no paragraph over 160)
+# OFFICIAL bans these; check()'s _VERDICTS only covers "ปลอดภัย"/"ไม่ท่วม"/"แน่นอน" (the public ✨ card's own words) —
+# check_item below rejects the rest itself rather than widening _VERDICTS, which would change the public card (D-110).
+OFFICIAL_BANNED = ("ควร", "แนะนำ", "ดีกว่า", "อันตราย", "วิกฤต")
 
 
 def check_item(text: str, own: str) -> list[str]:
-    """`check` for officials' lines: Latin letters are allowed when they are the station codes of the rule line itself."""
+    """`check` for officials' lines: Latin letters are allowed when they are the station codes of the rule line itself;
+    advice or alarm words OFFICIAL forbids (review round 1, D-110) are rejected unless the rule line itself says them."""
     issues = check(text, own)
     if "not Thai" in issues and all(w in own for w in re.findall(r"[A-Za-z]{3,}", text)):
         issues.remove("not Thai")
+    issues += [f"advice or alarm '{w}'" for w in OFFICIAL_BANNED if w in text and w not in own]
     return issues
 
 
