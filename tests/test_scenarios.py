@@ -190,3 +190,44 @@ def test_a_goal_has_a_best_plan_only_when_the_plans_differ_on_it():
     same = [_row("x", storage_end=700.0), _row("y", storage_end=700.4)]
     assert sc.best_for(same)["water"] is None and sc.best_for(same)["city"] is None
     assert sc.EFFECT_TH["worst"] == "ห่างตลิ่งมากสุด"
+
+
+def test_a_day_cell_is_the_worst_gauge_with_outside_and_km_and_rows_carry_their_status():
+    b18 = {"margin_m": 0.18, "outside": True}
+    down = {"B.18": [b18, dict(b18)],
+            "B.10": [{"margin_m": 5.0, "outside": False}, {"margin_m": 0.1, "outside": False}],
+            "B.16": [{"margin_m": None, "outside": False}, {"margin_m": -0.2, "outside": True}]}
+    req = {"B.18": [0.08, 0.1], "B.10": [0.12, 0.22], "B.16": 0.3}
+    cells = sc.day_cells(down, req, {"B.18": 62.4, "B.10": 45.8, "B.16": 11.4}, days=2)
+    assert cells[0] == {"status": "ok", "outside": True, "km": 0.0, "codes": [], "worst_code": "B.18", "worst_margin": 0.18,
+                        "worst_req": 0.08}
+    assert cells[1]["status"] == "over" and cells[1]["codes"] == ["B.10", "B.16"] and cells[1]["km"] == 57.2
+    assert cells[1]["worst_code"] == "B.16" and cells[1]["outside"] is True
+    assert down["B.10"][1]["status"] == "near" and down["B.16"][0]["status"] == "none" and down["B.18"][0]["status"] == "ok"
+
+
+def test_a_day_without_any_margin_is_none_not_ok():
+    # Review Focus 1: a stale feed (every margin None) is grey "none" with 0 km, never blue
+    cells = sc.day_cells({"B.10": [{"margin_m": None}], "B.16": [{"margin_m": None}]}, {"B.10": [0.1]}, {"B.10": 45.8}, days=1)
+    assert cells == [{"status": "none", "outside": False, "km": 0.0, "codes": [], "worst_code": None, "worst_margin": None,
+                      "worst_req": None}]
+
+
+def test_outside_detail_names_each_gauge_its_days_its_highest_flow_and_the_ratings_range():
+    from test_impact import STATE
+    down = sc.daily_downstream(STATE, [21.6] * 7, diversion_cms=63.0)
+    det = {o["code"]: o for o in sc.outside_detail(down, STATE["points"])}
+    assert det["B.18"]["days"] == [1, 2, 3, 4, 5, 6, 7] and det["B.18"]["qmax"] == 150.0 and det["B.18"]["flow_max"] > 260
+    assert det["B.10"]["days"] == [2, 3, 4, 5, 6, 7]
+    assert "B.16" not in det  # 205 m³/s < the 300 its rating has seen
+    # the city gauge reads B.16's flow (its rating_from), as impact.whatif does
+    assert det["B.15"]["days"] == [3, 4, 5, 6, 7] and abs(det["B.15"]["flow_max"] - max(r["flow_cms"] for r in down["B.16"])) < 0.2
+
+
+def test_short_labels_for_the_grid():
+    assert sc.short_label({"kind": "hold", "release": [10.63] * 7}) == "10.6 วันนี้"
+    assert sc.short_label({"kind": "constant", "release": [21.5] * 7}) == "21.5 คงที่"
+    assert sc.short_label({"kind": "ramp", "release": [22.0, 18.67, 15.33, 12.0, 8.67, 5.33, 2.0]}) == "22→2 ทยอย"
+    assert sc.short_label({"kind": "front", "release": [6.0] * 3 + [12.0] * 4}) == "6→12 สองช่วง"
+    assert sc.short_label({"kind": "custom", "release": [12.5] * 7}) == "กำหนดเอง 12.5"
+    assert sc.short_label({"kind": "custom", "release": [12.0, 13, 14, 15, 16, 17, 18.5]}) == "กำหนดเอง 12→18.5"

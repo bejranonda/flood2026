@@ -224,6 +224,97 @@ def _req_txt(c: str, m) -> str:
     return f"{c} ≥ {m:.2f} ม."
 
 
+RANK = {"none": 0, "ok": 1, "near": 2, "over": 3}
+
+
+def gauge_status(margin: float | None, req: float | None) -> str:
+    """One gauge on one day (D-110): 'over' its bank, 'near' it (closer than that day's tested error), 'ok', or 'none'."""
+    if margin is None:
+        return "none"
+    if margin < 0:
+        return "over"
+    if req is not None and margin < req:
+        return "near"
+    return "ok"
+
+
+def _req(margin_req: dict | None, code: str, d: int) -> float | None:
+    v = (margin_req or {}).get(code)
+    if isinstance(v, (list, tuple)):
+        return v[d] if d < len(v) else None
+    return v
+
+
+def day_cells(down: dict, margin_req: dict | None, reach_km: dict | None = None, days: int = DAYS) -> list[dict]:
+    """The grid's cells for one plan (D-110), computed once here: per day the worst gauge's status, whether any gauge runs
+    beyond its rating's data, the km of river whose nearest gauge is near or over its bank, those gauges, and the worst
+    gauge with its margin and that day's tested error (the cell's title). Stamps each downstream row's own `status`, so the
+    map and the sheet read the same rule."""
+    out = []
+    for d in range(days):
+        worst, codes, outside = None, [], False
+        for code, rows in down.items():
+            if d >= len(rows):
+                continue
+            r = rows[d]
+            req = _req(margin_req, code, d)
+            s = gauge_status(r.get("margin_m"), req)
+            r["status"] = s
+            outside = outside or bool(r.get("outside"))
+            if s in ("near", "over"):
+                codes.append(code)
+            if s != "none" and (worst is None or RANK[s] > RANK[worst[0]]
+                                or (RANK[s] == RANK[worst[0]] and r["margin_m"] < worst[2])):
+                worst = (s, code, r["margin_m"], req)
+        out.append({"status": worst[0] if worst else "none", "outside": outside,
+                    "km": round(sum((reach_km or {}).get(c, 0.0) for c in codes), 1), "codes": codes,
+                    "worst_code": worst[1] if worst else None, "worst_margin": round(worst[2], 3) if worst else None,
+                    "worst_req": worst[3] if worst else None})
+    return out
+
+
+def outside_detail(down: dict, points: list[dict]) -> list[dict]:
+    """Every gauge a plan runs beyond its rating's data (D-110, KI-319): the days (1-based), the plan's highest flow on those
+    days (m³/s; a city gauge reads its rating_from gauge's flow, as impact.whatif does) and the highest flow in the
+    rating's data (qmax)."""
+    by = {p["code"]: p for p in points}
+    out = []
+    for code, rows in down.items():
+        days = [d + 1 for d, r in enumerate(rows) if r.get("outside")]
+        if not days:
+            continue
+        src = (by.get(code) or {}).get("rating_from")
+        flows = []
+        for d in days:
+            f = rows[d - 1].get("flow_cms")
+            if f is None and src in down and d - 1 < len(down[src]):
+                f = down[src][d - 1].get("flow_cms")
+            if f is not None:
+                flows.append(f)
+        qmax = ((by.get(code) or {}).get("rating") or {}).get("qmax")
+        out.append({"code": code, "days": days, "flow_max": round(max(flows), 1) if flows else None,
+                    "qmax": round(qmax, 1) if qmax is not None else None})
+    return out
+
+
+def _c(x: float) -> str:
+    """22.0 → '22', 10.5 → '10.5' (a short label; the sheet carries the full words)."""
+    return f"{x:.1f}".rstrip("0").rstrip(".")
+
+
+def short_label(plan: dict) -> str:
+    """The grid's plan label (D-110): '21.5 คงที่', '10.6 วันนี้', '22→2 ทยอย', '6→12 สองช่วง', 'กำหนดเอง 12→18.5'."""
+    r, kind = plan["release"], plan.get("kind")
+    flat = len(set(r)) == 1
+    if kind == "hold":
+        return f"{r[0]:.1f} วันนี้"
+    if kind == "custom":
+        return "กำหนดเอง " + (f"{r[0]:.1f}" if flat else f"{_c(r[0])}→{_c(r[-1])}")
+    if flat:
+        return f"{r[0]:.1f} คงที่"
+    return f"{_c(r[0])}→{_c(r[-1])} " + ("ทยอย" if kind == "ramp" else "สองช่วง")
+
+
 def compare(state: dict, inflow_today: float, upper: list[float], lower: list[float], normal: float,
             max_release: float, max_storage: float | None = None, custom: list[float] | None = None,
             diversion_cms: float | None = None, city: tuple = ("B.15", "PCH001"), inflow_path: list | None = None) -> dict:
