@@ -249,3 +249,20 @@ def test_the_case_endpoint_serves_onwr_cells_inside_the_case_box_only(monkeypatc
     tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
     out = json.loads(api.impact_case(Req(tok), "kaeng-krachan").body)
     assert out["onwr"]["layers"]["flood-warn"]["features"] == [near]
+
+
+def test_scenarios_take_up_to_three_custom_plans(monkeypatch):
+    from test_impact import STATE
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = {**STATE, "case": "kaeng-krachan", "built_at": "2026-10-05T12:00:00+00:00", "validation": {"whatif_ready": False},
+          "dam": {**STATE["dam"], "storage_mcm": 725.85, "inflow_mcm": 10.33},
+          "scenario_inputs": {"curves7": {"upper": [593.0] * 7, "lower": [204.0] * 7, "dates": ["2026-10-%02d" % d for d in range(6, 13)]},
+                              "normal_mcm": 710.0, "max_mcm": 900.0, "release_cap": 25.0, "release_max_seen": 24.36}}
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st)
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    three = ";".join(",".join([str(v)] * 7) for v in (12, 14, 16))
+    out = json.loads(api.impact_scenarios(Req(tok), "kaeng-krachan", release=three, diversion_cms=None).body)
+    assert sorted(p["release"][0] for p in out["plans"] if p["kind"] == "custom") == [12.0, 14.0, 16.0]
+    with pytest.raises(HTTPException) as e:
+        api.impact_scenarios(Req(tok), "kaeng-krachan", release=three + ";" + ",".join(["18"] * 7), diversion_cms=None)
+    assert e.value.status_code == 422

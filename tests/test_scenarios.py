@@ -231,3 +231,36 @@ def test_short_labels_for_the_grid():
     assert sc.short_label({"kind": "front", "release": [6.0] * 3 + [12.0] * 4}) == "6→12 สองช่วง"
     assert sc.short_label({"kind": "custom", "release": [12.5] * 7}) == "กำหนดเอง 12.5"
     assert sc.short_label({"kind": "custom", "release": [12.0, 13, 14, 15, 16, 17, 18.5]}) == "กำหนดเอง 12→18.5"
+
+
+def test_the_comparison_carries_the_grid_ladder_roles_labels_days_and_outside_flags():
+    st = _r7_state()
+    st["reach_km"] = {"B.18": 62.4, "B.10": 45.8, "B.16": 11.4, "B.15": 21.0}
+    st["places"] = {"B.10": [{"village": "บ้านท่าโล้", "amphoe": "ท่ายาง"}]}
+    cmp = sc.compare(st, inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0,
+                     customs=[[12.0] * 7, [20.0] * 7])
+    by = {p["id"]: p for p in cmp["plans"]}
+    assert [by[i]["release"][0] for i in cmp["ladder"]] == [float(x) for x in range(0, 25, 2)]  # 0, 2 … 24
+    assert all("ladder" in by[i]["roles"] for i in cmp["ladder"])
+    star = by[cmp["optimal"]["id"]]
+    assert "star" in star["roles"] and star["label"] and len(star["days"]) == 7
+    assert {"status", "outside", "km", "codes"} <= set(star["days"][0])
+    customs = [p for p in cmp["plans"] if p["kind"] == "custom"]
+    assert [p["release"][0] for p in customs] == [12.0, 20.0] and all("custom" in p["roles"] for p in customs)
+    big = next(p for p in customs if p["release"][0] == 20.0)
+    assert big["outside_any"] and big["outside_detail"][0]["code"] == "B.18"  # ≈ 231 m³/s + local > 150 seen
+    assert cmp["places"]["B.10"][0]["village"] == "บ้านท่าโล้" and cmp["reach_km"]["B.18"] == 62.4
+    assert all(p["downstream"]["B.10"][0].get("status") for p in cmp["plans"])
+    only = [p for p in cmp["plans"] if p["roles"] == ["ladder"]]
+    assert only and "level" not in only[0]["downstream"]["B.10"][0]  # ladder rungs travel light
+    assert set(cmp["picks"]) <= set(by) and all("pick" in by[i]["roles"] for i in cmp["picks"])
+    import json as _j
+    assert len(_j.dumps(cmp, ensure_ascii=False)) < 150_000
+
+
+def test_a_custom_plan_equal_to_todays_keeps_both_rows():
+    # Review Focus 4: today's release typed again is a custom row beside the hold row, not a replacement
+    cmp = sc.compare(_r7_state(), inflow_today=10.3, upper=[600.0] * 7, lower=[200.0] * 7, normal=710.0, max_release=24.0,
+                     customs=[[10.8] * 7])
+    kinds = [p["kind"] for p in cmp["plans"] if p["release"] == [10.8] * 7]
+    assert sorted(kinds) == ["custom", "hold"]

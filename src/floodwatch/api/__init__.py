@@ -747,14 +747,19 @@ def _impact_compare(case_id: str, release: str | None, diversion_cms: float | No
     if not st.get("points") or not c7.get("upper") or any(v is None for v in c7["upper"] + c7["lower"]) \
             or (st.get("dam") or {}).get("inflow_mcm") is None or not si.get("normal_mcm"):
         raise HTTPException(503, "scenario inputs not ready")
-    custom = None
+    customs = None
     if release:
-        try:
-            custom = [float(x) for x in release.split(",")]
-        except ValueError:
-            raise HTTPException(422, "release: 7 numbers, ล้าน ลบ.ม./วัน")
-        if len(custom) != 7 or any(not (0 <= x <= 200) for x in custom):
-            raise HTTPException(422, "release: 7 numbers between 0 and 200")
+        customs = []
+        for part in release.split(";"):
+            try:
+                vals = [float(x) for x in part.split(",")]
+            except ValueError:
+                raise HTTPException(422, "release: 7 numbers, ล้าน ลบ.ม./วัน")
+            if len(vals) != 7 or any(not (0 <= x <= 200) for x in vals):
+                raise HTTPException(422, "release: 7 numbers between 0 and 200")
+            customs.append(vals)
+        if len(customs) > 3:
+            raise HTTPException(422, "release: at most 3 plans")
 
     # the dam's tested 7-day inflow (D-104), only when its outlook is for today's record and a model passed somewhere
     o = ((_impact_state("reservoir_outlook") or {}).get("dams") or {}).get(str(impact.CASES[case_id]["dam_ids"]["RID"])) or {}
@@ -764,7 +769,7 @@ def _impact_compare(case_id: str, release: str | None, diversion_cms: float | No
     def build():
         return scenarios.compare(st, inflow_today=float(st["dam"]["inflow_mcm"]), upper=c7["upper"], lower=c7["lower"],
                                  normal=float(si["normal_mcm"]), max_release=float(si["release_cap"]), max_storage=si.get("max_mcm"),
-                                 custom=custom, diversion_cms=diversion_cms, inflow_path=path)
+                                 customs=customs, diversion_cms=diversion_cms, inflow_path=path)
     out = _memo(("impact_scenarios", case_id, release or "", diversion_cms, st.get("built_at"), bool(path)), build, ttl=600)
     return {**out, "dates": c7.get("dates"), "inputs": si, "dam": st.get("dam"), "built_at": st.get("built_at"),
             "downstream_validated": bool((st.get("validation") or {}).get("whatif_ready")),
@@ -773,16 +778,17 @@ def _impact_compare(case_id: str, release: str | None, diversion_cms: float | No
 
 
 @app.get("/api/impact/case/{case_id}/scenarios", include_in_schema=False)
-def impact_scenarios(request: Request, case_id: str, release: str | None = Query(None, max_length=200),
+def impact_scenarios(request: Request, case_id: str, release: str | None = Query(None, max_length=400),
                      diversion_cms: float | None = Query(None, ge=0, le=2000)):
     """The 7-day release scenarios (D-101): plans found by search, judged on every effect, ★ by the stated rule; `release`
-    = a custom plan, 7 daily values in ล้าน ลบ.ม./วัน. Downstream numbers are unvalidated and labelled so (D-099)."""
+    = up to three of the session's own plans, each 7 daily values in ล้าน ลบ.ม./วัน joined by ',', plans joined by ';'
+    (D-110). Downstream numbers are unvalidated and labelled so (D-099)."""
     _impact_require(request)
     return JSONResponse(_impact_compare(case_id, release, diversion_cms), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
 @app.get("/api/impact/case/{case_id}/explain", include_in_schema=False)
-def impact_explain(request: Request, case_id: str, release: str | None = Query(None, max_length=200),
+def impact_explain(request: Request, case_id: str, release: str | None = Query(None, max_length=400),
                    diversion_cms: float | None = Query(None, ge=0, le=2000), part: str | None = Query(None, max_length=8),
                    q: str | None = Query(None, max_length=16)):
     """✨ for the scenarios: the rules write the story and lines; GLM may retell them (part=gist), never decide (D-068)."""

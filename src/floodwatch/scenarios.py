@@ -315,11 +315,27 @@ def short_label(plan: dict) -> str:
     return f"{_c(r[0])}→{_c(r[-1])} " + ("ทยอย" if kind == "ramp" else "สองช่วง")
 
 
+RUNG = 2.0  # the release ladder's step (ล้าน ลบ.ม./วัน): 0, 2, 4 … up to the search cap (D-110)
+
+
+def ladder_ids(rows: list[dict], max_release: float, step: float = RUNG) -> list[str]:
+    """The ids of the constant plans at 0, step, 2·step … ≤ max_release; today's 'hold' stands in when it sits on a rung."""
+    out = []
+    for k in range(int(max_release // step) + 1):
+        r = round(k * step, 2)
+        row = next((x for x in rows if x["kind"] in ("constant", "hold") and len(set(x["release"])) == 1
+                    and abs(x["release"][0] - r) < 1e-9), None)
+        if row:
+            out.append(row["id"])
+    return out
+
+
 def compare(state: dict, inflow_today: float, upper: list[float], lower: list[float], normal: float,
-            max_release: float, max_storage: float | None = None, custom: list[float] | None = None,
+            max_release: float, max_storage: float | None = None, customs: list[list[float]] | None = None,
             diversion_cms: float | None = None, city: tuple = ("B.15", "PCH001"), inflow_path: list | None = None) -> dict:
-    """The whole comparison: every candidate (and the custom plan) evaluated with today's inflow held (mid) and the
-    persistence band (low/high storage), best plan per effect, the ★ optimal, and the plans worth showing."""
+    """The whole comparison: every candidate (and up to three custom plans) evaluated with today's inflow held (mid) and
+    the persistence band (low/high storage), best plan per effect, the ★ optimal, and the plans worth showing — with
+    roles, labels, day cells and outside-the-data detail for the grid (D-110)."""
     dam = state.get("dam") or {}
     storage0 = float(dam.get("storage_mcm") or 0.0)
     today = float(dam.get("released_mcm") or 0.0)
@@ -347,8 +363,8 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
         vp = ((state.get("validation") or {}).get("points") or {})
         margin_req = {c: (v.get("methods") or {}).get("absolute", 0.0) / 100.0 for c, v in vp.items()}
     plans = candidate_plans(today, max_release, days)
-    if custom:
-        plans.append({"kind": "custom", "release": [round(float(x), 2) for x in custom]})
+    for c in customs or []:  # up to three of the session's own plans, newest first (D-110)
+        plans.append({"kind": "custom", "release": [round(float(x), 2) for x in c]})
     rows = []
     for i, p in enumerate(plans):
         storage = water_balance(storage0, inflow_mid, p["release"])
@@ -362,14 +378,29 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
     feas = feasible(rows, storage0, upper[0], max_storage, lower[0])
     best = best_for(feas or rows)  # per-effect bests among the plans a decision maker may consider
     opt = optimal(rows, storage0, upper[0], normal, max_storage, lower[0])
-    show_ids = [r["id"] for r in rows if r["kind"] in ("hold", "custom")] + [opt["id"]] + list(best.values())
+    rung_ids = ladder_ids(rows, max_release)
+    pick_ids = list(dict.fromkeys(v for v in best.values() if v))
+    show_ids = [r["id"] for r in rows if r["kind"] in ("hold", "custom")] + [opt["id"]] + pick_ids + rung_ids
+    reach_km = state.get("reach_km") or {}
     seen, show = set(), []
     for rid in show_ids:
-        if rid and rid not in seen:
-            seen.add(rid)
-            r = next(x for x in rows if x["id"] == rid)
-            show.append({**r, "best_for": [k for k in EFFECT_KEYS if best[k] == rid], "optimal": rid == opt["id"],
-                         "feasible": any(f["id"] == rid for f in feas)})
+        if not rid or rid in seen:
+            continue
+        seen.add(rid)
+        r = next(x for x in rows if x["id"] == rid)
+        roles = (["star"] if rid == opt["id"] else []) + (["today"] if r["kind"] == "hold" else []) + \
+                (["custom"] if r["kind"] == "custom" else []) + (["pick"] if rid in pick_ids else []) + \
+                (["ladder"] if rid in rung_ids else [])
+        cells = day_cells(r["downstream"], margin_req, reach_km, days)
+        detail = outside_detail(r["downstream"], state["points"])
+        down = r["downstream"] if roles != ["ladder"] else {  # ladder rungs travel light: margins, flows, flags
+            c: [{k: v for k, v in x.items() if k not in ("level", "overflow")} for x in xs] for c, xs in r["downstream"].items()}
+        km = [d["km"] for d in cells]
+        show.append({**r, "downstream": down, "roles": roles, "label": short_label(r), "days": cells,
+                     "km_max": max(km, default=0.0), "km_days": [d + 1 for d, k in enumerate(km) if k > 0],
+                     "outside_detail": detail, "outside_any": bool(detail),
+                     "best_for": [k for k in EFFECT_KEYS if best[k] == rid], "optimal": rid == opt["id"],
+                     "feasible": any(f["id"] == rid for f in feas)})
     model_days = [k + 1 for k, p in enumerate((inflow_path or [])[:days]) if p.get("method") == "model"] if tested else []
     model_note = (f"แบบจำลองจากฝนคาดการณ์ (วันที่ {model_days[0]}–{model_days[-1]}) ที่ผ่านการทดสอบสองชุด" if len(model_days) > 1 else
                   f"แบบจำลองจากฝนคาดการณ์ (วันที่ {model_days[0]})" if model_days else "")
@@ -380,6 +411,7 @@ def compare(state: dict, inflow_today: float, upper: list[float], lower: list[fl
                                      "note": model_note if tested else ("คงน้ำไหลเข้าวันนี้ ช่วง = ความคลาดเคลื่อนของวิธีนี้เองที่ 1–7 วัน" + (" (ช่วงน้ำไหลเข้ามาก กว้างกว่าปกติมาก)" if (HIGH_BAND and inflow_today >= HIGH_INFLOW) else " (ปี 2568–69)") + "; แบบจำลองจากฝนแพ้วิธีนี้ทุกช่วงในการทดสอบ 2026-10-05 จึงไม่ใช้")},
             "upper": upper, "lower": lower, "normal": normal, "max_storage": max_storage, "max_release": max_release,
             "candidates": len(rows), "feasible": len(feas), "best_for": best, "optimal": opt, "plans": show,
+            "ladder": rung_ids, "picks": pick_ids, "reach_km": reach_km, "places": state.get("places") or {},
             "margin_req": margin_req, "downstream": downstream,
             "constraints": ["ทุกจุดห่างตลิ่ง (ของหน่วยงานผู้วัด) มากกว่าความคลาดเคลื่อนของแบบจำลองท้ายน้ำ: " +
                             ", ".join(_req_txt(c, m) for c, m in sorted(margin_req.items())) + (" (วันที่ 1–7)" if r7e else ""),
