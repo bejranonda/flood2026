@@ -143,8 +143,9 @@ with sync_playwright() as p:
             r["session_expiry_shows_login"] = True
         except Exception:
             r["session_expiry_shows_login"] = False
-        pg.fill("#imp-pw", os.environ["IMPACT_PW"]); pg.click("#imp-login button[type=submit]")
-        pg.wait_for_selector("#imp-sc .imp-grid, .imp-dams .item", timeout=40000)  # back on the case it was showing
+        if r["session_expiry_shows_login"]:
+            pg.fill("#imp-pw", os.environ["IMPACT_PW"]); pg.click("#imp-login button[type=submit]")
+            pg.wait_for_selector("#imp-sc .imp-grid, .imp-dams .item", timeout=40000)  # back on the case it was showing
         pg.click("#imp-logout"); pg.wait_for_selector("#imp-login", timeout=8000)
         r["after_logout_markers"] = pg.locator(".imp-dam-icon").count()
         r["after_logout_overlays"] = pg.evaluate("document.querySelectorAll('.imp-onwr-grp, .imp-reach-legend').length")
