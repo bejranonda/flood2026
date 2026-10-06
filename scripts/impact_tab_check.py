@@ -65,7 +65,7 @@ with sync_playwright() as p:
         r["onwr_unchecked"] = pg.evaluate("[...document.querySelectorAll('[data-onwr]')].every(c => !c.checked)")
         r["old_onwr_ctl"] = pg.locator(".imp-onwr-ctl").count()
         if name == "desk":
-            r["map_follows_case"] = pg.evaluate("(() => { const c = (window.map || map).getCenter(); return c.lat > 12.5 && c.lat < 13.4 && c.lng > 99.2 && c.lng < 100.2; })()")
+            r["map_follows_case"] = pg.evaluate("(() => { const c = map.getCenter(); return c.lat > 12.5 && c.lat < 13.4 && c.lng > 99.2 && c.lng < 100.2; })()")
             pg.locator("#imp-sc .imp-gr").nth(1).click(); pg.wait_for_timeout(500)
             r["row_select_sel"] = pg.locator("#imp-sc .imp-gr.imp-sel").count()
             pg.click('[data-dayh="2"]'); pg.wait_for_timeout(500)
