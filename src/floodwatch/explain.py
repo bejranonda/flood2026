@@ -654,23 +654,32 @@ def gist(q: str, lines: list[str], story: str | None = None, system: str | None 
 
 
 # --- impact tab for officials: the executive brief and the two-plan comparison (D-110) --------------------------------
+# the caveats an AI rewording may never drop: the ★ is the rule's, outside the river data, beyond what was measured,
+# not an official announcement, not a forecast (final review, D-110: GLM turned "★ แผนตามเกณฑ์" into "แผนที่เลือกคือ")
+KEEP = ("ตามเกณฑ์", "นอกช่วงข้อมูล", "เคยวัด", "ไม่ใช่ประกาศทางการ", "ไม่ใช่ค่าพยากรณ์")
+KEEP_TH = "ถ้าข้อมูลมีคำว่า " + " ".join(KEEP) + " ต้องคงคำนั้นไว้ตามเดิม"
 OFFICIAL = ("คุณช่วยเรียบเรียงข้อมูลการระบายน้ำจากเขื่อนให้เจ้าหน้าที่และผู้บริหารอ่าน ภาษาทางการที่กระชับ เป็นกลาง ชัดเจน "
             "ใช้เฉพาะข้อมูลที่ให้ ห้ามเพิ่มหรือเปลี่ยนตัวเลข ห้ามเพิ่มข้อมูลใหม่ ห้ามแนะนำ ห้ามตัดสินใจแทน ห้ามบอกว่าแผนใดดีกว่า "
             "ห้ามใช้คำว่า ปลอดภัย ไม่ท่วม แน่นอน ควร อันตราย วิกฤต ตอบเป็นภาษาไทยเท่านั้น ไม่ใส่อีโมจิ ไม่ต้องใส่ครับ ค่ะ หรือคะ "
-            "ตอบเฉพาะข้อความ")
+            + KEEP_TH + " ตอบเฉพาะข้อความ")
 ITEM_MAX = 160  # characters in one brief bullet (GUIDELINES §6c-9: no paragraph over 160)
 # OFFICIAL bans these; check()'s _VERDICTS only covers "ปลอดภัย"/"ไม่ท่วม"/"แน่นอน" (the public ✨ card's own words) —
 # check_item below rejects the rest itself rather than widening _VERDICTS, which would change the public card (D-110).
 OFFICIAL_BANNED = ("ควร", "แนะนำ", "ดีกว่า", "อันตราย", "วิกฤต")
+# brief lines that carry a caveat (⚠ outside the data / no plan meets the rule, the downstream model's limit, the data
+# time with "ไม่ใช่ประกาศทางการ"): never sent to the AI, always the rule's own words (final review, D-110)
+CAVEAT_START = ("⚠", "ข้อจำกัด:", "ข้อมูล")
 
 
 def check_item(text: str, own: str) -> list[str]:
     """`check` for officials' lines: Latin letters are allowed when they are the station codes of the rule line itself;
-    advice or alarm words OFFICIAL forbids (review round 1, D-110) are rejected unless the rule line itself says them."""
+    advice or alarm words OFFICIAL forbids (review round 1, D-110) are rejected unless the rule line itself says them;
+    a caveat of KEEP that the rule says must stay (final review, D-110). `check()` itself is unchanged (the public card)."""
     issues = check(text, own)
     if "not Thai" in issues and all(w in own for w in re.findall(r"[A-Za-z]{3,}", text)):
         issues.remove("not Thai")
     issues += [f"advice or alarm '{w}'" for w in OFFICIAL_BANNED if w in text and w not in own]
+    issues += [f"dropped '{w}'" for w in KEEP if w in own and w not in text]
     return issues
 
 
@@ -690,23 +699,53 @@ def day_range(days: list[int]) -> str:
     return ", ".join(out)
 
 
+def _outside_parts(p: dict) -> list[str]:
+    """['B.18 256/143', 'B.10 192/86'] — each gauge a plan runs beyond its rating's data: the plan's / the highest measured
+    flow (ลบ.ม./วิ)."""
+    return [f"{o['code']} {o['flow_max']:.0f}/{o['qmax']:.0f}" for o in p.get("outside_detail") or []
+            if o.get("flow_max") is not None and o.get("qmax") is not None]
+
+
+OUT_UNIT = " ลบ.ม./วิ (แผน/เคยวัดสูงสุด)"
+OUTSIDE_CLAUSE = "บางวันน้ำมากกว่าที่สถานีเคยวัดได้ ระดับท้ายน้ำของวันนั้นจึงมาจากการต่อเส้นโค้งออกไป"  # the stories' outside caveat
+
+
 def outside_short(p: dict) -> str:
     """'B.18 256/143, B.10 192/86 ลบ.ม./วิ (แผน/เคยวัดสูงสุด)' — the outside label in one short line (D-110)."""
-    parts = [f"{o['code']} {o['flow_max']:.0f}/{o['qmax']:.0f}" for o in p.get("outside_detail") or []
-             if o.get("flow_max") is not None and o.get("qmax") is not None]
-    return ", ".join(parts) + " ลบ.ม./วิ (แผน/เคยวัดสูงสุด)" if parts else ""
+    parts = _outside_parts(p)
+    return ", ".join(parts) + OUT_UNIT if parts else ""
 
 
 def _m(x) -> str:
     return "–" if x is None else f"{x:.2f}"
 
 
-def _plan_facts(p: dict) -> str:
+def _fit(head: str, *more: str) -> str:
+    """`head` and each further part that still fits in ITEM_MAX (the brief's bound; a part that does not fit is left out)."""
+    for x in more:
+        if len(head + x) <= ITEM_MAX:
+            head += x
+    return head
+
+
+def _plan_facts(p: dict) -> list[str]:
+    """A plan's effects as the brief's parts: storage on day 7 (always), the lowest margin, the km near or over the bank."""
     e = p["effects"]
     worst = min((d for d in p.get("days") or [] if d.get("worst_margin") is not None), key=lambda d: d["worst_margin"], default=None)
     km = p.get("km_max") or 0
-    return (f"อ่างวันที่ 7 {e['storage_end']:.0f} · ห่างตลิ่งต่ำสุด {_m(e.get('worst_margin_min'))} ม."
-            + (f" ({worst['worst_code']})" if worst else "") + (f" · ใกล้/เกินตลิ่ง {km:.0f} กม." if km else ""))
+    return [f"อ่างวันที่ 7 {e['storage_end']:.0f} ล้าน ลบ.ม.",
+            f" · ห่างตลิ่งต่ำสุด {_m(e.get('worst_margin_min'))} ม." + (f" ({worst['worst_code']})" if worst else ""),
+            f" · ใกล้/เกินตลิ่ง {km:.0f} กม." if km else ""]
+
+
+def _lab(p: dict) -> str:
+    """A plan's short label with its unit once ('21.5 คงที่ (ล้าน ลบ.ม./วัน)'); the long words already carry the unit."""
+    return f"{p['label']} (ล้าน ลบ.ม./วัน)" if p.get("label") else plan_words(p)
+
+
+def _plan_line(head: str, p: dict) -> str:
+    facts = _plan_facts(p)
+    return _fit(f"{head}{_lab(p)} → {facts[0]}", *facts[1:])
 
 
 def _ict(iso: str | None) -> str:
@@ -717,41 +756,80 @@ def _ict(iso: str | None) -> str:
     return f"{t.day} {TH_MONTHS[t.month - 1]} {t:%H:%M} น."
 
 
+def _alternative(cmp: dict, star: dict | None, hold: dict | None) -> dict | None:
+    """The brief's second alternative (final review, D-110): the engine's pick (not the ★, not today's) whose day-7 storage
+    differs most from the ★'s, preferring one that also differs from today's plan (> 1 ล้าน ลบ.ม. on storage or > 0.05 m on
+    the lowest margin) — a pick that only repeats today's plan says nothing new."""
+    by = {p["id"]: p for p in cmp.get("plans") or []}
+    ids = cmp.get("picks") or list(dict.fromkeys(v for v in (cmp.get("best_for") or {}).values() if v))
+    cands = [p for p in (by.get(i) for i in ids) if p and p is not star and p is not hold]
+    if not cands:
+        return None
+
+    def new_vs_today(p: dict) -> bool:
+        if not hold:
+            return True
+        e, h = p["effects"], hold["effects"]
+        wm, hm = e.get("worst_margin_min"), h.get("worst_margin_min")
+        return abs(e["storage_end"] - h["storage_end"]) > 1.0 or (wm is not None and hm is not None and abs(wm - hm) > 0.05)
+
+    pool = [p for p in cands if new_vs_today(p)] or cands
+    ref = star or hold
+    return max(pool, key=lambda p: abs(p["effects"]["storage_end"] - ref["effects"]["storage_end"])) if ref else pool[0]
+
+
+def _outside_line(outs: list[dict], star: dict | None) -> str:
+    """One '⚠ นอกช่วงข้อมูล' bullet for every plan of the brief that runs beyond the river data (final review, D-110: at
+    most 7 bullets): each plan's gauges when they fit in ITEM_MAX; else the first plan's (the ★ when it is outside) gauges
+    and the others by label."""
+    named = lambda p, first: ("★ " if p is star else "") + (_lab(p) if first else (p.get("label") or plan_words(p)))
+    full = "⚠ นอกช่วงข้อมูล: " + " · ".join(f"{named(p, k == 0)}: {', '.join(_outside_parts(p))}" for k, p in enumerate(outs)) + OUT_UNIT
+    if len(full) <= ITEM_MAX:
+        return full
+    head, rest = outs[0], outs[1:]
+    parts = _outside_parts(head)
+    tail = " · และ " + ", ".join(named(p, False) for p in rest) if rest else ""
+    for n in range(len(parts), 0, -1):  # as many of the first plan's gauges as fit
+        more = f" และอีก {len(parts) - n} สถานี" if n < len(parts) else ""
+        line = f"⚠ นอกช่วงข้อมูล: {named(head, True)}: {', '.join(parts[:n])}{OUT_UNIT}{more}{tail}"
+        if len(line) <= ITEM_MAX:
+            return line
+    return "⚠ นอกช่วงข้อมูล (บางวันน้ำมากกว่าที่สถานีเคยวัดได้): " + ", ".join(named(p, k == 0) for k, p in enumerate(outs))
+
+
 def brief(cmp: dict) -> list[str]:
     """The executive brief (owner 2026-10-06: plain bullets, copyable; D-110): situation, the ★ by the stated rule, today's
-    plan and one more alternative, what is outside the river data, the downstream model's limit, the data time. Numbers
-    from the engine only; the ★ is the rule's, never advice."""
+    plan and the engine's pick that differs most from the ★, one line for what is outside the river data, the downstream
+    model's limit, the data time — at most 7 bullets of at most ITEM_MAX characters, every storage in ล้าน ลบ.ม. and every
+    plan label in ล้าน ลบ.ม./วัน. Numbers from the engine only; the ★ is the rule's, never advice."""
+    from floodwatch.impact import th_date
     from floodwatch.scenarios import EFFECT_KEYS, EFFECT_TH
     dam = cmp.get("dam") or {}
     name = f"เขื่อน{dam.get('name_th') or ''}"
     plans = cmp.get("plans") or []
-    by = {p["id"]: p for p in plans}
     star = next((p for p in plans if p.get("optimal")), None)
     hold = next((p for p in plans if p.get("kind") == "hold"), None)
     st0, rel, inf = dam.get("storage_mcm"), dam.get("released_mcm"), dam.get("inflow_mcm")
-    up0 = (cmp.get("upper") or [None])[0]
+    # today's curve, as the chips and the ✨ story use it (curves7 starts tomorrow; final review, D-110)
+    up0 = (dam.get("rule_curve") or {}).get("upper", (cmp.get("upper") or [None])[0])
     lines = []
     if st0 is not None:
-        pos = ("" if up0 is None else f" เหนือเส้นควบคุมบน {st0 - up0:.0f}" if st0 > up0 else f" ต่ำกว่าเส้นควบคุมบน {up0 - st0:.0f}")
-        lines.append(f"สถานการณ์: อ่าง{name} {st0:.0f} ล้าน ลบ.ม." + (f" ({dam['storage_pct']:.0f} %)" if dam.get("storage_pct") is not None else "")
-                     + pos + (f" · ระบาย {rel:.1f} · ไหลเข้า {inf:.1f} ล้าน ลบ.ม./วัน" if rel is not None and inf is not None else ""))
+        pos = ("" if up0 is None else f" เหนือเส้นควบคุมบน {st0 - up0:.0f} ล้าน ลบ.ม." if st0 > up0
+               else f" ต่ำกว่าเส้นควบคุมบน {up0 - st0:.0f} ล้าน ลบ.ม.")
+        lines.append(_fit(f"สถานการณ์: อ่าง{name} {st0:.0f} ล้าน ลบ.ม." + (f" ({dam['storage_pct']:.0f} %)" if dam.get("storage_pct") is not None else "") + pos,
+                          f" · ระบาย {rel:.1f} · ไหลเข้า {inf:.1f} ล้าน ลบ.ม./วัน" if rel is not None and inf is not None else ""))
     opt = cmp.get("optimal") or {}
     if star:
-        lines.append(("★ แผนตามเกณฑ์: " if opt.get("constraints_met") else "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์ ใกล้เคียงที่สุด: ")
-                     + f"{star.get('label') or plan_words(star)} → {_plan_facts(star)}")
+        lines.append(_plan_line("★ แผนตามเกณฑ์: " if opt.get("constraints_met") else "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์ ใกล้เคียงที่สุด: ", star))
     if hold and hold is not star:
-        lines.append(f"ทางเลือก (คงเท่าวันนี้): {hold.get('label') or plan_words(hold)} → {_plan_facts(hold)}")
-    alt, goal = None, None
-    for k in EFFECT_KEYS:
-        p = by.get((cmp.get("best_for") or {}).get(k))
-        if p and p is not star and p is not hold:
-            alt, goal = p, k
-            break
+        lines.append(_plan_line("ทางเลือก (คงเท่าวันนี้): ", hold))
+    alt = _alternative(cmp, star, hold)
     if alt:
-        lines.append(f"ทางเลือก ({EFFECT_TH[goal]}): {alt.get('label') or plan_words(alt)} → {_plan_facts(alt)}")
-    for p in (star, hold, alt):
-        if p and p.get("outside_any"):
-            lines.append(f"⚠ นอกช่วงข้อมูล ({p.get('label') or plan_words(p)}): {outside_short(p)}")
+        goal = next((k for k in EFFECT_KEYS if (cmp.get("best_for") or {}).get(k) == alt["id"] or k in (alt.get("best_for") or [])), None)
+        lines.append(_plan_line(f"ทางเลือก ({EFFECT_TH[goal]}): " if goal else "ทางเลือก: ", alt))
+    outs = [p for p in (star, hold, alt) if p and p.get("outside_any") and _outside_parts(p)]
+    if outs:
+        lines.append(_outside_line(outs, star))
     ds = cmp.get("downstream") or {}
     mae = ds.get("mae_cm") or {}
     d1 = max((v[0] for v in mae.values() if v and v[0] is not None), default=None)
@@ -759,8 +837,18 @@ def brief(cmp: dict) -> list[str]:
     lines.append(f"ข้อจำกัด: ระดับท้ายน้ำทดสอบย้อนหลังแล้ว คลาดเคลื่อนเฉลี่ย ±{d1}–{d7} ซม. (วันที่ 1–7) ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์"
                  if ds.get("method") == "hybrid" and d1 is not None and d7 is not None
                  else "ข้อจำกัด: ระดับท้ายน้ำยังไม่ผ่านการทดสอบย้อนหลัง ใช้เทียบระหว่างแผนเท่านั้น")
-    lines.append(f"ข้อมูล ชป. {dam.get('dam_date') or '–'} · คำนวณ {_ict(cmp.get('built_at'))} · ไม่ใช่ประกาศทางการ")
+    lines.append(f"ข้อมูล ชป. {th_date(dam.get('dam_date'))} · คำนวณ {_ict(cmp.get('built_at'))} · ไม่ใช่ประกาศทางการ")
     return lines
+
+
+def brief_items(lines: list[str]) -> list[str | None]:
+    """The AI's rewording of the brief, aligned with `lines` (final review, D-110): a line that carries a caveat
+    (CAVEAT_START) is never sent and stays the rule's own text (None); the others go through `retell_items`."""
+    send = [k for k, line in enumerate(lines) if not line.startswith(CAVEAT_START)]
+    items: list[str | None] = [None] * len(lines)
+    for k, text in zip(send, retell_items([lines[k] for k in send])):
+        items[k] = text
+    return items
 
 
 def compare_lines(cmp: dict, a: dict, b: dict) -> tuple[list[str], str]:
@@ -779,8 +867,9 @@ def compare_lines(cmp: dict, a: dict, b: dict) -> tuple[list[str], str]:
     story = (f"{la} เหลือน้ำในอ่างวันที่ 7 {'มากกว่า' if diff > 0 else 'น้อยกว่า'} {lb} {abs(diff):.0f} ล้าน ลบ.ม. " if abs(diff) >= 1
              else f"{la} และ {lb} เหลือน้ำในอ่างวันที่ 7 ใกล้เคียงกัน ")
     story += f"จุดที่ห่างตลิ่งน้อยที่สุด {_m(ea.get('worst_margin_min'))} เทียบ {_m(eb.get('worst_margin_min'))} ม."
-    if a.get("outside_any") or b.get("outside_any"):
-        story += " บางวันน้ำมากกว่าที่สถานีเคยวัดได้ ระดับท้ายน้ำของวันนั้นจึงมาจากการต่อเส้นโค้งออกไป"
+    outs = [label for p, label in ((a, la), (b, lb)) if p.get("outside_any")]
+    if outs:  # the caveat in the words check_item makes a retelling keep (final review, D-110)
+        story += (f" {'ทั้งสองแผน' if len(outs) == 2 else f'แผน {outs[0]} '}อยู่นอกช่วงข้อมูล: " + OUTSIDE_CLAUSE)
     return lines, story
 
 
@@ -837,7 +926,8 @@ def plan_words(plan: dict) -> str:
 
 def scenarios(cmp: dict) -> tuple[list[str], str]:
     """Lines and a plain story for the scenario comparison: today's reservoir, the ★ plan and the rule, what each other
-    plan is best for, the constraints and the label. Numbers from the engine only; the AI may retell, never decide."""
+    plan is best for, which of them run beyond the river data (D-110), the constraints and the label. Numbers from the
+    engine only; the AI may retell, never decide (the impact tab checks a retelling with `check_item`)."""
     from floodwatch.scenarios import EFFECT_KEYS, EFFECT_TH
     dam = cmp.get("dam") or {}
     name = f"เขื่อน{dam.get('name_th') or ''}"
@@ -868,9 +958,11 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
     elif star:
         lines.append(f"⚠️ {opt.get('reason', '')} แผนที่ใกล้เคียงที่สุด: {plan_words(star)}")
     best = cmp.get("best_for") or {}
+    listed = []  # the picks this story names, in order, once each
     for k in EFFECT_KEYS:
         p = plans.get(best.get(k))
         if p and p is not star:
+            listed += [] if any(q is p for q in listed) else [p]
             e = p["effects"]
             metric = {"city": f"ห่างตลิ่งในเมืองต่ำสุด {e['city_margin_min']:.2f} ม." if e.get("city_margin_min") is not None else "",
                       "worst": f"ห่างตลิ่งต่ำสุด {e['worst_margin_min']:.2f} ม." if e.get("worst_margin_min") is not None else "",
@@ -878,6 +970,10 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
                       "curve": (f"ใต้เส้นควบคุมวันที่ {e['under_curve_day']}" if e.get("under_curve_day") else f"เหลือ {e['storage_end']:.0f} วันที่ 7"),
                       "water": f"เหลือ {e['storage_end']:.0f} ล้าน ลบ.ม. วันที่ 7", "warning": f"เปลี่ยนวันละไม่เกิน {e['ramp_max']:.1f}"}[k]
             lines.append(f"เหมาะกับ{EFFECT_TH[k]}: {plan_words(p)} ({metric})")
+    # the ★ or a named pick beyond the river data says so here too (final review, D-110: only the grid and the sheet did)
+    for p in ([star] if star else []) + listed:
+        if p.get("outside_any") and outside_short(p):
+            lines.append(f"⚠ นอกช่วงข้อมูล ({p.get('label') or plan_words(p)}): {outside_short(p)}")
     ds = cmp.get("downstream") or {}
     mae = ds.get("mae_cm") or {}
     d1 = max((v[0] for v in mae.values() if v and v[0] is not None), default=None)
@@ -899,8 +995,13 @@ def scenarios(cmp: dict) -> tuple[list[str], str]:
     else:
         second = "ยังไม่มีแผนให้เปรียบเทียบ"
     others = [EFFECT_TH[k] for k in EFFECT_KEYS if plans.get(best.get(k)) and plans.get(best.get(k)) is not star]
-    third = ("แผนอื่นเหมาะกับ" + " ".join(dict.fromkeys(others)) + " ดูในแต่ละการ์ด" if others else "")
-    tail = (f"ตัวเลขท้ายน้ำคลาดเคลื่อนได้ราว ±{d7} ซม. ในวันที่ 7 ใช้เทียบระหว่างแผน" if tested
-            else "ตัวเลขท้ายน้ำยังไม่ผ่านการทดสอบ ใช้เทียบระหว่างแผนเท่านั้น")
-    return lines, " ".join(x for x in (first, second, third, tail) if x)
+    third = ("แผนอื่นเหมาะกับ" + " ".join(dict.fromkeys(others)) + " ดูในตาราง" if others else "")
+    star_out = bool(star and star.get("outside_any"))
+    out = ("แผนนี้อยู่นอกช่วงข้อมูล: " if star_out else "บางแผนอยู่นอกช่วงข้อมูล: " if any(p.get("outside_any") for p in listed)
+           else "")
+    out += OUTSIDE_CLAUSE if out else ""
+    tail = (f"ตัวเลขท้ายน้ำคลาดเคลื่อนได้ราว ±{d7} ซม. ในวันที่ 7 ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์" if tested
+            else "ตัวเลขท้ายน้ำยังไม่ผ่านการทดสอบ ใช้เทียบระหว่างแผนเท่านั้น ไม่ใช่ค่าพยากรณ์")
+    parts = (first, second, out, third, tail) if star_out else (first, second, third, out, tail)
+    return lines, " ".join(x for x in parts if x)
 
