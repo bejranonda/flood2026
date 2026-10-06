@@ -149,7 +149,8 @@ with sync_playwright() as p:
         pg.click("#imp-logout"); pg.wait_for_selector("#imp-login", timeout=8000)
         r["after_logout_markers"] = pg.locator(".imp-dam-icon").count()
         r["after_logout_overlays"] = pg.evaluate("document.querySelectorAll('.imp-onwr-grp, .imp-reach-legend').length")
-        r["console_errors"] = [e for e in errs if "status of 401" not in e]
+        # 401 = the login probe; "Executing inline script" = Cloudflare's injected script under the page's CSP (KI-294, expected)
+        r["console_errors"] = [e for e in errs if "status of 401" not in e and "Executing inline script violates" not in e]
         rep[name] = r
         ctx.close()
     b.close()

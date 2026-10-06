@@ -215,12 +215,19 @@ def main() -> None:
     rid = (ROOT / "src/floodwatch/data/station_coords_rid.json").exists()
     rows.append(("RID", "RID gate coordinates imported (exact positions for ATG*/HDA*/TCP*)", "done" if rid else "open",
                  "station_coords_rid.json present" if rid else "not provided"))
+    # DISK (2026-10-06): the server's free space, checked here; done below 70 % used (OWNER_ACTIONS DISK)
+    import shutil
+    du = shutil.disk_usage("/")
+    pct = -(-100 * du.used // (du.used + du.free))  # as df's Use% (rounded up; root's reserved blocks excluded)
+    rows.append(("DISK", "Free space on the server (clean up, or a volume for the raw archive)", "done" if pct < 70 else "open",
+                 f"{pct} % used, {du.free / 1e9:.0f} GB free"))
     for qid, title in (("Q19", "Who reads user feedback (notes), how often"),
                        ("Q7", "Notifications (LINE / Web Push) wanted?"), ("Q22", "Traffy text labelling / voice reports with Workers AI?"),
                        ("EGRESS", "Reliable Thai egress before a public national launch (KI-110, D-046)"),
                        ("BMA", "Courtesy note to the flood69 relay / BMA about showing their data (D-031)"),
                        ("FLOODMAP", "Flood-coverage maps by release level below Kaeng Krachan from ONWR/RID (D-105)"),
-                       ("DEM", "Higher-resolution DEM (LiDAR) for the Phetchaburi lowland (D-105)")):
+                       ("DEM", "Higher-resolution DEM (LiDAR) for the Phetchaburi lowland (D-105)"),
+                       ("UPTIME", "An external uptime check that alerts when /api/health fails (KI-246)")):
         rows.append((qid, title, "manual", "answer in chat or in docs/plan/OPEN_QUESTIONS.md"))
 
     if "--json" in sys.argv:
