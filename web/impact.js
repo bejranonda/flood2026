@@ -32,7 +32,7 @@
   let damMarkers = [];
   // app.js's map: it may exist already (a classic script's top-level binding) or announce itself later
   let mapRef = (typeof map !== "undefined" && map) || null;
-  document.addEventListener("fw:map", (e) => { mapRef = e.detail; drawDams(); if (state.sel !== "dams") drawCase(state.kase[state.sel]); });
+  document.addEventListener("fw:map", (e) => { mapRef = e.detail; drawDams(); if (state.authed && state.sel !== "dams") drawCase(state.kase[state.sel]); });
   window.FW_TABS = Object.assign(window.FW_TABS || {}, { impact: { show } });
 
   // the header says which page this is, and offers logout once logged in
@@ -54,7 +54,7 @@
   async function loadAll() {
     let r;
     try { r = await api("/api/impact/cases"); } catch (e) { msg("เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง"); return false; }
-    if (r.status === 401) { showLogin(state.notice || ""); state.notice = ""; return false; }
+    if (r.status === 401) { endSession(); showLogin(state.notice || ""); state.notice = ""; return false; }
     if (r.status === 503) { msg("หน้านี้ยังไม่ได้ตั้งค่า (ผู้ดูแลระบบต้องตั้งรหัสผ่านก่อน)"); return false; }
     if (!r.ok) { msg("โหลดข้อมูลไม่สำเร็จ (" + r.status + ")"); return false; }
     state.cases = (await r.json()).cases || [];
@@ -94,11 +94,29 @@
     try { await api("/api/impact/logout", { method: "POST" }); } catch (e) { /* the cookie expires by itself */ }
     state.authed = false; state.dams = null; state.kase = {}; state.sel = "dams";
     state.customs = []; state.selPlan = null; state.day = null;
-    for (const k of Object.keys(layers)) { if (layers[k]) { layers[k].remove(); layers[k] = null; } }
-    clearOnwr();  // ONWR's layers and a plan's map legend leave with the session too
-    if (reachLegend) { reachLegend.remove(); reachLegend = null; }
+    endSession();
     state.notice = "ออกจากระบบแล้ว";  // shown by the session check that setTab starts (no race with a second form)
     setTab("impact");
+  }
+
+  // what the session drew leaves the map with it — on logout and on a session that ran out (a 401 on any call; final
+  // review, D-110: the case's river, ONWR's group and a plan's legend stayed on the map behind the login form)
+  function clearCaseMap() {
+    if (layers.kase) { layers.kase.remove(); layers.kase = null; }
+    reachLayers = {};
+    clearOnwr();
+    if (reachLegend) { reachLegend.remove(); reachLegend = null; }
+  }
+  function endSession() {
+    if (layers.dams) { layers.dams.remove(); layers.dams = null; }
+    clearCaseMap();
+    const sheet = document.getElementById("sheet");
+    if (sheet && sheet.querySelector(".imp-sheet")) sheet.hidden = true;  // a sheet of this tab shows data behind the login
+  }
+  function expired() {
+    state.authed = false;
+    endSession();
+    showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่");
   }
 
   function render() {
@@ -110,9 +128,7 @@
       '<div class="regions imp-chips" role="group" aria-label="เลือกเรื่อง">' + chips.join("") + '</div><div id="imp-body"></div></div>';
     view.querySelectorAll("[data-imp]").forEach((b) => b.addEventListener("click", () => { state.sel = b.dataset.imp; render(); }));
     if (state.sel === "dams") {
-      if (layers.kase) { layers.kase.remove(); layers.kase = null; }
-      clearOnwr();
-      if (reachLegend) { reachLegend.remove(); reachLegend = null; }
+      clearCaseMap();
       renderDams();
     } else renderCase(state.sel);
   }
@@ -281,7 +297,7 @@
       body.innerHTML = '<p class="muted">กำลังโหลด…</p>';
       let r;
       try { r = await api("/api/impact/case/" + encodeURIComponent(id)); } catch (e) { body.innerHTML = '<p class="imp-err">เชื่อมต่อไม่ได้</p>'; return; }
-      if (r.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+      if (r.status === 401) return expired();
       if (!r.ok) { body.innerHTML = '<p class="imp-err">โหลดไม่สำเร็จ (' + r.status + ")</p>"; return; }
       st = state.kase[id] = await r.json();
     }
@@ -392,9 +408,9 @@
       const g = L.layerGroup();
       for (const f of lay.features || []) {
         const fill = lid === "flood-area-poly" ? ONWR_FILL.obs : (ONWR_FILL[f.cls] || ONWR_FILL[1]);
-        L.polygon(f.rings, { stroke: false, fillColor: fill, fillOpacity: 0.45 })
-          .bindTooltip("สทนช. · " + label + (f.cls ? " ระดับ " + f.cls : "") + (f.rai ? " · " + num(f.rai, 0) + " ไร่" : "") +
-            (lay.updated ? " · ข้อมูล ณ " + when(lay.updated) : ""), { sticky: true }).addTo(g);
+        L.polygon(f.rings, { stroke: false, fillColor: fill, fillOpacity: 0.45 })  // ONWR's fields are outside strings: escaped
+          .bindTooltip(esc("สทนช. · " + label + (f.cls ? " ระดับ " + f.cls : "") + (f.rai ? " · " + num(f.rai, 0) + " ไร่" : "") +
+            (lay.updated ? " · ข้อมูล ณ " + when(lay.updated) : "")), { sticky: true }).addTo(g);
       }
       onwrGroups[lid] = g;  // not on the map until its box is ticked
     }
@@ -515,7 +531,7 @@
     try { r = await api("/api/impact/case/" + encodeURIComponent(st.case) + "/scenarios" + (qp ? "?" + qp : "")); }
     catch (e) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="imp-err">เชื่อมต่อไม่ได้</p>'; return; }
     if (!state.authed || state.sel !== st.case || !sec.isConnected) return;  // left the case or logged out while this loaded (review round 1)
-    if (r.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+    if (r.status === 401) return expired();
     if (r.status === 503) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="muted">ยังไม่พร้อม: ต้องมีเส้นควบคุม น้ำไหลเข้า และปริมาตรปกติของวันนี้ (คำนวณใหม่ทุกชั่วโมง)</p>'; return; }
     if (!r.ok) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="imp-err">คำนวณไม่ได้ (' + r.status + ")</p>"; return; }
     const cmp = await r.json();
@@ -563,7 +579,7 @@
     const icons = (p.best_for || []).map((k) => '<span class="imp-gi" title="' + esc("เหมาะกับ" + EFFECT_TH[k]) + '" aria-label="' +
       esc("เหมาะกับ" + EFFECT_TH[k]) + '">' + EFFECT_ICON[k] + "</span>").join("");
     const out = p.outside_any ? '<span class="imp-out" title="' + esc(outsideText(p)) + '" aria-label="นอกช่วงข้อมูล">⚠</span>' : "";
-    const cells = (p.days || []).map((d, i) => '<td class="imp-c imp-c-' + d.status + (d.outside ? " imp-c-x" : "") +
+    const cells = (p.days || []).map((d, i) => '<td class="imp-c imp-c-' + esc(d.status) + (d.outside ? " imp-c-x" : "") +
       (state.day === i ? " imp-dsel" : "") + '" data-day="' + i + '" title="' + esc(cellTitle(d, i)) + '"><span></span></td>').join("");
     return '<tr class="imp-gr' + (p.feasible ? "" : " imp-infeasible") + (p.kind === "custom" ? " imp-custom-row" : "") +
       (state.selPlan === p.id ? " imp-sel" : "") + '" data-plan="' + esc(p.id) + '" tabindex="0">' +
@@ -599,12 +615,22 @@
       '<div class="imp-actions"><button type="button" class="btn" id="imp-custom-btn">➕ ลองแผนเอง</button>' + aiMenuHtml() + "</div>";
   }
 
+  // the grid marks the plan and the day the map shows; a plan sheet changes them too (final review, D-110: a sheet
+  // coloured the river for its plan while the grid still marked the row picked before)
+  function markGrid() {
+    const sec = document.getElementById("imp-sc");
+    if (!sec) return;
+    sec.querySelectorAll(".imp-gr").forEach((tr) => tr.classList.toggle("imp-sel", tr.dataset.plan === state.selPlan));
+    sec.querySelectorAll(".imp-dh").forEach((th, i) => th.classList.toggle("imp-dsel", i === state.day));
+    sec.querySelectorAll(".imp-c").forEach((td) => td.classList.toggle("imp-dsel", Number(td.dataset.day) === state.day));
+  }
+
   function bindGrid(sec, cmp, st) {
     const by = Object.fromEntries(cmp.plans.map((p) => [p.id, p]));
     const select = (id) => {
       if (!by[id]) return;
       state.selPlan = id;
-      sec.querySelectorAll(".imp-gr").forEach((tr) => tr.classList.toggle("imp-sel", tr.dataset.plan === id));
+      markGrid();
       colorReaches(cmp, by[id], state.day != null ? state.day : worstDay(by[id]));
     };
     sec.querySelectorAll(".imp-gr").forEach((tr) => {
@@ -619,8 +645,7 @@
     sec.querySelectorAll("[data-dayh]").forEach((b) => b.addEventListener("click", () => {
       const d = Number(b.dataset.dayh);
       state.day = state.day === d ? null : d;  // a second click on the same day goes back to each plan's worst day
-      sec.querySelectorAll(".imp-dh").forEach((th, i) => th.classList.toggle("imp-dsel", i === state.day));
-      sec.querySelectorAll(".imp-c").forEach((td) => td.classList.toggle("imp-dsel", Number(td.dataset.day) === state.day));
+      markGrid();
       select(state.selPlan && by[state.selPlan] ? state.selPlan : (cmp.optimal || {}).id);
     }));
     const lb = $(".imp-ladder-btn", sec);
@@ -659,7 +684,7 @@
       card.innerHTML = '<p class="muted">กำลังสรุป…</p>';
       let r;
       try { r = await api(url); } catch (e) { card.innerHTML = '<p class="imp-err">สรุปไม่ได้ ลองอีกครั้ง</p>'; return; }
-      if (r.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+      if (r.status === 401) return expired();
       if (!r.ok) { card.innerHTML = '<p class="imp-err">สรุปไม่ได้ (' + r.status + ")</p>"; return; }
       const data = await r.json();
       let lines = data.lines || [];
@@ -672,7 +697,7 @@
       if (!data.ai) return;
       try {
         const g = await api(url + "&part=gist");
-        if (g.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+        if (g.status === 401) return expired();
         const items = g.ok ? ((await g.json()).items || []) : [];
         if (card.hidden) return;
         const n = items.filter(Boolean).length;
@@ -721,7 +746,7 @@
       '<input id="imp-parse-text" type="text" maxlength="200" autocomplete="off" placeholder="เช่น ระบาย 15 สามวันแล้วลดเหลือ 10">' +
       '<button type="button" class="btn" id="imp-parse-btn">อ่านแผน</button></div><p class="muted" id="imp-parse-msg" aria-live="polite"></p></div>' +
       '<form id="imp-custom" class="imp-custom">' + [1, 2, 3, 4, 5, 6, 7].map((i) => "<label>วันที่ " + i +
-        '<input type="number" inputmode="decimal" step="any" min="0" max="200" value="' + esc(today) + '"></label>').join("") +
+        '<input type="number" inputmode="decimal" step="any" min="0" max="200" required value="' + esc(today) + '"></label>').join("") +
       '<button class="btn primary" type="submit">คำนวณ</button></form>', (box) => {
       const f = box.querySelector("#imp-custom"), msg = box.querySelector("#imp-parse-msg");
       box.querySelector("#imp-parse-btn").addEventListener("click", async () => {
@@ -733,7 +758,7 @@
           r = await api("/api/impact/case/" + encodeURIComponent(st.case) + "/parse",
             { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
         } catch (e) { msg.textContent = "เชื่อมต่อไม่ได้"; return; }
-        if (r.status === 401) { document.getElementById("sheet").hidden = true; state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
+        if (r.status === 401) return expired();  // also closes this sheet
         if (r.status === 429) { msg.textContent = "อ่านแผนบ่อยเกินไป รอ 15 นาที"; return; }
         if (!r.ok) { msg.textContent = "อ่านแผนนี้ไม่ได้ กรอกตัวเลขเอง"; return; }
         const out = await r.json();
@@ -810,11 +835,7 @@
       body.innerHTML = '<p class="story-text shimmer">กำลังสรุปให้…</p>';
       let r;
       try { r = await api(url); } catch (e) { return fillStory(card, url, open); }
-      if (r.status === 401) {
-        document.getElementById("sheet").hidden = true;
-        state.authed = false;
-        return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่");
-      }
+      if (r.status === 401) return expired();  // also closes the plan sheet this compare card sits in
       fillStory(card, url, open);
     });
   }
@@ -832,7 +853,7 @@
     const head = '<thead><tr><th scope="col">สถานี</th>' + p.release.map((r, i) => '<th scope="col">' + (i + 1) + "</th>").join("") + "</tr></thead>";
     const body = codes.map((c) => '<tr><th scope="row">' + esc(c) + "</th>" + p.downstream[c].map((r, i) => {
       const rq = cmp.margin_req ? cmp.margin_req[c] : null, req = Array.isArray(rq) ? rq[i] : rq;
-      return '<td class="imp-m imp-rc-' + (r.status || "none") + (r.outside ? " imp-c-x" : "") + (i === sel ? " imp-dsel" : "") + '" data-day="' + i + '" title="' +
+      return '<td class="imp-m imp-rc-' + esc(r.status || "none") + (r.outside ? " imp-c-x" : "") + (i === sel ? " imp-dsel" : "") + '" data-day="' + i + '" title="' +
         esc(c + " วันที่ " + (i + 1) + ": " + CELL_TH[r.status || "none"] + (req != null ? " · คลาดเคลื่อน ±" + num(req, 2) : "") + (r.outside ? " · ⚠ นอกช่วงข้อมูล" : "")) +
         '">' + num(r.margin_m, 2) + "</td>";
     }).join("") + "</tr>").join("");
@@ -840,12 +861,15 @@
   }
 
   function coverageHtml(cmp, p) {  // river km near or over the bank, and the villages along those stretches (D-110)
-    const days = (p.days || []).map((d, i) => [d, i]).filter(([d]) => d.km > 0);
+    // a day counts when any gauge is near or over its bank, with or without km (a gauge with no reach has 0 km: the cell
+    // is orange or red all the same, so the line may not say "ไม่มีช่วงใด…"; final review, D-110)
+    const days = (p.days || []).map((d, i) => [d, i]).filter(([d]) => (d.codes || []).length);
     if (!days.length) return '<p class="imp-cover">🌊 ไม่มีช่วงใดของแม่น้ำใกล้ตลิ่งใน 7 วัน</p>';
     const codes = [...new Set(days.flatMap(([d]) => d.codes || []))];
     const vill = codes.map((c) => villagesText(cmp, c)).filter(Boolean);
-    return '<p class="imp-cover">🌊 แม่น้ำใกล้/เกินตลิ่ง วันที่ ' + dayRange(days.map(([, i]) => i + 1)) + " ราว " + num(Math.max(...days.map(([d]) => d.km)), 0) +
-      " กม. (" + codes.map(esc).join(", ") + ") " + info("กม. = ความยาวแม่น้ำช่วงที่สถานีที่ใกล้ที่สุด (ไม่เกิน 10 กม.) ใกล้หรือเกินตลิ่งในวันนั้น — " +
+    const km = Math.max(...days.map(([d]) => d.km || 0));
+    return '<p class="imp-cover">🌊 แม่น้ำใกล้/เกินตลิ่ง วันที่ ' + dayRange(days.map(([, i]) => i + 1)) + (Math.round(km) > 0 ? " ราว " + num(km, 0) + " กม." : "") +
+      " (" + codes.map(esc).join(", ") + ") " + info("กม. = ความยาวแม่น้ำช่วงที่สถานีที่ใกล้ที่สุด (ไม่เกิน 10 กม.) ใกล้หรือเกินตลิ่งในวันนั้น — " +
         "สถานีเดียวแทนทั้งช่วง จึงเป็นค่าหยาบ · หมู่บ้าน: © OpenStreetMap contributors · ไม่ใช่พื้นที่น้ำท่วม", "กม. และหมู่บ้าน") + "</p>" +
       (vill.length ? '<ul class="imp-cover-v">' + vill.map((v) => "<li>" + esc(v) + "</li>").join("") + "</ul>" : "");
   }
@@ -853,6 +877,8 @@
   function openPlanSheet(cmp, id) {
     const p = cmp.plans.find((x) => x.id === id);
     if (!p) return;
+    state.selPlan = p.id;  // the sheet's plan is the grid's selected row and the map's plan
+    markGrid();
     const opt = cmp.optimal || {}, isStar = p.id === opt.id, e = p.effects;
     const kst = state.kase[state.sel];
     const sub = isStar ? (opt.constraints_met ? "★ ตามเกณฑ์ · " + shortWhy(p) : "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์ — ใกล้เคียงที่สุด")
@@ -886,15 +912,18 @@
         box.querySelectorAll(".imp-rgrid td").forEach((td) => td.classList.toggle("imp-dsel", Number(td.dataset.day) === d));
         colorReaches(cmp, p, d);
       };
-      box.querySelectorAll(".imp-days [data-day]").forEach((b) => b.addEventListener("click", () => pick(Number(b.dataset.day))));
+      box.querySelectorAll(".imp-days [data-day]").forEach((b) => b.addEventListener("click", () => {
+        state.day = Number(b.dataset.day);  // the day picked here is the grid's day too
+        markGrid();
+        pick(state.day);
+      }));
       const mp = box.querySelector("[data-map-plan]");
       if (mp) mp.addEventListener("click", () => { document.getElementById("sheet").hidden = true; if (kst) showCaseOnMap(kst); else setTab("map"); });
       if (cmpBox) {
         bindAskChecked(box, "/api/impact/case/" + encodeURIComponent(st0(kst)) + "/explain?q=compare&a=" + encodeURIComponent(p.release.join(",")) +
           "&b=" + encodeURIComponent(other.release.join(",")));
       }
-      pick(d0);
-      if (kst && !narrow()) showCaseOnMap(kst, false);  // desktop: the coloured river beside the sheet
+      pick(d0);  // the river beside the sheet; the map keeps the engineer's zoom (the case open already fitted it)
     });
   }
   const st0 = (kst) => (kst && kst.case) || state.sel;

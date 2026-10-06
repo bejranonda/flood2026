@@ -85,8 +85,6 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 #view-impact .item.imp-plan { cursor: pointer; border-left-color: #2f6fb0; }
 #view-impact .item.imp-opt { border-left-color: #f2b705; background: #fffdf3; }
 #view-impact .item.imp-infeasible { border-left-color: #c9ced6; color: var(--muted); }
-#view-impact .imp-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-#view-impact .imp-badge-eff { font-size: 12px; background: #e8f0fb; color: #0d3b66; border-radius: 10px; padding: 1px 8px; }
 #view-impact .imp-custom { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); margin: 6px 0; }
 #view-impact .imp-custom input { font: inherit; width: 4.6em; padding: 6px 4px; border: 1px solid var(--line); border-radius: 6px; min-height: 36px; color: var(--ink); }
 #view-impact .imp-custom .btn { min-height: 36px; padding: 4px 10px; }
@@ -123,17 +121,6 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 #view-impact .imp-block { margin: 10px 0; }
 #view-impact .imp-block h3 { margin: 0 0 6px; }
 #view-impact .conf-badge.imp-red { color: var(--critical); border-color: #f5c2bd; background: #fdecea; font-size: 12px; padding: 1px 8px; border-radius: 10px; }
-#view-impact .item.imp-hero { border-left-color: #f2b705; background: #fffdf3; cursor: pointer; }
-#view-impact .item.imp-hero-warn { border-left-color: var(--critical); background: #fff7f6; }
-#view-impact .imp-hero-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
-#view-impact .imp-hero-plan { font-size: 20px; font-weight: 700; margin: 4px 0 2px; }
-#view-impact .imp-hero-facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; margin: 2px 0 4px; }
-#view-impact .imp-rows { padding: 0; margin: 0; }
-#view-impact .item.imp-row { cursor: pointer; display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; padding-right: 28px; position: relative; }
-#view-impact .item.imp-row .meta { font-size: 14px; }
-#view-impact .item.imp-row .imp-badges { margin: 0; }
-#view-impact .item.imp-custom-row { border-left-color: var(--accent); }
-#view-impact .imp-chev { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 20px; }
 #view-impact .imp-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
 #view-impact .imp-actions .btn { min-height: 38px; }
 #view-impact .imp-strip { display: flex; align-items: center; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 6px; }
@@ -204,15 +191,6 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-sheet .imp-days { margin: 6px 0 2px; }
 .imp-sheet .imp-days .chip { min-width: 34px; justify-content: center; }
 .imp-sheet .imp-days .chip.on { background: #0d3b66; color: #fff; border-color: #0d3b66; }
-/* ONWR's layers over the case (2026-10-06) */
-.imp-onwr-ctl { background: #fff; border-radius: 8px; padding: 6px 9px; box-shadow: 0 1px 4px rgba(0,0,0,.25); font-size: 12px;
-  line-height: 1.5; max-width: 250px; }
-.imp-onwr-ctl summary { font-weight: 700; cursor: pointer; }
-.imp-onwr-ctl label { display: block; margin: 2px 0; }
-.imp-onwr-key { margin: 4px 0 2px; }
-.imp-onwr-key .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin: 0 2px 0 4px; }
-.imp-onwr-key .onwr-c1 { background: #fdd835; } .imp-onwr-key .onwr-c2 { background: #fb8c00; }
-.imp-onwr-key .onwr-c3 { background: #e53935; } .imp-onwr-key .onwr-obs { background: #1e88e5; }
 
 /* v0.34 (D-110): release plans as a comparison grid — one row per plan, a 7-day strip of the worst gauge, hatched where a
    gauge runs beyond its rating's data; the map follows the selected row and day */
@@ -260,6 +238,10 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-sheet .imp-rgrid td.imp-m { color: #fff; font-weight: 600; border-radius: 4px; min-width: 36px; }
 .imp-sheet .imp-rc-ok { background-color: var(--normal); } .imp-sheet .imp-rc-near { background-color: var(--warning); }
 .imp-sheet .imp-rc-over { background-color: var(--critical); } .imp-sheet .imp-rc-none { background-color: var(--unknown); }
+/* white on orange is 3.3:1 and on grey 3.1:1; the ink is 4.8 and 5.1 (blue 5.2 and red 5.6 keep white) — final review, D-110 */
+.imp-sheet .imp-rgrid td.imp-rc-near, .imp-sheet .imp-rgrid td.imp-rc-none { color: var(--ink); }
+/* white digits over the hatch's white stripes need a dark halo to stay readable */
+.imp-sheet .imp-rgrid td.imp-c-x.imp-rc-ok, .imp-sheet .imp-rgrid td.imp-c-x.imp-rc-over { text-shadow: 0 0 2px #000, 0 0 2px #000; }
 .imp-sheet .imp-rgrid td.imp-dsel { outline: 2px solid var(--ink); outline-offset: -1px; }
 .imp-sheet .imp-cover { font-size: 14px; margin: 8px 0 2px; }
 .imp-sheet .imp-cover-v { padding-left: 20px; margin: 2px 0 6px; font-size: 13px; color: var(--muted); }

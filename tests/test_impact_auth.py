@@ -137,6 +137,27 @@ def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     assert ".legend.layers" in js and "imp-onwr-grp" in js and "onwrCtl" not in js
 
 
+def test_the_impact_tab_keeps_its_final_review_fixes():
+    # final review (D-110), each checked in a browser with the app stubbed (scratchpad harness, 1366 px):
+    from pathlib import Path
+    web = Path(api.__file__).resolve().parents[3] / "web"
+    js, css = (web / "impact.js").read_text(), (web / "impact.css").read_text()
+    # a day with a gauge near or over its bank is named even when its reach has no km
+    assert "filter(([d]) => (d.codes || []).length)" in js and "Math.round(km) > 0 ?" in js
+    # ONWR's fields and the status enums are escaped where they enter HTML
+    assert 'bindTooltip(esc("สทนช. · "' in js and "imp-c-' + esc(d.status)" in js and "imp-rc-' + esc(r.status" in js
+    # a plan sheet is the grid's selected row and day; it no longer re-fits the map
+    assert "state.selPlan = p.id;" in js and "markGrid()" in js and "showCaseOnMap(kst, false)" not in js
+    # a session that ran out clears what it drew, on every 401 path
+    assert js.count("return expired();") == 6 and "endSession(); showLogin(state.notice" in js and "state.authed && state.sel" in js
+    assert "function clearCaseMap()" in js and "function endSession()" in js
+    # an emptied box cannot be computed as 0
+    assert 'max="200" required value="' in js
+    # dead CSS of the removed hero, rows and ONWR control is gone; dark digits where white is below 4.5:1
+    assert all(x not in css for x in (".imp-hero", ".imp-row", ".imp-chev", ".imp-onwr-ctl", ".imp-badges", ".imp-badge-eff"))
+    assert ".imp-sheet .imp-rgrid td.imp-rc-near, .imp-sheet .imp-rgrid td.imp-rc-none { color: var(--ink); }" in css
+
+
 def test_the_real_settings_reach_the_impact_endpoints():
     # the other tests stub _impact_conf; this one runs it (a missing import gave 500s on every endpoint)
     pw, secret = api._impact_conf()
