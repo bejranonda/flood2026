@@ -17,6 +17,9 @@ CASES = [
     ("๑๕ สองวันแรก แล้วเหลือ ๘", [15, 15, 8, 8, 8, 8, 8]),
     ("21.5 คงที่ 7 วัน", [21.5] * 7),
     ("10,12,14,16,18,20,22", [10, 12, 14, 16, 18, 20, 22]),
+    ("ทยอยลดจาก 20 เป็น 8 ใน 3 วัน", [20, 14, 8, 8, 8, 8, 8]),
+    ("ทยอยเพิ่มจาก 10 เป็น 16 ภายใน 4 วัน", [10, 12, 14, 16, 16, 16, 16]),
+    ("ทยอยลดจาก 20 เป็น 8 ภายใน 3 วันถัดไป", [20, 14, 8, 8, 8, 8, 8]),
 ]
 
 
@@ -25,7 +28,7 @@ def test_the_rules_read_common_thai_phrasings(text, want):
     assert pp.parse_rules(text, today=10.63) == [float(x) for x in want]
 
 
-@pytest.mark.parametrize("text", ["ระบายเยอะ ๆ", "300", "10 12 14", "", "   "])
+@pytest.mark.parametrize("text", ["ระบายเยอะ ๆ", "300", "10 12 14", "", "   ", "ทยอยลดจาก 20 เป็น 15 แล้วเหลือ 8", "ขึ้นเป็น 15", "ลงเหลือ 8"])
 def test_the_rules_refuse_what_they_cannot_read_and_values_above_200(text):
     assert pp.parse_rules(text, today=10.63) is None
 

@@ -14,7 +14,7 @@ TH_NUM = {"หนึ่ง": 1, "สอง": 2, "สาม": 3, "สี่": 4, 
 _TH_DIGITS = str.maketrans("๐๑๒๓๔๕๖๗๘๙", "0123456789")
 N = r"(\d+(?:\.\d+)?)"
 UNIT = r"(?:ล้าน\s*(?:ลบ\.?\s*ม\.?)?\s*(?:/\s*วัน)?\s*)?"
-CHANGE = re.compile(r"เพิ่ม|ลด|แล้ว|ทีละ|ค่อย|จากนั้น|ต่อด้วย")  # words that say the release changes over the week
+CHANGE = re.compile(r"เพิ่ม|ลด|ขึ้น|ลง|แล้ว|ทีละ|ค่อย|จากนั้น|ต่อด้วย")  # words that say the release changes over the week
 
 
 def _norm(text: str) -> str:
@@ -36,10 +36,15 @@ def parse_rules(text: str, today: float) -> list[float] | None:
     t = _norm(text)
     if not t:
         return None
-    m = re.search(r"ทยอย\S*\s*(?:จาก\s*)?" + N + r"\s*" + UNIT + r"(?:เป็น|ถึง|ไป|→|-)\s*" + N, t)
+    m = re.search(r"ทยอย\S*\s*(?:จาก\s*)?" + N + r"\s*" + UNIT + r"(?:เป็น|ถึง|ไป|→|-)\s*" + N + r"(.*)$", t)
     if m:
-        a, b = float(m.group(1)), float(m.group(2))
-        return _ok([a + (b - a) * k / (DAYS - 1) for k in range(DAYS)])
+        a, b, rest = float(m.group(1)), float(m.group(2)), m.group(3)
+        d = re.match(r"\s*(?:ล้าน\S*\s*)?(?:ภายใน|ใน)\s*(\d)\s*วัน", rest)
+        n = int(d.group(1)) if d else DAYS
+        rest = rest[d.end():] if d else rest
+        if not 2 <= n <= DAYS or re.search(r"\d", rest):  # a duration we cannot honour, or another clause with a number
+            return None
+        return _ok([a + (b - a) * min(k, n - 1) / (n - 1) for k in range(DAYS)])  # over n days, then hold b
     m = re.search(N + r"\s*" + UNIT + r"(\d)\s*วัน(?:แรก)?\s*(?:แล้ว|จากนั้น|ต่อด้วย)?\s*(?:ค่อย)?\s*(?:ลด|เพิ่ม)?\s*(?:ลง|ขึ้น)?\s*"
                   r"(?:เหลือ|เป็น|ไป)?\s*" + N, t)
     if m:
