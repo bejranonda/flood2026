@@ -142,13 +142,19 @@ flood2026/
 ├── docs/                     maintained documentation (this file, SOURCES, KNOWLEDGE, …)
 │   ├── brief/first_prompt.md   original project brief
 │   └── plan/                   roadmap, phase checklists, decisions, open questions
-├── research/                 research snapshots + VALIDATION report + validation/ script
+├── research/                 research snapshots, dated experiments (`2026-10-0x_*.py` + `.log`), VALIDATION report
+├── scripts/                  owner_status, UX and impact-tab checks, backtests, data preparation
+├── data/                     git-ignored: database files, the raw archive, the research ledger (`data/research`)
+├── private/                  git-ignored notes kept on the server (never committed)
 ├── src/floodwatch/
 │   ├── collectors/           one adapter per source (Phase 1)
 │   ├── archive/              immutable raw archive + R2 replication (Phase 1)
 │   ├── db/                   schema, migrations, spatial and time-series helpers (Phase 1)
 │   ├── forecast/             model ladder L0–L7, backtests (Phase 2)
-│   └── api/                  FastAPI backend (Phase 1 internal / Phase 3 public)
+│   ├── api/                  FastAPI backend (Phase 1 internal / Phase 3 public)
+│   ├── *.py                  one module per concern: point, explain, ai, risks, impact, reservoir, scenarios, mvt, …
+│   ├── model_gate.py         when a change makes a gauge or dam worse, beyond chance (D-107)
+│   └── research_quota.py     research calls to Open-Meteo, counted in a shared ledger (D-108)
 ├── web/                      Thai mobile-first frontend (Phase 3)
 ├── edge/                     Cloudflare cache rules, Pages, R2 notes (Phases 3–4)
 ├── infra/                    docker-compose, cloudflared template, backups, runbooks (Phases 1–4)

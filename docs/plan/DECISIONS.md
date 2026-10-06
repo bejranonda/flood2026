@@ -52,7 +52,7 @@
 
 ### D-010 — Tide constants are fitted, never copied
 - **Date:** 2026-09-26 · **Status:** accepted
-- **Context:** two hand-copied constant sets failed against observations (correlation −0.74 and +0.12) ([KI-301](../KNOWN_ISSUES.md)).
+- **Context:** two hand-copied constant sets failed against observations (correlation −0.74 and +0.12) ([KI-311](../KNOWN_ISSUES.md)).
 - **Decision:** use the Navy tables (converted to MSL) or our own `utide` fits on archived HII tidal stations (interim 30-day fits, then ≥ 1 year). Every tide prediction records its method and fit window.
 
 ### D-011 — Publish to GitHub as a private repository first

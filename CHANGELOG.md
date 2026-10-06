@@ -2,6 +2,15 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
+## Unreleased (docs only; the live site is v0.33.1)
+- **KNOWN_ISSUES IDs are unique again.** KI-301…307 had been used twice since v0.29 — for the original modelling issues
+  (2026-09-26) and for the impact tab's. The original ones are now **KI-311…317** (placeholder tide constants, the draft
+  hydraulic engine, managed operations, street-elevation benchmarks, as-issued archive, scale mismatch, point check); each
+  heading names its old number, and every reference in the repository points to the right entry. References to KI-301…307
+  in release notes from v0.29 on mean the impact tab's issues. KI-225's two write-ups are merged; the index lists every issue.
+- KNOWLEDGE §29 (what the 2026 record says about forecasting), GUIDELINES §6c-10, APPROACH §19.26, ARCHITECTURE's layout,
+  README (the 50 % range as issued), the docs index, research/README and the owner tracker's verification line.
+
 ## v0.33.1 — 2026-10-06
 - **The daily range calibration no longer undoes itself (KI-287).** `risks.band90_factors` measured coverage on stored
   ranges that were already widened by the factor in force, while the new factor is applied to the raw ranges; once five
@@ -673,7 +682,7 @@ All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__versio
   Load test after the fix (120 requests, 30 concurrent): 0 errors, median ~0.5 s, peak 11 DB connections.
 - Docs (after the tag): README rewritten as a public front page (value line in Thai/English, live link, safety
   notice, screenshots with alt text, plain features, API with a live sample, FAQ); PLAN, docs index, GUIDELINES,
-  ARCHITECTURE, KNOWN_ISSUES (KI-305 resolved), OWNER_ACTIONS (UPTIME) updated.
+  ARCHITECTURE, KNOWN_ISSUES (KI-315 resolved), OWNER_ACTIONS (UPTIME) updated.
 
 ## v0.15.1 — 2026-09-29
 - **GitHub issues reviewed against v0.15 (owner: keep the v0.15 concept):** #9 the desktop page now fits the screen

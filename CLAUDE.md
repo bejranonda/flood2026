@@ -24,7 +24,7 @@ Read [docs/OWNER_ACTIONS.md](docs/OWNER_ACTIONS.md) and run `python3 scripts/own
 - **Judge model changes honestly** ([GUIDELINES §4](docs/GUIDELINES.md)): choose earlier, score later, confirm on a disjoint sample; the newest season counts; a gauge or dam is "made worse" only beyond chance (`floodwatch.model_gate`, D-107); the 7-day impact tab has its own test (§4.5).
 
 ## Where things go
-Facts → KNOWLEDGE · pitfalls → KNOWN_ISSUES (KI-ID) · source tests → SOURCES · methods → APPROACH_AND_METHODS · decisions → plan/DECISIONS (D-ID) · owner questions → plan/OPEN_QUESTIONS · progress → plan/phase-*.md.
+Facts → KNOWLEDGE · pitfalls → KNOWN_ISSUES (KI-ID: the next number not used anywhere in the file) · source tests → SOURCES · methods → APPROACH_AND_METHODS · decisions → plan/DECISIONS (D-ID, likewise) · owner questions → plan/OPEN_QUESTIONS · progress → plan/phase-*.md.
 
 ## Useful commands
 - Research that calls Open-Meteo: `floodwatch.research_quota.get_json(url)` — 3,000 weighted calls a day shared by all research (D-108); in a container add `-v "$PWD/data/research:/data/research"`.

@@ -29,7 +29,7 @@ Probabilistic forecasts at +12 h / 1 / 2 / 3 / 7 d, and an estimate of when leve
 ### Statistical layer (L4–L5)
 - [ ] LightGBM quantile models (global per regime) with graph-lagged, neighbour, areal-rain, tide and calendar features; monotonic constraints
 - [ ] AR error correction; ensemble weather runs; CQR + ACI per station × lead
-- [ ] Training on **as-issued** NWP only once enough runs are archived; until then, widened intervals and disclosure ([KI-305](../KNOWN_ISSUES.md))
+- [ ] Training on **as-issued** NWP only once enough runs are archived; until then, widened intervals and disclosure ([KI-315](../KNOWN_ISSUES.md))
 
 ### Products
 - [ ] Recovery-date distribution (milestones: below bank / below warning / within the normal band), with conditions

@@ -143,7 +143,8 @@ Code: `floodwatch/forecast/__init__.py` (`evaluate`, `_backtest_errors`, `foreca
 - **Bands:** the 5/25/50/75/95 % empirical quantiles of the chosen method's backtest errors are added to its live
   prediction (a split-conformal style band); 90 % coverage in the backtest is stored (`coverage90_backtest`). Since v0.26.0
   the 90 % band (5–95 %) is widened by a daily factor per horizon and kind from our own last 5 days of outcomes, never below 1
-  (`risks.band90_factors` → `forecast.widen90`, D-098); the printed 50 % range is not changed.
+  (`risks.band90_factors` → `forecast.widen90`, D-098; found on the raw range since v0.33.1, KI-287); the printed 50 % range
+  is not changed.
 - **Cached backtests** (`forecast_model`) are reused ~20 h or until history grows 20 %; a backtest stored before a new
   ladder method existed is redone (`model_is_fresh`).
 - **Upstream gauges** (`forecast/upstream.py`): per gauge, up to 4 (`K`, was 2 until v0.25.0, D-093) gauges in the same basin
@@ -279,7 +280,7 @@ instead of hiding it.
 
 | Topic | Tried | Result | Decision |
 |---|---|---|---|
-| Hydraulic engine | Draft `BKKHydroEngine` from research | physically implausible output (VALIDATION_2026-09-26 §C12) | not ported; data-driven ladder instead (KI-302) |
+| Hydraulic engine | Draft `BKKHydroEngine` from research | physically implausible output (VALIDATION_2026-09-26 §C12) | not ported; data-driven ladder instead (KI-312) |
 | Model choice | one global model vs per-gauge backtest | per-gauge winners differ by place and horizon | ladder + 45-day backtest + 10 % gate (APPROACH §4) |
 | Network model | upstream + rain + dam in a ridge regression (`star`) | wins 48 h at ~35 gauges | served where it wins (D-052) |
 | Measured daily rain as input | HII daily rain per catchment | no skill gain | not adopted; hourly archive kept, re-test mid-Dec 2026 (Q43, D-067) |

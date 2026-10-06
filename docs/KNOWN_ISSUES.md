@@ -40,12 +40,30 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-310 | Satellite flood maps are not reliable over the Phetchaburi lowland (GFM blind on 39–58 %; GISTDA and GFM agree on 13 % of GFM's flood) | Data / impact | 🟡 open (not shown, D-105) |
+| KI-309 | The reservoir outlook's 7-day bands were mirrored (stored predicted − observed, added as observed − predicted) | Forecast / impact | 🟢 fixed (D-104) |
+| KI-308 | `hii_dams_history` recorded every run as a failure | Ops | 🟢 fixed |
+| KI-307 | Overnight the Kaeng Krachan case had no "now" (RID posts in batches) | Data / impact | 🟢 fixed (latest reading within 36 h) |
+| KI-306 | The release plans were judged with a river chain ~1 m off | Forecast / impact | 🟢 fixed (D-104: a margin per day) |
+| KI-305 | EGAT's daily % is 0 or another definition; ปากมูล reports zeros; one reservoir listed twice | Data / impact | 🟢 handled v0.31.0 |
+| KI-304 | "Largest since" claimed over our own short records | UI / impact | 🟢 fixed v0.31.0 |
+| KI-303 | 22 large dams had no 7-day outlook (no tested model, no inflow history) | Forecast / impact | 🟢 36 of 38 covered (v0.31.0) |
+| KI-302 | A scenario rule without the model's error as a constraint recommends flooding | Decision support | 🟢 fixed before release |
+| KI-301 | Rain-driven reservoir inflow: lost for Kaeng Krachan, wins for the big dams | Forecast / impact | 🟡 finding (used, gated per horizon) |
+| KI-300 | `/impact` map tiles answered 403 "Access blocked" (OpenStreetMap) | Impact / web | 🟢 fixed v0.28.1 |
+| KI-299 | Three EGAT dams have no rule curve in HII | Data / impact | 🟢 shown as such |
+| KI-298 | Cloudflare serves a cached static file until its `?v=` changes | Web / ops | 🟢 impact assets (content hash); 🟡 manual for `app.js` / `style.css` |
+| KI-297 | `/impact` what-if not credible from public data: downstream levels barely follow B.18 | Impact | 🟡 open (the gate holds; needs ONWR/RID data) |
+| KI-296 | PCH003 "ท่ายาง" (HII) moves with B.18, not with Tha Yang | Data / impact | 🟡 open (location asked) |
+| KI-295 | Kaeng Krachan: RID and EGAT daily records disagree; storage above 100 % with no spill reported | Data / impact | 🟡 open (asked on the page) |
+| KI-294 | Cloudflare's injected bot-detection script is blocked by `/impact`'s CSP | Impact / web | 🟢 expected |
+| KI-293 | `/impact`: short pilot password; the login limit is per app worker; logout does not revoke a copied token | Security / impact | 🟡 open — a test password by the owner's choice (2026-10-06); a long passphrase before partner data (IMPACT) |
 | KI-292 | "Rebound" forecasts (+35…+70 cm) right after steep measured falls (PAS001, S.3, M.183B, SKG007) | Forecast | 🟡 watching; interim: all four kept falling |
 | KI-291 | Live check C4 sometimes sees a list line twice behind an open sheet (URTU07) | UX / tests | 🟡 open, intermittent (not reproduced in 6 tries) |
 | KI-290 | Track records said "30 days" but forecast runs were kept 14 days | Ops / data | 🟢 fixed v0.25.2 (`FC_KEEP_DAYS = 31`) |
 | KI-289 | Thai egress (OpenVPN sidecar) flaky: TLS handshake failures, 452 restarts; DWR posts stopped, BMA DDS intermittent | Data access | 🟡 recovered 2026-10-05 02:13 UTC; watch |
 | KI-288 | A 6 h task (Flood Hub) never came due while the worker restarted every 1–2 h | Ops | 🟢 fixed v0.25.2 (`worker.first_due`) |
-| KI-287 | 72 h likely ranges too confident in a falling river (50 % band held 44 %) | Forecast | 🟢 90 % band widened daily v0.26.0 (D-098) |
+| KI-287 | 72 h likely ranges too confident in a falling river (50 % band held 44 %) | Forecast | 🟡 re-opened 2026-10-06: as issued, 90 % ranges held 81–83 % and 50 % ranges 38–39 % at 24 h; calibration bug fixed v0.33.1; next a short-term median correction |
 | KI-286 | Ticker named Bangkok "อาจถึงตลิ่ง" while its gauges were steady under the bank | UX / AI | 🟢 fixed v0.25.0 (D-094) |
 | KI-285 | Research AI calls tripped the visitors' AI breaker (1 h pause) | AI / ops | 🟢 fixed v0.25.0 (`account=False`) |
 | KI-284 | A long research transaction blocked the schema step: site down ~12 min | Ops | 🟢 fixed v0.25.0 (lock timeout, read-only research) |
@@ -68,7 +86,7 @@
 | KI-267 | แม่น้ำ tab: 15 rivers only (29 % of gauges), three rows of chips on a phone, river km jargon in every row, no way from a station to its river | UX | 🟢 fixed v0.20.1 (D-074) |
 | KI-266 | River profile mixed a BMA gauge into the HII/RID Chao Phraya chain and placed it by latitude between the Bang Yo gates | Data quality / UI | 🟢 fixed v0.20.0 (BMA out; km for every river) |
 | KI-265 | Top strip: the region's rain took 3–4 lines (v0.17.1 rows layout) and read as "Bangkok only" (it followed the region chip far below) | UI | 🟢 fixed v0.18.9 (shown only for heavy rain, one line) |
-| KI-264 | A research run (49 points × 1 year) hit Open-Meteo's per-minute limit (HTTP 429); the free allowance is shared with production rain | Infrastructure | 🟡 (research runs paced and sized; production unaffected) |
+| KI-264 | A research run (49 points × 1 year) hit Open-Meteo's per-minute limit (HTTP 429); the free allowance is shared with production rain | Infrastructure | 🟢 counted in code since 2026-10-06 (`research_quota`, 3,000 a day, D-108) |
 | KI-263 | Pins upstream of Bangkok (focus provinces Ayutthaya–Nakhon Sawan) used the polder rules: a pin 0.1 km from LBI001 (over bank) said "no gauge close enough" | UX / Product | 🟢 fixed v0.18.9 (polder rules only in กทม.+ปริมณฑล) |
 | KI-262 | GISTDA echoes the caller's API key inside every response's `links` URLs | Security | 🟡 (strip `links` before storing or logging; no collector stores them yet) |
 | KI-261 | v0.18.0 plain line called a gauge 6 km away "คลองแถวนี้" ("น้ำใกล้เต็มตลิ่ง") under the headline "ไม่มีสถานีวัดน้ำใกล้พอ ยังสรุประดับคลองไม่ได้"; the AI reworded the mistake | UX / AI | 🟢 fixed v0.18.1 (far gauge named with its distance; check C12) |
@@ -108,12 +126,12 @@
 | KI-227 | "Nearest canal" fallback showed a river gauge (CPY015, tide) at very low confidence | UX / Product | 🟢 fixed v0.7.0 (D-051) |
 | KI-228 | Tapping ⓘ inside a list item opened the station instead of the tip | UI | 🟢 fixed v0.7.0 |
 | KI-225 | Literal delta interval "ลด 11 ถึงเพิ่ม 17 ซม." and "มั่นใจต่ำ" caused citizen confusion | UX / Product | 🟢 fixed v0.6.4 (D-048) |
-| KI-301 | Placeholder tide constants (inverted phase) | Modelling | 🟢 (don't use; fit our own) |
-| KI-302 | Draft `BKKHydroEngine` gives implausible output | Modelling | 🟢 (don't port) |
-| KI-303 | Managed operations make the system non-stationary | Modelling | ℹ️ |
-| KI-304 | Unsourced street-elevation benchmarks | Modelling | 🔴 |
-| KI-305 | No archive of as-issued forecasts yet (perfect-prognosis risk) | Modelling | 🟢 resolved (forecast_run since 2026-09-26; rain as forecast since 2025-09-22) |
-| KI-306 | Spatial and temporal scale mismatch between data sources | Modelling | ℹ️ |
+| KI-311 | Placeholder tide constants (inverted phase) (was KI-301) | Modelling | 🟢 (don't use; fit our own) |
+| KI-312 | Draft `BKKHydroEngine` gives implausible output (was KI-302) | Modelling | 🟢 (don't port) |
+| KI-313 | Managed operations make the system non-stationary (was KI-303) | Modelling | ℹ️ |
+| KI-314 | Unsourced street-elevation benchmarks (was KI-304) | Modelling | 🔴 |
+| KI-315 | No archive of as-issued forecasts yet (perfect-prognosis risk) (was KI-305) | Modelling | 🟢 resolved (forecast_run since 2026-09-26; rain as forecast since 2025-09-22) |
+| KI-316 | Spatial and temporal scale mismatch between data sources (was KI-306) | Modelling | ℹ️ |
 | KI-401 | Research files of mixed validity | Docs integrity | 🟢 |
 | KI-402 | Config contradictions (`.env.example` vs guidelines) | Docs integrity | 🟢 |
 | KI-403 | Old README: fake quick start, sample output, missing files | Docs integrity | 🟢 |
@@ -128,7 +146,7 @@
 | KI-212 | A worker restart reset the schedule, so the backfill never advanced | Infrastructure | 🟢 (fixed v0.2.1) |
 | KI-213 | A slow-failing upstream steals the single worker loop (Traffy HTTP 502) | Infrastructure | 🟢 (mitigated v0.2.1) |
 | KI-214 | Public repository: what history reveals; SSH exposure of the host | Infrastructure | 🟡 |
-| KI-307 | Point check is not a depth or level at the pin | Modelling | ℹ️ |
+| KI-317 | Point check is not a depth or level at the pin (was KI-307) | Modelling | ℹ️ |
 | KI-508 | AI triage provider (GLM / Workers AI) | Infrastructure | 🟢 (GLM live verified, D-030) |
 | KI-509 | A GloFAS point query can hit a side cell (Nong Khai 3 vs ~9,000 m³/s) | Data quality | 🟡 (snap rule, APPROACH §19.5) |
 | KI-510 | GISTDA answered 404 (outdated path, key sent as a query parameter) while `owner_status.py` showed ✅ | Infrastructure | 🟢 fixed 2026-09-27 (documented API; real check in the script) |
@@ -327,10 +345,6 @@ BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded
 ### KI-209 — HII test gauges in station lists · 🟢
 `queryStation` lists test gauges (`TEST02` and three more `TEST*` codes in Bangkok). **Fixed:** `hii_stations` skips `TEST*`, the API filters them out, and the 4 existing rows were set to `in_focus=false`.
 
-### KI-225 — Literal zero-crossing delta intervals ("ลด X ถึงเพิ่ม Y") confused citizens under steady conditions · 🟢 fixed in v0.6.4 (D-048)
-- **Problem (visitor feedback, 2026-09-27):** Conformal delta intervals spanning negative and positive values (e.g. `[-0.11, +0.17] m`) were displayed literally as "น่าจะลด 11 ถึงเพิ่ม 17 ซม.", which read as a bizarre contradiction next to a "ทรงตัว" badge.
-- **Resolution:** Replaced with intuitive citizen-friendly wording: `ทรงตัว (อาจแกว่งตัว -11 ถึง +17 ซม.)`.
-
 ### KI-226 — Mobile UI line wrapping from verbose confidence labels and uncollapsed metadata · 🟢 fixed in v0.6.5 (D-049)
 - **Problem (visitor feedback, 2026-09-27):**
   1. Multi-dot meters (`●○○`) combined with text ("คาดการณ์เบื้องต้น") caused line wrapping on 390px mobile viewports.
@@ -347,7 +361,7 @@ BKK009 was at 0.624 m against a 0.620 m bank: the freeboard of −0.4 cm rounded
 
 ## 3. Modelling
 
-### KI-301 — Placeholder tide constants · 🟢 (don't use)
+### KI-311 — Placeholder tide constants (numbered KI-301 until 2026-10-06, when the number clashed with a newer entry) · 🟢 (don't use)
 Two draft constant sets were validated against 30 days observed at CPY015:
 - **Draft A** (the old docs' JS): correlation **−0.74** (inverted).
 - **Draft B** (the engine): **+0.12**.
@@ -355,7 +369,7 @@ Two draft constant sets were validated against 30 days observed at CPY015:
 
 Root cause: the phases were used without the astronomical argument **V₀+u** and nodal factor **f**. **Resolution:** fit our own constants (`utide`) or use the Navy tables. Never hard-code constants copied from a document.
 
-### KI-302 — Draft `BKKHydroEngine` · 🟢 (don't port)
+### KI-312 — Draft `BKKHydroEngine` (numbered KI-302 until 2026-10-06, when the number clashed with a newer entry) · 🟢 (don't port)
 Running it gives:
 - river 3.40 m (above the 3.0 m wall)
 - khlong −1.25 m (unbounded pumping)
@@ -364,21 +378,21 @@ Running it gives:
 
 Its equations are a useful reference; its implementation and parameters are not ([validation §C](../research/VALIDATION_2026-09-26.md)).
 
-### KI-303 — Managed operations make the system non-stationary · ℹ️
+### KI-313 — Managed operations make the system non-stationary (numbered KI-303 until 2026-10-06, when the number clashed with a newer entry) · ℹ️
 Dam releases, diversions, gate closures and pump outages change the system abruptly. **Workaround:**
 - Store announced operations as events and scenario inputs ("ตามแผนการระบายน้ำของกรมชลประทาน X ลบ.ม./วินาที").
 - Add event flags as ML features.
 - AR error fading.
 - Adaptive conformal calibration ([APPROACH §11](APPROACH_AND_METHODS.md)).
 
-### KI-304 — Unsourced street-elevation benchmarks · 🔴
+### KI-314 — Unsourced street-elevation benchmarks (numbered KI-304 until 2026-10-06, when the number clashed with a newer entry) · 🔴
 The `bkk_stations_elevation.json` values in [API_noKey-1.md](../research/API_noKey-1.md) and the "hotspot road elevation" table in the old KNOWLEDGE.md have **no source**. They were removed from the docs. Replace them with survey data or DEM-with-uncertainty in Phase 2/3.
 
-### KI-305 — No archive of as-issued forecasts yet · 🟢 resolved (checked 2026-09-30)
+### KI-315 — No archive of as-issued forecasts yet (numbered KI-305 until 2026-10-06, when the number clashed with a newer entry) · 🟢 resolved (checked 2026-09-30)
 **Update 2026-09-30:** every forecast issue is stored in `forecast_run` (45,106 runs for 305 gauges since 2026-09-26) and rain *as it was forecast* 1–2 days earlier in `rain_hindcast` (80,784 hourly rows back to 2025-09-22, D-052), so skill is scored on as-issued forecasts. Original note:
 Training on observed future rain ("perfect prognosis") overstates skill. **Workaround:** archive **every** Open-Meteo run from day one of Phase 1. Until enough runs exist, train on observed rain but **widen the intervals** and state this on the model page.
 
-### KI-306 — Spatial and temporal scale mismatch · ℹ️
+### KI-316 — Spatial and temporal scale mismatch (numbered KI-306 until 2026-10-06, when the number clashed with a newer entry) · ℹ️
 | Source | Scale |
 |---|---|
 | Gauges | Points, 10-min |
@@ -475,7 +489,7 @@ Reported by the owner on 2026-09-27 (GitHub issue #1, phone screenshot of the po
   The TMD page lists the amounts without a period; applying them to a 24 h total is our reading ⚠️.
 - **Rule (GUIDELINES §6):** no `~` in user-facing text; every rain number carries its TMD word.
 
-### KI-307 — Point check is not a depth or level at the pin · ℹ️
+### KI-317 — Point check is not a depth or level at the pin (numbered KI-307 until 2026-10-06, when the number clashed with a newer entry) · ℹ️
 `/api/point` summarises gauges *around* a pin as a status category (D-021). It can't know the ground height, drains, walls or polder of the pin itself: Bangkok is not flat (KI-202, [APPROACH §2.10](APPROACH_AND_METHODS.md)).
 - **Mitigations:** confidence is never "high"; at very low confidence no verdict is shown; four warnings are always visible; citizen reports near the pin are shown.
 - **Fix path:** polder polygons → controlling gauge; FABDEM + σ → probability categories calibrated with user depth reports.
@@ -483,7 +497,7 @@ Reported by the owner on 2026-09-27 (GitHub issue #1, phone screenshot of the po
 ### KI-223 — D-041's outlook banner gave a canal verdict without a usable gauge · 🟢 fixed v0.6.1 (D-042)
 `point_forecast()` (added in D-041, v0.6.0) read `area["category"]` and any single forecast gauge's `trend12`/
 `delta12_median` **without checking `area["confidence"]`** — the same gate the overview card already applies
-(KI-307, D-021). Found live on 2026-09-27 ~07:47 UTC:
+(KI-317, D-021). Found live on 2026-09-27 ~07:47 UTC:
 - `14.30,100.20` (`confidence=none`, 0 gauges within 8 km) → banner said "สถานการณ์ปกติ … ความเสี่ยงน้ำท่วมต่ำ" and
   called 18 mm of rain "light" — a calm verdict manufactured from no data.
 - `13.82,100.60` (`confidence=very_low`, one gauge 5.6 km away) → the overview card correctly showed no verdict,
@@ -495,7 +509,7 @@ Reported by the owner on 2026-09-27 (GitHub issue #1, phone screenshot of the po
   folded into "risk is low"; with no usable gauge and no strong local evidence the outlook returns `risk: "info"`
   (ℹ️) stating that gauges are too far or in another basin to judge — never `"low"`/`"ปกติ"`. Distance-vs-agreement
   evidence for the confidence bands themselves is in D-042.
-- **Still true:** the underlying distance/agreement proxy (KI-307) remains a proxy for basin membership, not a
+- **Still true:** the underlying distance/agreement proxy (KI-317) remains a proxy for basin membership, not a
   real polder boundary; that fix is unchanged (polder polygons, HANDOFF §5 step 3).
 
 ### KI-508 — AI triage provider: GLM and Cloudflare Workers AI · 🟢 (mitigated, D-030)
@@ -558,6 +572,7 @@ R2 off-site backups were declined (D-029), but **no local dump exists either**; 
 - **Plan (D-046):** nightly `pg_dump -Fc` into `data/backups/` (keep 3) and one tested restore into a throwaway container, **before** any national collector runs; retention of 90 days for high-volume national series; a disk alert already exists (hourly check).
 
 ### KI-225 — Literal delta interval "ลด 11 ถึงเพิ่ม 17 ซม." and "มั่นใจต่ำ" caused citizen confusion · 🟢 fixed v0.6.4 (D-048)
+Visitor feedback, 2026-09-27 (this issue was written up twice until 2026-10-06; merged here).
 Conformal prediction intervals crossing zero were printed literally as "น่าจะลด 11 ถึงเพิ่ม 17 ซม.", creating a paradoxical statement where water was claimed to decrease and increase simultaneously, contradicting the "ทรงตัว" badge beside it. In addition, "มั่นใจต่ำ" sounded like a severe defect, causing citizens to distrust the telemetry. In point check, mixed canal statuses across 8 km suppressed canal gauges entirely, leaving users without the canal rise/fall information they needed.
 - **Fixed (D-048, v0.6.4):**
   1. Steady intervals crossing zero are worded as `ทรงตัว (อาจแกว่งตัว -A ถึง +B ซม.)`.
@@ -814,7 +829,7 @@ Post-release validation 2026-10-04: `risks.WINDOW_DAYS = 30` (the "N ใน 10" 
 ### KI-292 — "Rebound" forecasts right after a steep measured fall · 🟡 known failure mode, no guard (damping tested and rejected 2026-10-05)
 After v0.25.0, `star` forecast +35…+70 cm in 24 h at PAS001, S.3 (Pa Sak), M.183B and SKG007 right after measured falls of 7–61 cm in 24 h (the old inputs give the same at PAS001/S.3; V12 amplifies at M.183B/SKG007 where the level sits far below its 7/30-day means). Over 30 days of archive such forecasts came true 65 % of the time (48 cases, mean error 72 cm; research/2026-10-04_rebound_check.log), so no guard was added. **Interim 2026-10-05 05:00 UTC (8 h of 24):** all four kept falling (−1 to −21 cm; SKG007's 8 h forecast was +46 cm). If the 24 h verdict confirms, test a guard ("reverses a strong measured fall without an upstream or rain driver") with the MODELS §5d protocol before shipping it. **Verdict (archive, forecasts issued 4 Oct 12:00–20:00 UTC, 24 h ahead):** SKG007 — the 4 `star` issues forecast +0.54…+0.59 m; the water fell −0.28…−0.34 m (error ~0.85 m vs ~0.30 m for persistence); the 7 persistence issues (−0.05 m) were close; all 11 inside the 90 % band only because the band spanned −0.7…+1.4 m. M.183B — `star` +0.23 m vs +0.10 m measured (mild), persistence 0.00 vs −0.07. Over the two gauges the model was no better than persistence (median |error| 0.37 vs 0.36 m). So: a rise forecast right after a steep fall is a real failure mode here; the 30-day archive said rebounds came true 65 % — this one did not. **Damping tested (research/2026-10-05_star_damping.log, two disjoint samples of ~118 gauges):** shrinking `star` by half, fading it with the opposing trend, or zeroing it when the 24 h trend (≥ 10 cm) opposes the forecast made the served forecasts worse at every horizon on both samples (24 h: −10.7 % vs no-change → −10.3 / −9.2 / −8.8 %; 48 h: −10.6 → −9.2 / −7.4 / −6.9 %; 72 h: −8.6 → −7.9 / −5.2 / −4.4 %) and left fewer gauges with a model, for a reduction of 1–3 in the gauges made worse. Rebounds after a steep fall are right more often than not; SKG007's was a wrong one that the band covered. No guard; the band is the honest statement.
 
-### KI-293 — `/impact`: short pilot password; the login limit is per app worker; logout does not revoke a copied token · 🟡 open (owner action IMPACT)
+### KI-293 — `/impact`: short pilot password; the login limit is per app worker; logout does not revoke a copied token · 🟡 open — a test password by the owner's choice (2026-10-06); a long passphrase before partner data (owner action IMPACT)
 2026-10-05: the owner chose a short password "for now" (value only in `.env`). Failed logins are limited to 5 per 15 min per client in each of the 2 app workers (live: 8 wrong tries, then HTTP 429), so a patient attacker with many addresses can still guess a short password. The page shows public data only today. Before ONWR/RID data are loaded, set a long passphrase (`IMPACT_PASSWORD`, ≥ 16 characters, `docker compose up -d app`): this also ends every session, because the cookie's HMAC binds a fingerprint of the password. Logout only deletes the cookie in the browser; a copied token stays valid until it expires (12 h). `python3 scripts/owner_status.py` → IMPACT (checks the length only). Also: no test, doc or commit may contain the password or anything resembling it (a test string was caught before commit on 2026-10-05).
 
 ### KI-294 — Cloudflare's injected bot-detection script is blocked by `/impact`'s CSP · 🟢 expected

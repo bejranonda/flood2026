@@ -21,7 +21,7 @@ EXTRA_STATIONS = (
     "BKK013", "BKK015", "BKK017", "BKK018", "BKK019", "BKK020", "BKK021",
 )
 
-# Rain-forecast points (Open-Meteo). Regional forcing only; NWP cells are coarser than polders (KI-306).
+# Rain-forecast points (Open-Meteo). Regional forcing only; NWP cells are coarser than polders (KI-316).
 RAIN_POINTS = {
     "bkk_central": (13.75, 100.50),
     "bkk_east": (13.80, 100.75),

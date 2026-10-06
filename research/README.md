@@ -26,6 +26,7 @@ The files here are **research records** from 26 Sep 2026, produced with assistan
 | [VALIDATION_2026-09-27_nationwide.md](VALIDATION_2026-09-27_nationwide.md) | — | Live probes of 22 national/international endpoints, freshness, claim-by-claim verdicts | [docs/SOURCES.md](../docs/SOURCES.md), [docs/KNOWN_ISSUES.md](../docs/KNOWN_ISSUES.md) |
 | [VALIDATION_2026-09-26.md](VALIDATION_2026-09-26.md) | — | Claim-by-claim verdicts with evidence; station metadata vs HII live; new findings | [docs/KNOWN_ISSUES.md](../docs/KNOWN_ISSUES.md), [docs/SOURCES.md](../docs/SOURCES.md) |
 | [validation/](validation/validate_research_claims.py) | — | Scripts that re-run the endpoint probes and the tide check (`probe_nationwide_2026-09-27.py` for the national sources; `exp_48h_*_2026-09-27.py` for the forecast experiments) | — |
+| `2026-10-0x_*.py` + `.log` | 🟢 | Dated experiments behind MODELS §5–§12, run on our own data under the honest protocol (read-only); indexed per section in [docs/MODELS.md](../docs/MODELS.md) §10 | [docs/MODELS.md](../docs/MODELS.md), DECISIONS, KNOWN_ISSUES |
 
 ## Adding research
 1. Put new research in a new file named with the date (for example `2026-10-02_rid_telemetry.md`), with a validity banner at the top.

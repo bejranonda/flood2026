@@ -385,3 +385,20 @@ UX principles established through visitor testing during the 2026 flood season:
 - **August 2018** (release up to 24.36 on 21 Aug): Sentinel-1 (GFM) saw 0–6.5 km² of flood outside permanent water per
   pass over the lowland, with 39–58 % of it hidden from the radar.
 - **ONWR's forecast for 7–8 Oct 2026** marks 176 and 161 ≈ 1.1 km cells at class 3 over the case area (issued 5 Oct 19:06 UTC).
+
+## 29. What the 2026 record says about forecasting (checked 2026-10-06; production forecast archive and research logs; MODELS §12, §5j, §5k)
+- **The archive:** every issued forecast is kept 14 days with its model generation — 96,287 runs at 1,023 gauges from
+  2026-09-26 12:27 UTC (mvp-0.1, star-0.2, star-0.3, star-0.4), scored against the gauge's mean reading within ±30 min of
+  each valid time (`research/2026-10-06_model_history.log`).
+- **The skill lives in the first hours:** as issued, nationwide 6–12 h forecasts missed by 11–21 % less than "no change" in
+  every generation since `star`, 24 h by 3–7 %, 48–72 h about the same as "no change". On the flood peak around Bangkok
+  (26–27 Sep) "no change" missed by 32–81 cm at 6–72 h and the first ladder gained 5–11 %.
+- **The recession is hard to beat at the first Bangkok-area gauges:** in the last seven days of the backtest window both
+  the old and the new `star` gained only 0–7 % over "no change" there, on the same days; on 289 other gauges the gain held
+  (24 h −9.9 % in the same seven days; `research/2026-10-06_star_same_days*.log`).
+- **A river that changes regime flips the forecast's bias within days:** outcomes fell below the 24 h 50 % range 36 % of
+  the time on 1 Oct and 22 % on 5 Oct, and above it 13 % → 40 % — the water first fell faster than forecast, then levelled
+  off while the models still expected a fall (`research/2026-10-06_band_replay.log`). A width rule over the last five days
+  cannot follow that (KI-287).
+- **Ranges as issued (26 Sep → 6 Oct):** the 90 % ranges held 80–89 % of the time, the 50 % ranges 37–55 %.
+

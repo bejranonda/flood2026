@@ -89,7 +89,7 @@ No hand-written "Last updated" stamps (D-109): all seven stamped docs changed af
 ## 4. Modelling and scientific rigour
 
 ### 4.1 No leakage
-- Train on **as-issued** forecasts (the archived NWP runs), never on observed future rain. Until enough runs are archived, widen the intervals and disclose it ([KI-305](KNOWN_ISSUES.md)).
+- Train on **as-issued** forecasts (the archived NWP runs), never on observed future rain. Until enough runs are archived, widen the intervals and disclose it ([KI-315](KNOWN_ISSUES.md)).
 - Only time-ordered validation: **rolling-origin walk-forward** with an **embargo gap** of at least the forecast horizon between training and test, because autocorrelation leaks information. Never shuffle or use random K-fold. One exception, for planning models only (§4.5): their per-day margins may be scored month by month with the other months fitted, purging at least the horizon on each side, when forward-only fitting has too few days to learn from (B.10's release effect came out negative in the dry season, MODELS §11c).
 - Spatial generalisation is tested with **leave-station-out** and, for polders, leave-zone-out splits.
 
@@ -325,6 +325,19 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Choosing a model per unit on ~40 days overfits** (E-7D-IN: +38 % in the second sample). Choose a change for all units,
   confirm it on units it was not chosen on, and prefer the change that improves what is served without making any unit
   worse.
+
+### 6c-10. Lessons from 2026-10-06 (the rules review and the models' history; D-107–D-109)
+- **Rules follow decisions.** When a decision supersedes a rule, rewrite the rule in the same change: an agent reads the
+  rule, not the decision log (D-109: phase gates, "AI only in the worker", held-out events that were never in the archive).
+- **Compare versions on the same days before blaming a model.** A flat as-issued record can be the weather: the first
+  Bangkok-area gauges looked flat under star-0.4 until the old and new `star` ran on the same days (MODELS §5j).
+- **A finding picked from one sample needs a second sample:** sample 1's 12 h exception did not hold on 289 other gauges,
+  so nothing changed.
+- **Every ID is unique in its file.** Take the next number not used anywhere in KNOWN_ISSUES or DECISIONS, not the next
+  after the last section: the impact tab's issues reused KI-301…307 for a week (the original modelling issues are
+  KI-311…317 since 2026-10-06).
+- **An owner item the owner handles is closed as "handled by the owner";** how, and with whom, stays out of the public repo
+  (D-028).
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.

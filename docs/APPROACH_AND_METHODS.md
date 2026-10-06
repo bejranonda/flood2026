@@ -94,7 +94,7 @@ Gaps: short gaps (≤ 30 min) can be interpolated for features, with a flag. Lon
 - **Tidal periodicities:** diurnal and semi-diurnal (dominant K1, O1, M2, S2), **spring–neap ≈ 14.8 d**, monthly, **seasonal Sa/Ssa**, and the **18.61-year nodal cycle** (handled by nodal corrections f, u) (§5).
 - **Rain:** a diurnal convective cycle, monsoon seasonality, and **antecedent storage** (7-day and 30-day rain and levels act as memory).
 - **Recession timescales:** fast channel drainage vs slow floodplain and polder drainage (§12).
-- **Non-stationarity:** managed operations (sudden), channel and rating changes, and **land subsidence** that drifts benchmarks over years ([KI-303](KNOWN_ISSUES.md), [KNOWLEDGE §2](KNOWLEDGE.md)). Use rolling recalibration and effective-dated metadata.
+- **Non-stationarity:** managed operations (sudden), channel and rating changes, and **land subsidence** that drifts benchmarks over years ([KI-313](KNOWN_ISSUES.md), [KNOWLEDGE §2](KNOWLEDGE.md)). Use rolling recalibration and effective-dated metadata.
 
 ### 2.5 Space–time propagation (what moves where, and how fast)
 | Process | Space–time form | Handled by |
@@ -378,7 +378,7 @@ Why these and not more: status and trend answer the citizen's question; freshnes
 
 where Hₖ and gₖ are the amplitude and Greenwich phase lag, Vₖ is the equilibrium argument at the reference time, and fₖ, uₖ are the nodal corrections (18.61-year cycle).
 
-- **Leaving out V + u makes the timing arbitrary.** That's why the draft constants failed (correlation −0.74) ([KI-301](KNOWN_ISSUES.md)). Always use a tidal library (`utide`) to fit and predict. Never hand-roll the phase.
+- **Leaving out V + u makes the timing arbitrary.** That's why the draft constants failed (correlation −0.74) ([KI-311](KNOWN_ISSUES.md)). Always use a tidal library (`utide`) to fit and predict. Never hand-roll the phase.
 - **Evidence (2026-09-26):** a 30-day fit at HII CPY015 (สะพานกรุงเทพ) gives K1 0.45, O1 0.36, M2 0.37, S2 0.27 m (F = 1.27, mixed and mainly diurnal), explaining 92 % of the tidal variance in-sample ([validation](../research/VALIDATION_2026-09-26.md)).
 - **Record length (Rayleigh criterion):** ≥ 15 days separates M2/S2 and K1/O1. **≥ 6 months separates K1/P1 and S2/K2. ≥ 1 year gives Sa/Ssa.** Use 30-day fits only as an interim fallback; switch to ≥ 1 year of archived data or the Navy tables.
 - **River–tide interaction:** tidal amplitude at upstream stations is **damped by river discharge**. Fit the constants per station and regress the amplitude damping on Q_BangSai (non-stationary tidal analysis).
@@ -409,7 +409,7 @@ H(t+h) = η(t+h) + f( Q_BangSai(t+h−τ̂), r(t), wind, local rain, season ) + 
 
 A_s(H) · dH/dt = C·A·P(t) + Q_in(t) − Q_pump(t) − Q_gate(t)
 - Q_gate = C_d·B·Y·√(2g(H_khlong − H_outlet)) if H_khlong > H_outlet, otherwise 0 (gates closed)
-- 0 ≤ Q_pump ≤ Q_pump,max, and pumps stop at a **minimum operating level**. The draft engine had no such floor and drained to −1.25 m ([KI-302](KNOWN_ISSUES.md)).
+- 0 ≤ Q_pump ≤ Q_pump,max, and pumps stop at a **minimum operating level**. The draft engine had no such floor and drained to −1.25 m ([KI-312](KNOWN_ISSUES.md)).
 - Mass-balance closure < 3 % as a **unit test**.
 
 Pump and gate logs aren't published, so the net effect is learned statistically. LightGBM features:
@@ -484,11 +484,11 @@ Results are published on the in-app "เกี่ยวกับแบบจำ�
 ## 16. Pitfalls
 | Pitfall | Mitigation |
 |---|---|
-| Managed operations change the system abruptly | Operation events as inputs and scenarios; ACI ([KI-303](KNOWN_ISSUES.md)) |
-| Perfect-prognosis training | Archive as-issued runs; widen intervals until then ([KI-305](KNOWN_ISSUES.md)) |
+| Managed operations change the system abruptly | Operation events as inputs and scenarios; ACI ([KI-313](KNOWN_ISSUES.md)) |
+| Perfect-prognosis training | Archive as-issued runs; widen intervals until then ([KI-315](KNOWN_ISSUES.md)) |
 | Datum mix-ups | One conversion table per station; unit tests ([KI-201](KNOWN_ISSUES.md)) |
 | Interpolating across walls or polders | The controlling-water-body rule (§2.1, §13) |
-| Scale mismatch (grid vs point vs polygon) | Explicit aggregation (§2.3) ([KI-306](KNOWN_ISSUES.md)) |
+| Scale mismatch (grid vs point vs polygon) | Explicit aggregation (§2.3) ([KI-316](KNOWN_ISSUES.md)) |
 | Sensor spikes, sentinels, stale data | QC flags ([KI-206](KNOWN_ISSUES.md)); exclude flagged data from training |
 | Station relocation, rating change, subsidence | Effective-dated metadata; retrain after changes |
 | Floodplain flow ≠ channel flow | Satellite extent + recession; don't reuse channel lags |
@@ -739,3 +739,21 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
 - More choosing data beats more candidates: with a whole wet season (2025) to choose on, the inflow choice that held on the
   unseen 2026 window was the narrow one — keep what is served, add a damped-persistence + forecast-rain model only where
   persistence was served, only on the days it held (D-106).
+
+### 19.26 Judging, recording and checking model changes (2026-10-06; D-107, D-108; MODELS §5j, §5k, §12)
+- **Made worse = beyond chance** (`floodwatch.model_gate.made_worse`): paired errors of the new and old method on the same
+  issue times; rise = error_new / error_old − 1 (MAE or RMSE); a moving-block bootstrap (blocks of at least the horizon,
+  2,000 resamples) gives the rise's one-sided 95 % lower bound; worse = rise > 3 % and lower bound > 0; with too few pairs
+  for two blocks the size alone decides.
+- **Planning models** (GUIDELINES §4.5): two samples and the newest season; never worse than "keep today"; a bigger
+  release never lowers the river downstream; a margin per day; purged month-by-month scoring allowed for margins.
+- **As issued** (`research/2026-10-06_model_history.py`): every stored run (`forecast_run`, 14 days, with its generation) —
+  the issued median and ranges at 6/12/24/48/72 h against the mean reading within ±30 min of the valid time; per
+  generation: error vs "no change", the share a model served, how often the ranges held.
+- **Same days** (`research/2026-10-06_star_same_days.py`): an older model rebuilt by dropping the inputs a release added
+  (`star_features` columns 4–8); both scored under the §5d protocol on the same window; a confirmation sample of other gauges.
+- **Range calibration replayed** (`research/2026-10-06_band_replay.py`): at 00:00 UTC each day a factor from the outcomes
+  known by then, on raw ranges, applied to that day's runs; next-day coverage; rules chosen on the first days, scored on
+  the later ones.
+- **Research calls counted** (`floodwatch.research_quota`): weight = locations × max(1, variables/10) × max(1, days/14)
+  (Open-Meteo's pricing page); one ledger shared by every run; 3,000 a day, 1,000 an hour, 10 s apart.
