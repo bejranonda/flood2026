@@ -150,3 +150,13 @@ def tiles_for_bbox(lat0: float, lon0: float, lat1: float, lon1: float, z: int) -
     x0, y1 = xy(lat0, lon0)
     x1, y0 = xy(lat1, lon1)
     return [(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)]
+
+
+def ring_overlaps_bbox(ring, lat0: float, lon0: float, lat1: float, lon1: float) -> bool:
+    """A ring of [lat, lon] whose own bounding box overlaps the box (lat0, lon0, lat1, lon1). ONWR's cells are ≈ 1.1 km
+    hexagons, so boxes overlapping is shapes overlapping to within a cell (KI-318)."""
+    if not ring:
+        return False
+    lats = [p[0] for p in ring]
+    lons = [p[1] for p in ring]
+    return min(lats) <= lat1 and max(lats) >= lat0 and min(lons) <= lon1 and max(lons) >= lon0

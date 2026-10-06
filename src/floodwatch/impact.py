@@ -476,6 +476,20 @@ def river_reaches(river_line: list, points: list[dict], max_km: float = 10.0) ->
     return out
 
 
+def clip_onwr(onwr: dict | None) -> dict | None:
+    """ONWR's stored layers with only the features inside their own fetch box (KI-318: whole zoom-10 tiles were kept, so
+    cells around Ratchaburi, 30–56 km from the Phetchaburi River, showed on the case map). Returns a copy; a copy without a
+    box (stored before 2026-10-06) passes through unchanged."""
+    from floodwatch import mvt
+    if not onwr or not onwr.get("bbox") or not onwr.get("layers"):
+        return onwr
+    box = onwr["bbox"]
+    layers = {lid: {**lay, "features": [f for f in lay.get("features") or []
+                                        if f.get("rings") and mvt.ring_overlaps_bbox(f["rings"][0], *box)]}
+              for lid, lay in onwr["layers"].items()}
+    return {**onwr, "layers": layers}
+
+
 def river_line(geo_rivers: dict | None, name: str) -> list[list[list[float]]]:
     """A named river from HII's main-river lines as [[lat, lon], …] parts, for the map (D-100)."""
     parts = []

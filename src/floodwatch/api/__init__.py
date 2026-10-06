@@ -730,7 +730,10 @@ def impact_case(request: Request, case_id: str):
     from floodwatch import impact
     if case_id not in impact.CASES:
         raise HTTPException(404, "unknown case")
-    return JSONResponse(_impact_state(impact.state_key(case_id)), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+    st = _impact_state(impact.state_key(case_id))
+    if st.get("onwr"):
+        st = {**st, "onwr": impact.clip_onwr(st["onwr"])}  # copies stored before the collector clipped (KI-318)
+    return JSONResponse(st, headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
 def _impact_compare(case_id: str, release: str | None, diversion_cms: float | None) -> dict:

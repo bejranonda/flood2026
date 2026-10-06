@@ -871,6 +871,8 @@ def onwr_layers(bbox: tuple, get=None) -> dict:
                 p = f["properties"]
                 rings = [[[round(c, 5) for c in mvt.to_latlon(px, py, ONWR_Z, x, y, lay["extent"])] for px, py in ring]
                          for ring in f["rings"]]
+                if not rings or not mvt.ring_overlaps_bbox(rings[0], *bbox):  # whole tiles reach 30–56 km away (KI-318)
+                    continue
                 feats.append({"cls": p.get("class_risk"), "tb": p.get("TB_IDN"), "rai": p.get("flood_area"), "rings": rings})
         out[lid] = {"updated": updated, "features": feats}
     return out

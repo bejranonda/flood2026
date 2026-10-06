@@ -86,3 +86,31 @@ def test_onwr_layers_reads_each_layers_tiles_with_its_update_time_and_skips_empt
     lat, lon = mvt.to_latlon(0, 0, 10, 795, 474)
     assert f[0]["rings"][0][0] == [round(lat, 5), round(lon, 5)]
     assert out["flood-forecast-d1"]["features"] == [] and sum(1 for u in calls if u.endswith(".pbf")) == 9 * len(collectors.ONWR_LAYERS)
+
+
+def test_a_ring_overlaps_a_box_by_its_own_bounding_box():
+    box = (12.6, 99.3, 13.3, 100.1)
+    inside = [[13.0, 99.9], [13.01, 99.91], [13.0, 99.92]]
+    far = [[13.5, 99.8], [13.51, 99.81], [13.5, 99.82]]          # Ratchaburi town, 30+ km north of the case (KI-318)
+    around = [[12.5, 99.2], [12.5, 100.2], [13.4, 100.2], [13.4, 99.2]]  # a big polygon with no vertex inside the box
+    assert mvt.ring_overlaps_bbox(inside, *box) and mvt.ring_overlaps_bbox(around, *box)
+    assert not mvt.ring_overlaps_bbox(far, *box) and not mvt.ring_overlaps_bbox([], *box)
+
+
+def test_onwr_layers_keeps_only_features_inside_the_case_box():
+    # KI-318: whole zoom-10 tiles were kept, so cells 30–56 km away (Ratchaburi) reached the Kaeng Krachan map
+    from floodwatch import collectors
+
+    class R:
+        def __init__(self, status, body):
+            self.status, self.body = status, body
+
+    def get(url):
+        if url.endswith("tilejson.json"):
+            return R(200, b'{"data_updated": "2026-10-06T05:16:21+00:00"}')
+        if "/flood-warn/10/795/474.pbf" in url or "/flood-warn/10/795/473.pbf" in url:
+            return R(200, _tile())  # 474: 13.07–13.24 °N (inside); 473: 13.41–13.58 °N (outside the box)
+        return R(404, b"")
+    out = collectors.onwr_layers((12.6, 99.3, 13.3, 100.1), get=get)
+    f = out["flood-warn"]["features"]
+    assert len(f) == 1 and 13.0 < f[0]["rings"][0][0][0] < 13.3

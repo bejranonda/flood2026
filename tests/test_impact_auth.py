@@ -237,3 +237,15 @@ def test_scenario_explain_needs_login_and_returns_the_story_and_lines(monkeypatc
     tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
     out = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="simple").body)
     assert "แก่งกระจาน" in out["story"] and len(out["lines"]) >= 5 and "ai" in out
+
+
+def test_the_case_endpoint_serves_onwr_cells_inside_the_case_box_only(monkeypatch):
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    far = {"cls": 2, "rings": [[[13.51, 99.80], [13.52, 99.81], [13.51, 99.82]]]}
+    near = {"cls": 2, "rings": [[[13.07, 99.94], [13.08, 99.95], [13.07, 99.96]]]}
+    st = {"case": "kaeng-krachan", "points": [], "onwr": {"bbox": [12.618, 99.237, 13.274, 100.043],
+                                                          "layers": {"flood-warn": {"updated": None, "features": [near, far]}}}}
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st)
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    out = json.loads(api.impact_case(Req(tok), "kaeng-krachan").body)
+    assert out["onwr"]["layers"]["flood-warn"]["features"] == [near]

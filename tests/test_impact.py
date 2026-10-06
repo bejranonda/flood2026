@@ -428,3 +428,18 @@ def test_river7_fits_on_older_daily_history_too_and_can_move_every_point_by_its_
     assert g["method"] == "gain" and max(g["gains_cm_per_cms"]["B.18"]) > 0  # B.18 moves by its fitted gain now
     p18 = {"code": "B.18", "role": "below_dam", "h_now": 2.0, "q_now": 140.0, "rating": pts[0]["rating"]}
     assert impact.level7(p18, 20.0, 10.0, 1, [0.5] * 7, method="gain") == 2.0 + 0.005 * (impact.mcm_to_cms(20.0) - impact.mcm_to_cms(10.0))
+
+
+def test_stored_onwr_layers_are_clipped_to_their_box_when_served():
+    # KI-318: copies stored before the collector clipped are clipped when served; the stored state is not changed
+    near = {"cls": 2, "tb": None, "rai": None, "rings": [[[13.07, 99.94], [13.08, 99.95], [13.07, 99.96]]]}
+    far = {"cls": 2, "tb": None, "rai": None, "rings": [[[13.51, 99.80], [13.52, 99.81], [13.51, 99.82]]]}
+    stored = {"fetched": "2026-10-06T12:03:05+00:00", "bbox": [12.618, 99.237, 13.274, 100.043],
+              "layers": {"flood-warn": {"updated": "2026-10-06T11:12:42+00:00", "features": [near, far]},
+                         "flood-forecast-d3": {"updated": None, "features": []}}}
+    out = impact.clip_onwr(stored)
+    assert out["layers"]["flood-warn"]["features"] == [near] and out["layers"]["flood-forecast-d3"]["features"] == []
+    assert len(stored["layers"]["flood-warn"]["features"]) == 2 and out["layers"]["flood-warn"]["updated"] == "2026-10-06T11:12:42+00:00"
+    assert impact.clip_onwr(None) is None
+    old = {"layers": {"flood-warn": {"features": [far]}}}  # an older copy without its box passes through unchanged
+    assert impact.clip_onwr(old) is old
