@@ -342,7 +342,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 
 ### 6c-11. Lessons from the plan grid (D-110, KI-318, KI-319)
 - **A flag the engine computes must reach the decision and the screen.** `outside` was computed for every plan and day and
-  used nowhere; the ★ recommended a release 1.7× beyond the river data. Test that every flag a model sets is either used
+  used nowhere; the ★ recommended a release 1.7× B.18's highest measured flow (1.8× in the river model on day 1). Test that every flag a model sets is either used
   by a rule or shown.
 - **Clip a tiled layer to the area it is shown for** — whole tiles carry neighbours 30–56 km away.
 - **Another agency's layer is off by default where it can be misread as ours**, and sits in the app's one layer box with
