@@ -105,7 +105,7 @@ with sync_playwright() as p:
         # a plan typed in Thai fills the boxes; คำนวณ adds a custom row
         pg.click("#imp-custom-btn"); pg.wait_for_selector("#sheet:not([hidden]) #imp-custom", timeout=8000)
         pg.fill("#imp-parse-text", "ระบาย 15 สามวันแล้วลดเหลือ 10"); pg.click("#imp-parse-btn")
-        pg.wait_for_function("document.getElementById('imp-parse-msg').innerText.includes('กดคำนวณ')", timeout=20000)
+        pg.locator("#imp-parse-msg", has_text="กดคำนวณ").wait_for(timeout=20000)
         r["parsed_plan"] = pg.eval_on_selector_all("#imp-custom input", "els => els.map(e => Number(e.value))")
         r["long_paragraphs"]["custom_sheet"] = pg.evaluate(long_p, "#detail")
         pg.click("#imp-custom button[type=submit]"); pg.wait_for_selector("#imp-sc .imp-custom-row", timeout=30000)
