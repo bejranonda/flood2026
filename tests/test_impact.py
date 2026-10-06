@@ -1,6 +1,9 @@
 """Impact analysis page, pilot Kaeng Krachan (owner 2026-10-05; docs/plan/impact-kaeng-krachan.md, D-099): what-if release →
 each point downstream: flow, level range, margin to the bank, when, and whether it is outside what our data have seen."""
+import json
+
 import numpy as np
+import pytest
 
 from floodwatch import impact
 
@@ -460,3 +463,18 @@ def test_villages_along_each_reach_come_from_the_built_file_and_a_case_without_o
         assert items and all(set(x) == {"village", "amphoe"} for x in items)
         assert all(not (x["amphoe"] or "").startswith("อำเภอ") for x in items)  # the prefix is stripped
     assert impact.reach_places("no-such-case") == {}
+
+
+@pytest.mark.parametrize("body", ["[]", '"x"', "7", "null", '{"reaches": [1, 2]}', '{"reaches": "x"}', "{not json", ""])
+def test_a_places_file_with_the_wrong_shape_gives_no_villages_and_never_breaks_the_build(monkeypatch, tmp_path, body):
+    # final review (D-110): a parseable file whose root is a list made .get raise AttributeError inside the hourly build
+    (tmp_path / "kk_reach_places.json").write_text(body, encoding="utf-8")
+    monkeypatch.setattr(impact, "PLACES_DIR", tmp_path)
+    assert impact.reach_places("kaeng-krachan") == {}
+
+
+def test_a_places_file_keeps_only_the_reaches_that_are_lists(monkeypatch, tmp_path):
+    good = [{"village": "บ้านท่าแร้ง", "amphoe": "บ้านแหลม"}]
+    (tmp_path / "kk_reach_places.json").write_text(json.dumps({"reaches": {"B.16": good, "B.10": "x"}}), encoding="utf-8")
+    monkeypatch.setattr(impact, "PLACES_DIR", tmp_path)
+    assert impact.reach_places("kaeng-krachan") == {"B.16": good}

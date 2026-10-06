@@ -507,14 +507,19 @@ PLACES_DIR = Path(__file__).parent / "data"
 
 def reach_places(case: str) -> dict:
     """Villages and อำเภอ along each gauge's reach (OpenStreetMap via Nominatim, built once by
-    research/2026-10-06_kk_reach_places.py; D-110): {code: [{"village", "amphoe"}]}; {} when the case has no file."""
+    research/2026-10-06_kk_reach_places.py; D-110): {code: [{"village", "amphoe"}]}; {} when the case has no file, or
+    when the file is unreadable or has the wrong shape (a list or a string at its root, "reaches" not an object): the
+    hourly case build never breaks on it (final review, D-110). A reach whose value is not a list is left out."""
     name = (CASES.get(case) or {}).get("places_file")
     if not name:
         return {}
     try:
-        return json.loads((PLACES_DIR / name).read_text(encoding="utf-8")).get("reaches") or {}
-    except (OSError, ValueError):
+        reaches = json.loads((PLACES_DIR / name).read_text(encoding="utf-8")).get("reaches") or {}
+    except (OSError, ValueError, AttributeError, TypeError):
         return {}
+    if not isinstance(reaches, dict):
+        return {}
+    return {str(c): v for c, v in reaches.items() if isinstance(v, list)}
 
 
 def river_line(geo_rivers: dict | None, name: str) -> list[list[list[float]]]:
