@@ -109,8 +109,10 @@ Evidence gathered before any question (2026-10-06 12:45–13:05 UTC, live state 
   that day for the map and highlights the column. The map legend says the plan and day in one line. **Phone:** a row tap
   opens the sheet (as today); the day header still selects the day; the km column moves under the plan label if the row
   does not fit 390 px.
-- **Text budget:** no paragraph over 160 characters anywhere in the tab, sheets included; the ★ "why" is one short line
-  plus ⓘ (the full rule and reason).
+- **Text budget:** no paragraph over 160 characters in the case view, the plan sheets, the custom-plan sheet and the brief;
+  the ★ "why" is one short line plus ⓘ (the full rule and reason). The ℹ️ sheets (replay, river table, matrix, method, data
+  request) are the on-demand method prose (GUIDELINES §6c-9): measured and reported by the check, not trimmed in this
+  release (refined during planning, 2026-10-06).
 - **Unchanged:** the national dams list, the login, the chips, the river strip, the ℹ️ collapsible and its sheets
   (replay, river table, matrix, method, data request).
 
@@ -166,7 +168,7 @@ Evidence gathered before any question (2026-10-06 12:45–13:05 UTC, live state 
 
 ## 6. Data contract changes (`scenarios.compare`)
 
-Added to every plan in `plans` (and the ladder): `role` ∈ {star, today, pick, custom, ladder} (a pick may also be a rung),
+Added to every plan in `plans` (and the ladder): `roles` ⊆ {star, today, pick, custom, ladder} (a list: a pick may also be a rung),
 `label` (short), `days` [7 × {status, outside, km, codes}], `km_max`, `km_days`, `outside_any`, `outside_detail`
 [{code, days, flow_max, qmax}]. Top level: `ladder` [plan ids], `picks` [plan ids], `reach_km`, `places`
 {code: [{village, amphoe}]}, `best_for` (suppressed per §2.4). `release=` now takes up to three custom plans separated
@@ -184,7 +186,8 @@ rungs drop the per-gauge level arrays and keep margins, flows and flags).
 - **Browser (`scripts/impact_tab_check.py`, 390 and 1366 px):** grid rows and their day cells; hatched cells for the ★;
   the ladder toggles; a day-header click changes the map legend's day; a row click colours the river (desktop); ONWR group
   in the app's box, unchecked on open, removed on leaving the case; the map fits the case on desktop; **no paragraph over
-  160 characters in the view or any sheet**; ✨ menu (both items), compare in a sheet, a parsed plan fills the boxes;
+  160 characters in the view, the plan and custom sheets and the brief** (ℹ️ sheets reported only); ✨ menu (both items),
+  compare in a sheet, a parsed plan fills the boxes;
   logout clears everything. Public page: `scripts/ux_consistency.py` (C1–C20) as the release's regression check (`app.js`
   and `index.html` unchanged; the impact assets load only on `/impact`).
 - **As a first-time ONWR engineer on a desktop:** answer "what happens if we release 15 for 7 days?" in ≤ 3 actions with no
