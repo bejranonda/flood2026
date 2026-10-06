@@ -116,7 +116,7 @@ def test_the_numbers_answer_explains_this_panels_own_row():
 
 
 def test_every_question_has_a_rule_answer_in_every_situation():
-    for q in explain.QUESTIONS:
+    for q in explain.RESIDENT_Q:
         for o in (_out(), _out(near=False), _out(**KO_KRET), _out(ch12=FALLING, ch24=FALLING, measured={"rain_24h": 60.0}),
                   _out(word="แม่น้ำ", reports=5, risk="high"), _out(freeboard=None, obs=None)):
             lines = explain.answer(q, o)
@@ -251,7 +251,7 @@ def test_the_story_says_up_or_down_plainly_when_the_rows_do():
 
 
 def test_every_question_has_a_story_and_the_numbers_stay_in_the_lines():
-    for q in explain.QUESTIONS:
+    for q in explain.RESIDENT_Q:
         for o in (_out(), _out(near=False), _out(**KO_KRET), _out(word="แม่น้ำ", reports=5, risk="high")):
             s = explain.narrative(q, o)
             assert s and len(s) <= 320 and "ครึ่งหนึ่งของครั้ง" not in s, (q, s)

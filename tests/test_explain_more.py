@@ -117,3 +117,60 @@ def test_polite_particles_are_dropped_not_rejected(monkeypatch):
     explain._cache.clear()
     assert explain.gist("simple", ["✅ ไม่มีจุดที่น้ำล้นตลิ่ง"], "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง") == "ตอนนี้ยังไม่มีจุดที่น้ำล้นตลิ่ง ติดตามข่าวกันต่อไปนะ"
     assert explain.tidy("ได้คะแนนดี") == "ได้คะแนนดี"  # a word that starts with คะ is not a particle
+
+
+def _grid_cmp():
+    from test_scenarios import _r7_state
+    from floodwatch import scenarios as sc
+    st = _r7_state()
+    st["dam"].update({"name_th": "แก่งกระจาน", "dam_date": "2026-10-06", "storage_mcm": 725.0, "storage_pct": 102.1, "inflow_mcm": 10.3})
+    st["reach_km"] = {"B.18": 62.4, "B.10": 45.8, "B.16": 11.4, "B.15": 21.0}
+    cmp = sc.compare(st, inflow_today=10.3, upper=[593.0] * 7, lower=[204.0] * 7, normal=710.0, max_release=24.0, customs=[[20.0] * 7])
+    cmp.update({"dam": st["dam"], "built_at": "2026-10-06T12:06:24+00:00"})
+    return cmp
+
+
+def test_the_brief_is_short_bullets_with_the_engines_numbers_and_the_outside_label():
+    from floodwatch import explain
+    cmp = _grid_cmp()
+    lines = explain.brief(cmp)
+    assert 4 <= len(lines) <= 8 and all(len(x) <= explain.ITEM_MAX for x in lines)
+    text = "\n".join(lines)
+    assert text.startswith("สถานการณ์:") and "แก่งกระจาน" in text and "725" in text
+    assert any(x.startswith(("★ แผนตามเกณฑ์:", "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์")) for x in lines)
+    assert any(x.startswith("ทางเลือก") for x in lines) and "ไม่ใช่ประกาศทางการ" in lines[-1]
+    star = next(p for p in cmp["plans"] if p["optimal"])
+    if star["outside_any"]:
+        assert any(x.startswith("⚠ นอกช่วงข้อมูล") and "เคยวัดสูงสุด" in x for x in lines)
+    assert "ปลอดภัย" not in text and "ควร" not in text
+
+
+def test_two_plans_are_compared_by_their_differences_without_a_verdict():
+    from floodwatch import explain
+    cmp = _grid_cmp()
+    star = next(p for p in cmp["plans"] if p["optimal"])
+    hold = next(p for p in cmp["plans"] if p["kind"] == "hold")
+    lines, story = explain.compare_lines(cmp, hold, star)
+    assert lines[0] == f"{hold['label']} เทียบกับ {star['label']}" and any(x.startswith("อ่างวันที่ 7:") for x in lines)
+    assert not set(explain._NUM.findall(story)) - set(explain._NUM.findall("\n".join(lines)))  # the story adds no number
+    assert "ดีกว่า" not in story and "ปลอดภัย" not in story
+
+
+def test_ai_items_replace_only_the_lines_they_retell_faithfully(monkeypatch):
+    from floodwatch import ai, explain
+    explain._cache.clear()
+    monkeypatch.setenv("AI_EXPLAIN", "1")
+    lines = ["สถานการณ์: อ่างเขื่อนแก่งกระจาน 725 ล้าน ลบ.ม. (102 %)", "ข้อมูล ชป. 2026-10-06 · ไม่ใช่ประกาศทางการ"]
+    monkeypatch.setattr(ai, "run", lambda *a, **k: "1) ขณะนี้อ่างเขื่อนแก่งกระจานมีน้ำ 725 ล้าน ลบ.ม. หรือ 102 %\n2) ข้อมูล ชป. 2026-10-07 ปลอดภัย")
+    got = explain.retell_items(lines)
+    assert got[0] and "725" in got[0] and got[1] is None  # item 2 added a date and a verdict: the rule line stays
+    monkeypatch.setenv("AI_EXPLAIN", "0")
+    explain._cache.clear()
+    assert explain.retell_items(lines) == [None, None]
+
+
+def test_station_codes_in_the_rule_line_do_not_make_an_ai_line_foreign():
+    from floodwatch import explain
+    own = "ห่างตลิ่งต่ำสุด 1.73 ม. (PCH001)"
+    assert explain.check_item("จุดที่ห่างตลิ่งน้อยที่สุดคือ PCH001 ที่ 1.73 ม.", own) == []
+    assert "not Thai" in explain.check_item("lowest margin at PCH001 1.73", own)

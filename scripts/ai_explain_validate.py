@@ -37,7 +37,7 @@ def main(n: int):
     rows = []
     for la, lo in pins:
         out = get(f"/api/point?lat={la}&lon={lo}")
-        for q in explain.QUESTIONS:
+        for q in explain.RESIDENT_Q:
             lines, story = explain.answer(q, out), explain.narrative(q, out)
             messages, rule = explain.prompt(q, lines, story)  # exactly what the app sends
             t0 = time.time()

@@ -1132,7 +1132,7 @@ def explain_point(lat: float = Query(..., ge=5, le=21), lon: float = Query(..., 
     """A resident question about a pin (D-068). part=lines: the rule story (a few easy sentences) and the rule lines with
     the numbers, from the same data as /api/point, at once. part=gist: GLM's warm retelling of the story, only if
     explain.check passes (else null). The pin never goes to GLM."""
-    if q not in explain.QUESTIONS or part not in ("lines", "gist"):
+    if q not in explain.RESIDENT_Q or part not in ("lines", "gist"):
         raise HTTPException(status_code=400, detail="unknown question")
     out = _point_out(lat, lon)
     lines, story = explain.answer(q, out), explain.narrative(q, out)

@@ -26,7 +26,10 @@ import threading
 from floodwatch import ai
 
 QUESTIONS = {"simple": "สรุปให้ฟังง่าย ๆ", "home": "น้ำจะท่วมบ้านไหม", "car": "ควรย้ายรถไหม",
-             "travel": "พรุ่งนี้เดินทางได้ไหม", "prepare": "ควรเตรียมอะไร", "numbers": "ตัวเลขหมายถึงอะไร"}
+             "travel": "พรุ่งนี้เดินทางได้ไหม", "prepare": "ควรเตรียมอะไร", "numbers": "ตัวเลขหมายถึงอะไร",
+             "brief": "สรุปเสนอผู้บริหาร", "compare": "เทียบสองแผน"}
+RESIDENT_Q = ("simple", "home", "car", "travel", "prepare", "numbers")  # answer()/narrative()'s own keys; QUESTIONS
+                                                                        # also carries officials' "brief"/"compare" (D-110)
 DAILY_CAP = 1500          # AI gists per process per day
 CACHE_H = 6               # the key is the answer's lines, so new facts make a new key
 GIST_MAX = 420            # characters: the story card is 3-4 short sentences (a weather app's AI card ~250)
@@ -602,10 +605,10 @@ def _calls_today() -> int:
     return _count["n"]
 
 
-def prompt(q: str, lines: list[str], story: str | None = None) -> tuple[list[dict], str]:
+def prompt(q: str, lines: list[str], story: str | None = None, system: str | None = None) -> tuple[list[dict], str]:
     """The GLM messages for a retelling, and the rule text it is checked against (one place for app and validation)."""
     rule = "\n".join(([f"บทสรุป: {story}"] if story else []) + lines)
-    return ([{"role": "system", "content": SYSTEM},
+    return ([{"role": "system", "content": system or SYSTEM},
              {"role": "user", "content": f"คำถามของผู้ใช้: {QUESTIONS.get(q, q)}\nข้อมูล:\n{rule}"}], rule)
 
 
@@ -616,11 +619,11 @@ def tidy(text: str) -> str:
     return re.sub(r"\s*(?:ครับ|ค่ะ|คะ)(?=\s|$|[.!,])", "", t).strip()
 
 
-def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
+def gist(q: str, lines: list[str], story: str | None = None, system: str | None = None, checker=None) -> str | None:
     """A warm retelling of the story (and the lines behind it) by GLM, or None (AI off, failed, capped or rejected)."""
     if os.environ.get("AI_EXPLAIN", "1") != "1":  # the owner's off switch (.env AI_EXPLAIN=0)
         return None
-    messages, rule = prompt(q, lines, story)
+    messages, rule = prompt(q, lines, story, system)
     key = (q, rule)
     now = dt.datetime.now(dt.timezone.utc).timestamp()
     with _lock:
@@ -639,7 +642,7 @@ def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
         if not text:
             break  # no answer (off, paused, timeout): do not wait twice
         text = tidy(text)
-        if not check(text, rule):
+        if not (checker or check)(text, rule):
             good = text
             break
     with _lock:
@@ -648,6 +651,168 @@ def gist(q: str, lines: list[str], story: str | None = None) -> str | None:
             for k in sorted(_cache, key=lambda k: _cache[k][1])[:1000]:
                 _cache.pop(k, None)
     return good
+
+
+# --- impact tab for officials: the executive brief and the two-plan comparison (D-110) --------------------------------
+OFFICIAL = ("คุณช่วยเรียบเรียงข้อมูลการระบายน้ำจากเขื่อนให้เจ้าหน้าที่และผู้บริหารอ่าน ภาษาทางการที่กระชับ เป็นกลาง ชัดเจน "
+            "ใช้เฉพาะข้อมูลที่ให้ ห้ามเพิ่มหรือเปลี่ยนตัวเลข ห้ามเพิ่มข้อมูลใหม่ ห้ามแนะนำ ห้ามตัดสินใจแทน ห้ามบอกว่าแผนใดดีกว่า "
+            "ห้ามใช้คำว่า ปลอดภัย ไม่ท่วม แน่นอน ควร อันตราย วิกฤต ตอบเป็นภาษาไทยเท่านั้น ไม่ใส่อีโมจิ ไม่ต้องใส่ครับ ค่ะ หรือคะ "
+            "ตอบเฉพาะข้อความ")
+ITEM_MAX = 160  # characters in one brief bullet (GUIDELINES §6c-9: no paragraph over 160)
+
+
+def check_item(text: str, own: str) -> list[str]:
+    """`check` for officials' lines: Latin letters are allowed when they are the station codes of the rule line itself."""
+    issues = check(text, own)
+    if "not Thai" in issues and all(w in own for w in re.findall(r"[A-Za-z]{3,}", text)):
+        issues.remove("not Thai")
+    return issues
+
+
+def day_range(days: list[int]) -> str:
+    """[1, 2, 3, 5] → '1–3, 5'."""
+    out, start, prev = [], None, None
+    for d in sorted(days):
+        if start is None:
+            start = prev = d
+        elif d == prev + 1:
+            prev = d
+        else:
+            out.append(f"{start}–{prev}" if prev > start else f"{start}")
+            start = prev = d
+    if start is not None:
+        out.append(f"{start}–{prev}" if prev > start else f"{start}")
+    return ", ".join(out)
+
+
+def outside_short(p: dict) -> str:
+    """'B.18 256/143, B.10 192/86 ลบ.ม./วิ (แผน/เคยวัดสูงสุด)' — the outside label in one short line (D-110)."""
+    parts = [f"{o['code']} {o['flow_max']:.0f}/{o['qmax']:.0f}" for o in p.get("outside_detail") or []
+             if o.get("flow_max") is not None and o.get("qmax") is not None]
+    return ", ".join(parts) + " ลบ.ม./วิ (แผน/เคยวัดสูงสุด)" if parts else ""
+
+
+def _m(x) -> str:
+    return "–" if x is None else f"{x:.2f}"
+
+
+def _plan_facts(p: dict) -> str:
+    e = p["effects"]
+    worst = min((d for d in p.get("days") or [] if d.get("worst_margin") is not None), key=lambda d: d["worst_margin"], default=None)
+    km = p.get("km_max") or 0
+    return (f"อ่างวันที่ 7 {e['storage_end']:.0f} · ห่างตลิ่งต่ำสุด {_m(e.get('worst_margin_min'))} ม."
+            + (f" ({worst['worst_code']})" if worst else "") + (f" · ใกล้/เกินตลิ่ง {km:.0f} กม." if km else ""))
+
+
+def _ict(iso: str | None) -> str:
+    from floodwatch.impact import TH_MONTHS
+    if not iso:
+        return "–"
+    t = dt.datetime.fromisoformat(iso).astimezone(dt.timezone(dt.timedelta(hours=7)))
+    return f"{t.day} {TH_MONTHS[t.month - 1]} {t:%H:%M} น."
+
+
+def brief(cmp: dict) -> list[str]:
+    """The executive brief (owner 2026-10-06: plain bullets, copyable; D-110): situation, the ★ by the stated rule, today's
+    plan and one more alternative, what is outside the river data, the downstream model's limit, the data time. Numbers
+    from the engine only; the ★ is the rule's, never advice."""
+    from floodwatch.scenarios import EFFECT_KEYS, EFFECT_TH
+    dam = cmp.get("dam") or {}
+    name = f"เขื่อน{dam.get('name_th') or ''}"
+    plans = cmp.get("plans") or []
+    by = {p["id"]: p for p in plans}
+    star = next((p for p in plans if p.get("optimal")), None)
+    hold = next((p for p in plans if p.get("kind") == "hold"), None)
+    st0, rel, inf = dam.get("storage_mcm"), dam.get("released_mcm"), dam.get("inflow_mcm")
+    up0 = (cmp.get("upper") or [None])[0]
+    lines = []
+    if st0 is not None:
+        pos = ("" if up0 is None else f" เหนือเส้นควบคุมบน {st0 - up0:.0f}" if st0 > up0 else f" ต่ำกว่าเส้นควบคุมบน {up0 - st0:.0f}")
+        lines.append(f"สถานการณ์: อ่าง{name} {st0:.0f} ล้าน ลบ.ม." + (f" ({dam['storage_pct']:.0f} %)" if dam.get("storage_pct") is not None else "")
+                     + pos + (f" · ระบาย {rel:.1f} · ไหลเข้า {inf:.1f} ล้าน ลบ.ม./วัน" if rel is not None and inf is not None else ""))
+    opt = cmp.get("optimal") or {}
+    if star:
+        lines.append(("★ แผนตามเกณฑ์: " if opt.get("constraints_met") else "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์ ใกล้เคียงที่สุด: ")
+                     + f"{star.get('label') or plan_words(star)} → {_plan_facts(star)}")
+    if hold and hold is not star:
+        lines.append(f"ทางเลือก (คงเท่าวันนี้): {hold.get('label') or plan_words(hold)} → {_plan_facts(hold)}")
+    alt, goal = None, None
+    for k in EFFECT_KEYS:
+        p = by.get((cmp.get("best_for") or {}).get(k))
+        if p and p is not star and p is not hold:
+            alt, goal = p, k
+            break
+    if alt:
+        lines.append(f"ทางเลือก ({EFFECT_TH[goal]}): {alt.get('label') or plan_words(alt)} → {_plan_facts(alt)}")
+    for p in (star, hold, alt):
+        if p and p.get("outside_any"):
+            lines.append(f"⚠ นอกช่วงข้อมูล ({p.get('label') or plan_words(p)}): {outside_short(p)}")
+    ds = cmp.get("downstream") or {}
+    mae = ds.get("mae_cm") or {}
+    d1 = max((v[0] for v in mae.values() if v and v[0] is not None), default=None)
+    d7 = max((v[-1] for v in mae.values() if v and v[-1] is not None), default=None)
+    lines.append(f"ข้อจำกัด: ระดับท้ายน้ำทดสอบย้อนหลังแล้ว คลาดเคลื่อนเฉลี่ย ±{d1}–{d7} ซม. (วันที่ 1–7) ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์"
+                 if ds.get("method") == "hybrid" and d1 is not None and d7 is not None
+                 else "ข้อจำกัด: ระดับท้ายน้ำยังไม่ผ่านการทดสอบย้อนหลัง ใช้เทียบระหว่างแผนเท่านั้น")
+    lines.append(f"ข้อมูล ชป. {dam.get('dam_date') or '–'} · คำนวณ {_ict(cmp.get('built_at'))} · ไม่ใช่ประกาศทางการ")
+    return lines
+
+
+def compare_lines(cmp: dict, a: dict, b: dict) -> tuple[list[str], str]:
+    """Plan a against plan b (D-110: '✨ เทียบกับแผน ★'): the differences the engine computed, no verdict."""
+    ea, eb = a["effects"], b["effects"]
+    la, lb = a.get("label") or plan_words(a), b.get("label") or plan_words(b)
+    diff = ea["storage_end"] - eb["storage_end"]
+    lines = [f"{la} เทียบกับ {lb}",
+             f"อ่างวันที่ 7: {ea['storage_end']:.0f} เทียบ {eb['storage_end']:.0f} ล้าน ลบ.ม. (ต่างกัน {diff:+.0f})",
+             f"ห่างตลิ่งต่ำสุด: {_m(ea.get('worst_margin_min'))} เทียบ {_m(eb.get('worst_margin_min'))} ม.",
+             f"แม่น้ำใกล้/เกินตลิ่งมากสุด: {a.get('km_max') or 0:.0f} เทียบ {b.get('km_max') or 0:.0f} กม.",
+             f"เปลี่ยนอัตราระบายวันละไม่เกิน: {ea['ramp_max']:.1f} เทียบ {eb['ramp_max']:.1f} ล้าน ลบ.ม."]
+    for p, label in ((a, la), (b, lb)):
+        if p.get("outside_any"):
+            lines.append(f"⚠ นอกช่วงข้อมูล ({label}): {outside_short(p)}")
+    story = (f"{la} เหลือน้ำในอ่างวันที่ 7 {'มากกว่า' if diff > 0 else 'น้อยกว่า'} {lb} {abs(diff):.0f} ล้าน ลบ.ม. " if abs(diff) >= 1
+             else f"{la} และ {lb} เหลือน้ำในอ่างวันที่ 7 ใกล้เคียงกัน ")
+    story += f"จุดที่ห่างตลิ่งน้อยที่สุด {_m(ea.get('worst_margin_min'))} เทียบ {_m(eb.get('worst_margin_min'))} ม."
+    if a.get("outside_any") or b.get("outside_any"):
+        story += " บางวันน้ำมากกว่าที่สถานีเคยวัดได้ ระดับท้ายน้ำของวันนั้นจึงมาจากการต่อเส้นโค้งออกไป"
+    return lines, story
+
+
+def retell_items(lines: list[str], system: str = OFFICIAL) -> list[str | None]:
+    """GLM rewords each line in the officials' voice (D-110): one call, numbered lines back; a line is used only when it
+    passes `check_item` against its own rule line and stays ≤ ITEM_MAX, else None (the rule line stays). AI off, failed or
+    capped → all None."""
+    if os.environ.get("AI_EXPLAIN", "1") != "1" or not lines:
+        return [None] * len(lines)
+    key = ("items", system, tuple(lines))
+    now = dt.datetime.now(dt.timezone.utc).timestamp()
+    with _lock:
+        hit = _cache.get(key)
+        if hit and now - hit[1] < (CACHE_H * 3600 if any(hit[0]) else 120):
+            return list(hit[0])
+        if _calls_today() >= DAILY_CAP:
+            return [None] * len(lines)
+        _count["n"] += 1
+    messages = [{"role": "system", "content": system + " เขียนใหม่ทุกข้อ ข้อละหนึ่งประโยค ขึ้นต้นด้วยเลขข้อเดิม เช่น 1) …"},
+                {"role": "user", "content": "\n".join(f"{k}) {t}" for k, t in enumerate(lines, 1))}]
+    try:
+        text = ai.run(messages, max_tokens=900, timeout=25)
+    except Exception:
+        text = None
+    got: list[str | None] = [None] * len(lines)
+    for line in (text or "").splitlines():
+        m = re.match(r"\s*(\d+)\s*[).:]\s*(.+)", line)
+        if not m:
+            continue
+        k = int(m.group(1)) - 1
+        if 0 <= k < len(lines) and got[k] is None:
+            t = tidy(m.group(2).strip())
+            if len(t) <= ITEM_MAX and not check_item(t, lines[k]):
+                got[k] = t
+    with _lock:
+        _cache[key] = (got, now)
+    return got
 
 
 # --- impact tab: the 7-day release scenarios (D-101) ------------------------------------------------------------------
