@@ -9,6 +9,8 @@
 |---|---|---|---|
 | Q18 | `flood.autobahn.bot` challenged non-browser clients | ✅ **done** (owner turned Bot Fight Mode off, verified 17:33 UTC) | |
 | **HYDROBASINS** | Download HydroBASINS (Asia) in a browser and copy it to the server | ✅ **done** 2026-10-02 (owner downloaded the lake version + ONWR's 22 basins; tested: no forecast gain, [research](../research/2026-10-02_catchment_rain.md)) | |
+| **FLOODMAP** | Ask ONWR/RID for flood-coverage maps by release level below Kaeng Krachan (data request #5): the only way to draw a land flood area per plan honestly (D-105) | ⬜ open — new 2026-10-06 | 2 |
+| **DEM** | A higher-resolution DEM (LiDAR, 1–5 m) for the Phetchaburi lowland — owner: "I will ask for higher resolution DEM later" | ⬜ open — new 2026-10-06 | 2 |
 | **IMPACT** | `/impact` (D-099): give the link and the password to the ONWR/RID engineers privately; **change the password to a long passphrase (≥ 16 characters) before any ONWR/RID data are loaded** | ⬜ open — new 2026-10-05 (pilot password is short: fine for public data only, KI-293) | 1 |
 | **UPTIME** | An external uptime check that alerts you when `/api/health` fails (KI-246: a 4.5 h overload on 2026-09-30 went unnoticed) | ⬜ open — new 2026-09-30 | 1 |
 | **SOCIAL** | Upload `docs/img/social-preview.png` as the GitHub repository social preview (**regenerated 2026-10-03 with the nationwide text, D-073**); optionally add the site to Google Search Console | ⬜ open — new 2026-09-30 | 3 |
@@ -163,3 +165,16 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 2. Run `python3 scripts/owner_status.py` before asking, because the owner may already have done it. (2026-09-26: the owner had already deleted the old tunnel and fixed tunnel rights.)
 3. When an item is done: move it to §4 with evidence, update [KNOWN_ISSUES](KNOWN_ISSUES.md) and [DECISIONS](plan/DECISIONS.md) if it changes behaviour, and add a step to [HANDOFF §5](../HANDOFF.md).
 4. **Never trust a single client for a reachability check.** Cloudflare challenges depend on the TLS fingerprint. `scripts/owner_status.py` tests with curl and reads `cf-mitigated`, because Python's urllib once got HTTP 200 while curl, browsers and crawlers were challenged.
+
+### FLOODMAP — flood-coverage maps by release level (new 2026-10-06, D-105)
+- **Why:** the satellites are not reliable over the Phetchaburi lowland (KI-310) and the river never overtopped in three
+  years, so no land flood area can be validated; engineers' own maps by release level are the honest source.
+- **Steps:** ask ONWR/RID (data request #5 on `/impact`, CSV/Shapefile template there) for flood extents by Kaeng Krachan
+  release (e.g. 10, 15, 20, 25 ล้าน ลบ.ม./วัน), with their method and date.
+- **Verification:** the files arrive; we score them against any observed event and show them per plan only after that.
+
+### DEM — a higher-resolution DEM (new 2026-10-06, D-105)
+- **Why:** the free 30 m DEM cannot resolve 0.5–1.5 m floods; the experiment (research/2026-10-06_flood_dem_kk.py) takes any DEM path.
+- **Steps:** obtain a LiDAR or survey DEM (1–5 m) of the lowland below the dam from the agency that holds it; put the file on
+  the server (not in git).
+- **Verification:** `PYTHONPATH=… python3 research/2026-10-06_flood_dem_kk.py OUT the_dem.tif` runs and is scored.

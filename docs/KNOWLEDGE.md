@@ -377,3 +377,11 @@ UX principles established through visitor testing during the 2026 flood season:
   PCH001 10→37. Rain on the two lowland basins between the dam and the city did not explain day-to-day level changes beyond
   the release in that year.
 - **RID's gauges here post in batches** (≈ 18 readings a day; at 05:10 ICT the newest was 6 h old), PCH001 every 10 minutes.
+
+## 28. Floods below Kaeng Krachan in the record (checked 2026-10-06; D-105, KI-310)
+- **No gauge over its bank in 2023-09 … 2026-10** (HII hourly history + our database): closest B.16 1.90 m below (2024-10-11),
+  B.15 1.87 m below (2026-09-29), B.18 1.93 m below (2026-10-05, release 10.8 ล้าน ลบ.ม./วัน), PCH001 2.57 m below.
+- **Banks (m MSL, each agency's own):** B.18 28.0, B.10 13.9, B.16 8.9, B.15 5.1, PCH001 6.0.
+- **August 2018** (release up to 24.36 on 21 Aug): Sentinel-1 (GFM) saw 0–6.5 km² of flood outside permanent water per
+  pass over the lowland, with 39–58 % of it hidden from the radar.
+- **ONWR's forecast for 7–8 Oct 2026** marks 176 and 161 ≈ 1.1 km cells at class 3 over the case area (issued 5 Oct 19:06 UTC).

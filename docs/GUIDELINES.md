@@ -300,6 +300,10 @@ People using the app may be stressed, on the move, or protecting their home. Be 
   leave a case without "now" overnight (KI-307).
 - **A band is stored and added as (observed − predicted)** — write the sign into the variable name or the docstring; a
   mirrored band looks plausible and points the wrong way (KI-309).
+- **A flood area on a map needs an observed extent the method reproduces.** Where satellites are blind or disagree and the
+  river never overtopped in the record, show the river by its gauges, not land (D-105, KI-310).
+- **Another agency's layer is dated, credited and said not to be ours** ("ที่มา: สทนช." · update time · "not results of
+  the plan"), fetched server-side so visitors' browsers never call a third party.
 - **Choosing a model per unit on ~40 days overfits** (E-7D-IN: +38 % in the second sample). Choose a change for all units,
   confirm it on units it was not chosen on, and prefer the change that improves what is served without making any unit
   worse.

@@ -726,3 +726,12 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
 - The inflow side kept one change out of 31 candidates and four ways of choosing: feeding the served model the mean of
   four rain forecasts. Choosing per dam among many candidates won on the first sample and lost on the second; a single
   family improved the summed error but made 1–3 more dams worse. The owner's rule ("no unit made worse") decided.
+
+### 19.25 A flood view without inventing a flood (D-105)
+- Asked for a flood area per release plan, we built what the data can support — each river reach coloured by its own
+  gauge's margin for that plan and day, and ONWR's own risk layers beside it — and tested the rest first: the satellites
+  (blind on 39–58 % of the lowland, inconsistent between passes and with each other) and a DEM height-above-river map
+  (nothing to score it against: no river overflow in three years). Both stay research until an observed release flood and
+  a better DEM exist.
+- A model change that wins the research samples but loses the latest season (the river's gain method) is not shipped;
+  the code and the data stay, so the next season can decide.

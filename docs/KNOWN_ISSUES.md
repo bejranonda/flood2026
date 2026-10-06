@@ -881,3 +881,10 @@ adds a band to the prediction. Bhumibol's 7-day model band [−38.3, −0.07] me
 range was drawn below the line; Sirikit's persistence band [−13.8, +36.2] the same way round. Found 2026-10-05 while
 writing the 7-day build. `load_models` now reads the Q58 bands as (observed − predicted); every new band is stored that
 way. Test: `test_the_q58_bands_are_read_as_observed_minus_predicted`.
+
+### KI-310 — Satellite flood maps are not reliable over the Phetchaburi lowland · 🟡 open (not shown, D-105)
+2026-10-06, research/2026-10-06_flood_satellite_kk.log and _flood_sources_kk.log: Copernicus GFM hides 39–58 % of the
+lowland below Kaeng Krachan in every pass (exclusion mask: towns, orchards), keeps < 35 % of one pass's flood in the next,
+and maps 53 km² on one track but ~4 km² on others days apart; GISTDA's 30-day flood (18.1 km²) and GFM's (95.6 km²) share
+73 % of GISTDA's area but only 13 % of GFM's. Google Flood Hub has no gauge there. Do not draw satellite flood extents as
+"what this release would flood" until they agree with each other and with an observed event.

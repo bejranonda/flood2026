@@ -35,6 +35,10 @@
 ระดับวันนี้ + การตอบสนองต่อการระบายที่เรียนรู้ (ไม่ติดลบ) · ทดสอบย้อนหลัง 7 วันแล้ว คลาดเคลื่อน ~10 ซม. วันแรก ถึง ~40 ซม. วันที่ 7 และแผนต้องห่างตลิ่ง
 มากกว่าค่านั้นทุกวัน (เดิมใช้สูตรที่คลาดเคลื่อน ~1 ม.) · ลองฝนในพื้นที่ท้ายเขื่อน ความชื้น น้ำขึ้นน้ำลง และแบบจำลองหลายแบบแล้ว ไม่ช่วย จึงไม่ใช้ (§11c)
 
+**แผนที่น้ำท่วมของแต่ละแผนระบาย** — แสดงแม่น้ำเป็นช่วงตามสถานีที่ใกล้ที่สุด สีตามระยะห่างตลิ่งของวันที่เลือก (ไม่ใช่พื้นที่น้ำท่วม) และชั้นข้อมูลของ สทนช.
+(พื้นที่เตือน คาดการณ์ +1…+3 วัน น้ำท่วมที่พบ) · ภาพดาวเทียม (GFM, GISTDA) ตรวจแล้วไม่น่าเชื่อถือพอบริเวณนี้ (มองไม่เห็น 39–58 % ของพื้นที่ ไม่สอดคล้องกันระหว่างรอบ)
+จึงไม่แสดง · แผนที่จาก DEM 30 ม. เป็นการทดลอง ยังให้คะแนนไม่ได้เพราะ 3 ปีที่ผ่านมาแม่น้ำไม่เคยล้นตลิ่งที่สถานีใดเลย (§11d)
+
 **ปรับปรุงแบบจำลอง (4 ต.ค. 2569, ทดสอบแบบไม่โกง: เลือกวิธีจากครึ่งแรก วัดผลครึ่งหลัง ยืนยันกับสถานีอีกชุดที่ไม่เคยเห็น)** —
 แบบจำลอง star อ่านค่าเพิ่ม: ระดับน้ำเทียบค่าเฉลี่ย 7 และ 30 วัน และการเปลี่ยนแปลง 1/3/72 ชม. ความคลาดเคลื่อนลดลงจาก "ถือว่าคงที่"
 −5.3…−6.6 % เป็น −8.3…−9.4 % ที่ 24–72 ชม. (สถานีชุดที่สอง) · สิ่งที่ลองแล้วได้น้อยหรือไม่ได้: เฉลี่ยหลายวิธี (+0.4–0.9 จุด),
@@ -281,6 +285,8 @@ instead of hiding it.
 | Dams without a tested model (D-103) | a projection "if today's inflow and release hold" with the dam's own band | no skill claimed; marked * and "ถ้าเท่าวันนี้" | shown; 36 of 38 dams have a 7-day trend (§9c) |
 | EGAT's daily % (D-103, KI-305) | as the dams list's badge | 0 for 11 of 15 dams; the other four −44 … +26 points from storage ÷ normal | not used; storage ÷ the agency's own normal storage for every record (§9c) |
 | Night of 2026-10-05 (two-sample gate) | dam release input (E-DAM), damping (E-DAMP), upstream flow (E-UQ), two years of history (E-2Y), discharge forecasts (E-Q) | E-DAM no gain; E-DAMP, E-UQ and E-2Y fail the gate; E-Q passes both samples | E-Q is a new parameter (where to show it is the owner's call); the others not shipped (§5e–5i) |
+| A flood view per release plan (D-105) | river reaches by nearest gauge; ONWR's layers; satellite past floods; a DEM (HAND) flood area | reaches and ONWR's layers built; GFM blind on 39–58 % and inconsistent, GISTDA/GFM agree 73 %/13 %; DEM unscorable (no observed release flood) | reaches + ONWR shown; satellites and DEM not shown (§11d) |
+| River on three wet seasons (2026-10-06) | the gain method and rain terms with two more wet seasons | gain beats the hybrid in both month samples, loses the live Jul–Sep 2026 window at days 5–7 | served model unchanged; history kept for the next season (§11c) |
 | AI plain summary ("✨ ให้ AI สรุป") | free-form LLM vs deterministic rule narrative + background GLM retelling | free-form LLM invented safe/normal verdicts; rule narrative + checked retelling gives 91 % pass and 0 safety errors | deterministic rule story rendered at 0s (<50 ms); GLM polishes tone asynchronously; checked for safety; 🔊 voice readout added (D-068, KI-275) |
 
 ## 8. Limits we state
@@ -471,6 +477,9 @@ Live 2026-10-05 22:38 UTC: 16 dams on the 4-model rain; KK inflow 10.3 → 7.9 (
 - 7 days for release plans (D-104): `research/2026-10-05_e7d_inflow.py` (35 dams, 31 candidates; cache outside the repo),
   `_e7d_inflow_strategies.py` and `_e7d_inflow_narrow.py` (the choice, offline from its log), `_e7d_inflow_build.py R_E4`
   (writes the BUILD_JSON behind `src/floodwatch/data/reservoir_inflow7.json`), `_e7d_down.py` (the river below Kaeng Krachan).
+- 2026-10-06: `research/2026-10-06_kk_river_history.py` (older HII years), `_e7d_down_3y.py` / `_e7d_down_3y_fc.py` (+ `_gate.log`),
+  `_flood_satellite_kk.py` (GFM 2018 and now), `_flood_sources_kk.py` (GISTDA vs GFM; the key only from the environment),
+  `_flood_dem_kk.py` (HAND on any DEM), `_e7d_long_fetch.py` + `_e7d_inflow_long.py` (the inflow choice on a whole wet season).
 - The impact tab in a browser: `IMPACT_PW="$(sed -n 's/^IMPACT_PASSWORD=//p' .env)" python3 scripts/impact_tab_check.py` — it
   measures the dams list (row height, groups) and checks that a row and a ◆ open the same dam sheet.
 
@@ -605,3 +614,41 @@ gains on day 7: B.10 0.63, B.16 0.55, B.15 0.17, PCH001 1.01 cm per m³/s. 2026-
 `test_plans_use_the_river7_levels_once_the_release_reaches_each_point`, `test_a_plan_keeps_the_river_models_margin_for_each_day`,
 `test_the_plan_says_which_downstream_model_it_used_and_the_story_states_its_tested_error`.
 
+**Three wet seasons (2026-10-06; owner: "Continue all you suggested … best performance / less errors").** HII serves
+older hourly years when start and end are both in the past (B.18, B.10, B.16, B.15 from 2023-09-30; PCH001 10-min), so
+the test was rerun on 2023-09-30 … 2026-10-05 (1,103 days; research/2026-10-06_e7d_down_3y*.{py,log}). Month samples
+with observed rain: the **gain at every point (B.18 too)** beats the served hybrid at days 3 and 7 in both samples
+(s1 78.5 vs 79.8 cm summed at day 3, 96.7 vs 99.0 at day 7; s2 65.6 vs 66.6 and 96.3 vs 97.2) with no more points worse;
+with archived *forecast* rain over the three wet seasons (500 issue days): the same (s1 103.7 vs 105.2, 131.1 vs 133.3;
+s2 85.8 vs 87.0, 128.1 vs 128.4). The rain terms come alive with two more wet seasons (γ > 0; best at day 3, −3 to −6 %)
+but leave a fourth point worse at day 7 in one sample — a near-miss. On the **live window** (Jul–Sep 2026, each month
+scored with the other months, the same three-year history), however, the hybrid stays better at days 5–7 (summed 153.5
+vs 159.0 cm at day 7; B.18 11 vs 14 cm): a change ships only when it holds everywhere, so **the served model stays the
+one-year hybrid**. `impact_history` keeps three years of daily means (`impact_daily_<case>`) and `river7(history=…,
+method="gain")` is tested, so the next wet season decides without new code.
+
+### 11d. A flood view for each release plan (owner 2026-10-06, D-105)
+Owner: "can we show flood area in the map for each of reservoir discharge release scenario?"; chose all four options —
+river reaches + ONWR's layers, a DEM flood area as research first ("firstly for experiment … I will ask for higher
+resolution DEM later"), past floods as analogues ("satellite images might be unreliable, please validate before use …
+compare with google or any global flood info"), and ONWR's flood maps when they arrive.
+- **Shown:** for the plan and day picked in its sheet, the Phetchaburi in pieces by nearest gauge (≤ 10 km), coloured red
+  over the bank, orange inside that day's model error, blue otherwise (`impact.river_reaches`, `colorReaches`) — the
+  legend says it is no flood area (D-019); ONWR's area warning, +1…+3-day forecast and observed flooded area over the case
+  (`collectors.onwr_flood`, 3-hourly; `floodwatch.mvt` reads the vector tiles and matches the reference decoder on a live
+  tile), with ONWR's update times, credited "ที่มา: สทนช." and said not to be results of the plan. 2026-10-06: warning 36
+  cells, +1 day 226 (176 at class 3), +2 days 174 (161 at class 3), observed 3 polygons.
+- **The record:** in 2023-09 … 2026-10 none of the five gauges went over its bank (closest: B.16 1.9 m below on
+  2024-10-11, B.15 1.87 m below on 2026-09-29) — no recent release-driven flood exists to calibrate a flood map against.
+  The one in reach is August 2018 (Kaeng Krachan up to 24.36 ล้าน ลบ.ม./วัน on 21 Aug).
+- **Satellites (not shown):** Copernicus GFM (archive from 2015) over the lowland below the dam: 39–58 % of it hidden from
+  the radar in every pass (towns, orchards — where damage is); 2018 flood outside permanent water 0–6.5 km² a pass (6.2 on
+  21 Aug), consecutive passes keep < 35 % of each other's flood; 2026: 53 km² on one track and ~4 km² on others days
+  apart. GISTDA's 30-day flood (18.1 km²) vs GFM (95.6 km²): 73 % of GISTDA's flood also in GFM, only 13 % of GFM's in
+  GISTDA. Google Flood Hub has no gauge in the box. Past-flood analogues therefore fail validation here and are not shown.
+- **DEM experiment (not shown):** height above nearest drainage from Copernicus GLO-30 (30 m, the river burned in) scored
+  against GFM's 2018 flood within 15 km of the river: that flood is 0.2 km² on land the radar saw, so CSI is 0.012 at
+  every stage (HAND maps 18–49 km² for 0.5–8 m) — unscorable rather than proven wrong. Needed before any land flood area:
+  an observed extent of a release flood (ONWR/RID flood-coverage maps by release level, data request #5, or imagery of a
+  future event) and the higher-resolution DEM the owner will request; the script takes any DEM path.
+research/2026-10-06_flood_satellite_kk.{py,log}, _flood_sources_kk, _flood_dem_kk.

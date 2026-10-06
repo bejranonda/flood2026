@@ -218,7 +218,9 @@ def main() -> None:
                        ("Q7", "Notifications (LINE / Web Push) wanted?"), ("Q22", "Traffy text labelling / voice reports with Workers AI?"),
                        ("Q3", "Permission mails to HII / BMA / Traffy, and DWR / RID before national data goes public (D-046)"),
                        ("EGRESS", "Reliable Thai egress before a public national launch (KI-110, D-046)"),
-                       ("BMA", "Courtesy note to the flood69 relay / BMA about showing their data (D-031)")):
+                       ("BMA", "Courtesy note to the flood69 relay / BMA about showing their data (D-031)"),
+                       ("FLOODMAP", "Flood-coverage maps by release level below Kaeng Krachan from ONWR/RID (D-105)"),
+                       ("DEM", "Higher-resolution DEM (LiDAR) for the Phetchaburi lowland (D-105)")):
         rows.append((qid, title, "manual", "answer in chat or in docs/plan/OPEN_QUESTIONS.md"))
 
     if "--json" in sys.argv:
