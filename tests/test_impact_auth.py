@@ -317,6 +317,25 @@ def test_compare_prefers_the_named_plan_over_its_custom_twin(monkeypatch):
     assert c["lines"][0].startswith("10.8 วันนี้")
 
 
+def test_a_crafted_plan_with_a_semicolon_or_too_few_numbers_answers_422_not_500(monkeypatch):
+    # review round 1: a smuggled ';' made _plan_by_release's own float() raise an uncaught ValueError (500) instead of
+    # the documented 422; a and b are now each checked as 7 numbers before anything else runs
+    monkeypatch.setenv("AI_EXPLAIN", "0")
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = _explain_state()
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st if key == "impact_kaeng_krachan" else {})
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    b = ",".join(["20"] * 7)
+    with pytest.raises(HTTPException) as e:
+        api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="compare",
+                           a="1,2,3,4,5,6,7;8,9,10,11,12,13,14", b=b)
+    assert e.value.status_code == 422
+    with pytest.raises(HTTPException) as e:
+        api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="compare",
+                           a="1,2,3", b=b)
+    assert e.value.status_code == 422
+
+
 def test_typed_plans_need_login_fill_seven_numbers_and_are_never_logged(monkeypatch, caplog):
     import logging
     monkeypatch.setenv("AI_EXPLAIN", "0")

@@ -787,9 +787,19 @@ def impact_scenarios(request: Request, case_id: str, release: str | None = Query
     return JSONResponse(_impact_compare(case_id, release, diversion_cms), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
-def _plan_by_release(cmp: dict, s: str) -> dict:
+def _seven(s: str) -> list[float]:
+    """One plan from a query value: exactly 7 numbers 0–200 (ล้าน ลบ.ม./วัน), else 422 (D-110)."""
+    try:
+        vals = [round(float(x), 2) for x in s.split(",")]
+    except ValueError:
+        raise HTTPException(422, "a and b: 7 numbers each")
+    if len(vals) != 7 or any(not (0 <= x <= 200) for x in vals):
+        raise HTTPException(422, "a and b: 7 numbers between 0 and 200")
+    return vals
+
+
+def _plan_by_release(cmp: dict, vals: list[float]) -> dict:
     """The plan with these 7 releases, the named one (★, today, a pick, a rung) before its custom twin (D-110)."""
-    vals = [round(float(x), 2) for x in s.split(",")]
     same = [p for p in cmp.get("plans") or [] if p["release"] == vals]
     if not same:
         raise HTTPException(422, "plan not in the comparison")
@@ -815,8 +825,10 @@ def impact_explain(request: Request, case_id: str, release: str | None = Query(N
     if q == "compare":
         if not a or not b:
             raise HTTPException(422, "a and b: 7 numbers each")
-        cmp = _impact_compare(case_id, a + ";" + b, diversion_cms)  # both as rows of the same engine run
-        lines, story = explain.compare_lines(cmp, _plan_by_release(cmp, a), _plan_by_release(cmp, b))
+        va, vb = _seven(a), _seven(b)
+        # both as rows of the same engine run
+        cmp = _impact_compare(case_id, ",".join(map(str, va)) + ";" + ",".join(map(str, vb)), diversion_cms)
+        lines, story = explain.compare_lines(cmp, _plan_by_release(cmp, va), _plan_by_release(cmp, vb))
         if part == "gist":
             return JSONResponse({"gist": explain.gist("compare", lines, story, system=explain.OFFICIAL, checker=explain.check_item)},
                                 headers=nostore)
