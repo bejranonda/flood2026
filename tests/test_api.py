@@ -305,6 +305,19 @@ def test_explain_rejects_unknown_questions():
         api.explain_point(13.75, 100.66, "weather")
 
 
+def test_the_public_explain_never_answers_the_officials_questions():
+    # D-110: explain.QUESTIONS also carries the impact tab's "brief" and "compare"; the public /api/explain (the pin's ✨
+    # card, no login) answers only RESIDENT_Q — pinned here (final review)
+    from fastapi import HTTPException
+    for q in ("brief", "compare"):
+        with pytest.raises(HTTPException) as e:
+            api.explain_point(13.75, 100.66, q, part="lines")
+        assert e.value.status_code == 400
+        with pytest.raises(HTTPException) as e:
+            api.explain_point(13.75, 100.66, q, part="gist")
+        assert e.value.status_code == 400
+
+
 def test_station_row_carries_the_24_and_48_h_bank_chances():
     # v0.21.0 (D-077): the จับตา tab lists gauges that may reach the bank, from the stored forecast's bands
     now = dt.datetime.now(dt.timezone.utc)

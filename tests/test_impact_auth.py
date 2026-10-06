@@ -304,6 +304,42 @@ def test_brief_and_compare_need_login_and_carry_the_engines_lines(monkeypatch):
     assert e.value.status_code == 422
 
 
+def test_the_brief_sends_the_ai_only_lines_without_a_caveat_and_keeps_the_items_aligned(monkeypatch):
+    # final review (D-110): the ⚠ outside line, the model's limit and the data line ("ไม่ใช่ประกาศทางการ") are never sent;
+    # their positions stay None (the rule's words) so the tab's line-by-line merge still lines up
+    from floodwatch import explain
+    explain._cache.clear()
+    monkeypatch.setenv("AI_EXPLAIN", "1")
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = _explain_state()
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st if key == "impact_kaeng_krachan" else {})
+    sent = []
+    monkeypatch.setattr(api.ai, "run", lambda messages, **k: sent.append(messages[-1]["content"]) or messages[-1]["content"])
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    lines = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="brief").body)["lines"]
+    items = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part="gist", q="brief").body)["items"]
+    assert len(items) == len(lines) and len(sent) == 1
+    caveat = [k for k, x in enumerate(lines) if x.startswith(("⚠", "ข้อจำกัด:", "ข้อมูล"))]
+    assert caveat and all(items[k] is None and lines[k] not in sent[0] for k in caveat)
+    assert all(items[k] == lines[k] for k in range(len(lines)) if k not in caveat)  # the echo passed the check
+    explain._cache.clear()
+
+
+def test_the_simple_story_retelling_on_the_impact_tab_uses_the_officials_check(monkeypatch):
+    # final review (D-110): the public card's check let a retelling drop the ★'s outside caveat; here check_item (which
+    # makes it keep "นอกช่วงข้อมูล", "เคยวัด", "ไม่ใช่ค่าพยากรณ์") and a prompt that names those words
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = _explain_state()
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st if key == "impact_kaeng_krachan" else {})
+    seen = {}
+    monkeypatch.setattr(api.explain, "gist", lambda q, lines, story=None, system=None, checker=None:
+                        seen.update(q=q, system=system, checker=checker))
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    out = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part="gist", q="simple").body)
+    assert out == {"gist": None} and seen["q"] == "simple" and seen["checker"] is api.explain.check_item
+    assert seen["system"].startswith(api.explain.SYSTEM) and api.explain.KEEP_TH in seen["system"]
+
+
 def test_compare_prefers_the_named_plan_over_its_custom_twin(monkeypatch):
     # Review Focus 4: today's release compared with itself is named "วันนี้", not "กำหนดเอง"
     monkeypatch.setenv("AI_EXPLAIN", "0")

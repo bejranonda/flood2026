@@ -812,15 +812,16 @@ def impact_explain(request: Request, case_id: str, release: str | None = Query(N
                    q: str | None = Query(None, max_length=16), a: str | None = Query(None, max_length=120),
                    b: str | None = Query(None, max_length=120)):
     """✨ for the scenarios (D-068, D-110): q=simple the story (GLM may retell it), q=brief the executive bullets (GLM may
-    reword each, checked per line), q=compare plan a against plan b (7 releases each). The rules write every number; the
-    AI never decides."""
+    reword each line that carries no caveat, checked per line), q=compare plan a against plan b (7 releases each). The
+    rules write every number; the AI never decides, and every retelling here passes the officials' check (check_item:
+    no caveat dropped; final review, D-110)."""
     _impact_require(request)
     ai_on = os.environ.get("AI_EXPLAIN", "1") == "1" and ai.available()
     nostore = {"Cache-Control": "no-store"}
     if q == "brief":
         lines = explain.brief(_impact_compare(case_id, release, diversion_cms))
         if part == "gist":
-            return JSONResponse({"items": explain.retell_items(lines)}, headers=nostore)
+            return JSONResponse({"items": explain.brief_items(lines)}, headers=nostore)
         return JSONResponse({"q": "brief", "question": explain.QUESTIONS["brief"], "lines": lines, "ai": ai_on}, headers=nostore)
     if q == "compare":
         if not a or not b:
@@ -836,8 +837,9 @@ def impact_explain(request: Request, case_id: str, release: str | None = Query(N
                             headers=nostore)
     cmp = _impact_compare(case_id, release, diversion_cms)
     lines, story = explain.scenarios(cmp)
-    if part == "gist":
-        return JSONResponse({"gist": explain.gist("simple", lines, story)}, headers=nostore)
+    if part == "gist":  # the public card keeps explain.check; here the outside caveat may not be dropped
+        return JSONResponse({"gist": explain.gist("simple", lines, story, system=explain.SYSTEM + " " + explain.KEEP_TH,
+                                                  checker=explain.check_item)}, headers=nostore)
     return JSONResponse({"q": "simple", "question": explain.QUESTIONS["simple"], "story": story, "lines": lines, "ai": ai_on},
                         headers=nostore)
 
