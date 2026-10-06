@@ -581,24 +581,29 @@
     const out = p.outside_any ? '<span class="imp-out" title="' + esc(outsideText(p)) + '" aria-label="นอกช่วงข้อมูล">⚠</span>' : "";
     const cells = (p.days || []).map((d, i) => '<td class="imp-c imp-c-' + esc(d.status) + (d.outside ? " imp-c-x" : "") +
       (state.day === i ? " imp-dsel" : "") + '" data-day="' + i + '" title="' + esc(cellTitle(d, i)) + '"><span></span></td>').join("");
+    // the label cell carries the › too (live validation, D-110): a separate last column meant Playwright (and a real
+    // tap) had to scroll the overflowing table right to reach it, which scrolled the label itself off the left edge
     return '<tr class="imp-gr' + (p.feasible ? "" : " imp-infeasible") + (p.kind === "custom" ? " imp-custom-row" : "") +
       (state.selPlan === p.id ? " imp-sel" : "") + '" data-plan="' + esc(p.id) + '" tabindex="0">' +
       '<th scope="row"><span class="imp-gl">' + (isStar ? "★ " : "") + esc(p.label) + "</span>" + icons + out +
+      '<button type="button" class="imp-open" aria-label="' + esc("รายละเอียด " + p.label) + '">›</button>' +
       '<small class="imp-km-sub">' + (p.km_max ? num(p.km_max, 0) + " กม." : "") + "</small></th>" + cells +
       "<td>" + num(e.storage_end, 0) + "</td><td" + (worst != null && worst < 0 ? ' class="imp-neg"' : "") + ">" + num(worst, 2) + "</td>" +
-      '<td class="imp-col-km">' + num(p.km_max || 0, 0) + "</td>" +
-      '<td><button type="button" class="imp-open" aria-label="' + esc("รายละเอียด " + p.label) + '">›</button></td></tr>';
+      '<td class="imp-col-km">' + num(p.km_max || 0, 0) + "</td></tr>";
   }
 
   function scenariosHtml(cmp) {
     const { rows, ladder, star } = gridPlans(cmp);
     const opt = cmp.optimal || {};
-    const head = '<thead><tr><th scope="col">แผน <small>ล้าน ลบ.ม./วัน</small></th>' +
+    // a colgroup (live validation, D-110) fixes every column's share of the scroller's width so the table itself
+    // never grows past it — table-layout: fixed reads these widths instead of each row's content
+    const cols = '<colgroup><col class="imp-col-label">' + '<col class="imp-col-day">'.repeat(7) +
+      '<col class="imp-col-res"><col class="imp-col-margin"><col class="imp-col-km"></colgroup>';
+    const head = cols + '<thead><tr><th scope="col">แผน <small>ล้าน ลบ.ม./วัน</small></th>' +
       [0, 1, 2, 3, 4, 5, 6].map((i) => '<th scope="col" class="imp-dh' + (state.day === i ? " imp-dsel" : "") + '"><button type="button" data-dayh="' + i +
         '" aria-label="' + esc("วันที่ " + (i + 1) + " " + dayShort(cmp.dates ? cmp.dates[i] : null) + " บนแผนที่") + '">' + (i + 1) + "</button></th>").join("") +
-      '<th scope="col">อ่าง<small>วันที่ 7</small></th><th scope="col">ห่างตลิ่ง<small>ม.</small></th><th scope="col" class="imp-col-km">กม.</th>' +
-      '<th scope="col"><span class="imp-sr">เปิด</span></th></tr></thead>';
-    const lad = ladder.length ? '<tbody><tr class="imp-ladder-t"><td colspan="12"><button type="button" class="imp-ladder-btn" aria-expanded="false">▸ ระบายคงที่ทุกระดับ (' +
+      '<th scope="col">อ่าง<small>วันที่ 7</small></th><th scope="col">ห่างตลิ่ง<small>ม.</small></th><th scope="col" class="imp-col-km">กม.</th></tr></thead>';
+    const lad = ladder.length ? '<tbody><tr class="imp-ladder-t"><td colspan="11"><button type="button" class="imp-ladder-btn" aria-expanded="false">▸ ระบายคงที่ทุกระดับ (' +
       num(ladder[0].release[0], 0) + "–" + num(ladder[ladder.length - 1].release[0], 0) + ")</button></td></tr></tbody>" +
       '<tbody class="imp-ladder" hidden>' + ladder.map((p) => gridRow(p, star && p.id === star.id)).join("") + "</tbody>" : "";
     const why = !star ? esc(opt.reason || "ยังไม่มีแผนให้เปรียบเทียบ")

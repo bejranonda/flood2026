@@ -193,41 +193,52 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-sheet .imp-days .chip.on { background: #0d3b66; color: #fff; border-color: #0d3b66; }
 
 /* v0.34 (D-110): release plans as a comparison grid — one row per plan, a 7-day strip of the worst gauge, hatched where a
-   gauge runs beyond its rating's data; the map follows the selected row and day */
-#view-impact .imp-grid { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
-#view-impact .imp-grid th, #view-impact .imp-grid td { padding: 6px 3px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
-#view-impact .imp-grid tbody th { text-align: left; font-weight: 600; white-space: normal; min-width: 96px; }
-#view-impact .imp-grid thead th { font-size: 12px; color: var(--muted); font-weight: 600; min-width: 0; vertical-align: bottom; }
+   gauge runs beyond its rating's data; the map follows the selected row and day
+   v0.35 (live validation, D-110): a colgroup fixes every column's share of the scroller's width (table-layout: fixed
+   reads it instead of each row's content) so the table itself never grows past its panel on desktop or phone, before
+   or after a click opens the sheet or the ladder — see scenariosHtml's `cols` in impact.js */
+#view-impact .imp-grid { border-collapse: collapse; table-layout: fixed; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+#view-impact .imp-grid th, #view-impact .imp-grid td { padding: 6px 2px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+#view-impact .imp-grid tbody th { text-align: left; font-weight: 600; white-space: normal; overflow-wrap: anywhere; padding: 6px 2px; }
+#view-impact .imp-grid thead th { font-size: 12px; color: var(--muted); font-weight: 600; vertical-align: bottom; overflow: hidden; }
 #view-impact .imp-grid thead th small { display: block; font-weight: 400; }
+#view-impact .imp-col-label { width: 30%; }
+#view-impact .imp-col-day { width: 6.5%; }
+#view-impact .imp-col-res, #view-impact .imp-col-margin { width: 9%; }
+#view-impact .imp-col-km { width: 6.5%; }
 #view-impact .imp-gr { cursor: pointer; }
 #view-impact .imp-gr:hover, #view-impact .imp-gr:focus { background: #f3f6fa; outline: none; }
 #view-impact .imp-gr.imp-sel { background: #e8f0fb; box-shadow: inset 4px 0 0 var(--accent); }
 #view-impact .imp-gr.imp-infeasible .imp-gl { color: var(--muted); }
 #view-impact .imp-gr.imp-custom-row .imp-gl { color: var(--accent); }
 #view-impact .imp-grid td.imp-c { text-align: center; padding: 6px 1px; }
-.imp-c span, .imp-k { display: inline-block; width: 16px; height: 16px; border-radius: 3px; vertical-align: middle; background-color: var(--unknown); }
+.imp-c span, .imp-k { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: middle; background-color: var(--unknown); }
 .imp-c-ok span, .imp-k.imp-c-ok { background-color: var(--normal); }
 .imp-c-near span, .imp-k.imp-c-near { background-color: var(--warning); }
 .imp-c-over span, .imp-k.imp-c-over { background-color: var(--critical); }
 .imp-c-x span, .imp-k.imp-c-x, td.imp-c-x { background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .8) 0 2px, transparent 2px 5px); }
 #view-impact .imp-c.imp-dsel span { outline: 2px solid var(--ink); outline-offset: 1px; }
 #view-impact .imp-dh button { font: inherit; font-size: 12px; font-weight: 700; color: var(--muted); background: none; border: 1px solid var(--line);
-  border-radius: 6px; min-width: 24px; min-height: 30px; cursor: pointer; padding: 0; }
+  border-radius: 6px; min-width: 20px; min-height: 28px; cursor: pointer; padding: 0; }
 #view-impact .imp-dh.imp-dsel button { color: #fff; background: #0d3b66; border-color: #0d3b66; }
-#view-impact .imp-gi { font-size: 13px; margin-left: 3px; cursor: help; }
-#view-impact .imp-out { color: var(--warning); font-weight: 700; margin-left: 3px; cursor: help; }
-#view-impact .imp-open { font: inherit; font-size: 20px; line-height: 1; color: var(--muted); background: none; border: 0; min-width: 28px; min-height: 32px; cursor: pointer; }
+#view-impact .imp-gi { font-size: 13px; margin-left: 2px; cursor: help; }
+#view-impact .imp-out { color: var(--warning); font-weight: 700; margin-left: 2px; cursor: help; }
+/* the › lives inside the label cell, not its own column (live validation, D-110): a tap/click never has to scroll the
+   table to reach it, so the label beside it cannot be scrolled off the left edge */
+#view-impact .imp-open { font: inherit; font-size: 18px; line-height: 1; color: var(--muted); background: none; border: 0; min-width: 24px;
+  min-height: 28px; margin-left: 2px; vertical-align: middle; cursor: pointer; }
 #view-impact .imp-ladder-btn { font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
+#view-impact .imp-ladder-t td { white-space: normal; text-align: left; }
 #view-impact .imp-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; color: var(--muted); margin: 6px 0 2px; }
 #view-impact .imp-why { font-size: 14px; margin: 4px 0 6px; }
 #view-impact .imp-km-sub { display: none; font-weight: 400; color: var(--muted); font-size: 12px; }
-.imp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .imp-reach-legend .lg-x { color: #1565c0; letter-spacing: -1px; }
 @media (max-width: 420px) {
-  #view-impact .imp-col-km { display: none; }
+  #view-impact .imp-col-km { display: none; width: 0; }
+  #view-impact .imp-col-label { width: 34%; }
+  #view-impact .imp-col-day { width: 6.8%; }
+  #view-impact .imp-col-res, #view-impact .imp-col-margin { width: 9.2%; }
   #view-impact .imp-km-sub { display: block; }
-  .imp-c span, .imp-k { width: 13px; height: 13px; }
-  #view-impact .imp-grid tbody th { min-width: 84px; }
 }
 
 /* v0.34: the plan sheet — the river as gauges × days of margins, the coverage line, the outside line (D-110) */
