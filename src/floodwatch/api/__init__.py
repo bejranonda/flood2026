@@ -787,18 +787,73 @@ def impact_scenarios(request: Request, case_id: str, release: str | None = Query
     return JSONResponse(_impact_compare(case_id, release, diversion_cms), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
 
 
+def _plan_by_release(cmp: dict, s: str) -> dict:
+    """The plan with these 7 releases, the named one (★, today, a pick, a rung) before its custom twin (D-110)."""
+    vals = [round(float(x), 2) for x in s.split(",")]
+    same = [p for p in cmp.get("plans") or [] if p["release"] == vals]
+    if not same:
+        raise HTTPException(422, "plan not in the comparison")
+    return next((p for p in same if p["kind"] != "custom"), same[0])
+
+
 @app.get("/api/impact/case/{case_id}/explain", include_in_schema=False)
 def impact_explain(request: Request, case_id: str, release: str | None = Query(None, max_length=400),
                    diversion_cms: float | None = Query(None, ge=0, le=2000), part: str | None = Query(None, max_length=8),
-                   q: str | None = Query(None, max_length=16)):
-    """✨ for the scenarios: the rules write the story and lines; GLM may retell them (part=gist), never decide (D-068)."""
+                   q: str | None = Query(None, max_length=16), a: str | None = Query(None, max_length=120),
+                   b: str | None = Query(None, max_length=120)):
+    """✨ for the scenarios (D-068, D-110): q=simple the story (GLM may retell it), q=brief the executive bullets (GLM may
+    reword each, checked per line), q=compare plan a against plan b (7 releases each). The rules write every number; the
+    AI never decides."""
     _impact_require(request)
+    ai_on = os.environ.get("AI_EXPLAIN", "1") == "1" and ai.available()
+    nostore = {"Cache-Control": "no-store"}
+    if q == "brief":
+        lines = explain.brief(_impact_compare(case_id, release, diversion_cms))
+        if part == "gist":
+            return JSONResponse({"items": explain.retell_items(lines)}, headers=nostore)
+        return JSONResponse({"q": "brief", "question": explain.QUESTIONS["brief"], "lines": lines, "ai": ai_on}, headers=nostore)
+    if q == "compare":
+        if not a or not b:
+            raise HTTPException(422, "a and b: 7 numbers each")
+        cmp = _impact_compare(case_id, a + ";" + b, diversion_cms)  # both as rows of the same engine run
+        lines, story = explain.compare_lines(cmp, _plan_by_release(cmp, a), _plan_by_release(cmp, b))
+        if part == "gist":
+            return JSONResponse({"gist": explain.gist("compare", lines, story, system=explain.OFFICIAL, checker=explain.check_item)},
+                                headers=nostore)
+        return JSONResponse({"q": "compare", "question": explain.QUESTIONS["compare"], "story": story, "lines": lines, "ai": ai_on},
+                            headers=nostore)
     cmp = _impact_compare(case_id, release, diversion_cms)
     lines, story = explain.scenarios(cmp)
     if part == "gist":
-        return JSONResponse({"gist": explain.gist("simple", lines, story)}, headers={"Cache-Control": "no-store"})
-    return JSONResponse({"q": "simple", "question": explain.QUESTIONS["simple"], "story": story, "lines": lines,
-                         "ai": os.environ.get("AI_EXPLAIN", "1") == "1" and ai.available()}, headers={"Cache-Control": "no-store"})
+        return JSONResponse({"gist": explain.gist("simple", lines, story)}, headers=nostore)
+    return JSONResponse({"q": "simple", "question": explain.QUESTIONS["simple"], "story": story, "lines": lines, "ai": ai_on},
+                        headers=nostore)
+
+
+_impact_parse_limiter = impact_auth.LoginLimiter(max_failures=30, window_s=900)  # counts every try here
+
+
+class ImpactParse(BaseModel):
+    text: str = Field(..., min_length=1, max_length=200)
+
+
+@app.post("/api/impact/case/{case_id}/parse", include_in_schema=False)
+def impact_parse(request: Request, case_id: str, body: ImpactParse):
+    """'Type a plan in Thai' (D-110): rules first, GLM only when they cannot read it; 7 numbers that only fill the boxes.
+    The text arrives in the body (never in a URL or the access log) and is never logged or stored."""
+    _impact_require(request)
+    from floodwatch import impact, plan_parse
+    if case_id not in impact.CASES:
+        raise HTTPException(404, "unknown case")
+    who = _client_hash(request)
+    if not _impact_parse_limiter.allowed(who):
+        return JSONResponse({"ok": False, "error": "too many tries, wait 15 minutes"}, status_code=429)
+    _impact_parse_limiter.fail(who)
+    today = float(((_impact_state(impact.state_key(case_id)).get("dam") or {}).get("released_mcm")) or 0.0)
+    got = plan_parse.parse(body.text, today)
+    if not got:
+        raise HTTPException(422, "อ่านแผนนี้ไม่ได้")
+    return JSONResponse({"release": got[0], "by": got[1]}, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/impact/kaeng-krachan/whatif", include_in_schema=False)

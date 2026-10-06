@@ -272,3 +272,67 @@ def test_scenarios_take_up_to_three_custom_plans(monkeypatch):
     with pytest.raises(HTTPException) as e:
         api.impact_scenarios(Req(tok), "kaeng-krachan", release=three + ";" + ",".join(["18"] * 7), diversion_cms=None)
     assert e.value.status_code == 422
+
+
+def _explain_state():
+    from test_scenarios import _r7_state
+    st = {**_r7_state(), "case": "kaeng-krachan", "built_at": "2026-10-06T12:06:24+00:00", "validation": {"whatif_ready": False},
+          "scenario_inputs": {"curves7": {"upper": [593.0] * 7, "lower": [204.0] * 7, "dates": ["2026-10-%02d" % d for d in range(7, 14)]},
+                              "normal_mcm": 710.0, "max_mcm": 900.0, "release_cap": 24.0, "release_max_seen": 24.36}}
+    st["dam"] = {**st["dam"], "name_th": "แก่งกระจาน", "dam_date": "2026-10-06", "storage_mcm": 725.0, "storage_pct": 102.1, "inflow_mcm": 10.3}
+    return st
+
+
+def test_brief_and_compare_need_login_and_carry_the_engines_lines(monkeypatch):
+    monkeypatch.setenv("AI_EXPLAIN", "0")
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = _explain_state()
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st if key == "impact_kaeng_krachan" else {})
+    with pytest.raises(HTTPException) as e:
+        api.impact_explain(Req(), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="brief")
+    assert e.value.status_code == 401
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    out = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="brief").body)
+    assert out["q"] == "brief" and out["lines"][0].startswith("สถานการณ์:") and out["ai"] is False
+    items = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part="gist", q="brief").body)
+    assert items["items"] == [None] * len(out["lines"])  # AI off: every rule line stays
+    a, b = ",".join(["10.8"] * 7), ",".join(["14"] * 7)
+    c = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="compare", a=a, b=b).body)
+    assert c["q"] == "compare" and c["lines"][0].endswith("14.0 คงที่") and c["story"]
+    with pytest.raises(HTTPException) as e:
+        api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="compare", a=a, b=None)
+    assert e.value.status_code == 422
+
+
+def test_compare_prefers_the_named_plan_over_its_custom_twin(monkeypatch):
+    # Review Focus 4: today's release compared with itself is named "วันนี้", not "กำหนดเอง"
+    monkeypatch.setenv("AI_EXPLAIN", "0")
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    st = _explain_state()
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": st if key == "impact_kaeng_krachan" else {})
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    today = ",".join(["10.8"] * 7)
+    c = json.loads(api.impact_explain(Req(tok), "kaeng-krachan", release=None, diversion_cms=None, part=None, q="compare",
+                                      a=today, b=",".join(["16"] * 7)).body)
+    assert c["lines"][0].startswith("10.8 วันนี้")
+
+
+def test_typed_plans_need_login_fill_seven_numbers_and_are_never_logged(monkeypatch, caplog):
+    import logging
+    monkeypatch.setenv("AI_EXPLAIN", "0")
+    monkeypatch.setattr(api, "_impact_conf", lambda: (PW, SECRET))
+    monkeypatch.setattr(api, "_impact_state", lambda key="impact_kaeng_krachan": {"dam": {"released_mcm": 10.63}})
+    with pytest.raises(HTTPException) as e:
+        api.impact_parse(Req(), "kaeng-krachan", api.ImpactParse(text="12"))
+    assert e.value.status_code == 401
+    tok = impact_auth.make_token(SECRET, PW, exp=4102444800)
+    caplog.set_level(logging.DEBUG)
+    out = json.loads(api.impact_parse(Req(tok), "kaeng-krachan", api.ImpactParse(text="ระบาย 15 สามวันแล้วลดเหลือ 10")).body)
+    assert out == {"release": [15.0, 15.0, 15.0, 10.0, 10.0, 10.0, 10.0], "by": "rules"}
+    assert "สามวัน" not in caplog.text
+    with pytest.raises(HTTPException) as e:
+        api.impact_parse(Req(tok), "kaeng-krachan", api.ImpactParse(text="ระบายเยอะ ๆ"))
+    assert e.value.status_code == 422
+    with pytest.raises(HTTPException) as e:
+        api.impact_parse(Req(tok), "no-such-case", api.ImpactParse(text="12"))
+    assert e.value.status_code == 404
