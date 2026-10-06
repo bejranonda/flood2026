@@ -392,3 +392,39 @@ def test_a_points_now_is_its_latest_reading_within_36_hours_with_its_time():
     x[90] = 2.5
     assert impact._last_at(x, 96, impact.NOW_HOURS) == (2.5, 90) and impact.NOW_HOURS == 36
     assert impact._last_at(x, 130 if len(x) > 130 else 99, 3) == (None, None)
+
+
+def test_the_river_is_split_by_nearest_gauge_and_never_coloured_far_from_one():
+    # owner 2026-10-06 ("show flood area … for each release scenario"; D-019): the map colours the river, not land — each
+    # piece by its nearest gauge's margin, and nothing more than 10 km from a gauge (no gauge speaks for it)
+    line = [[[13.0, 99.0 + 0.01 * k] for k in range(26)]]  # ~1.08 km per step along 13°N
+    pts = [{"code": "A", "lat": 13.0, "lon": 99.02}, {"code": "B", "lat": 13.0, "lon": 99.11}, {"code": "X", "lat": None, "lon": None}]
+    reaches = impact.river_reaches(line, pts, max_km=10.0)
+    codes = [r["code"] for r in reaches]
+    assert codes == ["A", "B"]
+    a, b = reaches
+    assert [round(x, 2) for x in (a["line"][0][1], a["line"][-1][1])] == [99.0, 99.07]  # A to the midpoint, joined to B's first vertex
+    assert [round(x, 2) for x in (b["line"][0][1], b["line"][-1][1])] == [99.07, 99.2]  # B until 10 km away (99.20 ≈ 9.8 km, 99.21 > 10)
+    assert impact.river_reaches([], pts) == [] and impact.river_reaches(line, []) == []
+
+
+def test_river7_fits_on_older_daily_history_too_and_can_move_every_point_by_its_gain():
+    # E-7D-DOWN-3Y (research/2026-10-06_e7d_down_3y_gate.log): on three wet seasons the gain at every point — B.18 too —
+    # beat the hybrid at days 3 and 7 in both samples; the database keeps 400 days, older years come as daily means
+    import datetime as dt
+    H, Q, t0, rel, pts = _river_series(days=200)
+    short = {k: v[-100 * 24:] for k, v in H.items()}, {k: v[-100 * 24:] for k, v in Q.items()}
+    t_short = t0 + dt.timedelta(days=100)
+    hist = {"B.18": {"h": {}, "q": {}}, "B.10": {"h": {}, "q": {}}}
+    for d in range(100):
+        day = (dt.date(2026, 1, 1) + dt.timedelta(days=d)).isoformat()
+        for code in ("B.18", "B.10"):
+            hist[code]["h"][day] = float(np.nanmean(H[code][d * 24:(d + 1) * 24]))
+            hist[code]["q"][day] = float(np.nanmean(Q[code][d * 24:(d + 1) * 24]))
+    alone = impact.river7(short[0], short[1], t_short, rel, pts, test_days=30)
+    both = impact.river7(short[0], short[1], t_short, rel, pts, test_days=30, history=hist)
+    assert both["fit_days"] > alone["fit_days"] + 90
+    g = impact.river7(short[0], short[1], t_short, rel, pts, test_days=30, history=hist, method="gain")
+    assert g["method"] == "gain" and max(g["gains_cm_per_cms"]["B.18"]) > 0  # B.18 moves by its fitted gain now
+    p18 = {"code": "B.18", "role": "below_dam", "h_now": 2.0, "q_now": 140.0, "rating": pts[0]["rating"]}
+    assert impact.level7(p18, 20.0, 10.0, 1, [0.5] * 7, method="gain") == 2.0 + 0.005 * (impact.mcm_to_cms(20.0) - impact.mcm_to_cms(10.0))

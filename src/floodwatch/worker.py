@@ -38,6 +38,8 @@ TASKS = [
     ("hii_dams", 6 * 3600),  # HII large dams, daily (RID/EGAT), for the impact page (D-099)
     ("hii_dams_history", 3600),  # every dam's rule curve and release history, ≤ 10 requests an hour (D-100)
     ("impact", 3600),  # the impact page's state (Kaeng Krachan pilot, D-099)
+    ("impact_history", 3600),  # three years of daily river means for the 7-day river model, 20 months a run until done (2026-10-06)
+    ("onwr_flood", 3 * 3600),  # ONWR's flood warning, +1…+3-day forecast and observed flooded area over each case (2026-10-06)
     ("reservoir_outlook", 6 * 3600),  # 7-day reservoir outlook for the dams with a tested inflow model (D-102)
     ("ai_triage", 900),  # optional Workers AI labels for feedback notes; a no-op when AI is unavailable
     ("disk", 3600),

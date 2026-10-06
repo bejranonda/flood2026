@@ -109,6 +109,7 @@ with sync_playwright() as p:
             .every(b => b.scrollWidth <= b.clientWidth + 1)""")
         pg.click("#imp-logout"); pg.wait_for_selector("#imp-login", timeout=8000)
         r["after_logout_markers"] = pg.locator(".imp-dam-icon").count()
+        r["after_logout_overlays"] = pg.evaluate("document.querySelectorAll('.imp-onwr-ctl, .imp-reach-legend').length")
         r["console_errors"] = [e for e in errs if "status of 401" not in e]
         rep[name] = r
         ctx.close()

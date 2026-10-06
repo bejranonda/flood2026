@@ -196,3 +196,21 @@ body[data-mode="impact"] .tabs button { white-space: nowrap; }
 .imp-sheet .badge { vertical-align: middle; }
 /* v0.31: a header badge moves to the next line whole, never split ("ฉบับทดลอง" / "v0.31.0" at 360 px with เจ้าหน้าที่) */
 .brand .beta, .brand .imp-badge { white-space: nowrap; }
+/* v0.33: a plan's day on the map — the river coloured by its nearest gauge's margin (never land; D-019) */
+.imp-reach-legend { background: #fff; border-radius: 8px; padding: 6px 9px; box-shadow: 0 1px 4px rgba(0,0,0,.25); font-size: 12px;
+  line-height: 1.45; max-width: 250px; }
+.imp-reach-legend .lg { font-weight: 700; }
+.imp-reach-legend .lg-over { color: #d32f2f; } .imp-reach-legend .lg-near { color: #f57c00; } .imp-reach-legend .lg-ok { color: #1565c0; }
+.imp-sheet .imp-days { margin: 6px 0 2px; }
+.imp-sheet .imp-days .chip { min-width: 34px; justify-content: center; }
+.imp-sheet .imp-days .chip.on { background: #0d3b66; color: #fff; border-color: #0d3b66; }
+/* ONWR's layers over the case (2026-10-06) */
+.imp-onwr-ctl { background: #fff; border-radius: 8px; padding: 6px 9px; box-shadow: 0 1px 4px rgba(0,0,0,.25); font-size: 12px;
+  line-height: 1.5; max-width: 250px; }
+.imp-onwr-ctl summary { font-weight: 700; cursor: pointer; }
+.imp-onwr-ctl label { display: block; margin: 2px 0; }
+.imp-onwr-key { margin: 4px 0 2px; }
+.imp-onwr-key .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin: 0 2px 0 4px; }
+.imp-onwr-key .onwr-c1 { background: #fdd835; } .imp-onwr-key .onwr-c2 { background: #fb8c00; }
+.imp-onwr-key .onwr-c3 { background: #e53935; } .imp-onwr-key .onwr-obs { background: #1e88e5; }
+

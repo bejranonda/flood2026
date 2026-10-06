@@ -834,10 +834,136 @@ def hii_dam_history(dam_id: int = 13, first_year: int = 2018, pause_s: float = 1
     return written
 
 
+ONWR_TILES = "https://check-water-map-service-726396821992.asia-southeast3.run.app"
+ONWR_LAYERS = {"flood-warn": "flood_warn", "flood-forecast-d1": "nextday01", "flood-forecast-d2": "nextday02",
+               "flood-forecast-d3": "nextday03", "flood-area-poly": "FloodArea_Poly"}
+ONWR_Z = 10
+
+
+def onwr_layers(bbox: tuple, get=None) -> dict:
+    """ONWR's flood layers inside bbox (lat0, lon0, lat1, lon1) at zoom 10 (SOURCES §2p; owner 2026-10-06: ONWR's layers
+    on the impact map): per layer ONWR's own update time and the features {cls, tb, rai, rings [[lat, lon], …]} — the
+    area warning (class_risk 1–3), its +1…+3-day forecasts and the observed flooded area per tambon. A tile with no
+    features answers 404."""
+    from floodwatch import mvt
+
+    def _get(url):
+        r = fetch(url)
+        archive.store("onwr_tiles", url, r.status, r.body)
+        return r
+    get = get or _get
+    out = {}
+    for lid, lname in ONWR_LAYERS.items():
+        r = get(f"{ONWR_TILES}/tiles/{lid}/tilejson.json")
+        updated = None
+        if r.status == 200:
+            try:
+                updated = json.loads(r.body).get("data_updated")
+            except ValueError:
+                updated = None
+        feats = []
+        for x, y in mvt.tiles_for_bbox(*bbox, ONWR_Z):
+            t = get(f"{ONWR_TILES}/tiles/{lid}/{ONWR_Z}/{x}/{y}.pbf")
+            if t.status != 200:
+                continue
+            lay = mvt.decode(t.body).get(lname) or {}
+            for f in lay.get("features", []):
+                p = f["properties"]
+                rings = [[[round(c, 5) for c in mvt.to_latlon(px, py, ONWR_Z, x, y, lay["extent"])] for px, py in ring]
+                         for ring in f["rings"]]
+                feats.append({"cls": p.get("class_risk"), "tb": p.get("TB_IDN"), "rai": p.get("flood_area"), "rings": rings})
+        out[lid] = {"updated": updated, "features": feats}
+    return out
+
+
+def onwr_flood() -> dt.datetime | None:
+    """ONWR's flood layers over every impact case's river and gauges (padded 0.05°), every 3 h, as collector_state
+    'onwr_flood_<case>'; the case state carries them to the impact map. Attributed "ที่มา: สทนช." on the page."""
+    from floodwatch import impact
+    newest = None
+    now = dt.datetime.now(dt.timezone.utc)
+    with db.connect() as c:
+        for cid in impact.CASES:
+            st = db.get_state(c, impact.state_key(cid)) or {}
+            pts = [(p["lat"], p["lon"]) for p in st.get("points") or [] if p.get("lat") is not None] + \
+                  [(v[0], v[1]) for part in st.get("river_line") or [] for v in part]
+            if not pts:
+                continue
+            bbox = (min(p[0] for p in pts) - 0.05, min(p[1] for p in pts) - 0.05, max(p[0] for p in pts) + 0.05, max(p[1] for p in pts) + 0.05)
+            layers = onwr_layers(bbox)
+            db.set_state(c, f"onwr_flood_{cid.replace('-', '_')}", {"fetched": now.isoformat(), "bbox": bbox, "layers": layers})
+            c.commit()
+            for v in layers.values():
+                if v.get("updated"):
+                    t = dt.datetime.fromisoformat(v["updated"])
+                    newest = t if newest is None or t > newest else newest
+    return newest
+
+
+HISTORY_YEARS = 3
+
+
+def daily_means(obs: list[dict]) -> tuple[dict, dict]:
+    """Parsed readings → ({Thai date: mean level of the 'ok' readings}, {Thai date: mean discharge})."""
+    h, q = {}, {}
+    for o in obs:
+        d = (o["obs_time"] + dt.timedelta(hours=7)).date().isoformat()
+        if o.get("level_msl") is not None and o.get("quality_flag") == "ok":
+            h.setdefault(d, []).append(float(o["level_msl"]))
+        if o.get("discharge") is not None:
+            q.setdefault(d, []).append(float(o["discharge"]))
+    mean = lambda acc: {d: round(sum(v) / len(v), 4) for d, v in acc.items()}
+    return mean(h), mean(q)
+
+
+def impact_history(per_run: int = 20, pause_s: float = 2.0) -> dt.datetime | None:
+    """Three years of daily means for every impact case's river points (owner 2026-10-06: "best performance / less
+    errors"; research/2026-10-06_e7d_down_3y*.log: on three wet seasons the gain model beat the served hybrid). HII's
+    waterlevel_graph serves older months when start and end are both in the past; the database keeps 400 days, so the
+    older years live as daily means in collector_state 'impact_daily_<case>' ({"data": {code: {"h", "q"}}, "months":
+    {code: [YYYY-MM, …]}}). Oldest missing month first, ≤ per_run months a run, paced; months the database still holds
+    (the last ~12) are left to it."""
+    from floodwatch import impact
+    today = dt.datetime.now(parsing.ICT).date()
+    first = dt.date(today.year - HISTORY_YEARS, today.month, 1)
+    stop = (today - dt.timedelta(days=330)).replace(day=1)  # the database covers the rest
+    months = []
+    m = first
+    while m < stop:
+        months.append(m)
+        m = dt.date(m.year + (m.month == 12), m.month % 12 + 1, 1)
+    done_any = 0
+    with db.connect() as c:
+        for cid, cfg in impact.CASES.items():
+            key = f"impact_daily_{cid.replace('-', '_')}"
+            st = db.get_state(c, key) or {"data": {}, "months": {}}
+            codes = [p["code"] for p in cfg["points"]]
+            stations = {r["code"]: dict(r) for r in c.execute(
+                "SELECT code, hii_id, bank_msl, ground_msl FROM station WHERE code = ANY(%s) AND hii_id IS NOT NULL", (codes,)).fetchall()}
+            todo = [(mo, code) for mo in months for code in codes if code in stations and mo.isoformat()[:7] not in st["months"].get(code, [])]
+            for mo, code in todo[:max(0, per_run - done_any)]:
+                s_ = stations[code]
+                end = dt.date(mo.year + (mo.month == 12), mo.month % 12 + 1, 1) - dt.timedelta(days=1)
+                url = (f"{HII}/waterlevel_graph?station_type=tele_waterlevel&station_id={s_['hii_id']}&start_date={mo.isoformat()}"
+                       f"&end_date={urllib.parse.quote(end.isoformat() + ' 23:59')}")
+                payload, sha = _get_json("hii_waterlevel_graph", url)
+                h, q = daily_means(parsing.parse_waterlevel_graph(code, payload, s_["bank_msl"], s_["ground_msl"], sha))
+                d = st["data"].setdefault(code, {"h": {}, "q": {}})
+                d["h"].update(h)
+                d["q"].update(q)
+                st["months"].setdefault(code, []).append(mo.isoformat()[:7])
+                done_any += 1
+                time.sleep(pause_s)
+            db.set_state(c, key, st)
+            c.commit()
+    log.info("impact_history: %d months fetched", done_any)
+    return None
+
+
 def run(source: str) -> None:
     _run(source, {"hii_waterlevel": hii_waterlevel, "hii_stations": hii_stations, "hii_rain": hii_rain, "hii_history": hii_history, "hii_backfill": hii_backfill,
                   "openmeteo": openmeteo, "traffy": traffy, "bma_klong": bma_klong, "bma_dds": bma_dds,
                   "hii_fews_forecast": hii_fews_forecast, "openmeteo_prev": openmeteo_prev, "bma_history": bma_history,
                   "openmeteo_cells": openmeteo_cells, "openmeteo_prev_cells": openmeteo_prev_cells,
                   "openmeteo_fine": openmeteo_fine, "hii_geo": hii_geo, "dwr_ews": dwr_ews, "google_floodhub": google_floodhub, "hii_dams": hii_dams,
-     "hii_dams_history": hii_dams_history}[source])
+     "hii_dams_history": hii_dams_history, "onwr_flood": onwr_flood, "impact_history": impact_history}[source])

@@ -179,7 +179,7 @@ def daily_downstream(state: dict, release_path: list[float], diversion_cms: floa
                 cache[key] = {row["code"]: row for row in impact.whatif(state, key, diversion_cms)["rows"]}
             row = cache[key].get(p["code"]) or {}
             rec = {k: row.get(k) for k in ("flow_cms", "level", "margin_m", "overflow", "outside")}
-            mid = impact.level7(p, r, today, d + 1, gains[p["code"]]) if p["code"] in gains else None
+            mid = impact.level7(p, r, today, d + 1, gains[p["code"]], r7.get("method") or "hybrid") if p["code"] in gains else None
             if mid is not None:
                 e = errs.get(p["code"]) or {}
                 band = ((e.get("p90_m") or [None] * 7)[min(d, 6)] or (e.get("mae_m") or [None] * 7)[min(d, 6)] or 0.0)

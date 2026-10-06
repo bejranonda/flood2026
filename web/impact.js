@@ -94,6 +94,8 @@
     try { await api("/api/impact/logout", { method: "POST" }); } catch (e) { /* the cookie expires by itself */ }
     state.authed = false; state.dams = null; state.kase = {}; state.sel = "dams";
     for (const k of Object.keys(layers)) { if (layers[k]) { layers[k].remove(); layers[k] = null; } }
+    clearOnwr();  // ONWR's layers and a plan's map legend leave with the session too
+    if (reachLegend) { reachLegend.remove(); reachLegend = null; }
     state.notice = "ออกจากระบบแล้ว";  // shown by the session check that setTab starts (no race with a second form)
     setTab("impact");
   }
@@ -108,6 +110,8 @@
     view.querySelectorAll("[data-imp]").forEach((b) => b.addEventListener("click", () => { state.sel = b.dataset.imp; render(); }));
     if (state.sel === "dams") {
       if (layers.kase) { layers.kase.remove(); layers.kase = null; }
+      clearOnwr();
+      if (reachLegend) { reachLegend.remove(); reachLegend = null; }
       renderDams();
     } else renderCase(state.sel);
   }
@@ -345,7 +349,15 @@
     if (!mapRef.getPane("impact")) mapRef.createPane("impact").style.zIndex = 660;
     if (layers.kase) layers.kase.remove();
     layers.kase = L.layerGroup();
-    for (const part of st.river_line || []) L.polyline(part, { color: "#1565c0", weight: 4, opacity: 0.8, interactive: false }).addTo(layers.kase);
+    const reaches = st.river_reaches || [];
+    for (const part of st.river_line || []) L.polyline(part, { color: "#1565c0", weight: reaches.length ? 2 : 4, opacity: reaches.length ? 0.5 : 0.8, interactive: false }).addTo(layers.kase);
+    reachLayers = {};
+    for (const r of reaches) {
+      const line = L.polyline(r.line, { color: "#1565c0", weight: 6, opacity: 0.85, pane: "impact" }).bindTooltip(esc(r.code), { sticky: true });
+      (reachLayers[r.code] = reachLayers[r.code] || []).push(line.addTo(layers.kase));
+    }
+    if (reachLegend) { reachLegend.remove(); reachLegend = null; }
+    drawOnwr(st);
     for (const p of st.points) {
       if (p.lat == null || p.lon == null) continue;
       const lag = p.code === "B.18" ? "ใต้เขื่อน" : "~" + (p.lag_range ? p.lag_range[0] + "–" + p.lag_range[1] : p.lag_h) + " ชม. จาก B.18";
@@ -357,11 +369,87 @@
     layers.kase.addTo(mapRef);
   }
 
-  function showCaseOnMap(st) {
+  // ONWR's flood layers over the case (owner 2026-10-06), dated and attributed: their area warning, its +1…+3-day forecast
+  // and the flooded area they observed — ONWR's areas, not results of a release plan
+  const ONWR_LAYERS = [["flood-warn", "พื้นที่เตือนวันนี้"], ["flood-forecast-d1", "คาดการณ์ +1 วัน"], ["flood-forecast-d2", "คาดการณ์ +2 วัน"],
+    ["flood-forecast-d3", "คาดการณ์ +3 วัน"], ["flood-area-poly", "พื้นที่น้ำท่วมที่พบ"]];
+  const ONWR_FILL = { 1: "#fdd835", 2: "#fb8c00", 3: "#e53935", obs: "#1e88e5" };
+  let onwrGroups = {}, onwrCtl = null;
+  function clearOnwr() {
+    for (const g of Object.values(onwrGroups)) g.remove();
+    onwrGroups = {};
+    if (onwrCtl) { onwrCtl.remove(); onwrCtl = null; }
+  }
+  function drawOnwr(st) {
+    clearOnwr();
+    const o = st && st.onwr && st.onwr.layers;
+    if (!mapRef || !o) return;
+    for (const [lid, label] of ONWR_LAYERS) {
+      const lay = o[lid];
+      if (!lay) continue;
+      const g = L.layerGroup();
+      for (const f of lay.features || []) {
+        const fill = lid === "flood-area-poly" ? ONWR_FILL.obs : (ONWR_FILL[f.cls] || ONWR_FILL[1]);
+        L.polygon(f.rings, { stroke: false, fillColor: fill, fillOpacity: 0.45 })
+          .bindTooltip("สทนช. · " + label + (f.cls ? " ระดับ " + f.cls : "") + (f.rai ? " · " + num(f.rai, 0) + " ไร่" : "") +
+            (lay.updated ? " · ข้อมูล ณ " + when(lay.updated) : ""), { sticky: true }).addTo(g);
+      }
+      onwrGroups[lid] = g;
+    }
+    onwrCtl = L.control({ position: "bottomleft" });
+    onwrCtl.onAdd = () => {
+      const div = L.DomUtil.create("div", "imp-onwr-ctl");
+      L.DomEvent.disableClickPropagation(div);
+      div.innerHTML = "<details" + (narrow() ? "" : " open") + "><summary>ชั้นข้อมูล สทนช.</summary>" +
+        ONWR_LAYERS.filter(([lid]) => o[lid]).map(([lid, label]) => {
+          const lay = o[lid], n = (lay.features || []).length;
+          return '<label><input type="checkbox" data-onwr="' + lid + '"' + (lid === "flood-warn" && n ? " checked" : "") + (n ? "" : " disabled") +
+            "> " + label + " <small>(" + num(n, 0) + (lay.updated ? " · " + when(lay.updated) : "") + ")</small></label>";
+        }).join("") +
+        '<p class="imp-onwr-key"><span class="sw onwr-c1"></span>1 <span class="sw onwr-c2"></span>2 <span class="sw onwr-c3"></span>3 ระดับความเสี่ยง' +
+        ' · <span class="sw onwr-obs"></span>น้ำท่วมที่พบ</p><small>ที่มา: สทนช. — พื้นที่ของ สทนช. ไม่ใช่ผลของแผนระบาย</small></details>';
+      div.querySelectorAll("[data-onwr]").forEach((cb) => {
+        const toggle = () => { const g = onwrGroups[cb.dataset.onwr]; if (!g) return; if (cb.checked) g.addTo(mapRef); else g.remove(); };
+        cb.addEventListener("change", toggle);
+        toggle();
+      });
+      return div;
+    };
+    onwrCtl.addTo(mapRef);
+  }
+
+  // a plan's day on the map (owner 2026-10-06: a flood view per release scenario; D-019: the river, never land): each piece
+  // of the river takes its nearest gauge's margin that day — red over the bank, orange inside that day's model error
+  let reachLayers = {}, reachLegend = null;
+  const REACH = { over: "#d32f2f", near: "#f57c00", ok: "#1565c0", none: "#9e9e9e" };
+  function colorReaches(cmp, p, d) {
+    if (!mapRef || !p || !p.downstream) return;
+    for (const [code, lines] of Object.entries(reachLayers)) {
+      const row = (p.downstream[code] || [])[d] || {};
+      const m = row.margin_m, rq = cmp.margin_req ? cmp.margin_req[code] : null;
+      const req = Array.isArray(rq) ? rq[d] : rq;
+      const k = m == null ? "none" : m < 0 ? "over" : req != null && m < req ? "near" : "ok";
+      const tip = esc(code) + " วันที่ " + (d + 1) + ": " + (m == null ? "ไม่มีข้อมูล" : m < 0 ? "เกินตลิ่ง " + num(-m, 2) + " ม." : "ห่างตลิ่ง " + num(m, 2) + " ม.") +
+        (req != null ? " (คลาดเคลื่อน ±" + num(req, 2) + ")" : "");
+      for (const l of lines) { l.setStyle({ color: REACH[k] }); l.setTooltipContent(tip); }
+    }
+    if (reachLegend) reachLegend.remove();
+    reachLegend = L.control({ position: "topright" });
+    reachLegend.onAdd = () => {
+      const div = L.DomUtil.create("div", "imp-reach-legend");
+      div.innerHTML = "<b>" + esc(planWords(p)) + " · วันที่ " + (d + 1) + "</b><br>" +
+        '<span class="lg lg-over">━</span> เกินตลิ่ง <span class="lg lg-near">━</span> ห่างตลิ่งน้อยกว่าความคลาดเคลื่อน ' +
+        '<span class="lg lg-ok">━</span> รับน้ำได้<br><small>สีของแม่น้ำ = ห่างตลิ่งของสถานีที่ใกล้ที่สุด (ไม่เกิน 10 กม.) ไม่ใช่พื้นที่น้ำท่วม</small>';
+      return div;
+    };
+    reachLegend.addTo(mapRef);
+  }
+
+  function showCaseOnMap(st, toMapTab = true) {
     if (!mapRef) return;
     const pts = [].concat(...(st.river_line || []), st.points.filter((p) => p.lat != null).map((p) => [p.lat, p.lon]),
       st.dam_latlon ? [st.dam_latlon] : []);
-    if (narrow()) setTab("map");
+    if (narrow() && toMapTab) setTab("map");
     // desktop: keep clear of the legend box at the bottom right
     setTimeout(() => { if (pts.length) mapRef.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [24, 24],
       paddingBottomRight: [narrow() ? 24 : 300, 24] }); }, narrow() ? 120 : 0);
@@ -548,10 +636,27 @@
     const e = p.effects;
     const sub = p.optimal && cmp.optimal.constraints_met ? "แผนที่เข้าเกณฑ์: " + esc(cmp.optimal.reason)
       : ((p.best_for || []).map((k) => "เหมาะกับ" + EFFECT_TH[k]).join(" · ") || (p.feasible ? "เข้าเกณฑ์" : "ไม่เข้าเกณฑ์"));
-    openSheet("<h2>" + (p.optimal ? "★ " : "") + esc(planWords(p)) + '</h2><p class="muted">' + sub + "</p>" + chartSvg(p, cmp) +
+    const worstDay = p.release.reduce((b, r, i) => { const w = worstAt(i); return w && (b.m == null || w.m < b.m) ? { i, m: w.m } : b; }, { i: 0, m: null }).i;
+    const daysBar = '<div class="chips imp-days" role="group" aria-label="วันบนแผนที่">' + p.release.map((r, i) =>
+      '<button type="button" class="chip' + (i === worstDay ? " on" : "") + '" data-day="' + i + '">' + (i + 1) + "</button>").join("") +
+      '</div><p class="muted imp-small">แผนที่: สีของแม่น้ำในวันที่เลือก (ตามสถานีที่ใกล้ที่สุด ไม่ใช่พื้นที่น้ำท่วม) <button type="button" class="btn" data-map-plan="1">🗺️ ดูบนแผนที่</button></p>';
+    openSheet("<h2>" + (p.optimal ? "★ " : "") + esc(planWords(p)) + '</h2><p class="muted">' + sub + "</p>" + daysBar + chartSvg(p, cmp) +
       '<div class="imp-scroll"><table><thead><tr><th scope="col">วัน</th><th scope="col">ระบาย</th><th scope="col">อ่าง (ช่วง)</th><th scope="col">เทียบเส้นบน</th><th scope="col">ห่างตลิ่งต่ำสุด</th></tr></thead><tbody>' + rows + "</tbody></table></div>" + perPoint +
       '<ul class="imp-facts"><li>ล้าน ลบ.ม./วัน · อ่างเป็นค่ากลาง (ช่วง = น้ำไหลเข้าต่ำ–สูง) · เทียบเส้นบน = ปริมาตร − เส้นควบคุมบนของวันนั้น</li>' +
-      "<li>ท้ายน้ำ: ตลิ่งของหน่วยงานผู้วัด · 🔴 ยังไม่ผ่านการทดสอบย้อนหลัง · วันเหนือปริมาตรปกติ " + num(e.days_above_normal, 0) + " · เกินตลิ่งรวม " + num(e.overtop_sum, 2) + "</li></ul>");
+      "<li>ท้ายน้ำ: ตลิ่งของหน่วยงานผู้วัด · " + ((cmp.downstream || {}).method === "hybrid" ? "🟠 ทดสอบย้อนหลังแล้ว คลาดเคลื่อนรายวัน (ดูผลทดสอบย้อนหลัง)" : "🔴 ยังไม่ผ่านการทดสอบย้อนหลัง") +
+      " · วันเหนือปริมาตรปกติ " + num(e.days_above_normal, 0) + " · เกินตลิ่งรวม " + num(e.overtop_sum, 2) + "</li></ul>", (box) => {
+      box.querySelectorAll("[data-day]").forEach((b) => b.addEventListener("click", () => {
+        box.querySelectorAll("[data-day]").forEach((x) => x.classList.toggle("on", x === b));
+        colorReaches(cmp, p, Number(b.dataset.day));
+      }));
+      const kst = state.kase[state.sel];
+      box.querySelector("[data-map-plan]").addEventListener("click", () => {
+        document.getElementById("sheet").hidden = true;
+        if (kst) showCaseOnMap(kst); else if (narrow()) setTab("map");  // the river into view (phones: the map tab)
+      });
+      colorReaches(cmp, p, worstDay);
+      if (kst && !narrow()) showCaseOnMap(kst, false);  // desktop: the coloured river beside the sheet
+    });
   }
 
   function damHtml(st) {
@@ -589,7 +694,7 @@
       return '<tr><th scope="row">' + esc(p.code) + "<small>" + esc(p.name_th || "") + " · " + agency(p.agency) + "</small></th>" +
         "<td" + (margin != null && margin < 0 ? ' class="imp-neg"' : "") + ">" + num(margin, 2) + "</td>" +
         "<td>" + num(p.h_now, 2) + "</td><td>" + num(p.bank, 2) + "</td><td>" + num(p.q_now, 0) + "</td>" +
-        "<td>" + lag + "</td><td>" + (p.h_time ? when(p.h_time) : "ไม่มีข้อมูลใน 6 ชม.") + "</td></tr>";
+        "<td>" + lag + "</td><td>" + (p.h_time ? when(p.h_time) : "ไม่มีข้อมูลใน 36 ชม.") + "</td></tr>";
     }).join("");
     const b10 = st.points.find((p) => p.code === "B.10") || {};
     return '<div class="imp-scroll"><table><thead><tr>' +

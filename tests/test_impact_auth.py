@@ -126,6 +126,9 @@ def test_the_main_app_lets_one_more_tab_plug_in_without_changing_its_own_tabs():
     # E-7D-DOWN: plans name the downstream model they used; a tested one shows its error, not "untested"
     assert "cmp.downstream" in js and "🟠 ท้ายน้ำ ±" in js and "st.river7" in js
     assert "ใช้ในแบบจำลองน้ำไหลเข้า" in js  # D-104: the plan's inflow can run on the tested rain model; the page says so
+    # owner 2026-10-06: a plan's day on the map — the river by its nearest gauge, said to be no flood area (D-019)
+    assert "st.river_reaches" in js and "colorReaches(" in js and "ไม่ใช่พื้นที่น้ำท่วม" in js and "data-day" in js
+    assert "drawOnwr(" in js and "ที่มา: สทนช." in js and "ไม่ใช่ผลของแผนระบาย" in js  # ONWR's layers: dated, credited, not ours
 
 
 def test_the_real_settings_reach_the_impact_endpoints():

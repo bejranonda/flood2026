@@ -451,6 +451,31 @@ def state_key(case: str) -> str:
     return "impact_" + case.replace("-", "_")
 
 
+def river_reaches(river_line: list, points: list[dict], max_km: float = 10.0) -> list[dict]:
+    """The river line in pieces, each nearest to one gauge (owner 2026-10-06: a flood view per release plan; D-019 — the
+    map colours the river, never land): a vertex belongs to its nearest gauge when that gauge is within `max_km`, else to
+    none; consecutive vertices of one gauge form a piece, joined to the next piece's first vertex so the line stays whole."""
+    gauges = [{"code": p["code"], "lat": p["lat"], "lon": p["lon"]} for p in points if p.get("lat") is not None and p.get("lon") is not None]
+    if not gauges:
+        return []
+    out = []
+    for part in river_line or []:
+        cur, piece = None, []
+        for lat, lon in part:
+            v = {"lat": lat, "lon": lon}
+            best = min(gauges, key=lambda g: _km(v, g))
+            code = best["code"] if _km(v, best) <= max_km else None
+            if code != cur:
+                if cur is not None and piece:
+                    out.append({"code": cur, "line": piece + ([[lat, lon]] if code is not None else [])})
+                cur, piece = code, []
+            if code is not None:
+                piece.append([lat, lon])
+        if cur is not None and piece:
+            out.append({"code": cur, "line": piece})
+    return out
+
+
 def river_line(geo_rivers: dict | None, name: str) -> list[list[list[float]]]:
     """A named river from HII's main-river lines as [[lat, lon], …] parts, for the map (D-100)."""
     parts = []
@@ -487,7 +512,8 @@ RIVER7_TEST_DAYS = 90
 RIVER7_MIN_FIT = 60
 
 
-def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days: int = RIVER7_TEST_DAYS) -> dict | None:
+def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days: int = RIVER7_TEST_DAYS,
+           history: dict | None = None, method: str = "hybrid") -> dict | None:
     """The river below the dam on days 1–7 of a release plan (E-7D-DOWN, research/2026-10-05_e7d_down.log): the point right
     below the dam moves along its rating curve anchored on today's level; every point past the diversion moves by a gain
     per day fitted on the year (cm per m³/s of release change reaching it; never below 0 — a point with no detectable
@@ -496,11 +522,14 @@ def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days:
     purged at its edges): fitted only on the months before, B.10's gain came out negative in the dry season (small
     releases, most of the water diverted at เขื่อนเพชร, releases raised when the river was low) and clipped to 0 — the
     research's interleaved months found the release's effect in both samples (E-7D-DOWN). Daily means of Thai days. None
-    with too little data."""
+    with too little data. `history` ({code: {"h": {date: m}, "q": {date: m³/s}}}): older daily means (the database keeps
+    400 days) under the database's own days. `method` "gain": every point moves by its gain, B.18 too — on three wet
+    seasons it beat the hybrid at days 3 and 7 in both samples (research/2026-10-06_e7d_down_3y_gate.log)."""
     import datetime as dt
     n = len(next(iter(H.values())))
     day_of = [(t0 + dt.timedelta(hours=i + 7)).date().isoformat() for i in range(n)]
-    days = sorted(set(day_of))
+    older = {d for v in (history or {}).values() for d in list((v.get("h") or {})) + list((v.get("q") or {}))}
+    days = sorted(set(day_of) | older)
     pos = {d: i for i, d in enumerate(days)}
     hours: dict = {}
     for i, d in enumerate(day_of):
@@ -514,8 +543,13 @@ def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days:
             if len(v) >= 12:
                 out[pos[d]] = v.mean()
         return out
-    HD = {p["code"]: daily(H[p["code"]]) for p in points if p["code"] in H}
-    q18 = daily(Q["B.18"]) if "B.18" in Q else None
+    def with_history(arr, code, key):
+        for d, v in ((history or {}).get(code, {}).get(key) or {}).items():
+            if d in pos and not np.isfinite(arr[pos[d]]) and v is not None:
+                arr[pos[d]] = float(v)
+        return arr
+    HD = {p["code"]: with_history(daily(H[p["code"]]), p["code"], "h") for p in points if p["code"] in H}
+    q18 = with_history(daily(Q["B.18"]), "B.18", "q") if "B.18" in Q else None
     rel = np.array([rel_daily.get(d, np.nan) for d in days], float)
     lagd = {p["code"]: int(round((p.get("lag_h") or 0) / 24.0)) for p in points}
     issue = [i for i in range(1, len(days) - 7) if np.isfinite(rel[i:i + 8]).all()]
@@ -544,7 +578,7 @@ def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days:
 
     def predict(p, i, k, g):
         h = HD[p["code"]]
-        if p["role"] == "below_dam":
+        if p["role"] == "below_dam" and method != "gain":
             r = p.get("rating")
             if not r or q18 is None or not np.isfinite(q18[i]):
                 return np.nan
@@ -557,7 +591,7 @@ def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days:
         code = p["code"]
         if code not in HD:
             continue
-        dam_side = p["role"] == "below_dam"
+        dam_side = p["role"] == "below_dam" and method != "gain"
         g_fit = {b: ([0.0] * 7 if dam_side else gains(fit_for(b), code)) for b in blocks}
         out_g[code] = [0.0] * 7 if dam_side else [round(100 * x, 3) for x in gains(issue, code)]
         mae, p90, keep, cnt = [], [], [], 0
@@ -573,18 +607,18 @@ def river7(H: dict, Q: dict, t0, rel_daily: dict, points: list[dict], test_days:
             keep.append(round(float(np.mean(ek)), 3) if ek else None)
             cnt = max(cnt, len(e))
         errs[code] = {"mae_m": mae, "p90_m": p90, "keep_mae_m": keep, "n": cnt}
-    return {"method": "hybrid", "gains_cm_per_cms": out_g, "lag_days": lagd, "errors": errs,
+    return {"method": method, "gains_cm_per_cms": out_g, "lag_days": lagd, "errors": errs,
             "window": [days[test[0]], days[test[-1]]], "fit_days": len(issue), "test": "each month scored with gains from the other months",
             "source": "research/2026-10-05_e7d_down.log"}
 
 
-def level7(p: dict, release_mcm: float, today_mcm: float, k: int, gains_cm: list) -> float | None:
-    """A point's level on day k of a plan (river7's method): below the dam its rating curve anchored on today's level; past
-    the diversion today's level + that day's gain × the release change that has reached it (m³/s)."""
+def level7(p: dict, release_mcm: float, today_mcm: float, k: int, gains_cm: list, method: str = "hybrid") -> float | None:
+    """A point's level on day k of a plan (river7's method): today's level + that day's gain × the release change that has
+    reached it (m³/s) — below the dam, with method "hybrid", its rating curve anchored on today's level instead."""
     h = p.get("h_now")
     if h is None:
         return None
-    if p["role"] == "below_dam":
+    if p["role"] == "below_dam" and method != "gain":
         r = p.get("rating")
         if not r:
             return None
@@ -761,13 +795,17 @@ def build_state(c, case: str = "kaeng-krachan", now=None, rain7: dict | None = N
             "dam": {**(rid or {}), "egat": egat, "rule_curve": rule, "normal_mcm": (curves or {}).get("normal"),
                     "yearly_max": [{"year": r["y"], "max_mcm": float(r["mx"]), "date": r["d"], "days": r["n"]} for r in yrows]},
             "dam_km": cfg["dam_km"], "dam_notes": dam_notes(rid, egat, b18_now, rule=rule, years=years),
-            "river_line": river_line(db.get_state(c, "geo_rivers"), cfg["river"]),
+            "river_line": (rl := river_line(db.get_state(c, "geo_rivers"), cfg["river"])),
+            "river_reaches": river_reaches(rl, points),
+            "onwr": db.get_state(c, f"onwr_flood_{case.replace('-', '_')}"),
             "dam_latlon": next(([r["lat"], r["lon"]] for r in c.execute("SELECT lat, lon FROM dam WHERE dam_id=%s",
                                                                           (cfg["dam_ids"]["RID"],)).fetchall()), None),
             "release_check": release_vs_flow(rel_daily, b18_daily), "scenario_inputs": scenario_inputs,
             "dam_to_first_h": cfg["dam_to_first_h"], "points": points,
             "diversion_default": round(diversion_now(q18, q10, lags["B.10"]) or 0.0, 1),
             "validation": {"from": (t0 + dt.timedelta(hours=cut)).isoformat(), **replay(q18, q10, q16, city, lags_cut, cut)},
+            # served: the hybrid fitted on the database's year — the gain method on three years won both month samples but
+            # lost the live window (Jul–Sep 2026) at days 5–7 (MODELS §11c); the history (impact_daily_<case>) stays for re-tests
             "river7": river7(H, Q, t0, rel_daily, points),
             "data_request": DATA_REQUEST,
             "data_time": data_time.isoformat() if data_time else None, "built_at": now.isoformat()}

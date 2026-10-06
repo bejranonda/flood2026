@@ -1,0 +1,15 @@
+summed MAE cm over 5 points (points worse than keep) — s1 = odd months scored, s2 = even months scored
+s1 day 3: keep   78.7 · HY   79.8 (+1 %, 4 worse) · GN   78.5 (-0 %, 4 worse) · GR   78.2 (-1 %, 4 worse) · GW   78.1 (-1 %, 4 worse) · AN   74.7 (-5 %, 1 worse) · GM   82.1 (+4 %, 4 worse) · AR   90.6 (+15 %, 4 worse) · RR   84.7 (+8 %, 4 worse) · BL   86.8 (+10 %, 4 worse)
+s1 day 7: keep  106.6 · HY   99.0 (-7 %, 0 worse) · GN   96.7 (-9 %, 0 worse) · GR   96.7 (-9 %, 0 worse) · GW   96.7 (-9 %, 0 worse) · AN   99.9 (-6 %, 1 worse) · GM  100.9 (-5 %, 2 worse) · AR  127.1 (+19 %, 4 worse) · RR  109.4 (+3 %, 3 worse) · BL  115.3 (+8 %, 4 worse)
+s2 day 3: keep   68.3 · HY   66.6 (-2 %, 1 worse) · GN   65.6 (-4 %, 1 worse) · GR   65.9 (-4 %, 3 worse) · GW   65.8 (-4 %, 3 worse) · AN   64.2 (-6 %, 0 worse) · GM   65.5 (-4 %, 1 worse) · AR   70.7 (+4 %, 3 worse) · RR   65.7 (-4 %, 3 worse) · BL   67.6 (-1 %, 3 worse)
+s2 day 7: keep  102.8 · HY   97.2 (-5 %, 1 worse) · GN   96.3 (-6 %, 1 worse) · GR   97.8 (-5 %, 3 worse) · GW   98.2 (-4 %, 3 worse) · AN   91.7 (-11 %, 0 worse) · GM   96.1 (-7 %, 2 worse) · AR  101.9 (-1 %, 1 worse) · RR   90.8 (-12 %, 0 worse) · BL   95.1 (-7 %, 1 worse)
+
+HY: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
+GN: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → PASS
+GR: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
+GW: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
+AN: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
+GM: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
+AR: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
+RR: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
+BL: better than the served hybrid at days 3 and 7 in both samples with no more points worse than keep → fail
