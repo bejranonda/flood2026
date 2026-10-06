@@ -64,11 +64,13 @@ def main():
     reaches_out = {}
     for code, items in found.items():
         n = cover[code]
+        note = ""
         if n["samples"] and n["villages"] / n["samples"] >= 0.8:
             reaches_out[code] = [x for x in items if x["village"]]
         else:  # too few villages named: the อำเภอ only, once each
             reaches_out[code] = [{"village": None, "amphoe": a} for a in dict.fromkeys(x["amphoe"] for x in items if x["amphoe"])]
-        print(f"{code}: {n['samples']} samples, {n['villages']} with a village, {len(reaches_out[code])} places")
+            note = " — fewer than 80 % named a village: อำเภอ only"
+        print(f"{code}: {n['samples']} samples, {n['villages']} with a village, {len(reaches_out[code])} places{note}")
     OUT.write_text(json.dumps({"built": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                                "source": "OpenStreetMap via Nominatim reverse (zoom 14) · © OpenStreetMap contributors (ODbL)",
                                "step_km": STEP_KM, "coverage": cover, "reaches": reaches_out}, ensure_ascii=False, indent=1) + "\n",
