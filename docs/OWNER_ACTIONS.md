@@ -1,6 +1,6 @@
 # OWNER_ACTIONS.md — What the project needs from the owner
 
-> **Single tracker** (D-026). Anything an AI harness or developer needs from the owner goes here, with the reason, the exact steps and how it will be verified. Last verified **2026-10-06 12:41 UTC** (v0.33.1, live; `scripts/owner_status.py`: AI ✅, GLM ✅, GISTDA ✅, GFLOOD ✅, GFM ✅ (a 403 earlier the same day was transient), WNEXT ✅, EWDS ✅, Q3 ✅ handled by the owner; scripted open: IMPACT ⬜ (a test password by the owner's choice), RID ⬜; manual open: **EGRESS (VPN intermittent, KI-289)**, UPTIME, BMA, FLOODMAP, DEM).
+> **Single tracker** (D-026). Anything an AI harness or developer needs from the owner goes here, with the reason, the exact steps and how it will be verified. Last verified **2026-10-06 22:29 UTC** (v0.34.0 release; `scripts/owner_status.py`: AI ✅, GLM ✅, GISTDA ✅, GFLOOD ✅, GFM ✅, WNEXT ✅, EWDS ✅, Q3 ✅ handled by the owner; scripted open: IMPACT ⬜ (a test password by the owner's choice), RID ⬜; manual open: **EGRESS (VPN flapping again, KI-289)**, UPTIME, BMA, FLOODMAP, DEM, **DISK (84 %; the owner's "Not now")** — DISK is tracked here only, the script does not list it).
 > **Check the current status any time:** `python3 scripts/owner_status.py` (read-only; it never prints a secret). Open questions with their history are in [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md).
 > **Handing over secrets:** put them only in `/root/flood2026/.env` on the server. Never paste them in chat or commit them. Tell the agent the *key name* you set; it will check the value works without printing it.
 
@@ -11,6 +11,7 @@
 | **HYDROBASINS** | Download HydroBASINS (Asia) in a browser and copy it to the server | ✅ **done** 2026-10-02 (owner downloaded the lake version + ONWR's 22 basins; tested: no forecast gain, [research](../research/2026-10-02_catchment_rain.md)) | |
 | **FLOODMAP** | Ask ONWR/RID for flood-coverage maps by release level below Kaeng Krachan (data request #5): the only way to draw a land flood area per plan honestly (D-105) | ⬜ open — new 2026-10-06 | 2 |
 | **DEM** | A higher-resolution DEM (LiDAR, 1–5 m) for the Phetchaburi lowland — owner: "I will ask for higher resolution DEM later" | ⬜ open — new 2026-10-06 | 2 |
+| **DISK** | Free space on the server: 60 of 75 GB used (**84 %**) at 22:10 UTC on 2026-10-06, mostly Docker's build cache (33.4 GB, 32.95 reclaimable) and the journal (3.6 GB) — clean up, or a volume for the raw archive | ⬜ open — the owner's choice: **"Not now"** (2026-10-06) | 2 |
 | **IMPACT** | `/impact` (D-099): give the link and the password to the ONWR/RID engineers privately; **change the password to a long passphrase (≥ 16 characters) before any ONWR/RID data are loaded** | ⬜ open — new 2026-10-05 (pilot password is short: fine for public data only, KI-293) | 1 |
 | **UPTIME** | An external uptime check that alerts you when `/api/health` fails (KI-246: a 4.5 h overload on 2026-09-30 went unnoticed) | ⬜ open — new 2026-09-30 | 1 |
 | **SOCIAL** | Upload `docs/img/social-preview.png` as the GitHub repository social preview (**regenerated 2026-10-03 with the nationwide text, D-073**); optionally add the site to Google Search Console | ⬜ open — new 2026-09-30 | 3 |
@@ -178,3 +179,14 @@ The repository was updated to open source under the **MIT License** ([LICENSE](.
 - **Steps:** obtain a LiDAR or survey DEM (1–5 m) of the lowland below the dam from the agency that holds it; put the file on
   the server (not in git).
 - **Verification:** `PYTHONPATH=… python3 research/2026-10-06_flood_dem_kk.py OUT the_dem.tif` runs and is scored.
+
+### DISK — free space on the server (new 2026-10-06; the owner's choice: "Not now")
+- **Why:** the database, the raw archive and Docker all live on one 75 GB disk: 60 GB used (84 %) at 22:10 UTC on
+  2026-10-06, up from 57 GB (79 %) at 18:25 UTC the same day. Most of it is not data: Docker's build cache held 33.4 GB
+  (32.95 GB reclaimable) and the system journal 3.6 GB. A full disk stops the database and the collectors (KI-511: no
+  backup exists either).
+- **Steps (either):** (1) clean up — `docker builder prune` (build cache only; images in use and the data stay) and
+  `journalctl --vacuum-size=500M`; or (2) a Hetzner volume (50 GB, expandable) for the raw archive only (`data/raw_archive`),
+  moved there while the worker is stopped. Advice given (2026-10-06): clean up first, a volume only for the raw archive.
+  **Owner: cleanup "Not now".**
+- **Verification:** `df -h /` shows less than 70 % used.

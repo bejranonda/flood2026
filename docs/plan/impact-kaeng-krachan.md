@@ -77,3 +77,31 @@ daily releases by outlet (normal, spillway, gates, m³/s), inflow, level, storag
 operations and the canal diversions left/right (water that does not reach the river); (5) flood-coverage Shapefiles by
 release level. Numbers: MODELS §11b; findings: KI-301, KI-302.
 
+## v0.34.0: the plan grid (D-110)
+Owner (two screenshots): the tab was "massive with text"; "some are far away from river, is it correct?"; ONWR's goal is
+6–7-day release scenarios turned into water level and flood coverage, for the officials and engineers who control
+releases; AI may assist. Found first: the far hexagons were ONWR's own land warning in whole zoom-10 tiles (118 of 134
+cells outside the case box, KI-318), and the ★ (21.5 for 7 days ≈ 249 m³/s) ran every gauge beyond its rating's data
+while the engine's `outside` flag reached neither the ★ nor the page (KI-319). Grillme answers, then built:
+- **A comparison grid:** ★, today, the engine's best plan per goal (goal icons; a goal names a plan only where plans
+  differ), up to three own plans, a collapsed ladder of constant releases every 2 ล้าน ลบ.ม./วัน (0–24); each row a 7-day
+  strip coloured by its worst gauge (over / within that day's tested error / ok), storage on day 7, the lowest margin and
+  km near the bank; a day header and a selected row colour the river; the desktop map follows the case.
+- **Outside the data, labelled — not hidden (the owner's "label only"):** hatched day cells, ⚠ on the row, in the sheet
+  (with each gauge's flow against the rating's highest) and in the brief; the ★ rule is unchanged (an owner exception to
+  GUIDELINES §6c-6). Live at ~21:25 UTC: the ★ is outside from day 1 at B.18 (257.5 vs 143.2 m³/s); today's plan (10.6)
+  and 9.5 are inside the data.
+- **ONWR's layers** clipped to the case box (16 warning cells and 129 +1-day cells at 21:24 UTC), off by default, inside
+  the app's one layer box as "สทนช. · ไม่ขึ้นกับแผนระบาย".
+- **Flood coverage until ONWR's maps or a LiDAR DEM:** km of river near or over its bank per plan and day (reaches by
+  nearest gauge ≤ 10 km: B.18 62.4 … PCH001 8.2 km) and the villages + อำเภอ along them (OpenStreetMap; no ตำบล
+  boundaries there). 0 km for every plan on 6 Oct.
+- **The plan sheet:** the river as 5 gauges × 7 days of margins (hatched outside the data), the coverage line, the outside
+  line, ✨ compare with the ★.
+- **AI on tap (GLM, never deciding):** today's ✨ story, an executive brief to copy (≤ 7 bullets; caveat lines never go to
+  the AI), compare two plans, a plan typed in Thai (rules first; 7 numbers that only fill the boxes; never logged).
+- **Checked live** (22:01–22:02 UTC, 390 and 1366 px): a first-time engineer answers "what if we release 15 for 7 days?"
+  in 3 taps and typing; no paragraph over 160 characters in the view, the sheets or the brief (UX_VALIDATION round 15).
+Still waiting on: flood maps by release level, a LiDAR DEM, เขื่อนเพชร canal flows and 2018 river records (OWNER_ACTIONS
+FLOODMAP, DEM). Numbers: MODELS §11e; facts: KNOWLEDGE §28, §30; issues: KI-318, KI-319; rules: GUIDELINES §6c-11.
+

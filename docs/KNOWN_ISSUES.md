@@ -40,6 +40,8 @@
 | KI-222 | Point check lacked localized 12–24h forecast summary; static BMA portal link was misleading | UX / Product | 🟢 resolved in v0.6.0 (D-040, D-041) |
 | KI-223 | D-041 outlook gave a canal verdict with zero or far/disagreeing gauges; contradicted the overview card | UX / Product | 🟢 fixed v0.6.1 (D-042) |
 | KI-224 | "~27 มม." read as "−27 มม."; rain amount had no meaning (issue #1) | UI | 🟢 fixed on branch (TMD categories) |
+| KI-319 | The ★ and other release plans ran beyond the river data unflagged: the engine's `outside` flag reached neither the ★ nor the page (★ 21.5 ≈ 249 m³/s against ratings fitted on ≤ 143 m³/s at B.18) | Decision support / impact | 🟢 fixed v0.34.0 — labelled; the ★ rule unchanged by the owner's choice, D-110 |
+| KI-318 | ONWR's cells on the Kaeng Krachan map were whole zoom-10 tiles: 118 of 134 warning cells outside the case box, 30–56 km from the river | Data / impact | 🟢 fixed v0.34.0 (clipped to the case box; off by default, D-110) |
 | KI-310 | Satellite flood maps are not reliable over the Phetchaburi lowland (GFM blind on 39–58 %; GISTDA and GFM agree on 13 % of GFM's flood) | Data / impact | 🟡 open (not shown, D-105) |
 | KI-309 | The reservoir outlook's 7-day bands were mirrored (stored predicted − observed, added as observed − predicted) | Forecast / impact | 🟢 fixed (D-104) |
 | KI-308 | `hii_dams_history` recorded every run as a failure | Ops | 🟢 fixed |
@@ -61,7 +63,7 @@
 | KI-292 | "Rebound" forecasts (+35…+70 cm) right after steep measured falls (PAS001, S.3, M.183B, SKG007) | Forecast | 🟡 watching; interim: all four kept falling |
 | KI-291 | Live check C4 sometimes sees a list line twice behind an open sheet (URTU07) | UX / tests | 🟡 open, intermittent (not reproduced in 6 tries) |
 | KI-290 | Track records said "30 days" but forecast runs were kept 14 days | Ops / data | 🟢 fixed v0.25.2 (`FC_KEEP_DAYS = 31`) |
-| KI-289 | Thai egress (OpenVPN sidecar) flaky: TLS handshake failures, 452 restarts; DWR posts stopped, BMA DDS intermittent | Data access | 🟡 recovered 2026-10-05 02:13 UTC; watch |
+| KI-289 | Thai egress (OpenVPN sidecar) flaky: TLS handshake failures, 452 restarts; DWR posts stopped, BMA DDS intermittent | Data access | 🟡 recovered 2026-10-05 02:13 UTC; 2026-10-06: flapping again — 76 restarts since 12:29 UTC, TLS handshake failures (21:36 UTC); watch |
 | KI-288 | A 6 h task (Flood Hub) never came due while the worker restarted every 1–2 h | Ops | 🟢 fixed v0.25.2 (`worker.first_due`) |
 | KI-287 | 72 h likely ranges too confident in a falling river (50 % band held 44 %) | Forecast | 🟡 re-opened 2026-10-06: as issued, 90 % ranges held 81–83 % and 50 % ranges 38–39 % at 24 h; calibration bug fixed v0.33.1; next a short-term median correction |
 | KI-286 | Ticker named Bangkok "อาจถึงตลิ่ง" while its gauges were steady under the bank | UX / AI | 🟢 fixed v0.25.0 (D-094) |
@@ -817,8 +819,9 @@ Served bands over 30 days (research/2026-10-04_band_coverage_live.log): the 50 %
 ### KI-288 — A 6 h task never came due while the worker restarted every hour or two · 🟢 fixed v0.25.2
 Post-release validation 2026-10-04 21:40 UTC: `google_floodhub` last succeeded at 10:40 UTC. The worker set `next_run = start + interval` for every task, so each restart (deploys at 16:49, 19:5x, 20:xx, 21:11, 21:37) pushed a 6 h task out again. Fix: `worker.first_due` — a task that is not in the first-run list is due one interval after its last success (source_health), at least 60 s after start.
 
-### KI-289 — Thai egress (OpenVPN sidecar) cannot connect · 🟡 recovered 2026-10-05 02:13 UTC (watch)
+### KI-289 — Thai egress (OpenVPN sidecar) cannot connect · 🟡 recovered 2026-10-05 02:13 UTC; flapping again 2026-10-06 (watch)
 2026-10-04: `vpn` logs "TLS key negotiation failed to occur within 60 seconds … TLS handshake failed", container restart count 402. Sources behind the egress fail: `bma_dds` (last success 08:39 UTC), `dwr_ews` (17:15 UTC, 5 failures, backing off). BMA canal levels still arrive through the flood69 relay (`bma_klong`). Needs the owner's VPN server/credentials (OWNER_ACTIONS EGRESS); no change in code. **2026-10-05 05:20 UTC:** intermittent rather than down — 452 restarts, the tunnel came up at times (`bma_dds` succeeded 04:23 UTC), `dwr_ews` still failing (9 in a row, backing off; its calls take ~45 s through the tunnel). **06:10 UTC: recovered** — the tunnel has been up since 02:13 UTC ("Initialization Sequence Completed", no TLS errors in the following hours); BMA DDS HTTP 200 in 4.6 s; DWR's 05:16 failure was HTTP 500 from DWR itself, and LoadStation answered 200 (3 MB, 13 s) at 06:05; `dwr_ews` run by hand: 455 posts, 439 readings. The bulk call returns each post's latest reading, so the outage left no readings in 10 of the hours from 4 Oct 17:00 to 5 Oct 06:00 (not recoverable).
+**2026-10-06: flapping again — 76 restarts since 12:29 UTC, TLS handshake failures (21:36 UTC).**
 
 ### KI-290 — Track records said "30 days" but forecast runs were kept 14 days · 🟢 fixed v0.25.2
 Post-release validation 2026-10-04: `risks.WINDOW_DAYS = 30` (the "N ใน 10" chips and their ⓘ say "30 วันที่ผ่านมา") while `retention.FC_KEEP_DAYS = 14`; the archive began 2026-09-26, so from ~10 Oct the records would silently cover 14 days. Found when the unstarved retention task (KI-288) thinned 115,820 runs (the designed thinning, nothing past 14 days existed yet). Fix: `FC_KEEP_DAYS = 31` (~0.5 GB, 29 GB free) and a test that keeps it above `WINDOW_DAYS`.
@@ -909,3 +912,62 @@ lowland below Kaeng Krachan in every pass (exclusion mask: towns, orchards), kee
 and maps 53 km² on one track but ~4 km² on others days apart; GISTDA's 30-day flood (18.1 km²) and GFM's (95.6 km²) share
 73 % of GISTDA's area but only 13 % of GFM's. Google Flood Hub has no gauge there. Do not draw satellite flood extents as
 "what this release would flood" until they agree with each other and with an observed event.
+
+### KI-318 — ONWR's cells on the Kaeng Krachan map were whole zoom-10 tiles: cells 30–56 km away looked like the river's flood area · 🟢 fixed v0.34.0 (D-110)
+**Symptom:** the owner's screenshot of `/impact`, 2026-10-06: "some are far away from river, is it correct?".
+**Evidence** (`collector_state.onwr_flood_kaeng_krachan` fetched 12:03 UTC, each cell's distance to the river line):
+**118 of 134 warning cells** and **148 of 226 +1-day cells** lay outside the case box — 111 warning cells around
+Ratchaburi town on the Mae Klong, 30–42 km from the Phetchaburi River; +1-day cells up to 56 km away. Inside Phetchaburi:
+4 warning cells at the city beside the river and 19 in the coastal lowland 6–15 km east (around Hat Chao Samran) — a
+pattern of rain and drainage risk rather than river overflow (⚠️ ONWR's method is not known to us, so we cannot validate
+it); ONWR's observed-flood layer had nothing in Phetchaburi, and our gauges stood ≥ 1.7 m below their banks. The hexagons
+were ONWR's area warning (`flood-warn`, on by default), not a result of any plan, and sat in a second layer box that the
+owner read as the plan's flood area. KNOWLEDGE §28's "176 and 161 cells over the case area" and MODELS §11d's counts
+were whole tiles too.
+**Cause:** `collectors.onwr_layers` kept every feature of every zoom-10 tile touching the case box (a zoom-10 tile is
+360°/2¹⁰ ≈ 0.35° ≈ 38 km wide at 13 °N).
+**Fix (v0.34.0):** the collector keeps a feature only when its first ring's own bounding box overlaps the case box
+(`mvt.ring_overlaps_bbox`; the cells are ≈ 1.1 km hexagons, so overlapping boxes are overlapping shapes to within a
+cell); `impact.clip_onwr` filters a copy stored before the fix when `/api/impact/case/{id}` serves it (a copy without
+`bbox` passes through unchanged). ONWR's group moved into the app's one layer box as "สทนช. · ไม่ขึ้นกับแผนระบาย", every
+layer unticked when a case opens (D-110). **After the fix** (layers rebuilt 2026-10-06 21:24 UTC; stored = served):
+`flood-warn` 16 cells, `flood-forecast-d1` 129, `flood-forecast-d2` 0, `flood-forecast-d3` 0, `flood-area-poly` 0; box
+12.618–13.274 °N, 99.237–100.043 °E. Tests: `test_a_ring_overlaps_a_box_by_its_own_bounding_box`,
+`test_onwr_layers_keeps_only_features_inside_the_case_box`, `test_stored_onwr_layers_are_clipped_to_their_box_when_served`,
+`test_the_case_endpoint_serves_onwr_cells_inside_the_case_box_only`. Lesson: GUIDELINES §6c-11.
+
+### KI-319 — The ★ and other release plans ran beyond the river data unflagged · 🟢 fixed v0.34.0 — labelled; the ★ rule unchanged by the owner's choice (D-110)
+**Symptom:** the ★ plan, 21.5 ล้าน ลบ.ม./วัน for 7 days (≈ 249 m³/s), stood as the rule's pick with downstream margins
+as if they were tested, while each gauge's rating was fitted on far smaller flows (`rating.qmax`: B.18 143.25, B.10 86.4,
+B.16 72.9 m³/s; B.15 and PCH001 read B.16's flow). `/api/impact/case/kaeng-krachan/scenarios`, 2026-10-06 13:05 UTC: the
+★ put 256 / 192 / 182 m³/s through B.18 / B.10 / B.16, and `daily_downstream` marked those days `outside: true` (B.18 7
+days, B.10 6, B.16, B.15 and PCH001 5) — but neither the ★ rule nor the page read the flag; two of the other four plans
+shown were outside too.
+**Cause:** `impact.whatif` sets `outside` per gauge (its flow — for a city gauge the flow of its `rating_from` gauge —
+above the rating's highest flow) and `scenarios.daily_downstream` copies it into every plan's rows; nothing used it.
+**Fix (v0.34.0):** `scenarios.outside_detail` lists every gauge a plan runs beyond its data (the days, the plan's highest
+flow, `qmax`) and `scenarios.day_cells` hatches each day on which any gauge is outside; every plan carries `outside_any`
+and `outside_detail`. "⚠ นอกช่วงข้อมูล" stands on the grid row (hatched day cells), in the plan sheet (title, outside
+line, the gauges × days grid), as a ⚠ bullet in the executive brief and in the ✨ story (`explain.OUTSIDE_CLAUSE`); an AI
+rewording may not drop it (`explain.KEEP`), and caveat lines never go to the AI (`explain.brief_items`). The ★ rule is
+unchanged: the owner chose "label only" over the recommended "show, river unjudged" — an exception to GUIDELINES §6c-6
+for this tab (D-110).
+**After the fix** (`/api/impact/case/kaeng-krachan/scenarios`, 2026-10-06 ~21:25 UTC; RID data of 2026-10-06):
+
+| Plan (label) | Storage day 7 (ล้าน ลบ.ม.) | Lowest margin | Outside the river data |
+|---|---|---|---|
+| ★ 21.5 คงที่ | 639 | 0.17 m (B.18) | yes — B.18 257.5 vs 143.2 m³/s from day 1; B.10 193.6 vs 86.4 from day 2; B.16 185.6 vs 72.9 from day 3; and 2 more gauges |
+| 10.6 วันนี้ | 715 | 2.09 m | no |
+| 9.5 คงที่ | 723 | 2.15 m | no |
+| 22→2 ทยอย | 705 | 0.08 m | yes — B.18 263.3 from day 1; B.10 199.4 from day 2; B.16 191.4 from day 3 |
+| 6→12 สองช่วง | 723 | 1.83 m | yes — B.18 147.6 from day 4; B.16 and B.15 75.6 on days 6–7 |
+
+The browser check counted 67 hatched (outside) day cells on the tab (22:01 UTC). **Why it matters:** the downstream
+gains were learned in a year when เขื่อนเพชร's canals absorbed release changes (⚠️ inferred from the flows, KI-297;
+KNOWLEDGE §25, §27); above the canals' capacity the river can rise more than a plan shows. Tests:
+`test_outside_detail_names_each_gauge_its_days_its_highest_flow_and_the_ratings_range`,
+`test_a_day_cell_is_the_worst_gauge_with_outside_and_km_and_rows_carry_their_status`,
+`test_the_brief_is_short_bullets_with_the_engines_numbers_and_the_outside_label`,
+`test_the_simple_story_says_when_the_star_or_a_named_pick_runs_beyond_the_river_data`,
+`test_an_ai_line_may_not_drop_a_caveat_the_rule_line_carries`. Lesson: GUIDELINES §6c-11 ("a flag the engine computes
+must reach the decision and the screen").

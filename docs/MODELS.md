@@ -3,8 +3,8 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.33.1** (code in `src/floodwatch/`). **§12 shows how the models improved release by release** — what each change
-> gained when it was tested, and what each model generation actually delivered, scored against what the water did. §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans. Numbers come from running code or the cited research files;
+> It describes **v0.34.0** (code in `src/floodwatch/`). **§12 shows how the models improved release by release** — what each change
+> gained when it was tested, and what each model generation actually delivered, scored against what the water did. §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans, §11e how the impact tab compares plans and labels what the river data do not cover (v0.34.0, no model change). Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -39,7 +39,13 @@
 
 **แผนที่น้ำท่วมของแต่ละแผนระบาย** — แสดงแม่น้ำเป็นช่วงตามสถานีที่ใกล้ที่สุด สีตามระยะห่างตลิ่งของวันที่เลือก (ไม่ใช่พื้นที่น้ำท่วม) และชั้นข้อมูลของ สทนช.
 (พื้นที่เตือน คาดการณ์ +1…+3 วัน น้ำท่วมที่พบ) · ภาพดาวเทียม (GFM, GISTDA) ตรวจแล้วไม่น่าเชื่อถือพอบริเวณนี้ (มองไม่เห็น 39–58 % ของพื้นที่ ไม่สอดคล้องกันระหว่างรอบ)
-จึงไม่แสดง · แผนที่จาก DEM 30 ม. เป็นการทดลอง ยังให้คะแนนไม่ได้เพราะ 3 ปีที่ผ่านมาแม่น้ำไม่เคยล้นตลิ่งที่สถานีใดเลย (§11d)
+จึงไม่แสดง · แผนที่จาก DEM 30 ม. เป็นการทดลอง ยังให้คะแนนไม่ได้เพราะ 3 ปีที่ผ่านมาแม่น้ำไม่เคยล้นตลิ่งที่สถานีใดเลย (§11d) ·
+ชั้นข้อมูลของ สทนช. ตัดเฉพาะกรอบพื้นที่ของกรณีนี้ (เดิมรวมทั้งแผ่นภาพ จึงมีช่องรอบราชบุรีห่างแม่น้ำ 30–56 กม., KI-318) และปิดไว้ก่อนจนกว่าผู้ใช้จะเลือก
+
+**ตารางเทียบแผนระบาย (v0.34.0, D-110)** — หนึ่งแถวต่อหนึ่งแผน (★ · วันนี้ · แผนเด่นแต่ละเป้าหมาย · แผนของผู้ใช้ไม่เกิน 3 · ระบายคงที่ทุก 2 ล้าน ลบ.ม./วัน)
+สี 7 ช่อง = สถานีที่แย่ที่สุดของแต่ละวัน (เกินตลิ่ง / ห่างตลิ่งน้อยกว่าความคลาดเคลื่อนที่ทดสอบของวันนั้น / รับน้ำได้) · **ช่องลาย ⚠ นอกช่วงข้อมูล** = น้ำที่สถานีมากกว่าที่ rating curve
+เคยเห็น (B.18 143, B.10 86, B.16 73 ลบ.ม./วิ) ระดับวันนั้นจึงมาจากการต่อเส้นโค้งออกไป — แผน ★ 21.5 อยู่นอกช่วงข้อมูลทุกวัน (6 ต.ค. 2569) เจ้าของเลือกให้แสดงตัวเลขพร้อมป้าย
+ไม่ซ่อน · กม. ของแม่น้ำที่ใกล้/เกินตลิ่ง และหมู่บ้านริมแม่น้ำ (OpenStreetMap) แทนพื้นที่น้ำท่วม · ไม่ได้เปลี่ยนแบบจำลองหรือเกณฑ์ ★ (§11e)
 
 **ปรับปรุงแบบจำลอง (4 ต.ค. 2569, ทดสอบแบบไม่โกง: เลือกวิธีจากครึ่งแรก วัดผลครึ่งหลัง ยืนยันกับสถานีอีกชุดที่ไม่เคยเห็น)** —
 แบบจำลอง star อ่านค่าเพิ่ม: ระดับน้ำเทียบค่าเฉลี่ย 7 และ 30 วัน และการเปลี่ยนแปลง 1/3/72 ชม. ความคลาดเคลื่อนลดลงจาก "ถือว่าคงที่"
@@ -557,7 +563,7 @@ with a trend, 32 of them modelled (5 still "if today holds"; ปากมูล 
 ## 10. How to reproduce
 
 - Tests: `docker compose build worker`, then `docker compose run --rm --no-deps -v "$PWD/research:/app/research:ro" worker pytest -q`
-  (461 tests on 2026-10-06; the research mount lets the guard on Open-Meteo research run).
+  (563 tests on 2026-10-06; the research mount lets the guard on Open-Meteo research run).
 - Model history (§12): `research/2026-10-06_model_history.py` scores every stored forecast run (`forecast_run`, 14 days) per
   model generation against what happened, read-only; its `.log` holds the tables.
 - Same days, old vs new `star` (§5j): `research/2026-10-06_star_same_days.py` (`others` for the confirmation sample); range factors
@@ -588,7 +594,12 @@ with a trend, 32 of them modelled (5 still "if today holds"; ปากมูล 
   `_flood_satellite_kk.py` (GFM 2018 and now), `_flood_sources_kk.py` (GISTDA vs GFM; the key only from the environment),
   `_flood_dem_kk.py` (HAND on any DEM), `_e7d_long_fetch.py` + `_e7d_inflow_long.py` (the inflow choice on a whole wet season).
 - The impact tab in a browser: `IMPACT_PW="$(sed -n 's/^IMPACT_PASSWORD=//p' .env)" python3 scripts/impact_tab_check.py` — it
-  measures the dams list (row height, groups) and checks that a row and a ◆ open the same dam sheet.
+  measures the dams list (row height, groups) and checks that a row and a ◆ open the same dam sheet; since v0.34.0 also the
+  plan grid (rows, day cells, hatched cells, the ladder, the day header), ONWR's group in the app's layer box, the 160-character
+  rule in the view, the plan and custom sheets and the brief, compare, a typed plan and an expired session (D-110).
+- Villages along the reaches (D-110): `research/2026-10-06_kk_reach_places.py` (Nominatim reverse, zoom 14, one call per
+  1.5 s; writes `src/floodwatch/data/kk_reach_places.json`, `.log` with the coverage per reach) — rerun by hand when the
+  river line or the gauges change; nothing calls Nominatim at request time.
 
 ## 11. Impact what-if for a dam release (pilot Kaeng Krachan, `/impact`, D-099)
 
@@ -652,6 +663,10 @@ same rule as the case (complete years only, a gap suppresses it). Records of one
 never merged (KI-217); the dam's colour comes from its first record with a position. Sorted above, below, between,
 unknown, then by storage %. 2026-10-05: 13 above (ป่าสักชลสิทธิ์ 109.8 %, 957 vs upper curve 465 ล้าน ลบ.ม., releasing
 43.2 ล้าน ลบ.ม./วัน ≈ 500 m³/s; หนองปลาไหล 105.0 %; แก่งกระจาน 102.2 %), 23 between, 3 without a curve (KI-299).
+
+**Outside the data (D-110, KI-319):** a plan's day is outside when a gauge's flow exceeds its rating's highest flow (B.18
+143, B.10 86, B.16 73 m³/s on 2026-10-06); the downstream gains were learned where เขื่อนเพชร absorbed release changes
+(⚠️ inferred from the flows, KI-297), so above the canals' capacity the river can rise more than the plan shows.
 
 ### 11b. 7-day release scenarios (D-101, `scenarios.py`)
 **Reservoir.** Daily water balance S(d) = S(d−1) + I − R(d), inflow I held at today's value; the band = persistence's own
@@ -744,7 +759,9 @@ compare with google or any global flood info"), and ONWR's flood maps when they 
   legend says it is no flood area (D-019); ONWR's area warning, +1…+3-day forecast and observed flooded area over the case
   (`collectors.onwr_flood`, 3-hourly; `floodwatch.mvt` reads the vector tiles and matches the reference decoder on a live
   tile), with ONWR's update times, credited "ที่มา: สทนช." and said not to be results of the plan. 2026-10-06: warning 36
-  cells, +1 day 226 (176 at class 3), +2 days 174 (161 at class 3), observed 3 polygons.
+  cells, +1 day 226 (176 at class 3), +2 days 174 (161 at class 3), observed 3 polygons — **whole zoom-10 tiles, most of
+  them outside the case box (KI-318)**; clipped to the box since v0.34.0 (rebuilt 2026-10-06 21:24 UTC: warning 16, +1 day
+  129, +2 and +3 days 0, observed 0) and off by default (§11e).
 - **The record:** in 2023-09 … 2026-10 none of the five gauges went over its bank (closest: B.16 1.9 m below on
   2024-10-11, B.15 1.87 m below on 2026-09-29) — no recent release-driven flood exists to calibrate a flood map against.
   The one in reach is August 2018 (Kaeng Krachan up to 24.36 ล้าน ลบ.ม./วัน on 21 Aug).
@@ -759,6 +776,103 @@ compare with google or any global flood info"), and ONWR's flood maps when they 
   an observed extent of a release flood (ONWR/RID flood-coverage maps by release level, data request #5, or imagery of a
   future event) and the higher-resolution DEM the owner will request; the script takes any DEM path.
 research/2026-10-06_flood_satellite_kk.{py,log}, _flood_sources_kk, _flood_dem_kk.
+
+### 11e. The plan grid: comparing plans without hiding what the data do not cover (D-110)
+Owner 2026-10-06, with two screenshots of `/impact`: the tab was "massive with text"; "some are far away from river, is it
+correct?" (ONWR's cells, KI-318); ONWR's goal is release scenarios for the next 6–7 days, each turned into water level and
+flood coverage, for the officials and engineers who control releases; AI may assist. Grillme answers: a comparison grid;
+the engine's picks plus a release ladder; **"label only"** for plans beyond the river data; river km + villages as the
+coverage; all four AI helps (D-110). **No model changed:** no retrain, no new fitted number, the ★ rule as in §11b–§11c —
+so there was no `model_gate` run (GUIDELINES §4.5 judges changes to the planning models); what changed is what reaches
+the decision maker.
+
+**A gauge on a day** (`scenarios.gauge_status(margin, req)`): m = the plan's margin to the gauge's own bank (m MSL of its
+agency, §11c), e = that day's tested error (`margin_req[code][d]`: the river model's mean error at that gauge and lead).
+
+| Status | Rule | Cell (title word; colour) |
+|---|---|---|
+| none | no margin | "ไม่มีข้อมูล" |
+| over | m < 0 | "เกินตลิ่ง"; `--critical` |
+| near | 0 ≤ m < e | "ห่างตลิ่งน้อยกว่าความคลาดเคลื่อน"; `--warning` |
+| ok | m ≥ e | "รับน้ำได้"; `--normal` |
+
+**A plan's day** (`scenarios.day_cells`) = the worst gauge that day by `RANK` = {none 0, ok 1, near 2, over 3} (equal
+ranks: the smaller margin), with `outside` = any gauge outside the data that day (the cell is hatched), `km`, `codes` (the
+gauges near or over) and the worst gauge's code, margin and error for the cell's title. Every downstream row is stamped
+with its own `status`, so the grid, the map and the sheet read one rule.
+
+**Outside the data** (`scenarios.outside_detail(down, points)`): gauge c is outside on day d when Q_plan(c, d) > qmax_c,
+the highest flow in the data its rating was fitted on (`impact.fit_rating`; a city gauge reads its `rating_from` gauge's
+flow, as `impact.whatif` does). Per gauge: the 1-based days, the plan's highest flow on those days, qmax. qmax on
+2026-10-06: B.18 143.25, B.10 86.4, B.16 72.9 m³/s (B.15 and PCH001 read B.16's flow and show 72.9). Why it matters: the
+downstream gains were learned in a year when เขื่อนเพชร's canals absorbed release changes (⚠️ inferred from the flows,
+KI-297); above the canals' capacity the river can rise more than the plan shows. So an outside day is never shown as
+plainly safe: it is hatched and labelled "⚠ นอกช่วงข้อมูล" wherever it appears (the owner's "label only"), even when its
+margin passes the ★ rule — the rule itself is unchanged (an owner exception to GUIDELINES §6c-6).
+
+**km at risk** (`impact.reach_km`): the river in reaches by nearest gauge ≤ 10 km (`impact.river_reaches`, §11d), km per
+reach along the line: B.18 62.4, B.10 45.8, B.15 21.0, B.16 11.4, PCH001 8.2 km (2026-10-06). For plan p and day d,
+km(p, d) = Σ reach_km[c] over the gauges c whose status that day is near or over; `km_max` = max over d, `km_days` = the
+days with km > 0. Villages and อำเภอ per reach from OpenStreetMap (`impact.reach_places`, built once into
+`src/floodwatch/data/kk_reach_places.json`; KNOWLEDGE §30). Coarse: one gauge speaks for its whole reach (B.18 for 62 km);
+no land extent is drawn (D-019, D-105). On 2026-10-06 every plan had 0 km near or over the bank in 7 days.
+
+**The rows** (`scenarios.compare`; a plan may hold several roles — a pick can also be a rung):
+
+| Role | Plans | Notes |
+|---|---|---|
+| star | the ★ (`optimal`, the stated rule of §11b–§11c) | first row |
+| today | hold today's release | |
+| pick | the best plan per goal (`best_for`), merged; goal icons | a goal names a best plan only when the plans differ on it by more than `TOL`: city 0.05 m, worst 0.05 m, dam 1.0 ล้าน ลบ.ม., water 1.0 ล้าน ลบ.ม., warning 0.1 ล้าน ลบ.ม./วัน; "total" only when some plan overtops; "curve" when the first day under the curve or the day-7 storage differs |
+| custom | up to 3 of the session's own plans (`release=` a;b;c, 7 numbers 0–200 each), newest first | |
+| ladder | constant releases 0, 2, 4 … ≤ the search cap (`ladder_ids`, `RUNG` = 2 ล้าน ลบ.ม./วัน; today's hold stands in on a rung) | collapsed; rungs travel light (no level arrays) |
+
+Labels are short (`short_label`: "21.5 คงที่", "10.6 วันนี้", "22→2 ทยอย", "6→12 สองช่วง", "กำหนดเอง 12→18.5"); the sheet
+carries the words (`explain.plan_words`). **Live, 2026-10-06 ~21:25 UTC** (`/api/impact/case/kaeng-krachan/scenarios`; RID
+data of 6 Oct: storage 724.95 ล้าน ลบ.ม., 102 %, 127 above the upper rule curve; release 10.63, inflow 10.33 ล้าน
+ลบ.ม./วัน); the ladder held 13 rungs (0–24):
+
+| Plan (roles) | Storage day 7 (ล้าน ลบ.ม.) | Lowest margin | Outside the river data (plan's flow vs qmax, m³/s) |
+|---|---|---|---|
+| ★ 21.5 คงที่ (star, pick) | 639 | 0.17 m (B.18) | B.18 257.5 vs 143.2 from day 1; B.10 193.6 vs 86.4 from day 2; B.16 185.6 vs 72.9 from day 3; and 2 more gauges |
+| 10.6 วันนี้ (today, pick) | 715 | 2.09 m | no |
+| 9.5 คงที่ (pick) | 723 | 2.15 m | no |
+| 22→2 ทยอย (pick) | 705 | 0.08 m | B.18 263.3 from day 1; B.10 199.4 from day 2; B.16 191.4 from day 3 |
+| 6→12 สองช่วง (pick) | 723 | 1.83 m | B.18 147.6 from day 4; B.16 and B.15 75.6 on days 6–7 |
+
+**AI on this tab** (GLM only, on tap, never decides; with `AI_EXPLAIN=0` the tab gives the rule texts and the parser runs
+rules only):
+- **Executive brief** (`explain.brief(cmp)`): ≤ 7 rule-made bullets — the situation; the ★ by the rule; today's plan; the
+  pick that differs most from the ★ and from today; one ⚠ line for the plans outside the data; the downstream model's
+  limit; the data time with "ไม่ใช่ประกาศทางการ". `explain.brief_items` sends only the lines without a caveat
+  (`CAVEAT_START`: "⚠", "ข้อจำกัด:", "ข้อมูล") to `explain.retell_items`, which asks GLM to reword them in the officials'
+  voice (`OFFICIAL`). A reworded line is used only if it passes `explain.check_item`: ≤ 160 characters (`ITEM_MAX`), no new
+  number and no Latin beyond the rule line's station codes, none of ควร / แนะนำ / ดีกว่า / อันตราย / วิกฤต
+  (`OFFICIAL_BANNED`) unless the rule line says it, and every `KEEP` word the rule line carries (ตามเกณฑ์, นอกช่วงข้อมูล,
+  เคยวัด, ไม่ใช่ประกาศทางการ, ไม่ใช่ค่าพยากรณ์); otherwise the rule line stays.
+- **Compare two plans** (`explain.compare_lines(cmp, a, b)`, `explain?q=compare&a=…&b=…`, each plan as its 7 releases):
+  the differences the engine computed — storage on day 7, the lowest margin, km, the largest daily change, each plan's
+  outside label; no verdict; the story is retold only under `check_item`.
+- **A plan typed in Thai** (`plan_parse.parse(text, today)`, `POST …/parse`): rules first — one number for the week, day
+  by day, a ramp "ทยอย… จาก A เป็น B" (optionally "ใน|ภายใน N วัน", 2–7), two steps "A N วัน(แรก) แล้ว… B", "คงเดิม";
+  GLM only for text ≤ 200 characters the rules cannot read, and never for text with a per-second unit or a value above 200
+  (refused before the rules and the AI). The rules refuse an amount that would split into a day count ("15 วันแรก" is not
+  1 for 5 days), a third step, a direction word the numbers contradict, "ลดลง 5" without a target word (by 5 or to 5?) and
+  a plan that leaves days unsaid ("ระบาย 15 สามวัน"): a refused phrasing is safe, a silently wrong plan is not.
+  The answer is 7 numbers that only fill the boxes; nothing is computed until คำนวณ; the text is never logged or stored
+  (POST body; 30 tries per 15 min per client).
+- **Today's ✨ story** (`explain.scenarios`) names the plans outside the data (`explain.OUTSIDE_CLAUSE`); its retelling on
+  this tab passes `check_item` (the public ✨ card keeps `explain.check`).
+
+**Checked:** tests `test_a_day_cell_is_the_worst_gauge_with_outside_and_km_and_rows_carry_their_status`,
+`test_a_day_without_any_margin_is_none_not_ok`, `test_outside_detail_names_each_gauge_its_days_its_highest_flow_and_the_ratings_range`,
+`test_a_goal_has_a_best_plan_only_when_the_plans_differ_on_it`, `test_the_comparison_carries_the_grid_ladder_roles_labels_days_and_outside_flags`,
+`test_each_gauges_reach_has_its_river_length_in_km`, `test_the_brief_is_short_bullets_with_the_engines_numbers_and_the_outside_label`,
+`test_the_rules_read_common_thai_phrasings`, `test_values_above_200_and_per_second_units_never_reach_the_ai` (563 tests in
+all); live, `scripts/impact_tab_check.py` at 390 × 844 and 1366 × 900 px (2026-10-06 22:01–22:02 UTC): 5 plan rows × 7
+day cells, 67 hatched cells, 13 ladder rows, the plan sheet's river grid 35 cells (5 gauges × 7 days), no paragraph over
+160 characters in the view, the plan sheet, the custom sheet or the brief; a typed "ระบาย 15 สามวันแล้วลดเหลือ 10" →
+[15, 15, 15, 10, 10, 10, 10]; brief 7 bullets (UX_VALIDATION round 15).
 
 ## 12. How the models improved, release by release
 
@@ -846,6 +960,7 @@ here as issued.
 | v0.30.0 (10-05) | a rain model per dam on archived rain *forecasts*, with a monthly loss term (Q58, D-102) | beats persistence by ≥ 10 %: 15 of 17 dams at 3 days, 11 of 17 at 7 days | 7-day storage trends on the dams list |
 | v0.32.0 (10-05) | the served inflow model fed with the mean of four rain forecasts; the river below the dam as B.18's rating anchored on today's level plus a non-negative release effect, with a margin per day (D-104) | inflow vs persistence (two dam samples): 3 days −23.5/−18.1 → **−28.0/−22.4 %**, 7 days −17.2/−20.5 → **−18.5/−23.4 %**; river: the old chain was ~1 m off, the new one beats "keep today" by 5–15 % at days 3–7, error ~10 cm on day 1 to ~40 cm on day 7 | plans checked against each day's tested error instead of one number |
 | v0.33.0 (10-06) | damped persistence + ECMWF rain on days 3–7 where persistence was served, chosen on the whole 2025 wet season (D-106); the river re-tested on three wet seasons | 2026 wet season, two samples: 3 days −23.4/−20.3 → **−24.8/−23.8 %**, 5 days −22.3/−28.1 → **−32.0/−31.0 %**, 7 days −18.8/−25.6 → **−27.0/−28.2 %**, no dam made worse than before; the river's alternative lost the live season, so it stays | 32 dams on tested 7-day models (was 16); Kaeng Krachan's plans on a model from day 3 |
+| v0.34.0 (10-06) | **no model numbers changed** (no retrain, the ★ rule as before); the outside-the-data flag (a gauge's flow above its rating's highest) now reaches the ★'s row, the grid, the sheet and the brief; km at risk and villages per plan; four AI helps (D-110, §11e) | nothing to gate; 563 tests; the live tab checked at 390 and 1366 px (2026-10-06 22:01 UTC): 67 hatched (outside) cells, no paragraph over 160 characters in the view, the sheets or the brief | plans compared at a glance, with where the river data end: the ★ (21.5 for 7 days) runs beyond them from day 1 — shown, labelled, by the owner's choice |
 
 Each row's numbers come from its own test (different periods and samples): compare within a row, not down the column.
 

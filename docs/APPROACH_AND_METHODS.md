@@ -757,3 +757,30 @@ Full evidence and re-runnable scripts: [research/2026-09-27_forecast_48h.md](../
   the later ones.
 - **Research calls counted** (`floodwatch.research_quota`): weight = locations × max(1, variables/10) × max(1, days/14)
   (Open-Meteo's pricing page); one ledger shared by every run; 3,000 a day, 1,000 an hour, 10 s apart.
+
+### 19.27 Comparing plans without hiding what the data do not cover (D-110)
+- **One rule per cell, computed once on the server** (`scenarios.gauge_status`, `scenarios.day_cells`): a gauge on a day
+  is *over* when its margin to its own bank is below 0, *near* when the margin is below that day's tested error
+  (`margin_req`: the river model's mean error at that gauge and day), *ok* otherwise, *none* without a margin. A plan's day
+  is its worst gauge (over > near > ok) and is hatched when any gauge runs beyond its rating's data that day. The grid, the
+  map and the sheet read the same `status`, so they cannot disagree.
+- **Outside the data is a label, not a verdict** (`scenarios.outside_detail`): a gauge-day is outside when the plan's flow
+  there exceeds the highest flow its rating was fitted on (`qmax`); the label names each gauge, its days, the plan's highest
+  flow and `qmax`. The river's gains were learned while เขื่อนเพชร's canals absorbed release changes (D-099, D-104; ⚠️ the
+  diversion's role is inferred from the flows, KI-297), so beyond `qmax` the river may rise more than the plan shows — an
+  outside day is never shown as plainly safe: it keeps its colour, hatched and labelled.
+- **Coverage without drawing water on land** (D-019, D-105): a day's km at risk = Σ `reach_km` over the gauges that are near
+  or over that day (the river in reaches by nearest gauge ≤ 10 km); the villages + อำเภอ along those reaches come from
+  OpenStreetMap, built once into a file (nothing calls Nominatim at request time). Coarse by design: one gauge speaks for
+  its whole reach, and a stretch more than 10 km from every gauge is never counted.
+- **A ladder shows where the data end:** constant releases from 0 to the search cap every 2 ล้าน ลบ.ม./วัน
+  (`scenarios.ladder_ids`, `RUNG`), collapsed under the picks; its hatching marks the release above which the river side is
+  extrapolated. A goal names a best plan only where the plans differ on it by more than a tolerance (`scenarios.TOL`), so
+  "best for" never decorates a tie.
+- **Why "label only"** (the owner's choice over the recommended "show, river unjudged"): the ★ rule and every number stay
+  as computed, and the ⚠ label goes wherever the plan appears (row, hatched cells, sheet, brief, ✨ story); the risk — an
+  engineer reading the ★ as advice — is the decision's revisit condition (D-110), and the exception is written into the
+  rule it overrides (GUIDELINES §6c-6, §6c-11).
+- **AI helps, never decides** (GLM on tap; D-022, D-068): the brief, the two-plan comparison and the typed plan are made by
+  rules first; GLM may reword a line that carries no caveat under the officials' check (`explain.check_item`), or read a
+  typed plan the rules cannot — which only fills the seven boxes the engineer checks before คำนวณ.

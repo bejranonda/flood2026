@@ -1,3 +1,3 @@
 """BKK FloodWatch 2026 (nationwide since v0.16; the name stays from its Bangkok start) — collectors, archive, database, forecasts and API."""
 
-__version__ = "0.33.1"
+__version__ = "0.34.0"

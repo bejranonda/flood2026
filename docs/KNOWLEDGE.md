@@ -378,13 +378,20 @@ UX principles established through visitor testing during the 2026 flood season:
   the release in that year.
 - **RID's gauges here post in batches** (≈ 18 readings a day; at 05:10 ICT the newest was 6 h old), PCH001 every 10 minutes.
 
-## 28. Floods below Kaeng Krachan in the record (checked 2026-10-06; D-105, KI-310)
+## 28. Floods below Kaeng Krachan in the record (checked 2026-10-06; D-105, KI-310, KI-318)
 - **No gauge over its bank in 2023-09 … 2026-10** (HII hourly history + our database): closest B.16 1.90 m below (2024-10-11),
   B.15 1.87 m below (2026-09-29), B.18 1.93 m below (2026-10-05, release 10.8 ล้าน ลบ.ม./วัน), PCH001 2.57 m below.
 - **Banks (m MSL, each agency's own):** B.18 28.0, B.10 13.9, B.16 8.9, B.15 5.1, PCH001 6.0.
 - **August 2018** (release up to 24.36 on 21 Aug): Sentinel-1 (GFM) saw 0–6.5 km² of flood outside permanent water per
   pass over the lowland, with 39–58 % of it hidden from the radar.
-- **ONWR's forecast for 7–8 Oct 2026** marks 176 and 161 ≈ 1.1 km cells at class 3 over the case area (issued 5 Oct 19:06 UTC).
+- **ONWR's layers over the case, clipped to the case box (KI-318):** rebuilt 2026-10-06 21:24 UTC — area warning 16
+  cells (≈ 1.1 km), +1-day forecast 129, +2 and +3 days 0, observed flooded area 0 (box 12.618–13.274 °N,
+  99.237–100.043 °E). The earlier line here ("176 and 161 ≈ 1.1 km cells at class 3 over the case area", issue of 5 Oct
+  19:06 UTC) counted whole zoom-10 tiles: on 6 Oct (fetched 12:03 UTC) 118 of 134 warning cells and 148 of 226 +1-day
+  cells lay outside the box, 111 of them around Ratchaburi town on the Mae Klong, 30–42 km from the Phetchaburi River
+  (+1-day cells up to 56 km). Inside Phetchaburi: 4 warning cells at the city beside the river, 19 in the coastal lowland
+  6–15 km east (around Hat Chao Samran) — rain and drainage risk rather than river overflow (⚠️ ONWR's method is not
+  known to us); ONWR's observed-flood layer had nothing in Phetchaburi; our gauges stood ≥ 1.7 m below their banks.
 
 ## 29. What the 2026 record says about forecasting (checked 2026-10-06; production forecast archive and research logs; MODELS §12, §5j, §5k)
 - **The archive:** every issued forecast is kept 14 days with its model generation — 96,287 runs at 1,023 gauges from
@@ -401,4 +408,26 @@ UX principles established through visitor testing during the 2026 flood season:
   off while the models still expected a fall (`research/2026-10-06_band_replay.log`). A width rule over the last five days
   cannot follow that (KI-287).
 - **Ranges as issued (26 Sep → 6 Oct):** the 90 % ranges held 80–89 % of the time, the 50 % ranges 37–55 %.
+
+## 30. The impact tab's coverage proxy: river km and villages (checked 2026-10-06; production case state, OpenStreetMap, news; D-110)
+- **River length per gauge's reach** (the Phetchaburi in pieces by nearest gauge within 10 km, `impact.river_reaches` →
+  `impact.reach_km`; case state rebuilt ~21:20 UTC): B.18 62.4 km, B.10 45.8, B.15 21.0, B.16 11.4, PCH001 8.2 — 148.8 km
+  of the 297 km line. A stretch more than 10 km from every gauge is never counted, and one gauge speaks for its whole
+  stretch (B.18 for 62 km). On 6 Oct no plan put any stretch near or over its bank in 7 days (0 km for every plan).
+- **OpenStreetMap near the river** (live calls 13:30 UTC, project User-Agent): Nominatim reverse at zoom 14 names a village
+  and an อำเภอ for 3 of 3 test points and a ตำบล-level name for 1 of 3; Overpass has no admin_level 8 (ตำบล) boundary here
+  (levels 2, 4 and 6 only; two of three queries answered 504). So the places are villages + อำเภอ, not ตำบล.
+- **The built file** (`research/2026-10-06_kk_reach_places.py` → `src/floodwatch/data/kk_reach_places.json`, built
+  2026-10-06 18:10 UTC, a sample every ~1 km of river; `.log`): B.18 48 samples, 41 with a village, 8 places; B.10 31 / 30
+  / 6; B.15 11 / 11 / 4; B.16 8 / 8 / 2; PCH001 7 / 7 / 2 — 97 of 105 samples named a village and every reach passed the
+  80 % rule, so every reach keeps its villages: 22 entries, 18 distinct villages (four appear in two reaches) in 4 อำเภอ
+  — ท่ายาง, บ้านลาด, เมืองเพชรบุรี, บ้านแหลม. Village names are points near the river, not the people at risk: the page
+  lists them as "ริมแม่น้ำ B.16: บ้าน…" (at most 4 names, "และอีก N") and its ⓘ says "ไม่ใช่พื้นที่น้ำท่วม".
+- **August 2018 in the news (🟡 news reports, not gauge data):** ThaiPBS, 4 Aug 2018: Kaeng Krachan's water was expected
+  to run over the spillway on 5 Aug, and people in five districts were to be warned — บ้านแหลม, เมือง, บ้านลาด, แก่งกระจาน,
+  ท่ายาง ([ThaiPBS](https://www.thaipbs.or.th/news/content/273780), read 2026-10-06); Khaosod reported the overflow from
+  6 Aug ([Khaosod](https://www.khaosod.co.th/special-stories/news_1415217); ⚠️ not re-read: the page answered 403 to our
+  fetch on 2026-10-06). The release peaked at 24.36 ล้าน ลบ.ม./วัน on 21 Aug (§25). Four of the five warned districts are
+  the อำเภอ along our reaches; the fifth, แก่งกระจาน, has no village in the file. HII has no river levels for 2018 at our
+  gauges (§25), so the reaches cannot be checked against that event.
 

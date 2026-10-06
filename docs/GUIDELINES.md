@@ -265,6 +265,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 ### 6c-6. Lessons from the impact page (D-099, KI-293–KI-297)
 - **Gate decision tools on a replay against persistence.** While the gate is closed, show the evidence and ask for the
   data that would open it; never show the table "with a warning" — a number on an engineer's screen gets quoted.
+  Exception (owner, D-110): the impact tab's plans beyond the river data keep their numbers with the ⚠ นอกช่วงข้อมูล label.
 - **Stubbed tests need one real-path test.** Every endpoint test stubbed the configuration, so a missing import gave
   HTTP 500 on every `/api/impact` call while all tests passed; one test now runs the real function.
 - **Fixed page text carries no live numbers** (they go stale); compute them in the state. A conclusion printed on the
@@ -338,6 +339,18 @@ People using the app may be stressed, on the move, or protecting their home. Be 
   KI-311…317 since 2026-10-06).
 - **An owner item the owner handles is closed as "handled by the owner";** how, and with whom, stays out of the public repo
   (D-028).
+
+### 6c-11. Lessons from the plan grid (D-110, KI-318, KI-319)
+- **A flag the engine computes must reach the decision and the screen.** `outside` was computed for every plan and day and
+  used nowhere; the ★ recommended a release 1.7× beyond the river data. Test that every flag a model sets is either used
+  by a rule or shown.
+- **Clip a tiled layer to the area it is shown for** — whole tiles carry neighbours 30–56 km away.
+- **Another agency's layer is off by default where it can be misread as ours**, and sits in the app's one layer box with
+  "ไม่ขึ้นกับแผน" in its title (the owner read ONWR's warning as the plan's flood area).
+- **Measure sheets too:** the 160-character rule is checked in the view and in every sheet the tab opens.
+- **An owner exception to a rule is written into the rule's section**, with its decision: §6c-6 ("never show an untested
+  number with a warning") does not apply to the impact tab's outside-the-data plans by the owner's choice (D-110) — they
+  carry the ⚠ label everywhere they appear.
 
 ## 6b. AI usage (D-022, D-030, D-068)
 - **The site must work identically without AI.** The worker calls AI in the background (feedback triage). Since D-068 the app calls GLM **only when a resident taps the one "✨ ให้ AI สรุปให้ฟังง่าย ๆ" button** (owner: reduce unnecessary AI); nothing on page or panel load calls it; `AI_EXPLAIN=0` switches it off.

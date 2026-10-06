@@ -169,6 +169,36 @@ Final run: 0 issues in C1–C3, C5, C6; 2 accepted (two gauges, same status).
 | 81 | #7 declutter the canal factor | Kept as is (owner: rows and numbers stay visible) |
 Consistency proof after the change (311 sheets, 67 pins, 1,254 rows, 4 viewports): C2–C6 = 0; C1 = 2, both a forecast run at 11:52 UTC landing between two reads (re-read via the API: identical).
 
+### Round 15 (2026-10-06 22:01–22:02 UTC): a first-time ONWR engineer on the impact tab (v0.34.0, D-110)
+Owner (Grillme): ONWR's engineers will open `/impact` on their own desktops, self-serve, without the owner beside them;
+they have not seen the tab yet. Before the redesign (12:45–13:05 UTC) a 309-character paragraph opened the plan sheet,
+the ★ ran beyond the river data unlabelled (KI-319) and ONWR's cells 30–56 km away looked like the plan's flood area
+(KI-318). Walk on production after the grid fix 7eac4fa, `scripts/impact_tab_check.py` at 390×844 and 1366×900 px plus
+screenshots:
+| # | Question (first-time ONWR engineer) | Answer on the live tab |
+|---|---|---|
+| 82 | "What happens if we release 15 for 7 days?" | ➕ ลองแผนเอง → type "15" → อ่านแผน → คำนวณ: 3 taps and typing, no paragraph to read. The rules (no AI) read "15", "ระบาย 15 ทุกวัน", "ระบาย 15 เจ็ดวัน" and "ปล่อยน้ำ 15 ล้านคิวต่อวัน 7 วัน" as 15 × 7 (live `POST …/parse`) |
+| 83 | Can I miss that the ★ runs beyond the river data? | Hard to miss: ⚠ on the row, all 7 day cells hatched, ⚠ in the sheet's title with each gauge's flow against the rating's highest, a ⚠ bullet in the brief |
+| 84 | Are ONWR's hexagons a result of this plan? | None shows unless ticked: the group "สทนช. · ไม่ขึ้นกับแผนระบาย" sits unticked in the app's layer box; the case map shows no ONWR shape |
+| 85 | Does it fit a phone? | Labels fit at 390 px after 7eac4fa (the grid had been 407 px in a 358 px panel and 443 in 428 on desktop; now 358/358 and 428/428 at every stage); the km line under a label is hidden when it is 0 (every plan today) |
+
+**The check's numbers:** grid 5 rows × 7 day cells; 67 hatched (outside) cells; ladder 13 rows (0–24, step 2); the plan
+sheet's river grid 35 cells (5 gauges × 7 days); the desktop map follows the case; row select and the day header's legend
+work (desktop); "ระบาย 15 สามวันแล้วลดเหลือ 10" → [15, 15, 15, 10, 10, 10, 10] → one custom row; brief 7 bullets; an
+expired session shows the login form; 0 case overlays after logout; **no paragraph over 160 characters in the view, the
+plan sheet, the custom sheet or the brief**; the ℹ️ method sheets are reported, not trimmed (paragraphs over 160:
+validation 4, river 2, matrix 5, method 6, data request 4); first screen 740 characters on the phone, 749 on the desktop.
+`fails`: only the Cloudflare inline-script CSP line (KI-294, known); the ticker's marquee items exceed the width by
+design. Two fixes to the check itself showed only against production: a string predicate for `wait_for_function` needs
+`eval`, which the page's CSP forbids (6bb91d8, now a locator wait), and `window.map` is the `<div id="map">` element
+(browsers expose ids on `window`; the Leaflet map is the global `map`, a4c9e27).
+**Public regression** (`scripts/ux_consistency.py`, 21:31–21:52 UTC; `app.js` and `index.html` unchanged since D-100):
+443 sheets, 76 pins, 2,057 rows, 62 rivers, 993 map gauges, 59 จับตา rows, ticker AI on; 5 findings, none from this
+release — 3 × C15 at NYK000 (its +24/48/72 h outlook rows; the chart marks no points at those hours, pre-existing) and
+2 × C17 at BKC002/BKC003 (4–5 cm between the จับตา text and the list; these gauges move several cm per 10 minutes and the
+20-minute run spanned a data refresh).
+Not done: ONWR's engineers have not used it yet; next, the owner's review → improve loop for the tab (HANDOFF §5).
+
 ## 3. Still missing (prioritised)
 1. **Polder-aware "near me"**: pick the gauge in the user's water body, not the nearest one (APPROACH §13). This matters most for P2.
 2. **The main domain loads behind a Cloudflare challenge** ([KI-506](KNOWN_ISSUES.md)). LINE previews fail and slow phones wait. Owner action.
@@ -181,6 +211,9 @@ Consistency proof after the change (311 sheets, 67 pins, 1,254 rows, 4 viewports
 
 ## 4. How to re-run this check
 - Consistency proof (all sheets, pins, 4 viewports): `python3 scripts/ux_consistency.py [out.json]`.
+- Impact tab as an ONWR engineer (390 and 1366 px; grid, ladder, sheets, the 160-character rule, ONWR's group, brief,
+  compare, a typed plan, an expired session): `IMPACT_PW="$(sed -n 's/^IMPACT_PASSWORD=//p' .env)" python3 scripts/impact_tab_check.py`
+  (the password reaches the script through the environment and is never printed).
 - Real walk (phone + desktop, GPS, search, map tap, river tab, sheet): `python3 scripts/ux_walk.py <out_dir>` (needs Python Playwright; Chromium runs with `--no-sandbox` as root).
 - Screenshots: `chrome --headless=new --no-sandbox --window-size=390,844 --virtual-time-budget=8000 --screenshot=m.png http://localhost:3000/` (add `#s=BKK021` for the sheet).
 - Walk each persona's question in §1. Can it be answered in ≤ 10 s on the phone screenshot without scrolling past the first screen?

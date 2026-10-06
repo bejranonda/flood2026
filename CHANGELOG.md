@@ -2,7 +2,46 @@
 
 All notable changes to BKK FloodWatch 2026. Versions follow `floodwatch.__version__`, which the UI shows (D-025).
 
-## Unreleased (docs only; the live site is v0.33.1)
+## v0.34.0 — 2026-10-06
+- **The impact tab's release plans in one comparison grid (owner: "massive with text"; D-110).** The ★, today's release,
+  the engine's best plan per goal (goal icons), up to three of your own plans and a collapsed ladder of constant releases
+  every 2 ล้าน ลบ.ม./วัน (0–24): each row a 7-day strip coloured by its worst gauge (over the bank / inside that day's
+  tested error / room), storage on day 7, the lowest margin and km near the bank. A day header and a selected row colour
+  the river; on a desktop the map follows the case. The plan sheet shows the river as 5 gauges × 7 days of margins. A goal
+  names a best plan only where the plans differ on it ("ท่วมรวมน้อยสุด" had been awarded while no plan overtopped), and
+  "ไม่มีจุดใดล้นหนัก" is now "ห่างตลิ่งมากสุด" — what it measures.
+- **Plans beyond the river data are labelled, not hidden (KI-319; the owner's "label only").** The engine flagged every
+  gauge-day whose flow passes its rating's highest (B.18 143, B.10 86, B.16 73 m³/s), but nothing used the flag, and the ★
+  (21.5 for 7 days ≈ 249 m³/s) is outside from day 1. Now the day cells are hatched and "⚠ นอกช่วงข้อมูล" stands on the
+  row, in the sheet (each gauge's flow against the rating's highest) and in the brief; an AI rewording may not drop it.
+  The ★ rule is unchanged — an owner exception to GUIDELINES §6c-6, written into the rule.
+- **ONWR's layers clipped to the case and off by default (KI-318).** Whole zoom-10 tiles had put cells around Ratchaburi,
+  30–56 km from the Phetchaburi River, on the case map (118 of 134 warning cells outside the case box). The collector now
+  keeps only the cells in the box, older stored copies are clipped when served, and the layers sit unticked inside the
+  app's one layer box as "สทนช. · ไม่ขึ้นกับแผนระบาย".
+- **Flood coverage as river km + villages,** until ONWR's maps by release level or a LiDAR DEM arrive: km of river near or
+  over its bank per plan and day, and the villages + อำเภอ along those stretches (OpenStreetMap, built once into a file:
+  97 of 105 river samples named a village; OpenStreetMap has no ตำบล boundaries there). No water is drawn on land.
+- **AI on tap for officials (GLM; the rules write every number):** an executive brief to copy (≤ 7 bullets; caveat lines
+  never go to the AI; a reworded line is used only if it adds no number, no advice or alarm word and drops no caveat), two
+  plans compared, and a plan typed in Thai (rules first, GLM only for what they cannot read; the answer is 7 numbers that
+  only fill the boxes; values above 200 and per-second units are refused before the AI; the text is never logged).
+  New login-only endpoints: `GET /api/impact/case/{id}/explain?q=brief|compare` and `POST /api/impact/case/{id}/parse`.
+- **Validated live, with three fixes found only against production:** the grid was wider than its panel (443 px in 428 on
+  a desktop, 407 in 358 on a phone) and › scrolled the plan labels away — it now fits at every stage (7eac4fa); the tab
+  check waited with a string predicate that needs the `eval` the page's CSP forbids (6bb91d8) and read `window.map`, which
+  browsers point at the `#map` element (a4c9e27). No paragraph over 160 characters in the view, the sheets or the brief; a
+  first-time engineer answers "what if we release 15 for 7 days?" in 3 taps and typing (UX_VALIDATION round 15).
+- From the reviews: a crafted plan answers 422, not 500; empty boxes are refused; an expired session clears the map and
+  shows the login form; ONWR's and status strings are escaped; a villages file of the wrong shape gives no villages instead
+  of breaking the hourly case build; the shared memo keeps at most 256 live entries (a typed plan's key no longer stays
+  forever).
+- Docs: D-110; KI-318, KI-319; KNOWLEDGE §28 corrected and §30; GUIDELINES §6c-11 and the §6c-6 exception; APPROACH
+  §19.27; MODELS §11e (with the §11 note, §11d's ONWR counts and a §12c row); SOURCES §2p and §2q; ARCHITECTURE;
+  UX_VALIDATION round 15; OWNER_ACTIONS DISK; the pilot plan; PLAN; HANDOFF §3x.
+- Tests: 563 (102 new).
+
+Docs between v0.33.1 and v0.34.0:
 - **KNOWN_ISSUES IDs are unique again.** KI-301…307 had been used twice since v0.29 — for the original modelling issues
   (2026-09-26) and for the impact tab's. The original ones are now **KI-311…317** (placeholder tide constants, the draft
   hydraulic engine, managed operations, street-elevation benchmarks, as-issued archive, scale mismatch, point check); each
