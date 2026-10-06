@@ -240,6 +240,27 @@ def test_a_memoised_payload_may_use_another_memoised_value(monkeypatch):
     assert done == [2]
 
 
+def test_the_memo_drops_expired_entries_and_keeps_a_bounded_number_of_live_ones(monkeypatch):
+    # final review (D-110): every typed plan made a new scenario key that was never dropped; a live key is untouched
+    import types
+    clock = [1000.0]
+    monkeypatch.setattr(api, "time", types.SimpleNamespace(monotonic=lambda: clock[0]))
+    monkeypatch.setattr(api, "_memo_cache", {})
+    monkeypatch.setattr(api, "_memo_deadline", {})
+    api._memo(("short",), lambda: 1, ttl=10)
+    api._memo(("long",), lambda: 2, ttl=600)
+    clock[0] += 60  # "short" has expired, "long" is live
+    api._memo(("new",), lambda: 3, ttl=10)
+    assert ("short",) not in api._memo_cache and set(api._memo_cache) == {("long",), ("new",)}
+    assert api._memo(("long",), lambda: pytest.fail("a live key was rebuilt"), ttl=600) == 2
+    monkeypatch.setattr(api, "MEMO_MAX", 3)
+    for k in range(5):
+        clock[0] += 1
+        api._memo(("plan", k), lambda k=k: k, ttl=600)
+    assert len(api._memo_cache) == 3 and set(api._memo_cache) == set(api._memo_deadline)
+    assert {("plan", 3), ("plan", 4)} <= set(api._memo_cache) and ("long",) not in api._memo_cache  # the longest stored go
+
+
 def test_home_page_is_revalidated_so_a_release_reaches_phones_at_once():
     # 2026-10-01: the owner's phone still ran v0.16.0 code after the v0.16.1 fix (page cached 5 min + an open tab)
     assert api.index(_req("flood.autobahn.bot")).headers["cache-control"] == "no-cache"

@@ -143,11 +143,28 @@ def _station_rows(all_: bool) -> list[dict]:
 
 _memo_cache: dict = {}
 _memo_lock = threading.RLock()  # re-entrant: a memoised payload may use another (twins inside the list)
+_memo_deadline: dict = {}  # key → when its own ttl ends (keys _memo writes; stations() keeps its own two entries)
+MEMO_MAX = 256  # live entries kept at most (final review, D-110: one scenario comparison per typed plan, never dropped)
+
+
+def _memo_evict(now: float) -> None:
+    """Drop the entries whose ttl has passed, then the longest-stored live ones beyond MEMO_MAX (caller holds
+    _memo_lock). An expired entry would be rebuilt on its next read anyway, so a live key behaves as before."""
+    for k in [k for k, dl in _memo_deadline.items() if dl <= now]:
+        _memo_deadline.pop(k, None)
+        _memo_cache.pop(k, None)
+    extra = len(_memo_deadline) - MEMO_MAX
+    if extra > 0:
+        for k in sorted(_memo_deadline, key=lambda k: (_memo_cache.get(k) or (0.0,))[0])[:extra]:
+            _memo_deadline.pop(k, None)
+            _memo_cache.pop(k, None)
 
 
 def _memo(key, fn, ttl: float = ROWS_TTL_S):
     """The same payload for everyone for `ttl` seconds (list, stats, street cells): one DB round per minute instead
-    of one per visitor (KI-246). Ages inside the payload may be up to a minute old; the UI rounds to minutes."""
+    of one per visitor (KI-246). Ages inside the payload may be up to a minute old; the UI rounds to minutes. Expired
+    entries are dropped when a new one is stored, and at most MEMO_MAX live ones are kept (the scenario keys carry the
+    typed plans: without this the dict only grew; final review, D-110)."""
     hit = _memo_cache.get(key)
     if hit and time.monotonic() - hit[0] < ttl:
         return hit[1]
@@ -156,7 +173,10 @@ def _memo(key, fn, ttl: float = ROWS_TTL_S):
         if hit and time.monotonic() - hit[0] < ttl:
             return hit[1]
         val = fn()
-        _memo_cache[key] = (time.monotonic(), val)
+        now = time.monotonic()
+        _memo_cache[key] = (now, val)
+        _memo_deadline[key] = now + ttl
+        _memo_evict(now)
         return val
 
 
