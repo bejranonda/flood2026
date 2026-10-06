@@ -27,7 +27,7 @@
   const api = (path, opts) => fetch(path, Object.assign({ credentials: "same-origin", cache: "no-store" }, opts || {}));
   const narrow = () => window.innerWidth <= 800;
 
-  const state = { authed: false, cases: [], dams: null, sel: "dams", kase: {}, loadedAt: 0, notice: "" };
+  const state = { authed: false, cases: [], dams: null, sel: "dams", kase: {}, loadedAt: 0, notice: "", customs: [], selPlan: null, day: null };
   const layers = { dams: null, kase: null };
   let damMarkers = [];
   // app.js's map: it may exist already (a classic script's top-level binding) or announce itself later
@@ -93,6 +93,7 @@
   async function logout() {
     try { await api("/api/impact/logout", { method: "POST" }); } catch (e) { /* the cookie expires by itself */ }
     state.authed = false; state.dams = null; state.kase = {}; state.sel = "dams";
+    state.customs = []; state.selPlan = null; state.day = null;
     for (const k of Object.keys(layers)) { if (layers[k]) { layers[k].remove(); layers[k] = null; } }
     clearOnwr();  // ONWR's layers and a plan's map legend leave with the session too
     if (reachLegend) { reachLegend.remove(); reachLegend = null; }
@@ -294,7 +295,8 @@
     $("#imp-onmap", body).addEventListener("click", () => showCaseOnMap(st));
     body.querySelectorAll("[data-info]").forEach((b) => b.addEventListener("click", () => openInfo(st, b.dataset.info)));
     drawCase(st);
-    loadScenarios(st, body, null);
+    if (!narrow()) showCaseOnMap(st, false);  // the map follows the case, as a dam row pans it (D-110)
+    loadScenarios(st, body);
   }
 
   function marginClass(m) {
@@ -425,20 +427,20 @@
     if (!mapRef || !p || !p.downstream) return;
     for (const [code, lines] of Object.entries(reachLayers)) {
       const row = (p.downstream[code] || [])[d] || {};
-      const m = row.margin_m, rq = cmp.margin_req ? cmp.margin_req[code] : null;
+      const k = row.status || "none", m = row.margin_m, rq = cmp.margin_req ? cmp.margin_req[code] : null;
       const req = Array.isArray(rq) ? rq[d] : rq;
-      const k = m == null ? "none" : m < 0 ? "over" : req != null && m < req ? "near" : "ok";
+      const vill = k === "near" || k === "over" ? villagesText(cmp, code) : "";
       const tip = esc(code) + " วันที่ " + (d + 1) + ": " + (m == null ? "ไม่มีข้อมูล" : m < 0 ? "เกินตลิ่ง " + num(-m, 2) + " ม." : "ห่างตลิ่ง " + num(m, 2) + " ม.") +
-        (req != null ? " (คลาดเคลื่อน ±" + num(req, 2) + ")" : "");
-      for (const l of lines) { l.setStyle({ color: REACH[k] }); l.setTooltipContent(tip); }
+        (req != null ? " (คลาดเคลื่อน ±" + num(req, 2) + ")" : "") + (row.outside ? " · ⚠ นอกช่วงข้อมูล" : "") + (vill ? "<br>" + esc(vill) : "");
+      for (const l of lines) { l.setStyle({ color: REACH[k], dashArray: row.outside ? "8 6" : null }); l.setTooltipContent(tip); }
     }
     if (reachLegend) reachLegend.remove();
     reachLegend = L.control({ position: "topright" });
     reachLegend.onAdd = () => {
       const div = L.DomUtil.create("div", "imp-reach-legend");
-      div.innerHTML = "<b>" + esc(planWords(p)) + " · วันที่ " + (d + 1) + "</b><br>" +
-        '<span class="lg lg-over">━</span> เกินตลิ่ง <span class="lg lg-near">━</span> ห่างตลิ่งน้อยกว่าความคลาดเคลื่อน ' +
-        '<span class="lg lg-ok">━</span> รับน้ำได้<br><small>สีของแม่น้ำ = ห่างตลิ่งของสถานีที่ใกล้ที่สุด (ไม่เกิน 10 กม.) ไม่ใช่พื้นที่น้ำท่วม</small>';
+      div.innerHTML = "<b>" + esc(p.label || planWords(p)) + " · วันที่ " + (d + 1) + "</b><br>" +
+        '<span class="lg lg-over">━</span> เกินตลิ่ง <span class="lg lg-near">━</span> ใกล้ตลิ่ง <span class="lg lg-ok">━</span> รับน้ำได้ ' +
+        '<span class="lg lg-x">┅</span> นอกช่วงข้อมูล<br><small>สีแม่น้ำ = ห่างตลิ่งของสถานีที่ใกล้ที่สุด (ไม่เกิน 10 กม.) ไม่ใช่พื้นที่น้ำท่วม</small>';
       return div;
     };
     reachLegend.addTo(mapRef);
@@ -455,8 +457,10 @@
   }
 
   /* ---------- 7-day release scenarios (D-101): plans found by search, judged on every effect, ★ by a stated rule ---------- */
-  const EFFECT_TH = { city: "ปกป้องตัวเมือง", worst: "ไม่มีจุดใดล้นหนัก", total: "ท่วมรวมน้อยสุด", dam: "ความปลอดภัยเขื่อน",
+  const EFFECT_TH = { city: "ปกป้องตัวเมือง", worst: "ห่างตลิ่งมากสุด", total: "ท่วมรวมน้อยสุด", dam: "ความปลอดภัยเขื่อน",
     curve: "กลับใต้เส้นควบคุมเร็ว", water: "เก็บน้ำไว้ใช้", warning: "เตือนล่วงหน้าได้" };
+  const EFFECT_ICON = { city: "🏙️", worst: "🌊", total: "📏", dam: "🏞️", curve: "📉", water: "💧", warning: "⏱" };
+  const CELL_TH = { ok: "รับน้ำได้", near: "ห่างตลิ่งน้อยกว่าความคลาดเคลื่อน", over: "เกินตลิ่ง", none: "ไม่มีข้อมูล" };
   const EFFECT_ROWS = [["city", "ห่างตลิ่งในเมืองต่ำสุด (ม.)", (e) => num(e.city_margin_min, 2)],
     ["worst", "ห่างตลิ่งต่ำสุดทุกจุด (ม.)", (e) => num(e.worst_margin_min, 2)],
     ["total", "เกินตลิ่งรวม (ม.·จุด·วัน)", (e) => num(e.overtop_sum, 2)],
@@ -473,26 +477,45 @@
     return "รายวัน " + r.map((x) => num(x, 1)).join(", ") + " ล้าน ลบ.ม./วัน";
   }
 
-  async function loadScenarios(st, body, custom) {
+  const RANK = { none: 0, ok: 1, near: 2, over: 3 };
+  const worstDay = (p) => (p.days || []).reduce((b, d, i, a) => (RANK[d.status] > RANK[a[b].status] ||
+    (RANK[d.status] === RANK[a[b].status] && (d.worst_margin == null ? 1e9 : d.worst_margin) < (a[b].worst_margin == null ? 1e9 : a[b].worst_margin)) ? i : b), 0);
+  function dayRange(days) {  // [1,2,3,5] → "1–3, 5"
+    const out = []; let s = null, p = null;
+    for (const d of [...days].sort((x, y) => x - y)) {
+      if (s === null) { s = p = d; } else if (d === p + 1) { p = d; } else { out.push(p > s ? s + "–" + p : String(s)); s = p = d; }
+    }
+    if (s !== null) out.push(p > s ? s + "–" + p : String(s));
+    return out.join(", ");
+  }
+  const outsideText = (p) => "นอกช่วงข้อมูล: " + (p.outside_detail || []).map((o) => o.code + " " + num(o.flow_max, 0) +
+    " ลบ.ม./วิ (เคยวัดสูงสุด " + num(o.qmax, 0) + ") วันที่ " + dayRange(o.days)).join(" · ");
+  function villagesText(cmp, code) {  // "ริมแม่น้ำ B.16: บ้าน…, บ้าน… และอีก 3 (อ.บ้านลาด)" — at most 4 names (no long paragraph)
+    const v = (cmp.places || {})[code] || [];
+    if (!v.length) return "";
+    const names = v.map((x) => x.village).filter(Boolean), amph = [...new Set(v.map((x) => x.amphoe).filter(Boolean))];
+    return "ริมแม่น้ำ " + code + ": " + (names.length ? names.slice(0, 4).join(", ") + (names.length > 4 ? " และอีก " + (names.length - 4) : "") : "") +
+      (amph.length ? " (อ." + amph.join(", อ.") + ")" : "");
+  }
+  const shortWhy = (p) => (p.effects.under_curve_day ? "กลับใต้เส้นควบคุมวันที่ " + num(p.effects.under_curve_day, 0) : "ลดอ่างได้มากสุด") +
+    " ทุกจุดห่างตลิ่งเกินความคลาดเคลื่อน";
+  const customParam = () => (state.customs.length ? "release=" + encodeURIComponent(state.customs.map((c) => c.join(",")).join(";")) : "");
+
+  async function loadScenarios(st, body) {
     const sec = $("#imp-sc", body);
     if (!sec) return;
     sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="muted">กำลังคำนวณ…</p>';
-    const q = new URLSearchParams();
-    if (custom) q.set("release", custom.join(","));
+    const qp = customParam();
     let r;
-    try { r = await api("/api/impact/case/" + encodeURIComponent(st.case) + "/scenarios" + (q.toString() ? "?" + q.toString() : "")); }
+    try { r = await api("/api/impact/case/" + encodeURIComponent(st.case) + "/scenarios" + (qp ? "?" + qp : "")); }
     catch (e) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="imp-err">เชื่อมต่อไม่ได้</p>'; return; }
     if (r.status === 401) { state.authed = false; return showLogin("หมดเวลาเข้าสู่ระบบ กรุณาเข้าใหม่"); }
     if (r.status === 503) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="muted">ยังไม่พร้อม: ต้องมีเส้นควบคุม น้ำไหลเข้า และปริมาตรปกติของวันนี้ (คำนวณใหม่ทุกชั่วโมง)</p>'; return; }
     if (!r.ok) { sec.innerHTML = '<h3>แผนระบาย 7 วันข้างหน้า</h3><p class="imp-err">คำนวณไม่ได้ (' + r.status + ")</p>"; return; }
     const cmp = await r.json();
     state.cmp = cmp;
-    sec.innerHTML = scenariosHtml(cmp, st);
-    sec.querySelectorAll("[data-plan]").forEach((li) => li.addEventListener("click", () => openPlanSheet(cmp, li.dataset.plan)));
-    $("#imp-custom-btn", sec).addEventListener("click", () => openCustomSheet(st, body, cmp));
-    if (typeof bindAskUrl === "function") {
-      bindAskUrl(sec, "/api/impact/case/" + encodeURIComponent(st.case) + "/explain?q=simple" + (custom ? "&release=" + encodeURIComponent(custom.join(",")) : ""));
-    }
+    sec.innerHTML = scenariosHtml(cmp);
+    bindGrid(sec, cmp, st);
   }
 
   const cmRange = (v) => (Array.isArray(v) ? num(v[0], 0) + "→" + num(v[v.length - 1], 0) : num(v, 0));
@@ -512,47 +535,108 @@
       ') — ใช้เทียบระหว่างแผน ไม่ใช่ค่าพยากรณ์">🔴 ท้ายน้ำยังไม่ผ่านการทดสอบ</button>';
   }
 
-  function scenariosHtml(cmp, st) {
-    const d = cmp.dam || {};
+  function gridPlans(cmp) {  // ★, today, the engine's picks, the session's own plans; the ladder apart (D-110)
+    const by = Object.fromEntries(cmp.plans.map((p) => [p.id, p]));
+    const star = by[(cmp.optimal || {}).id], hold = cmp.plans.find((p) => p.kind === "hold");
+    const picks = (cmp.picks || []).map((id) => by[id]).filter((p) => p && p !== star && p !== hold);
+    const customs = cmp.plans.filter((p) => p.kind === "custom");
+    const seen = new Set(), rows = [];
+    for (const p of [star, hold, ...picks, ...customs]) if (p && !seen.has(p.id)) { seen.add(p.id); rows.push(p); }
+    return { rows, ladder: (cmp.ladder || []).map((id) => by[id]).filter(Boolean), star };
+  }
+
+  function cellTitle(d, i) {
+    return "วันที่ " + (i + 1) + ": " + CELL_TH[d.status] + (d.worst_code ? " · " + d.worst_code + " ห่างตลิ่ง " + num(d.worst_margin, 2) + " ม." +
+      (d.worst_req != null ? " (คลาดเคลื่อน ±" + num(d.worst_req, 2) + ")" : "") : "") + (d.outside ? " · ⚠ นอกช่วงข้อมูล" : "") +
+      (d.km ? " · แม่น้ำ " + num(d.km, 0) + " กม." : "");
+  }
+
+  function gridRow(p, isStar) {
+    const e = p.effects, worst = e.worst_margin_min;
+    const icons = (p.best_for || []).map((k) => '<span class="imp-gi" title="' + esc("เหมาะกับ" + EFFECT_TH[k]) + '" aria-label="' +
+      esc("เหมาะกับ" + EFFECT_TH[k]) + '">' + EFFECT_ICON[k] + "</span>").join("");
+    const out = p.outside_any ? '<span class="imp-out" title="' + esc(outsideText(p)) + '" aria-label="นอกช่วงข้อมูล">⚠</span>' : "";
+    const cells = (p.days || []).map((d, i) => '<td class="imp-c imp-c-' + d.status + (d.outside ? " imp-c-x" : "") +
+      (state.day === i ? " imp-dsel" : "") + '" data-day="' + i + '" title="' + esc(cellTitle(d, i)) + '"><span></span></td>').join("");
+    return '<tr class="imp-gr' + (p.feasible ? "" : " imp-infeasible") + (p.kind === "custom" ? " imp-custom-row" : "") +
+      (state.selPlan === p.id ? " imp-sel" : "") + '" data-plan="' + esc(p.id) + '" tabindex="0">' +
+      '<th scope="row"><span class="imp-gl">' + (isStar ? "★ " : "") + esc(p.label) + "</span>" + icons + out +
+      '<small class="imp-km-sub">' + (p.km_max ? num(p.km_max, 0) + " กม." : "") + "</small></th>" + cells +
+      "<td>" + num(e.storage_end, 0) + "</td><td" + (worst != null && worst < 0 ? ' class="imp-neg"' : "") + ">" + num(worst, 2) + "</td>" +
+      '<td class="imp-col-km">' + num(p.km_max || 0, 0) + "</td>" +
+      '<td><button type="button" class="imp-open" aria-label="' + esc("รายละเอียด " + p.label) + '">›</button></td></tr>';
+  }
+
+  function scenariosHtml(cmp) {
+    const { rows, ladder, star } = gridPlans(cmp);
     const opt = cmp.optimal || {};
-    const star = cmp.plans.find((p) => p.id === opt.id);
-    const others = cmp.plans.filter((p) => !star || p.id !== star.id);
-    const hero = star ? heroCard(star, cmp, d) : '<p class="imp-note">' + esc(opt.reason || "ยังไม่มีแผนให้เปรียบเทียบ") + "</p>";
-    const rows = '<ul class="list imp-rows">' + others.map(planRow).join("") + "</ul>";
-    const actions = '<div class="imp-actions"><button type="button" class="btn" id="imp-custom-btn">➕ กำหนดเอง</button>' +
-      '<button type="button" class="conf-badge imp-text" title="' + esc(opt.rule || "") + " · เข้าเกณฑ์ " + num(cmp.feasible, 0) + " จาก " + num(cmp.candidates, 0) + ' แผน · รายละเอียดใน ℹ️ ด้านล่าง">ⓘ เกณฑ์</button></div>' +
-      (typeof askHTML === "function" ? '<div class="imp-ask">' + askHTML() + "</div>" : "");
-    return "<h3>แผนระบาย 7 วันข้างหน้า <small>แตะแผนเพื่อดูรายวัน</small></h3>" + hero + rows + actions;
+    const head = '<thead><tr><th scope="col">แผน <small>ล้าน ลบ.ม./วัน</small></th>' +
+      [0, 1, 2, 3, 4, 5, 6].map((i) => '<th scope="col" class="imp-dh' + (state.day === i ? " imp-dsel" : "") + '"><button type="button" data-dayh="' + i +
+        '" aria-label="' + esc("วันที่ " + (i + 1) + " " + dayShort(cmp.dates ? cmp.dates[i] : null) + " บนแผนที่") + '">' + (i + 1) + "</button></th>").join("") +
+      '<th scope="col">อ่าง<small>วันที่ 7</small></th><th scope="col">ห่างตลิ่ง<small>ม.</small></th><th scope="col" class="imp-col-km">กม.</th>' +
+      '<th scope="col"><span class="imp-sr">เปิด</span></th></tr></thead>';
+    const lad = ladder.length ? '<tbody><tr class="imp-ladder-t"><td colspan="12"><button type="button" class="imp-ladder-btn" aria-expanded="false">▸ ระบายคงที่ทุกระดับ (' +
+      num(ladder[0].release[0], 0) + "–" + num(ladder[ladder.length - 1].release[0], 0) + ")</button></td></tr></tbody>" +
+      '<tbody class="imp-ladder" hidden>' + ladder.map((p) => gridRow(p, star && p.id === star.id)).join("") + "</tbody>" : "";
+    const why = !star ? esc(opt.reason || "ยังไม่มีแผนให้เปรียบเทียบ")
+      : opt.constraints_met ? "★ ตามเกณฑ์: " + esc(shortWhy(star)) : "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์ — ★ คือแผนที่ใกล้เคียงที่สุด";
+    return '<h3>แผนระบาย 7 วันข้างหน้า ' + redPill(cmp) + "</h3>" +
+      '<div class="imp-scroll"><table class="imp-grid">' + head + "<tbody>" + rows.map((p) => gridRow(p, star && p.id === star.id)).join("") + "</tbody>" + lad + "</table></div>" +
+      '<p class="imp-key"><span class="imp-k imp-c-ok"></span>รับน้ำได้ <span class="imp-k imp-c-near"></span>ใกล้ตลิ่ง <span class="imp-k imp-c-over"></span>เกินตลิ่ง ' +
+      '<span class="imp-k imp-c-ok imp-c-x"></span>นอกช่วงข้อมูล ' +
+      info("สีของวัน = สถานีที่ห่างตลิ่งน้อยที่สุดในวันนั้น: น้ำเงิน รับน้ำได้ · ส้ม ห่างตลิ่งน้อยกว่าความคลาดเคลื่อนที่ทดสอบของวันนั้น · แดง เกินตลิ่ง · " +
+        "ลาย = มีสถานีที่น้ำมากกว่าที่เคยวัดได้ (ระดับจากการต่อเส้นโค้งออกไป) · อ่าง = ปริมาตรวันที่ 7 (ล้าน ลบ.ม.) · ห่างตลิ่ง = ต่ำสุดทุกจุดทุกวัน (ม.) · " +
+        "กม. = แม่น้ำช่วงที่สถานีใกล้หรือเกินตลิ่ง มากที่สุดในวันใดวันหนึ่ง · แตะเลขวันเพื่อดูวันนั้นบนแผนที่", "วิธีอ่านตาราง") + "</p>" +
+      '<p class="imp-why">' + why + " " + info((opt.rule || "") + " · " + (opt.reason || "") + " · เข้าเกณฑ์ " + num(cmp.feasible, 0) +
+        " จาก " + num(cmp.candidates, 0) + " แผน", "เกณฑ์ของ ★") + "</p>" +
+      '<div class="imp-actions"><button type="button" class="btn" id="imp-custom-btn">➕ ลองแผนเอง</button>' + aiMenuHtml() + "</div>";
   }
 
-  function heroCard(p, cmp, d) {
-    const e = p.effects, ok = cmp.optimal.constraints_met;
-    const why = ok ? (e.under_curve_day ? "กลับใต้เส้นควบคุมในวันที่ " + num(e.under_curve_day, 0) : "ลดอ่างได้มากที่สุด") + " โดยทุกจุดยังห่างตลิ่งเกินความคลาดเคลื่อน"
-      : "ไม่มีแผนใดลดอ่างได้โดยไม่มีจุดใดเกินตลิ่ง — แผนที่ใกล้เคียงที่สุด";
-    return '<ul class="list"><li class="item imp-hero' + (ok ? "" : " imp-hero-warn") + '" data-plan="' + esc(p.id) + '" tabindex="0">' +
-      '<div class="imp-hero-head"><b>' + (ok ? "★ แผนที่เข้าเกณฑ์ 7 วัน" : "⚠️ ยังไม่มีแผนที่เข้าเกณฑ์") + "</b>" + redPill(cmp) + "</div>" +
-      '<div class="imp-hero-plan">' + esc(planWords(p)) + "</div>" +
-      '<div class="imp-hero-facts"><span>🏞️ อ่าง ' + num(d.storage_mcm, 0) + " → " + num(e.storage_end, 0) + "</span><span>🌊 ห่างตลิ่งต่ำสุด " +
-      num(e.worst_margin_min, 2) + " ม.</span><span>⏱ เปลี่ยน ≤ " + num(e.ramp_max, 1) + "/วัน</span></div>" +
-      '<div class="meta">' + why + " ›</div></li></ul>";
+  function bindGrid(sec, cmp, st) {
+    const by = Object.fromEntries(cmp.plans.map((p) => [p.id, p]));
+    const select = (id) => {
+      if (!by[id]) return;
+      state.selPlan = id;
+      sec.querySelectorAll(".imp-gr").forEach((tr) => tr.classList.toggle("imp-sel", tr.dataset.plan === id));
+      colorReaches(cmp, by[id], state.day != null ? state.day : worstDay(by[id]));
+    };
+    sec.querySelectorAll(".imp-gr").forEach((tr) => {
+      const id = tr.dataset.plan;
+      tr.addEventListener("click", (e) => {
+        if (e.target.closest(".conf-badge, .imp-out, .imp-gi")) return;
+        if (e.target.closest(".imp-open") || narrow()) { openPlanSheet(cmp, id); return; }
+        select(id);
+      });
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") openPlanSheet(cmp, id); });
+    });
+    sec.querySelectorAll("[data-dayh]").forEach((b) => b.addEventListener("click", () => {
+      const d = Number(b.dataset.dayh);
+      state.day = state.day === d ? null : d;  // a second click on the same day goes back to each plan's worst day
+      sec.querySelectorAll(".imp-dh").forEach((th, i) => th.classList.toggle("imp-dsel", i === state.day));
+      sec.querySelectorAll(".imp-c").forEach((td) => td.classList.toggle("imp-dsel", Number(td.dataset.day) === state.day));
+      select(state.selPlan && by[state.selPlan] ? state.selPlan : (cmp.optimal || {}).id);
+    }));
+    const lb = $(".imp-ladder-btn", sec);
+    if (lb) lb.addEventListener("click", () => {
+      const tb = $(".imp-ladder", sec), open = tb.hidden;
+      tb.hidden = !open;
+      lb.setAttribute("aria-expanded", String(open));
+      lb.textContent = (open ? "▾" : "▸") + lb.textContent.slice(1);
+    });
+    $("#imp-custom-btn", sec).addEventListener("click", () => openCustomSheet(st, sec.closest("#imp-body"), cmp));
+    bindAi(sec, st);
+    select(state.selPlan && by[state.selPlan] ? state.selPlan : (cmp.optimal || {}).id);  // the map shows the ★ until a row is picked
   }
 
-  function planRow(p) {
-    const e = p.effects;
-    const badges = (p.best_for || []).map((k) => '<span class="imp-badge-eff">' + EFFECT_TH[k] + "</span>").join("");
-    const short = p.kind === "hold" ? "คง " + num(p.release[0], 1) : p.kind === "constant" ? "ระบาย " + num(p.release[0], 1)
-      : p.kind === "custom" ? "กำหนดเอง " + num(p.release[0], 1) + "→" + num(p.release[6], 1) : p.kind === "ramp" ? "ทยอย " + num(p.release[0], 1) + "→" + num(p.release[6], 1)
-      : "สองช่วง " + num(p.release[0], 1) + "→" + num(p.release[6], 1);
-    const worst = e.worst_margin_min == null ? "–" : e.worst_margin_min < 0 ? '<b class="imp-neg">เกินตลิ่ง ' + num(-e.worst_margin_min, 2) + "</b>" : "ห่างตลิ่ง " + num(e.worst_margin_min, 2) + " ม.";
-    return '<li class="item imp-row' + (p.feasible ? "" : " imp-infeasible") + (p.kind === "custom" ? " imp-custom-row" : "") + '" data-plan="' + esc(p.id) + '" tabindex="0">' +
-      "<b>" + short + '</b> <span class="meta">อ่าง ' + num(e.storage_end, 0) + " · " + worst + "</span>" +
-      (badges ? '<span class="imp-badges">' + badges + "</span>" : "") + (p.feasible ? "" : '<span class="imp-small">ไม่เข้าเกณฑ์</span>') + '<span class="imp-chev">›</span></li>';
-  }
+  // AI entry points (Task 12 replaces these two stubs)
+  function aiMenuHtml() { return ""; }
+  function bindAi() { /* Task 12 */ }
 
   function matrixHtml(cmp) {
+    const plans = cmp.plans.filter((p) => !(p.roles && p.roles.length === 1 && p.roles[0] === "ladder"));
     return '<div class="imp-scroll"><table><thead><tr><th scope="col">ผล</th>' +
-      cmp.plans.map((p) => '<th scope="col">' + (p.optimal ? "★ " : "") + esc(planWords(p)) + "</th>").join("") + "</tr></thead><tbody>" +
-      EFFECT_ROWS.map(([k, label2, fmt]) => '<tr><th scope="row">' + label2 + "</th>" + cmp.plans.map((p) => "<td" + (cmp.best_for[k] === p.id ? ' class="imp-best"' : "") + ">" + fmt(p.effects) + "</td>").join("") + "</tr>").join("") +
+      plans.map((p) => '<th scope="col">' + (p.optimal ? "★ " : "") + esc(planWords(p)) + "</th>").join("") + "</tr></thead><tbody>" +
+      EFFECT_ROWS.map(([k, label2, fmt]) => '<tr><th scope="row">' + label2 + "</th>" + plans.map((p) => "<td" + (cmp.best_for[k] === p.id ? ' class="imp-best"' : "") + ">" + fmt(p.effects) + "</td>").join("") + "</tr>").join("") +
       "</tbody></table></div>" + scenarioNotes(cmp);
   }
 
