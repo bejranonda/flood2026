@@ -140,6 +140,8 @@ Live since 2026-09-26, built during the 2026 flood; current release in the badge
 <details><summary><b>แม่นแค่ไหน? · How accurate are the trends?</b></summary>
 
 ทุกสถานีทดสอบย้อนหลังแยกตามช่วงเวลา ใช้แบบจำลองเฉพาะที่แม่นกว่า "ถือว่าน้ำคงที่" ปุ่ม ⓘ บอกความมั่นใจและโอกาสที่แนวโน้มจะเป็นต่อ — every gauge is backtested per horizon; the ⓘ next to each row gives the confidence or the historical odds.
+
+ผลจริงตั้งแต่ 26 ก.ย. 2569 (ตรวจกับระดับน้ำที่เกิดขึ้นจริง 91,429 รอบ): คาด 6–12 ชม. คลาดน้อยกว่า "ถือว่าน้ำคงที่" 11–21 % ทั่วประเทศ 24 ชม. 2–7 % และ 48–72 ชม. พอ ๆ กัน · ช่วง 90 % ครอบคลุมจริง 80–89 % ของครั้ง — As issued since 2026-09-26 and scored against what the water did: 6–12 h forecasts missed by 11–21 % less than "no change" nationwide, 24 h by 2–7 % less, 48–72 h about the same; the 90 % ranges held 80–89 % of the time ([MODELS §12](docs/MODELS.md#12-how-the-models-improved-release-by-release)).
 </details>
 <details><summary><b>ทำไมบางสถานีไม่แสดงระดับน้ำ? · Why is a gauge shown without a level?</b></summary>
 

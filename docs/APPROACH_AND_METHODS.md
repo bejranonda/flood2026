@@ -1,6 +1,6 @@
 # APPROACH_AND_METHODS.md — Forecasting Approach, Calculations & Models
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-05 (v0.25.2)
+> **Project:** BKK FloodWatch 2026
 > **Role:** this is the brief's `docs/METHODS.md`. It explains every method and cites what it relies on.
 > **Built from:** [research/methods_survey.md](../research/methods_survey.md) 🟢, plus the validated parts of [bangkok_flood_calculation_forecasting_engine.md](../research/bangkok_flood_calculation_forecasting_engine.md) 🟠 (the equations only; see [validation §C](../research/VALIDATION_2026-09-26.md)).
 > **Companion docs:** [KNOWLEDGE](KNOWLEDGE.md) · [KNOWN_ISSUES](KNOWN_ISSUES.md) · [GUIDELINES §4](GUIDELINES.md)
@@ -128,7 +128,8 @@ Gaps: short gaps (≤ 30 min) can be interpolated for features, with a flag. Lon
 - **Measured 24 h change (live, D-058, KI-240; 48 h fallback and noise rule D-060):** `qc.observed24` fits a straight line to the last 24 h of each gauge (dropouts removed, ≥ 20 h of readings); change = slope × 24 h, words by the rounded cm (< 2 / 2-4 / 5-19 / ≥ 20), "mixed" when R² < 0.5 and the residual wiggle ≥ 5 cm (tidal and pumped gauges).
 - **Dropouts and erratic gauges (live, D-057, KI-237):** `floodwatch.qc` runs every 10 min over the last 24 h. A reading ≥ 0.30 m away from the level before for one or two readings, then back within 10 cm, is flagged `dropout`. Three or more remaining steps of ≥ 0.30 m within 30 min mark the gauge erratic (pumps next to the sensor or a faulty sensor): its level, status, trend and forecast are hidden with the note `erratic`.
 ### 2.8 Validation in space and time
-- **Time:** rolling-origin walk-forward with an **embargo ≥ horizon**; report per lead time and per event.
+- **Time:** rolling-origin walk-forward with an **embargo ≥ horizon**; report per lead time and per event. Planning models (the impact tab) may score their per-day margins month by month, with the other months fitted and at least the horizon purged on each side ([GUIDELINES §4.1, §4.5](GUIDELINES.md)).
+- **Judging a change (D-107):** a gauge or dam counts as made worse only if its error rises by more than 3 % and a moving-block bootstrap (blocks of at least the horizon) puts the rise above zero at 95 % one-sided (`floodwatch.model_gate.made_worse`); every unit's change is reported with its size.
 - **Space:** **leave-station-out** (and leave-polder-out) to test generalisation to stations without history, which is what "near my house" relies on.
 - Report skill **per regime, per station, per lead time**, and map it. Skill naturally varies in space.
 

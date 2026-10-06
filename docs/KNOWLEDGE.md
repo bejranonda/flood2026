@@ -2,7 +2,7 @@
 
 > **Project:** BKK FloodWatch 2026
 > **Audience:** developers, data scientists, operators, AI agents
-> **Last updated:** 2026-10-05 (§24; first written 2026-09-26, during the active Bangkok / Chao Phraya flood)
+> First written 2026-09-26, during the active Bangkok / Chao Phraya flood.
 > **Evidence markers:** ✅ confirmed (live data or cited source) · 🟡 from careful research, not re-checked · ⚠️ unverified or indicative, don't hard-code. Evidence for live checks: [research/VALIDATION_2026-09-26.md](../research/VALIDATION_2026-09-26.md)
 
 ---

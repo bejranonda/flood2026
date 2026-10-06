@@ -3,7 +3,8 @@
 > Owner, 2026-10-04: "We would like to understand how we can calculate, how to setup the model, which parameters are
 > applied. What have we tried already, good or bad results, and why we go this way … like Architecture Decision Report.
 > What kind of data do we need more in the future." This document answers that for developers, reviewers and agencies.
-> It describes **v0.33.0** (code in `src/floodwatch/`); §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans. Numbers come from running code or the cited research files;
+> It describes **v0.33.0** (code in `src/floodwatch/`). **§12 shows how the models improved release by release** — what each change
+> gained when it was tested, and what each model generation actually delivered, scored against what the water did. §5d records the honest-improvement work of 2026-10-04 (Q52), §5e–5i the experiments of 2026-10-05, §9b–9d the reservoirs and the national dams list, §11c the river below the dam for 7-day release plans. Numbers come from running code or the cited research files;
 > decisions link to [plan/DECISIONS.md](plan/DECISIONS.md) (D-IDs) and pitfalls to [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## สรุปภาษาไทย (หนึ่งหน้า)
@@ -45,6 +46,16 @@
 −5.3…−6.6 % เป็น −8.3…−9.4 % ที่ 24–72 ชม. (สถานีชุดที่สอง) · สิ่งที่ลองแล้วได้น้อยหรือไม่ได้: เฉลี่ยหลายวิธี (+0.4–0.9 จุด),
 ช่วงคาดการณ์ตามแนวโน้ม (แคบลงแต่พลาดบ่อยขึ้น = ไม่ซื่อตรง จึงไม่ใช้), ใช้ Google Flood Hub เป็นข้อมูลเข้า (+0.9 จุดที่ 72 ชม. เท่านั้น)
 · ตรวจย้อนหลัง 30 วัน: ช่วงที่แอปบอกที่ 24 ชม. ถูกตามที่บอก (50 % ถูก 51 %) แต่ที่ 72 ชม. มั่นใจเกินไป (ถูก 44 %) และมักพลาดด้านต่ำ (น้ำลดมากกว่าที่คาด)
+
+**แบบจำลองดีขึ้นแค่ไหนในแต่ละรุ่น (§12)** — ตรวจ 2 แบบ: ผลทดสอบตอนปล่อยรุ่น (เลือกจากช่วงหนึ่ง วัดผลกับข้อมูลที่ไม่เคยเห็น)
+และผลจริงของการคาดการณ์ที่แอปออกไปแล้ว เทียบกับระดับน้ำที่เกิดจริง 91,429 รอบ ตั้งแต่ 26 ก.ย. 2569 ·
+**ดีขึ้น:** จาก ~300 สถานีรอบ กทม. (v0.1) เป็น ~1,000 สถานีทั่วประเทศ (v0.16) · การคาดการณ์ 24 ชม. ที่ใช้แบบจำลองจริง
+(ไม่ใช่ "ถือว่าน้ำคงที่") เพิ่มจาก 38 % เป็น 56 % · คาด 6–12 ชม. แม่นกว่า "ถือว่าน้ำคงที่" 11–21 % ทุกรุ่นตั้งแต่มี star ·
+ตอนปล่อย v0.25 ความคลาดเคลื่อน 24–72 ชม. ลดจาก −5.3…−6.6 % เป็น −8.3…−9.4 % (สถานีชุดที่ไม่เคยเห็น) ·
+**ยังไม่ดีขึ้น:** ผลจริงที่ 24 ชม. แม่นกว่า "ถือว่าน้ำคงที่" เพียง 2–7 % และที่ 48–72 ชม. แทบไม่ต่าง · ช่วง 90 % ถูกจริง 80–89 %
+(รุ่นล่าสุด 81–83 %) น้อยกว่าที่บอก · สถานีชุดแรก 266 แห่ง (ส่วนใหญ่ใน กทม.) รุ่นล่าสุดยังพอ ๆ กับ "ถือว่าน้ำคงที่" ใน 1.5 วันที่วัดได้ ต้องตรวจต่อ ·
+**แผนระบาย 7 วัน:** น้ำไหลเข้าเขื่อนแม่นกว่า "ถือว่าคงที่" 24–32 % ที่วันที่ 3–7 (ฤดูฝน 2569) · 32 เขื่อนมีแบบจำลองที่ผ่านการทดสอบ (เดิม 16) ·
+ระดับท้ายน้ำคลาดเคลื่อน ~10 ซม. วันแรก ถึง ~40 ซม. วันที่ 7 (สูตรเดิมคลาด ~1 ม.)
 
 **สิ่งที่ลองแล้วไม่ใช้** — ภาพดาวเทียม GISTDA (คลาดเคลื่อน อาจทำให้เข้าใจผิด) · GloFAS (ไม่ช่วยในเจ้าพระยาตอนล่าง) · ฝนรายวันที่วัดได้ใส่ในแบบจำลอง (ไม่แม่นขึ้น) ·
 แบบจำลองไฮดรอลิกร่างแรก (ให้ผลไม่สมจริง)
@@ -216,7 +227,9 @@ upstream water take a day or more to arrive, which a gauge's own history cannot 
 trained only on hours before the 45-day window; the served method (best + the 10 % gate) is chosen on the window's
 **first half** and scored on the **second**; a variant is picked on gauge sample 1 and confirmed on a **disjoint**
 sample 2. We report the served error against "no change" (summed and per-gauge mean), how many gauges keep a ≥ 10 % gain
-on the unseen half, and how many end up **worse** than "no change" (the cost of serving a model).
+on the unseen half, and how many end up **worse** than "no change" (the cost of serving a model). Since 2026-10-06 (D-107)
+a gauge counts as worse only **beyond chance** — its error rises by more than 3 % and a moving-block bootstrap (blocks of the
+horizon) puts the rise above zero at 95 % one-sided (`floodwatch.model_gate.made_worse`); the harness prints both counts.
 
 | Experiment | Result on the unseen half | Decision |
 |---|---|---|
@@ -289,6 +302,10 @@ instead of hiding it.
 | 7-day inflow on a whole wet season (E-7D-IN-LONG, D-106) | the same candidates chosen on the 2025 wet season, scored on 2026 | only 'served + KF_ec on days 3–7 where persistence was served' passes, with no lead or dam worse | shipped: 32 dams on tested models (§9d) |
 | A flood view per release plan (D-105) | river reaches by nearest gauge; ONWR's layers; satellite past floods; a DEM (HAND) flood area | reaches and ONWR's layers built; GFM blind on 39–58 % and inconsistent, GISTDA/GFM agree 73 %/13 %; DEM unscorable (no observed release flood) | reaches + ONWR shown; satellites and DEM not shown (§11d) |
 | River on three wet seasons (2026-10-06) | the gain method and rain terms with two more wet seasons | gain beats the hybrid in both month samples, loses the live Jul–Sep 2026 window at days 5–7 | served model unchanged; history kept for the next season (§11c) |
+| "Made worse" (D-107) | counting every unit whose error rose at all | one noisy dam could veto a change for all 35 (E-7D-IN-LONG logs gave counts, no sizes) | worse = rise > 3 % and a block-bootstrap lower bound > 0; sizes reported |
+| Planning-model test (D-107) | the public 72 h gate (10 % skill, categories beyond 3 days, walk-forward only) for the 7-day tab | the river model beats "keep today" by 4–7 % at days 1–3 yet is the only what-if answer; margins needed month-by-month scoring | own test: two samples + the newest season, never worse than keep, physical sign, per-day margins (GUIDELINES §4.5) |
+| Research quota (D-108) | hand-paced Open-Meteo research under a written ≲ 1,000 a day | ≈ 4,800 weighted calls on 2026-10-06; live feeds unharmed (errors 503, never 429) | a shared counter in code: 3,000 a day, 1,000 an hour, 10 s apart |
+| As-issued record (E-HIST, §12) | every stored forecast run scored per model generation | see §12a | re-run as the record grows; backtest gains must show up as issued |
 | AI plain summary ("✨ ให้ AI สรุป") | free-form LLM vs deterministic rule narrative + background GLM retelling | free-form LLM invented safe/normal verdicts; rule narrative + checked retelling gives 91 % pass and 0 safety errors | deterministic rule story rendered at 0s (<50 ms); GLM polishes tone asynchronously; checked for safety; 🔊 voice readout added (D-068, KI-275) |
 
 ## 8. Limits we state
@@ -296,6 +313,7 @@ instead of hiding it.
 - Gauges measure channels; streets flood from rain the drains cannot take (Bangkok polders, KNOWLEDGE §4).
 - Forecast skill is modest: most rows are "low" confidence; 48 h is shown only where tested.
 - Track records rest on weeks, not seasons (archive since 2026-09-26).
+- As issued, gains beyond 24 h are about zero, and the ranges hold less often than they say (90 % ranges 80–89 %; §12b, KI-287).
 - Banks come from HII metadata and are not all verified (KI-272, Q48).
 - Gates, dams and pumps are operated by people; their plans are not in any feed we reached.
 
@@ -479,7 +497,12 @@ with a trend, 32 of them modelled (5 still "if today holds"; ปากมูล 
 
 ## 10. How to reproduce
 
-- Tests: `docker compose run --rm --no-deps worker pytest -q` (≈ 420 tests).
+- Tests: `docker compose build worker`, then `docker compose run --rm --no-deps -v "$PWD/research:/app/research:ro" worker pytest -q`
+  (460 tests on 2026-10-06; the research mount lets the guard on Open-Meteo research run).
+- Model history (§12): `research/2026-10-06_model_history.py` scores every stored forecast run (`forecast_run`, 14 days) per
+  model generation against what happened, read-only; its `.log` holds the tables.
+- Judging a change: `floodwatch.model_gate.made_worse` (D-107). Research that calls Open-Meteo goes through
+  `floodwatch.research_quota.get_json` with `-v "$PWD/data/research:/data/research"` (3,000 weighted calls a day, D-108).
 - Nationwide backtest: `scripts/backtest_nationwide.py`. Track records: `risks.compute_records` (forecaster, daily).
 - Evidence scripts: `research/2026-10-03_verify_bank.py`, `_verify_up.py`, `_verify_rise.py`, `_verify_text_graph.py`,
   `_ablate_upstream.py`, `research/2026-10-04_floodhub_validate.py`.
@@ -675,3 +698,99 @@ compare with google or any global flood info"), and ONWR's flood maps when they 
   an observed extent of a release flood (ONWR/RID flood-coverage maps by release level, data request #5, or imagery of a
   future event) and the higher-resolution DEM the owner will request; the script takes any DEM path.
 research/2026-10-06_flood_satellite_kk.{py,log}, _flood_sources_kk, _flood_dem_kk.
+
+## 12. How the models improved, release by release
+
+> Owner, 2026-10-06: "In models.MD we expect to see how good the models were developed here along many release and
+> history: for example, how good can we improve the accuracy, how better the models, what we benefit more."
+
+Two kinds of evidence, both from running code:
+- **When a change shipped** — the test that decided it: chosen on one period or sample, scored on another it never saw
+  (§5d, §9d, §11c). Old and new are compared on the same days, so this measures the change itself.
+- **As issued** — what each model generation actually forecast, scored against what the water then did
+  (`research/2026-10-06_model_history.py`: all 91,429 forecast runs stored since 2026-09-26 12:27 UTC at 1,022 gauges;
+  the gauge's mean reading within ±30 min of each valid time; read-only). This is what people saw, but each generation
+  ran in a different week, so on its own it cannot rank them.
+
+"vs no change" = the forecast's mean absolute miss against assuming the water stays where it is (persistence): −10 % means
+the typical miss is 10 % smaller.
+
+### 12a. The public forecast: what each release changed, and what its test showed
+
+| Release (date) | What changed | Measured when it shipped | What people got |
+|---|---|---|---|
+| v0.1.0 (2026-09-26) | a ladder per gauge ("no change", tide, trend) chosen by a 45-day backtest; a model only where it beats "no change" by ≥ 10 % (D-012) | the gate itself, per gauge and horizon | forecasts with ranges for ~300 Bangkok-area gauges; "no change" where no model won |
+| v0.8.0 (09-27) | `star`: forecast rain + upstream gauges + the Chao Phraya Dam release (D-052) | gauges with a 48 h forecast ≥ 30 % better than "no change": 8 → 35; Ayutthaya 48 h error 27 → 17 cm; the gain held at 87–100 % of gauges on three separate 45-day windows | water coming from upstream seen up to two days ahead |
+| v0.10.0 (09-27) | BMA's 199 canal gauges get a year of history (D-054) | `star` beat "no change" at 12 h on 46 of 85 BMA gauges (≥ 30 % on 17); "ประเมินไม่ได้" fell from 83 % to 39 % of Bangkok pins | canal forecasts and a judged canal factor in Bangkok |
+| v0.16.0 (09-30) | nationwide parity: 733 more gauges get history, QC, the ladder and the gate; rain cells and learned upstream gauges outside Bangkok (D-064) | the same gate per gauge | forecasts for ~1,000 gauges (294 → 1,021 in the record) |
+| v0.20.7 (10-03) | one forecaster per gauge: the measured trend became a model method that must win its place (D-080) | — | the words, the chart and the tabs agree (KI-270) |
+| v0.25.0 (10-04) | `star` reads 7/30-day means and 1/3/72 h changes (D-092); up to 4 learned upstream gauges (D-093) | on unseen gauges, error vs "no change" at 24/48/72 h: −6.6/−5.5/−5.3 → **−8.3/−8.5/−9.4 %**; gauges keeping a ≥ 10 % gain 51/44/49 → 67/70/69; at 72 h 21 gauges worse than "no change" (was 10) | more gauges with a real forecast; slow returns to the usual level learned |
+| v0.26.0 (10-05) | Flood Hub as an input near its points (D-097); the 90 % range widened daily until 9 in 10 recent outcomes fall inside (D-098) | 79 gauges: 72 h −8.3 → −9.2 %, 48 h −11.2 → −11.4 %; factors ×1.15/1.20/1.40 at 24/48/72 h | ranges meant to hold as stated (12b: not yet) |
+
+### 12b. The public forecast as issued (2026-09-26 → 2026-10-06)
+
+All gauges: the issued median's error vs "no change" (forecasts scored at 24 h in brackets); the share of 24 h forecasts a
+model served (not "no change"); how often the issued 90 % and 50 % ranges held at 24 h (they should hold 90 % and 50 %).
+
+| Generation (releases; when it ran) | Gauges | 6 h | 12 h | 24 h | 48 h | 72 h | Model served | 90 % held | 50 % held |
+|---|---|---|---|---|---|---|---|---|---|
+| mvp-0.1 (v0.1–v0.7; 09-26 12:27 → 09-27 12:10, the flood peak) | 294 | −10.8 % | −4.8 % | −5.6 % (600) | −7.5 % | −9.6 % | 46 % | 87.5 % | 47.8 % |
+| star-0.2 (v0.8.0–v0.20.6; 09-27 → 10-03) | 1,021 | −11.3 % | −10.7 % | −6.6 % (10,962) | −2.8 % | +0.4 % | 38 % | 88.2 % | 51.5 % |
+| star-0.3 (v0.20.7–v0.24; 10-03 22:24 → 10-04 16:04) | 987 | −20.5 % | −19.6 % | −5.7 % (24,373) | +2.1 % | – | 44 % | 87.7 % | 48.2 % |
+| star-0.4 (v0.25.0; 10-04 16:49 → 10-05 07:00) | 990 | −15.4 % | −14.5 % | −3.5 % (16,938) | – | – | 56 % | 81.0 % | 39.2 % |
+| star-0.4, calibrated ranges (v0.26.0–v0.33.0; 10-05 07:00 → 10-06 07:39) | 998 | −14.1 % | −13.0 % | −1.6 % (1,103) | – | – | 54 % | 82.5 % | 37.1 % |
+
+"–": too recent to score, or fewer than 30 forecasts. Where a model was served, its own forecasts against "no change" on the
+same runs, at 6/12/24/48/72 h: star-0.2 −20.5/−22.2/−17.9/−13.6/−8.7 %; star-0.3 −32.5/−32.2/−15.7/−5.1 %; star-0.4
+−24.6/−23.5/−10.9 %; calibrated −23.2/−23.6/−8.2 %. On the 266 gauges every generation forecast (mostly the first
+Bangkok-area set), at 6/12/24 h: mvp-0.1 −18.4/+1.4/−7.9 %; star-0.2 −6.5/−2.3/−6.4 %; star-0.3 −5.4/−1.9/−3.4 %;
+star-0.4 +2.8/−0.2/+0.3 %; calibrated +0.7/−1.1/+2.2 %.
+
+**How to read it.** Each generation ran in a different week: mvp-0.1 on the flood peak around Bangkok ("no change" missed
+by 32–81 cm), star-0.2 over six days as rivers began to fall nationwide, star-0.3 for 18 hours, star-0.4 for a day and a
+half of recession. Raw errors are not comparable, and even the ratios move with the weather; the fair old-vs-new comparison is the
+test in 12a.
+
+**What improved.**
+- **Reach:** ~300 → ~1,000 gauges with forecasts and ranges (v0.16.0).
+- **More real forecasts:** at 24 h the share served by a model rose from 38 % (star-0.2) to 56 % (star-0.4) — fewer "?" rows.
+- **Where a model speaks, it helps:** its 6–12 h misses are 20–33 % smaller than "no change" on the forecasts it served,
+  24 h 8–18 %.
+- **Nationwide, 6–12 h forecasts** have been 11–21 % better than "no change" in every generation since `star`.
+
+**What did not, yet.**
+- **Beyond a day the issued gain is small:** 24 h −1.6 to −6.6 %; 48–72 h about zero since `star` (star-0.2 −2.8 % and
+  +0.4 %, star-0.3 +2.1 % at 48 h) — only the flood-peak day gave −7.5/−9.6 % (mvp-0.1).
+- **The ranges hold less often than they say:** the 90 % range held 80–89 % (star-0.4: 81–83 % at 24 h), the 50 % range
+  37–55 % (star-0.4: 37–39 % at 24 h). The daily calibration (v0.26.0) has not closed the gap: the stored ranges are the
+  calibrated ones (`forecast.widen90`), and at 24 h only one issue hour can be scored so far (82.5 % of 1,103). KI-287 is
+  open again.
+- **On the 266 gauges every generation forecast,** the latest model is level with "no change" in its two days (−1.1 to
+  +2.8 % at 6–24 h), where star-0.2 and star-0.3 gained 2–7 % in their weeks. Whether that is the recession's flat canals or
+  a loss from the v0.25.0 inputs on these gauges needs a same-days backtest of the old and new `star` on them (HANDOFF next
+  steps).
+
+Re-run `research/2026-10-06_model_history.py` after each model change and weekly: a backtest gain in 12a has to show up
+here as issued.
+
+### 12c. Planning models for the impact tab (1–7 days)
+
+| Release (date) | Model | Measured when it shipped | What planners got |
+|---|---|---|---|
+| v0.27.0 (10-05) | a what-if chain for Kaeng Krachan, gated against "keep today's level" (D-099) | the gate stayed closed until a model beat keeping today's level | no number on screen before it was tested |
+| v0.29.0 (10-05) | 7-day release plans; inflow held at today's value with a regime band (D-101) | a rain-driven inflow model lost to persistence at every horizon: shown as context, not used | plans that say which side is tested |
+| v0.30.0 (10-05) | a rain model per dam on archived rain *forecasts*, with a monthly loss term (Q58, D-102) | beats persistence by ≥ 10 %: 15 of 17 dams at 3 days, 11 of 17 at 7 days | 7-day storage trends on the dams list |
+| v0.32.0 (10-05) | the served inflow model fed with the mean of four rain forecasts; the river below the dam as B.18's rating anchored on today's level plus a non-negative release effect, with a margin per day (D-104) | inflow vs persistence (two dam samples): 3 days −23.5/−18.1 → **−28.0/−22.4 %**, 7 days −17.2/−20.5 → **−18.5/−23.4 %**; river: the old chain was ~1 m off, the new one beats "keep today" by 5–15 % at days 3–7, error ~10 cm on day 1 to ~40 cm on day 7 | plans checked against each day's tested error instead of one number |
+| v0.33.0 (10-06) | damped persistence + ECMWF rain on days 3–7 where persistence was served, chosen on the whole 2025 wet season (D-106); the river re-tested on three wet seasons | 2026 wet season, two samples: 3 days −23.4/−20.3 → **−24.8/−23.8 %**, 5 days −22.3/−28.1 → **−32.0/−31.0 %**, 7 days −18.8/−25.6 → **−27.0/−28.2 %**, no dam made worse than before; the river's alternative lost the live season, so it stays | 32 dams on tested 7-day models (was 16); Kaeng Krachan's plans on a model from day 3 |
+
+Each row's numbers come from its own test (different periods and samples): compare within a row, not down the column.
+
+### 12d. What it adds up to
+- **Residents:** forecasts with ranges at ~1,000 gauges instead of ~300; more of them answer "up or down?" with a tested
+  model (24 h: 38 % → 56 % of forecasts); 6–12 h misses 11–20 % smaller than "no change" nationwide. Still to earn:
+  ranges that hold as stated, and real gains beyond 24 h.
+- **Planners (ONWR, RID):** a 7-day plan carries each day's tested error (~10 cm on day 1 to ~40 cm on day 7) instead of a
+  chain ~1 m off; 32 dams have tested 7-day inflow models, with misses 24–32 % smaller than persistence at days 3–7 in
+  the 2026 wet season.
+- **Trust:** every change is judged on data it never saw, units made worse are reported with their size (D-107), and the
+  as-issued record (12b) checks that a backtest gain reaches people.

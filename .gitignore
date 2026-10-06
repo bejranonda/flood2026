@@ -53,6 +53,7 @@ yarn-error.log*
 *.db
 # runtime data at the repo root only; src/floodwatch/data/ ships with the package (chainage, approx. coords)
 /data/
+/private/
 data_raw/
 data_archive/
 models/registry/

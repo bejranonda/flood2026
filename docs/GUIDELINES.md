@@ -1,6 +1,6 @@
 # GUIDELINES.md — Engineering, Modelling, Data Ethics & UX Standards
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-05 (v0.25.2)
+> **Project:** BKK FloodWatch 2026
 > **Audience:** maintainers, contributors, AI agents (agents: also read [CLAUDE.md](../CLAUDE.md))
 
 ---
@@ -8,7 +8,7 @@
 ## 1. Core principles
 
 1. **Hybrid forecasting.** Forecast = physically structured baseline + ML residual correction + calibrated uncertainty. Pure black-box ML extrapolates dangerously in record floods. Full 2-D hydrodynamics is too heavy for a 10-minute cycle ([APPROACH](APPROACH_AND_METHODS.md)).
-2. **Beat the baselines or don't publish.** Every station × horizon must beat persistence (L0), or persistence + tide (L1) in tidal reaches, in walk-forward backtests (§4.3). Otherwise the app falls back to the baseline with wider intervals.
+2. **Beat the baselines or don't publish.** Every station × horizon must beat persistence (L0), or persistence + tide (L1) in tidal reaches, in walk-forward backtests (§4.3). Otherwise the app falls back to the baseline with wider intervals. Planning models for the impact tab have their own test (§4.5).
 3. **Our archive is the system of record.** External sources are feeds and may disappear, change or throttle at any time. Every payload is archived raw before it is parsed ([ARCHITECTURE §3](ARCHITECTURE.md)).
 4. **Keyless first, collected on the server** (D-001). v1 needs no gated API keys. "Zero-key" does **not** mean computing in the browser. **The browser only calls our API or edge**, never a government endpoint, even where CORS would allow it ([KI-105](KNOWN_ISSUES.md)). Code in the browser is for display only.
 5. **Transparency on every screen.** Last observation time (Asia/Bangkok), data age, source attribution, forecast conditions, disclaimer, official links and hotlines.
@@ -18,9 +18,9 @@
 
 ## 2. Working process
 
-### 2.1 Strict phase gates (D-002)
-- Work phase by phase ([plan/PLAN.md](plan/PLAN.md)). At the end of each phase, deliver its report or result and **stop until the owner approves the gate** (G0–G4).
-- **Exception built into the plan:** once G0 approves the sources, start the collectors and backfill immediately. Every flood day we don't capture is lost for good.
+### 2.1 Parallel workstreams (D-012; D-002's strict phase gates are superseded)
+- All workstreams run in parallel ([plan/PLAN.md](plan/PLAN.md)); the gates G0–G4 are quality reviews, not stops. Keep the live site working: every change passes the tests and a health check before a redeploy ([CLAUDE.md](../CLAUDE.md)).
+- **Still true from D-002: archive first.** Every flood day we don't capture is lost for good.
 
 ### 2.2 Evidence rule (D-003)
 - Every number, endpoint, constant or station attribute in `docs/` carries **evidence**: a live call (with date and host), observed data, or a cited source. Otherwise it is marked **⚠️** and gets a Phase 0 or Phase 2 task.
@@ -44,7 +44,7 @@
 | Something you need from the owner (a key, a dashboard change, a decision) | [OWNER_ACTIONS.md](OWNER_ACTIONS.md) first, then [plan/OPEN_QUESTIONS.md](plan/OPEN_QUESTIONS.md) for the history |
 | Task progress | The relevant `plan/phase-*.md` checklist |
 
-Update `Last updated` on each file you touch. Docs are written in English; Thai is used for UI strings and domain terms.
+No hand-written "Last updated" stamps (D-109): all seven stamped docs changed after their "v0.25.2" stamp without it moving (1–18 commits each, 2026-10-04…06); `git log -- <file>` is the record. HANDOFF keeps its snapshot time, because it says when the live state was checked. Docs are written in English; Thai is used for UI strings and domain terms.
 
 ### 2.4 Owner dependencies (D-026)
 - **Track them in [OWNER_ACTIONS.md](OWNER_ACTIONS.md) first** (why, exact steps, cost, how you'll verify), then mention them briefly in chat. Run `python3 scripts/owner_status.py` before asking.
@@ -90,21 +90,35 @@ Update `Last updated` on each file you touch. Docs are written in English; Thai 
 
 ### 4.1 No leakage
 - Train on **as-issued** forecasts (the archived NWP runs), never on observed future rain. Until enough runs are archived, widen the intervals and disclose it ([KI-305](KNOWN_ISSUES.md)).
-- Only time-ordered validation: **rolling-origin walk-forward** with an **embargo gap** of at least the forecast horizon between training and test, because autocorrelation leaks information. Never shuffle or use random K-fold.
+- Only time-ordered validation: **rolling-origin walk-forward** with an **embargo gap** of at least the forecast horizon between training and test, because autocorrelation leaks information. Never shuffle or use random K-fold. One exception, for planning models only (§4.5): their per-day margins may be scored month by month with the other months fitted, purging at least the horizon on each side, when forward-only fitting has too few days to learn from (B.10's release effect came out negative in the dry season, MODELS §11c).
 - Spatial generalisation is tested with **leave-station-out** and, for polders, leave-zone-out splits.
 
-### 4.2 Held-out events
-2011 (mega-flood, overland flow), 2017, 2021 (release + high tide), 2022 (pluvial cloudbursts, tunnel drawdown), 2024, and the **2026 event** as live validation. Use this same list everywhere.
+### 4.2 Held-out data (D-109)
+Score on data the model never saw — later in time first, then on units it was not chosen on:
+- **Time:** choose on an earlier period, score on a later one. The public forecast: the first and the second half of the last 45 days (MODELS §5d). Planning models: one wet season, then the next (§4.5).
+- **Units:** confirm on a disjoint sample of gauges or dams.
+- **The newest season always counts:** a change that wins the samples but loses it is not shipped (MODELS §11c).
+- **What the archive holds:** about one year of hourly readings (the 365-day backfill, D-018/D-054), three wet seasons of daily levels where a case needed them (Phetchaburi, `impact_history`), and archived rain forecasts from 2024 (Open-Meteo previous runs). The big events of 2011, 2017, 2021 and 2022 are not in it, so they are not a test set until someone loads them; the 2026 event is the live validation.
 
 ### 4.3 Acceptance gate (per station × horizon)
 - **Skill vs persistence** = 1 − RMSE_model / RMSE_persistence **> 0.10**, **and**
-- **90 % interval coverage between 85 % and 95 %** on held-out events and on the rolling 14-day window.
+- **90 % interval coverage between 85 % and 95 %** on held-out data (§4.2) and on the rolling 14-day window.
 - **Reported, not gating:** NSE, KGE, CRPS, peak magnitude and timing error, and POD/FAR/CSI for bank and warning exceedance.
 - **Unit tests, not gating:** mass-balance closure < 3 % for the storage model; monotonic constraints hold.
 - If coverage drops below 85 %: widen automatically (ACI) and alert.
+- **"Made worse" means beyond chance (owner 2026-10-06, D-107).** When a change is judged, a gauge or dam counts as made worse only if its error rises by **more than 3 %** and a moving-block bootstrap (blocks of at least the horizon) puts the rise **above zero at 95 % one-sided** — `floodwatch.model_gate.made_worse`. Report every unit's change either way, with its size; too little data to resample lets the size alone decide.
 
 ### 4.4 Uncertainty is mandatory
-Always give quantiles or intervals, and let them widen with the horizon. Beyond about 3 days, show **probabilities or categories**, not precise levels.
+Always give quantiles or intervals, and let them widen with the horizon. On public pages, beyond about 3 days, show **probabilities or categories**, not precise levels. The impact tab's 7-day plans show each day's tested range instead (§4.5).
+
+### 4.5 Planning models: the impact tab (owner 2026-10-06, D-107)
+Models that answer "what if the dam releases X?" for the 7-day impact tab (reservoir inflow, the river below a dam) are judged by what they are for, not by the public 72 h gate:
+- **Two samples and the newest season:** choose on one season, confirm on a disjoint sample of units and on the newest season (§4.2); ship a change only on the days (leads) where it holds, keeping the others as they are (D-106).
+- **Never worse than "keep today" at any day**, and no unit made worse (§4.3).
+- **No 10 % skill bar:** "keep today" cannot answer a what-if, so a model that beats it by less is still the right one — provided a bigger release never lowers the river downstream (a negative fit is clipped and said, §6c-9).
+- **Each day keeps its own tested error as the plan's margin** (KI-306); bands are stored and added as (observed − predicted) (KI-309).
+- **Margins may be scored month by month** with the other months fitted and at least the horizon purged on each side (§4.1).
+- **Numbers to day 7:** its readers are engineers who plan with numbers, so the tab shows each day's tested range rather than only categories beyond 3 days (§4.4).
 
 ---
 
@@ -127,7 +141,7 @@ Always give quantiles or intervals, and let them widen with the horizon. Beyond 
 - **Attribution** on every screen. Relayed data names both the owner and the relay (BMA via flood69, D-031).
 - **Never mix levels across agencies** (KI-217): a BMA level and an HII level at the same place can differ by 0.3–0.6 m. Compare each gauge only with its own bank; combine agencies only as status ranks. Never use BMA `warning`/`critical` as a bank (KI-215).
 - **Never assume a source's schedule (KI-268):** a layer "rebuilt daily" was rebuilt at different hours, several times a day, cell by cell. Probe a cheap stamp/count and download a finished new version; never on a fixed timer alone.
-- **Shared free allowances (KI-264):** research calls to Open-Meteo share the server's free non-commercial allowance with production rain. Size them (a year only for the cell you need), pause ≥ 10 s between requests, stay ≲ 1,000 weighted calls a day, and check `source_health` for `openmeteo*` after a heavy run.
+- **Shared free allowances (KI-264, D-108):** research calls to Open-Meteo share the free non-commercial allowance (10,000 a day, 5,000 an hour, 600 a minute) with the live site's rain. Fetch them through `floodwatch.research_quota.get_json(url)`: one ledger shared by every run counts each request by the pricing page's weighting and holds research to **3,000 weighted calls a day, 1,000 an hour, 10 s apart** (in a container mount `-v "$PWD/data/research:/data/research"`; a run that cannot see the ledger stops). Size requests to the cell you need, and check `source_health` for `openmeteo*` after a heavy run. A test fails if a new research script names Open-Meteo without the counter.
 - **Keys echoed by sources (KI-262):** some APIs return the caller's key inside response URLs (GISTDA `links`). Strip such fields before storing, logging or printing a response.
 - **Experimental data with restrictive terms (D-069):** WeatherNext real-time rain is never shown or served by our API; past data (≥ 1 h old, CC BY 4.0) may be used for backtests in the worker only. In BigQuery, query exact initialization timestamps (`init_time = ...` or `init_time IN (...)`) and use spatial predicates (`ST_INTERSECTS`) to leverage GIS clustering (~17 MB scanned per point) rather than open-ended ranges that trigger multi-TB partition scans (KI-283).
 
@@ -320,7 +334,7 @@ People using the app may be stressed, on the move, or protecting their home. Be 
 - **Bounds and failure retry:** 8 s server timeout, 7 s client wait, cache per (question, rule text) 6 h. Failed calls/rejections are cached for only **120 s (2 min)** (reduced from 30 min in v0.22.0) to prevent temporary LLM hiccups from locking out residents.
 - **"? ไม่แน่ชัด" is not "we know nothing" (v0.18.7):** say the size of the likely change and the bank risk from the 90 % range against today's margin; never turn an unproven row into "น่าจะลดลง/เพิ่มขึ้น" (D-060, D-068).
 - **GLM details:** glm-5.3-flash always reasons; send `reasoning_effort: "low"` (else 9–10 s), use only `content` (never `reasoning_content`).
-- **Provider options:** **GLM (`glm-5.3-flash`, D-030)** via Zhipu AI OpenAPI (`open.bigmodel.cn`) is supported and verified for Thai citizen note triage, alongside Cloudflare Workers AI.
+- **Provider: GLM only for anything the app shows** (owner 2026-10-04: "You can use only GLM"): the ✨ cards, the ticker, and feedback triage all go through `ai.run`'s default provider, GLM (`glm-5.3-flash`, D-030, `AI_PROVIDER=glm`). Cloudflare Workers AI is the code's fallback only when no GLM key is set; other models are tested in research only, with `account=False` (D-096). Improve prompts and checks rather than switching providers.
 - **AI never writes safety facts** (status, levels, times, advice). Those come strictly from deterministic templates and the forecast code.
 - AI output must match a strict schema (`parse_label`) or it is discarded. AI may add urgency, never remove it.
 - **No personal data to AI** beyond the note text the user chose to send; no locations, IPs, or hashes.

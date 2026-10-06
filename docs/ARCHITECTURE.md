@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — System Architecture
 
-> **Project:** BKK FloodWatch 2026 · **Last updated:** 2026-10-05 (v0.25.2)
+> **Project:** BKK FloodWatch 2026
 > **Decisions:** [D-001](plan/DECISIONS.md) (VPS core + Cloudflare edge; keyless sources collected on the server), [D-002](plan/DECISIONS.md) (archive-first, strict phases)
 > **Based on:** the brief's Phase 1 and Phase 4 ([docs/brief/first_prompt.md](brief/first_prompt.md))
 
@@ -41,8 +41,8 @@ A **VPS core** runs the scheduled collectors, the immutable raw archive, Postgre
 | `GET /api/summary` | One deterministic Thai situation sentence (template, not AI) |
 | `GET /robots.txt`, `GET /sitemap.xml` | Crawler files (v0.15.3, KI-248): the page is allowed, `/api/docs`, `/api/openapi.json` and `/api/point` are kept out of indexes; one sitemap URL |
 
-### 1.2 Optional Cloudflare Workers AI ([D-022](plan/DECISIONS.md))
-The worker task `ai_triage` (every 15 min) sends new feedback notes to Workers AI (SEA-LION v4) over REST and stores `user_feedback.ai_label`. It has a budget and a circuit breaker (state in `collector_state.ai_usage`), and **only the worker holds AI credentials**. If AI is unavailable, nothing user-facing changes.
+### 1.2 Optional AI ([D-022](plan/DECISIONS.md), D-030, D-068, D-089)
+Every AI call goes through `ai.run`'s default provider: **GLM** (`glm-5.3-flash`, `AI_PROVIDER=glm`; owner 2026-10-04: GLM only for what the app shows), with Cloudflare Workers AI (SEA-LION v4) only as the fallback when no GLM key is set. Three callers: the worker task `ai_triage` (every 15 min) labels new feedback notes (`user_feedback.ai_label`); the worker writes the national ticker every 30 min (D-089); the API asks GLM to retell a rule-written story **only when a visitor taps ✨** (D-068). A budget and a circuit breaker guard it (state in `collector_state.ai_usage`); rules write every fact, and AI text is shown only after a check. If AI is unavailable, nothing user-facing changes.
 
 ---
 

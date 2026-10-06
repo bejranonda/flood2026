@@ -31,3 +31,6 @@ The files here are **research records** from 26 Sep 2026, produced with assistan
 1. Put new research in a new file named with the date (for example `2026-10-02_rid_telemetry.md`), with a validity banner at the top.
 2. Validate its testable claims (live call, data or cited source) and add the verdicts to a validation report.
 3. Carry only ✅/💡 items into `docs/`, in the same change.
+4. **Research never touches live state** (D-096): open the database with `floodwatch.db.connect_readonly()`, call AI with `ai.run(..., account=False)`, and run at `nice`.
+5. **Open-Meteo goes through the counter** (D-108): `from floodwatch import research_quota` and `research_quota.get_json(url)` — 3,000 weighted calls a day for all research together, 1,000 an hour, 10 s apart. In a container add `-v "$PWD/data/research:/data/research"` (a run without the shared ledger stops). A test fails when a new script names Open-Meteo without it.
+6. **Judge a model change honestly** (GUIDELINES §4): choose on an earlier period, score on a later one, confirm on a disjoint sample; report every unit's change and count a unit as made worse only beyond chance with `floodwatch.model_gate.made_worse` (D-107); planning models for the impact tab follow GUIDELINES §4.5.

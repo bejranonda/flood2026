@@ -44,5 +44,5 @@ Probabilistic forecasts at +12 h / 1 / 2 / 3 / 7 d, and an estimate of when leve
 - [ ] Flood Hub forecasts as an input (+0.9 points at 72 h; Q55) · WeatherNext rain backtest (blocked by BigQuery quota; Q53) · RID discharge as upstream inputs · rebound-forecast guard if KI-292 confirms.
 
 ## Exit criteria (G2)
-- For every station and horizon shown: skill vs persistence > 0.1 **and** 90 % coverage of 85–95 % on held-out events (2011, 2017, 2021, 2022, 2024, 2026). Otherwise it's served at a lower level with wider intervals, documented.
+- For every station and horizon shown: skill vs persistence > 0.1 **and** 90 % coverage of 85–95 % on held-out data ([GUIDELINES §4.2](../GUIDELINES.md): later in time, a disjoint sample, the newest season). Otherwise it's served at a lower level with wider intervals, documented.
 - Forecasts are stored per run with the model version.
